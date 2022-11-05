@@ -1,0 +1,32 @@
+/(home)
+  +handler.get_put_post_delete.ts
+  +page.marko
+  +layout.marko
+  +meta.json
+/(foo)
+  /sales
+    /about
+      +page.marko
+      +meta.marko
+      +handler.post_delete.js
+  /$$
+    +page.marko
+/sales
+  /(overview)
+    +page.marko
+  /invoicing
+    /$$rest
+      +page.marko
+    /$id
+      +page.marko
+    /foo
+      +page.marko
+    +page.marko
+    +layout.marko
+    +middleware.ts
+  /summary
+    +page.marko
+  +layout.marko
++middleware.ts
++404.marko
++500.marko

@@ -1,0 +1,79 @@
+{
+  "name": "@marko/serve",
+  "version": "0.0.1",
+  "description": "File-based routing for Marko based on Vite",
+  "keywords": [],
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "mocha": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.ts\"",
+    "test": "npm run mocha",
+    "test:watch": "npm run mocha -- --watch",
+    "test:inspect": "npm test -- --inspect",
+    "test:update": "npm run mocha -- --update",
+    "build": "tsc -b && tsx scripts/build.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js",
+      "require": "./dist/runtime/index.cjs"
+    },
+    "./router": {
+      "types": "./dist/runtime/router.d.ts",
+      "import": "./dist/runtime/router.js",
+      "require": "./dist/runtime/router.cjs"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js",
+      "require": "./dist/vite/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./src/runtime/index.ts"
+      ],
+      "router": [
+        "./src/runtime/router.ts"
+      ],
+      "vite": [
+        "./src/vite/index.ts"
+      ]
+    }
+  },
+  "types": "./dist/runtime/index.d.ts",
+  "main": "./src/runtime/index.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@marko/vite": "^2.3.7"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.19.0",
+    "@marko/compiler": "^5.22.6",
+    "@marko/tags-api-preview": "^0.5.6",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.7.6",
+    "acorn": "^8.8.0",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.15.7",
+    "marko": "^5.21.9",
+    "mocha": "^10.0.0",
+    "mocha-snap": "^4.3.0",
+    "prettier": "^2.7.1",
+    "tsx": "^3.9.0",
+    "typescript": "^4.7.4",
+    "undici": "^5.10.0",
+    "vite": "^3.0.8"
+  },
+  "dependencies": {
+    "cli-table3": "^0.6.3",
+    "gzip-size": "^7.0.0",
+    "kleur": "^4.1.5",
+    "pretty-bytes": "^6.0.0"
+  }
+}

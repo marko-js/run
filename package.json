@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "npm run build -w packages",
+    "test": "npm run test -w packages"
+  },
+  "workspaces": [
+    "./packages/*",
+    "./examples/*"
+  ]
+}
