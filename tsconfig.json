@@ -5,7 +5,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "sourceMap": false,
-    "declaration": true,
+    "composite": true,
     "incremental": true,
     "stripInternal": true,
     "noUnusedLocals": true,
