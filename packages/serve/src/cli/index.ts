@@ -18,17 +18,19 @@ import { loadBuildInfo } from "../vite/plugin";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cwd = process.cwd();
 const defaultPort = +process.env.PORT! || 3000;
+const defaultConfigFileBases = ["serve.config", "vite.config"];
+const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
 const prog = sade("marko-serve")
   .version("0.0.1")
-  .option("-c, --config", "Provide path to a Vite config");
+  .option("-c, --config", `Provide path to a Vite config file (by default looks for a file starting with ${defaultConfigFileBases.join(" or ")} with one of these extensions: ${defaultConfigFileExts.join(", ")})`);
 
 prog
   .command("serve [entry]", "", { default: true })
-  .describe("Start production-like server against built assets")
-  .option("-o, --output", "Directory to serve files")
-  .option("-p, --port", "Port to use for dev server")
-  .option("-b, --build", "Build project first")
+  .describe("Start a production-like server for already-built app files")
+  .option("-o, --output", "Directory to serve files from, and write asset files to if `--build` (default: )") // The awkwardness of this makes me wonder if instead the build command should have a `--serve` option?
+  .option("-p, --port", "Port the server should listen on (defaults: `$PORT` env variable or 3000)")
+  .option("-b, --build", "Build app before starting server")
   .action(async (entry, opts) => {
     const config = await getViteConfig(cwd, opts.config);
     if (opts.build) {
@@ -43,8 +45,8 @@ prog
 
 prog
   .command("dev [entry]")
-  .describe("Start dev server")
-  .option("-p, --port", "Port to use for dev server")
+  .describe("Start development server in watch mode")
+  .option("-p, --port", "Port the dev server should listen on (defaults: 'preview.port' in config, or `$PORT` env variable, or 3000)")
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
     const cmd = opts._.length
@@ -58,9 +60,9 @@ prog
 
 prog
   .command("build [entry]")
-  .describe("Build the application")
-  .option("-o, --output", "Directory to ouput built files")
-  .option("--skip-client", "Skip the client build")
+  .describe("Build the application (without serving it)")
+  .option("-o, --output", "Directory to write built files (default: )")
+  .option("--skip-client", "Skip the client-side build")
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {
     const config = await getViteConfig(cwd, opts.config);
@@ -86,9 +88,9 @@ async function serve(
   const adapter = await resolveAdapter(resolvedConfig);
   
   if (!adapter) {
-    throw new Error("No adapter specified for serve command");
+    throw new Error("No adapter specified for 'serve' command");
   } else if (!adapter.startPreview) {
-    throw new Error(`Adapter ${adapter.name} does not support serve command`);
+    throw new Error(`Adapter ${adapter.name} does not support 'serve' command`);
   }
 
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
@@ -110,10 +112,10 @@ async function dev(cmd: string | undefined, configFile: string, port?: number) {
     const adapter = await resolveAdapter(resolvedConfig);
     if (!adapter) {
       throw new Error(
-        "No adapter specified for dev command without custom target"
+        "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
       );
     } else if (!adapter.startDev) {
-      throw new Error(`Adapter ${adapter.name} does not support serve command`);
+      throw new Error(`Adapter '${adapter.name}' does not support 'serve' command`);
     } else {
       await adapter.startDev(port);
     }
@@ -131,14 +133,14 @@ async function build(
     const adapter = await resolveAdapter(resolvedConfig);
 
     if (!adapter) {
-      throw new Error("No adapter specified for build command without entry");
+      throw new Error("No adapter specified for building without an entry"); // How should we suggest the user sets an entry for this error and others like it?
     }
 
     entry = await adapter.getEntryFile?.();
 
     if (!entry) {
       throw new Error(
-        `Adapter ${adapter.name} does not support build command without entry`
+        `Adapter '${adapter.name}' does not support building without an entry`
       );
     }
   }
@@ -181,7 +183,7 @@ async function build(
 function findFileWithExt(
   dir: string,
   base: string,
-  extensions: string[] = [".js", ".cjs", ".mjs", ".ts", ".mts"]
+  extensions: string[] = defaultConfigFileExts
 ): string | undefined {
   for (const ext of extensions) {
     const filePath = path.join(dir, base + ext);
@@ -195,13 +197,14 @@ function findFileWithExt(
 async function getViteConfig(
   dir: string,
   configFile?: string,
-  bases: string[] = ["serve.config", "vite.config"]
+  bases: string[] = defaultConfigFileBases
 ): Promise<string> {
   if (configFile) {
-    if (!fs.existsSync(path.join(dir, configFile))) {
-      throw new Error(`Unable to load config file '${configFile}' from ${dir}`);
+    const configFilePath = path.join(dir, configFile);
+    if (!fs.existsSync(configFilePath)) {
+      throw new Error(`No config file found at '${configFilePath}'`);
     }
-    console.log(`Using config file '${configFile}'`);
+    console.info(`Using config file '${configFile}'`);
     return configFile;
   }
 
@@ -213,7 +216,7 @@ async function getViteConfig(
     }
   }
 
-  console.log(`No user config file was found`);
+  console.info(`No user config file found`);
   return path.join(__dirname, "default.config.mjs");
 }
 
@@ -230,7 +233,7 @@ async function resolveAdapter(
 ): Promise<Adapter | undefined> {
   const options = getMarkoServeOptions(config);
   if (!options) {
-    throw new Error("Unable to resolve Marko Serve options");
+    throw new Error("Unable to resolve @marko/serve options");
   }
   return options.adapter;
 }
