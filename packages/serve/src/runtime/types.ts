@@ -1,3 +1,5 @@
+import type { AdapterRequestContext } from '@hattip/core';
+
 export interface RouteContext<
   Params extends Record<string, string> = {},
   Meta = unknown
@@ -21,11 +23,12 @@ export interface MatchedRoute<
   handler: RouteHandler;
   params: Params;
   meta: Meta;
-  invoke(request: Request): Promise<Response>;
+  invoke: Router;
 }
 
 export type Router = (request: Request) => Promise<Response>;
 export type RouteMatcher = (method: string, url: URL) => MatchedRoute | null;
+export type Handler = (context: AdapterRequestContext) => Promise<Response>;
 
 export interface Runtime {
   router: Router,

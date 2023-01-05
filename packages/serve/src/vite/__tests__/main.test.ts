@@ -35,30 +35,33 @@ for (const entry of fs.readdirSync(FIXTURES)) {
         route.handler.verbs = verbs.length ? verbs : httpVerbs as any;
       }
       if (i > 0) routesSnap += `\n\n`;
-      routesSnap += `Route ${route.path}\n`;
-      routesSnap += '='.repeat(100);
-      routesSnap += '\n';
-
+      routesSnap += `# Route \`${route.path}\`\n`;
       if (route.page) {
+        routesSnap += '## Template\n'
+        routesSnap += '```marko\n'
         routesSnap += renderRouteTemplate(route);
-        routesSnap += '-'.repeat(100);
-        routesSnap += '\n';
+        // routesSnap += '-'.repeat(100);
+        routesSnap += '```\n';
       }
+      routesSnap += '## Handler\n'
+      routesSnap += '```js\n';
       routesSnap += renderRouteEntry(route);
+      routesSnap += '```\n';
       i++;
     }
 
     for (const route of Object.values(routes.special)) {
-      routesSnap += `\n\nSpecial ${route.key}\n`;
-      routesSnap += '='.repeat(100);
-      routesSnap += '\n';
+      routesSnap += `\n\n# Special \`${route.key}\`\n`;
+      routesSnap += '## Template\n'
+      routesSnap += '```marko\n'
       routesSnap += renderRouteTemplate(route);
+      routesSnap += '```\n'
     }
     
     const routerSnap = renderRouter(routes);
 
     await Promise.all([
-      snap(routesSnap, ".routes.txt", dir),
+      snap(routesSnap, ".routes.md", dir),
       snap(routerSnap, ".router.js", dir)
     ]);
   });

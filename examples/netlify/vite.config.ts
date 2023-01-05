@@ -1,13 +1,7 @@
 import { defineConfig } from "vite";
 import marko from "@marko/serve/vite";
-import netlify from '@marko/serve-netlify'
+import netlifyAdapter from "@marko/serve-adapter-netlify";
 
 export default defineConfig({
-  plugins: [
-    marko({ adapter: netlify() }),
-  ],
-  build: {
-    sourcemap: true, // Generate sourcemaps for all builds.
-    emptyOutDir: false, // Avoid server & client deleting files from each other.
-  }
+  plugins: [marko({ adapter: netlifyAdapter({ edge: true }) })],
 });

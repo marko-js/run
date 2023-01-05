@@ -1,11 +1,17 @@
 import path from "path";
 import { build, BuildOptions } from "esbuild";
+import { copyFile, mkdir } from "fs/promises";
 
 const srcdir = path.resolve("src");
 const outdir = path.resolve("dist");
 
 const opts: BuildOptions = {
-  entryPoints: ["src/vite/index.ts", "src/runtime/index.ts", "src/runtime/router.ts"],
+  entryPoints: [
+    "src/vite/index.ts",
+    "src/runtime/index.ts",
+    "src/runtime/router.ts",
+    "src/adapter//index.ts",
+  ],
   outdir,
   outbase: srcdir,
   platform: "node",
@@ -36,6 +42,38 @@ await Promise.all([
   build({
     ...opts,
     format: "esm",
-    splitting: true,
+    splitting: !true,
   }),
+  build({
+    ...opts,
+    entryPoints: ["src/cli/index.ts"],
+    format: "esm",
+    outExtension: { ".js": ".mjs" },
+  }),
+  copy("cli/default.config.mjs", "adapter/default-entry.mjs"),
 ]);
+
+async function copy(...items: ([string, string] | [string] | string)[]) {
+  for (const item of items) {
+    let from, to;
+    if (Array.isArray(item)) {
+      [from, to] = item;
+    } else {
+      from = item;
+    }
+    if (from) {
+      to = path.join(outdir, to || from);
+      from = path.join(srcdir, from);
+
+      try {
+        await mkdir(path.dirname(to), { recursive: true });
+      } catch (err: any) {
+        if (err && err.code !== "EEXIST") {
+          throw err;
+        }
+      }
+
+      await copyFile(from, to);
+    }
+  }
+}

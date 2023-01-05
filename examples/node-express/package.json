@@ -1,0 +1,27 @@
+{
+  "name": "node-express-example",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "marko-serve build src/index.ts",
+    "dev": "marko-serve dev -- tsx src/index.ts",
+    "start": "marko-serve"
+  },
+  "devDependencies": {
+    "@marko/compiler": "^5.22.6",
+    "@marko/serve": "^0.0.1",
+    "@marko/serve-adapter-node": "^0.0.1",
+    "@marko/vite": "^2.3.7",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.7.6",
+    "prettier": "^2.7.1",
+    "tsx": "^3.8.2",
+    "typescript": "^4.7.4",
+    "vite": "^3.0.8"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.18.1",
+    "marko": "^5.21.9"
+  }
+}
