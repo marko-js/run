@@ -19,7 +19,6 @@ export default function adapter(): Adapter {
     async getEntryFile() {
       
       const entry = path.join(__dirname, "default-entry");
-      console.log(entry);
       return entry;
     },
 
@@ -27,6 +26,8 @@ export default function adapter(): Adapter {
       const server = await createDevServer(configFile);
       server.on("error", (err) => {
         console.error(err);
+
+        // Don't crash the server and exit
         process.exit(1);
       });
 
