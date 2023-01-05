@@ -17,11 +17,14 @@ export default function adapter(): Adapter {
     name: "base-adapter",
 
     async getEntryFile() {
-      return path.join(__dirname, "default-entry");
+      
+      const entry = path.join(__dirname, "default-entry");
+      console.log(entry);
+      return entry;
     },
 
-    async startDev(port) {
-      const server = await createDevServer();
+    async startDev(configFile, port) {
+      const server = await createDevServer(configFile);
       server.on("error", (err) => {
         console.error(err);
         process.exit(1);
