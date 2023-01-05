@@ -3,8 +3,7 @@
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import type { InlineConfig, ResolvedConfig } from "vite";
-import * as vite from "vite";
+import { build as viteBuild, resolveConfig as viteResolveConfig, type InlineConfig, type ResolvedConfig} from "vite";
 import sade from "sade";
 import {
   getMarkoServeOptions,
@@ -115,7 +114,7 @@ async function dev(cmd: string | undefined, configFile: string, port?: number) {
     } else if (!adapter.startDev) {
       throw new Error(`Adapter ${adapter.name} does not support serve command`);
     } else {
-      await adapter.startDev(configFile, port);
+      await adapter.startDev(configFile, port!);
     }
   }
 }
@@ -158,7 +157,7 @@ async function build(
   );
 
   // build SSR
-  await vite.build({
+  await viteBuild({
     ...buildConfig,
     build: {
       ...buildConfig.build,
@@ -168,7 +167,7 @@ async function build(
 
   // build client
   if (!skipClient) {
-    await vite.build({
+    await viteBuild({
       ...buildConfig,
       build: {
         ...buildConfig.build,
@@ -222,7 +221,7 @@ async function resolveConfig(
   command: "serve" | "build" = "build"
 ) {
   const config = typeof configFile === "string" ? { configFile } : configFile;
-  return await vite.resolveConfig({ root: cwd, ...config }, command);
+  return await viteResolveConfig({ root: cwd, ...config }, command);
 }
 
 async function resolveAdapter(
@@ -233,13 +232,4 @@ async function resolveAdapter(
     throw new Error("Unable to resolve Marko Serve options");
   }
   return options.adapter;
-}
-
-function packageIsInstalled(name: string) {
-  try {
-    const path = require.resolve(name);
-    return fs.existsSync(path);
-  } catch (e) {
-    return false;
-  }
 }
