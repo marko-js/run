@@ -115,7 +115,7 @@ async function dev(cmd: string | undefined, configFile: string, port?: number) {
     } else if (!adapter.startDev) {
       throw new Error(`Adapter ${adapter.name} does not support serve command`);
     } else {
-      await adapter.startDev(port);
+      await adapter.startDev(configFile, port);
     }
   }
 }
