@@ -1,14 +1,13 @@
-import os from "os";
-import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs/promises";
 
-import { normalizePath } from "vite";
-import type * as vite from "vite";
+import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
+import type { ViteDevServer, Plugin } from "vite";
 import type { PluginContext } from "rollup";
 
-import markoVitePlugin from "@marko/vite";
-import type * as markoVite from "@marko/vite";
+import markoVitePlugin, { FileStore } from "@marko/vite";
+import type { BuildStore } from "@marko/vite";
 
 import {
   buildRoutes,
@@ -16,23 +15,20 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { BuiltRoutes, HttpVerb, Route } from "./types";
+import type { Options, BuiltRoutes, HttpVerb, BuildInfo } from "./types";
+import { renderRouteEntry, renderRouter, renderRouteTemplate } from "./codegen";
 import {
-  renderRouteEntry,
-  renderRouter,
-  renderRouteTemplate,
-} from "./codegen";
-import { virtualFilePrefix, httpVerbs, browserEntryQuery, RoutableFileTypes } from "./constants";
+  virtualFilePrefix,
+  httpVerbs,
+  browserEntryQuery,
+  RoutableFileTypes,
+} from "./constants";
 import { getExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
 
-interface MarkoServeOptions {
-  routesDir?: string;
-  emitRoutes?(routes: Route[]): void | Promise<void>;
-}
+import { getMarkoServeOptions, setMarkoServeOptions } from "./utils/config";
 
-export type Options = MarkoServeOptions & markoVite.Options;
-
+const buildInfoFilename = ".markobuildinfo";
 const markoExt = ".marko";
 const markoServeFilePrefix = "__marko-serve__";
 
@@ -41,29 +37,34 @@ function isMarkoFile(id: string) {
 }
 
 interface TimeMetrics {
-  routesBuild: number,
-  routesRender: number
+  routesBuild: number;
+  routesRender: number;
 }
 
 interface RouteData {
   routes: BuiltRoutes;
   files: { key: string; code: string }[];
   times: TimeMetrics;
+  builtEntries: string[];
+  sourceEntries: string[];
 }
 
-export default function markoServe(opts: Options = {}): vite.Plugin[] {
-  const { routesDir = "src/routes", ...markoOptions } = opts;
+export default function markoServe(opts: Options = {}): Plugin[] {
+  const { routesDir = "src/routes", adapter, ...markoOptions } = opts;
 
+  let store: BuildStore;
   let root: string;
   let resolvedRoutesDir: string;
   let isBuild = false;
   let isSSRBuild = false;
+  let ssrEntryFiles: string[];
   let devEntryFile: string;
-  let devServer: vite.ViteDevServer;
+  let devServer: ViteDevServer;
   let routes: BuiltRoutes;
-  let tempDir: string;
-  let routeDataFilename: string;
+  let routeData!: RouteData;
+  let routeDataFilename = "routes.json";
   let extractVerbs: (filePath: string) => Promise<HttpVerb[]>;
+  let resolvedConfig: ResolvedConfig;
 
   let isStale = true;
   let isRendered = false;
@@ -71,15 +72,13 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
 
   let times: TimeMetrics = {
     routesBuild: 0,
-    routesRender: 0
-  }
+    routesRender: 0,
+  };
 
   async function setVirtualFiles(render: boolean = false) {
     for (const route of routes.list) {
       if (render && route.handler) {
-        route.handler.verbs = await extractVerbs(
-          route.handler.filePath
-        );
+        route.handler.verbs = await extractVerbs(route.handler.filePath);
         if (!route.handler.verbs.length) {
           console.warn(
             `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'get', 'post', 'put' or 'del'`
@@ -89,39 +88,36 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
       if (route.page) {
         virtualFiles.set(
           path.join(root, `${markoServeFilePrefix}route__${route.key}.marko`),
-          render ? renderRouteTemplate(route) : ''
+          render ? renderRouteTemplate(route) : ""
         );
       }
       virtualFiles.set(
         path.join(root, `${markoServeFilePrefix}route__${route.key}.js`),
-        render ? renderRouteEntry(route) : ''
+        render ? renderRouteEntry(route) : ""
       );
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
         path.join(root, `${markoServeFilePrefix}special__${route.key}.marko`),
-        render ? renderRouteTemplate(route) : ''
+        render ? renderRouteTemplate(route) : ""
       );
     }
     virtualFiles.set(
-      '@marko/serve/router',
-      render ? renderRouter(routes) : ''
+      "@marko/serve/router",
+      render ? renderRouter(routes, opts.codegen) : ""
     );
   }
 
   const buildVirtualFiles = single(async () => {
     const startTime = performance.now();
-    routes = await buildRoutes(
-      createFSWalker(resolvedRoutesDir),
-      routesDir
-    );
+    routes = await buildRoutes(createFSWalker(resolvedRoutesDir), routesDir);
     times.routesBuild = performance.now() - startTime;
 
     await setVirtualFiles(false);
 
     isStale = false;
     isRendered = false;
-  })
+  });
 
   const renderVirtualFiles = single(async () => {
     const startTime = performance.now();
@@ -135,31 +131,64 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
       name: "marko-serve-vite:pre",
       enforce: "pre",
       async config(config, env) {
+        const externalPluginOptions = getMarkoServeOptions(config);
+        if (externalPluginOptions) {
+          opts = mergeConfig(opts, externalPluginOptions);
+        }
+        const adapterOptions = await adapter?.pluginOptions?.(opts);
+        if (adapterOptions) {
+          opts = mergeConfig(opts, adapterOptions);
+        }
+
         root = normalizePath(config.root || process.cwd());
-        tempDir = await getTempDir(root);
-        routeDataFilename = path.join(tempDir, "routes.json");
+        store =
+          opts.store ||
+          new FileStore(
+            `marko-serve-vite-${crypto
+              .createHash("SHA1")
+              .update(root)
+              .digest("hex")}`
+          );
         isBuild = env.command === "build";
-        isSSRBuild = isBuild && Boolean(config.build!.ssr);
+        isSSRBuild = isBuild && Boolean(config.build?.ssr);
         resolvedRoutesDir = path.resolve(root, routesDir);
         devEntryFile = path.join(root, "index.html");
 
-        // console.log({
-        //   root,
-        //   tempDir,
-        //   routeDataFilename,
-        //   isBuild,
-        //   isSSRBuild,
-        //   resolvedRoutesDir,
-        //   devEntryFile
-        // })
+        let pluginConfig: UserConfig = {
+          logLevel: isBuild ? "warn" : undefined,
+          define: isBuild
+            ? {
+                "process.env.NODE_ENV": "'production'",
+              }
+            : undefined,
+          build: {
+            emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
+          },
+        };
 
-        if (isBuild) {
-          return {
-            logLevel: 'warn',
-            define: {
-              __MARKO_SERVE_PROD__: "true"
-            }
-          }
+        const adapterConfig = await adapter?.viteConfig?.(config);
+        if (adapterConfig) {
+          pluginConfig = mergeConfig(pluginConfig, adapterConfig);
+        }
+
+        return setMarkoServeOptions(pluginConfig, opts);
+      },
+      configResolved(config) {
+        resolvedConfig = config;
+        const {
+          ssr,
+          rollupOptions: { input },
+        } = config.build;
+        if (typeof ssr === "string") {
+          ssrEntryFiles = [ssr];
+        } else if (typeof input === "string") {
+          ssrEntryFiles = [input];
+        } else if (Array.isArray(input)) {
+          ssrEntryFiles = input;
+        } else if (input) {
+          ssrEntryFiles = Object.values(input);
+        } else {
+          ssrEntryFiles = [];
         }
       },
       configureServer(_server) {
@@ -181,7 +210,6 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
               }
             }
             if (isStale) {
-
               // TODO: figure out how to make this better
               for (const id of virtualFiles.keys()) {
                 devServer.watcher.emit("change", id);
@@ -193,10 +221,9 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
       async buildStart(_options) {
         if (isBuild && !isSSRBuild) {
           // Routes and code should have been generated in the SSR build that ran previously
-          let routeData!: RouteData;
           try {
             routeData = JSON.parse(
-              await fs.readFile(routeDataFilename, "utf-8")
+              (await store.get(routeDataFilename))!
             ) as RouteData;
           } catch {
             this.error(
@@ -213,7 +240,9 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
           isRendered = true;
         } else {
           // Build routes and generate code
-          extractVerbs = isBuild ? getVerbsFromFileBuild.bind(null, this) : getVerbsFromFileDev.bind(null, devServer);
+          extractVerbs = isBuild
+            ? getVerbsFromFileBuild.bind(null, this)
+            : getVerbsFromFileDev.bind(null, devServer);
         }
       },
       async resolveId(importee, importer, { ssr }) {
@@ -254,56 +283,78 @@ export default function markoServe(opts: Options = {}): vite.Plugin[] {
           return virtualFiles.get(id);
         }
       },
-      async buildEnd() {
+    },
+    ...(markoVitePlugin({
+      ...markoOptions,
+      get store() {
+        return store;
+      },
+    }) as any),
+    {
+      name: "marko-serve-vite:post",
+      enforce: "post",
+      async writeBundle(options, bundle) {
         if (isSSRBuild) {
-          const routeData: RouteData = {
+          const builtEntries = Object.values(bundle).reduce<string[]>(
+            (acc, item) => {
+              if (item.type === "chunk" && item.isEntry) {
+                acc.push(path.join(options.dir!, item.fileName));
+              }
+              return acc;
+            },
+            []
+          );
+
+          routeData = {
             routes,
             files: [],
-            times
+            times,
+            builtEntries,
+            sourceEntries: ssrEntryFiles,
           };
           for (const [key, code] of virtualFiles) {
             routeData.files.push({ key, code });
           }
 
-          await fs.writeFile(routeDataFilename, JSON.stringify(routeData));
+          await store.set(routeDataFilename, JSON.stringify(routeData));
+
+          const buildInfo: BuildInfo = {
+            entryFile: path.relative(options.dir!, builtEntries[0]),
+          };
+
+          await fs.writeFile(
+            path.join(options.dir!, buildInfoFilename),
+            JSON.stringify(buildInfo),
+            "utf-8"
+          );
 
           await opts?.emitRoutes?.(routes.list);
-        }
-      }
-    },
-    ...markoVitePlugin(markoOptions),
-    {
-      name: "marko-serve-vite:post",
-      enforce: "post",
-      generateBundle(_oiptions, bundle) {
-        if (isBuild && !isSSRBuild) {
-          console.log(`\n\nRoutes built in ${(times.routesBuild + times.routesRender).toFixed(2)}ms\n`);
+        } else if (isBuild) {
+          console.log(
+            `\n\nRoutes built in ${(
+              times.routesBuild + times.routesRender
+            ).toFixed(2)}ms\n`
+          );
           logRoutesTable(routes, bundle);
-          console.log('\nRun `npm run start` to serve the production build\n\n');
         }
-      }
-    }
+      },
+      async closeBundle() {
+        if (isBuild && !isSSRBuild && adapter?.buildEnd) {
+          await adapter.buildEnd(
+            resolvedConfig,
+            routes.list,
+            routeData.builtEntries,
+            routeData.sourceEntries
+          );
+        }
+      },
+    },
   ];
 }
 
-async function getTempDir(root: string) {
-  const dir = path.join(
-    os.tmpdir(),
-    `marko-serve-vite-${crypto.createHash("SHA1").update(root).digest("hex")}`
-  );
-
-  try {
-    const stat = await fs.stat(dir);
-
-    if (stat.isDirectory()) {
-      return dir;
-    }
-  } catch {
-    await fs.mkdir(dir);
-    return dir;
-  }
-
-  throw new Error("Unable to create temp directory");
+export async function loadBuildInfo(dir: string): Promise<BuildInfo> {
+  const filepath = path.join(dir, buildInfoFilename);
+  return JSON.parse(await fs.readFile(filepath, "utf-8")) as BuildInfo;
 }
 
 async function getVerbsFromFileBuild(context: PluginContext, filePath: string) {
@@ -324,10 +375,7 @@ async function getVerbsFromFileBuild(context: PluginContext, filePath: string) {
   return verbs;
 }
 
-async function getVerbsFromFileDev(
-  devServer: vite.ViteDevServer,
-  filePath: string
-) {
+async function getVerbsFromFileDev(devServer: ViteDevServer, filePath: string) {
   const verbs: HttpVerb[] = [];
   const result = await devServer.transformRequest(filePath, { ssr: true });
   if (result && result.code) {
@@ -344,8 +392,9 @@ async function getVerbsFromFileDev(
   return verbs;
 }
 
-
-function single<P extends any[], R>(fn: (...args: P) => Promise<R>): (...args: P) => Promise<R> {
+function single<P extends any[], R>(
+  fn: (...args: P) => Promise<R>
+): (...args: P) => Promise<R> {
   let promise: Promise<R> | undefined;
   return async (...args: P) => {
     if (promise) {
@@ -355,5 +404,5 @@ function single<P extends any[], R>(fn: (...args: P) => Promise<R>): (...args: P
     const result = await promise;
     promise = undefined;
     return result;
-  }
+  };
 }

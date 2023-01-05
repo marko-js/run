@@ -1,6 +1,2 @@
-import '@marko/serve/router';
-import type { Runtime } from './types';
-
-const { router, getMatchedRoute } = (globalThis as any).__MARKO_SERVE_RUNTIME__ as Runtime;
-export type { MatchedRoute, RouteContext, RouteHandler, RouteMatcher, Router } from './types';
-export { router, getMatchedRoute };
+export { router, getMatchedRoute, handler } from '@marko/serve/router'
+export type { MatchedRoute, Handler, RouteContext, RouteHandler, RouteMatcher, Router } from './types';

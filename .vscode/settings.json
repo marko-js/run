@@ -1,3 +1,10 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "examples/netlify-hello/netlify/edge-functions"
+  ],
+  "deno.unstable": true,
+  "deno.importMap": ".netlify/edge-functions-import-map.json",
+  "deno.path": "/Users/rturnquist/Library/Preferences/netlify/deno-cli/deno"
 }

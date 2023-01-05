@@ -1,0 +1,56 @@
+{
+  "name": "@marko/serve-adapter-node",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": [],
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "",
+    "build": "tsc -b && tsx scripts/build.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.js",
+      "require": "./dist/middleware.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./src/index.ts"
+      ],
+      "middleware": [
+        "./src/middleware.ts"
+      ]
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@marko/serve": ""
+  },
+  "devDependencies": {
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.7.6",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.15.7",
+    "mocha": "^10.0.0",
+    "mocha-snap": "^4.3.0",
+    "prettier": "^2.7.1",
+    "tsx": "^3.9.0",
+    "typescript": "^4.7.4",
+    "undici": "^5.10.0",
+    "vite": "^3.0.8"
+  }
+}

@@ -6,6 +6,9 @@
   "author": "Ryan Turnquist <rturnq@gmail.com>",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "marko-serve": "./dist/cli/index.mjs"
+  },
   "scripts": {
     "mocha": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.ts\"",
     "test": "npm run mocha",
@@ -29,6 +32,11 @@
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js",
       "require": "./dist/vite/index.cjs"
+    },
+    "./adapter": {
+      "types": "./dist/adapter/index.d.ts",
+      "import": "./dist/adapter/index.js",
+      "require": "./dist/adapter/index.cjs"
     }
   },
   "typesVersions": {
@@ -41,6 +49,9 @@
       ],
       "vite": [
         "./src/vite/index.ts"
+      ],
+      "adapter": [
+        "./src/adapter/index.ts"
       ]
     }
   },
@@ -50,7 +61,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/vite": "^2.3.7"
+    "@marko/vite": "^2.3.9"
   },
   "devDependencies": {
     "@babel/types": "^7.19.0",
@@ -67,13 +78,16 @@
     "prettier": "^2.7.1",
     "tsx": "^3.9.0",
     "typescript": "^4.7.4",
-    "undici": "^5.10.0",
     "vite": "^3.0.8"
   },
   "dependencies": {
+    "@hattip/adapter-node": "^0.0.24",
+    "@hattip/core": "^0.0.24",
     "cli-table3": "^0.6.3",
     "gzip-size": "^7.0.0",
     "kleur": "^4.1.5",
-    "pretty-bytes": "^6.0.0"
+    "pretty-bytes": "^6.0.0",
+    "sade": "^1.8.1",
+    "serve-static": "^1.15.0"
   }
 }

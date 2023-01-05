@@ -1,4 +1,6 @@
 // @marko/serve/router
+import { once } from "events";
+import { Readable } from "stream";
 import { get$1, put$1, post$1, delete$1, meta$1 } from 'virtual:marko-serve/__marko-serve__route__index.js';
 import { get$2, post$2, delete$2, meta$2 } from 'virtual:marko-serve/__marko-serve__route__sales__about.js';
 import { get$3 } from 'virtual:marko-serve/__marko-serve__route__$$.js';
@@ -10,8 +12,6 @@ import { get$8 } from 'virtual:marko-serve/__marko-serve__route__sales__invoicin
 import { get$9 } from 'virtual:marko-serve/__marko-serve__route__sales__summary.js';
 import page$404 from 'virtual:marko-serve/__marko-serve__special__404.marko?marko-server-entry';
 import page$500 from 'virtual:marko-serve/__marko-serve__special__500.marko?marko-server-entry';
-
-globalThis.__MARKO_SERVE_RUNTIME__ = { router, getMatchedRoute };
 
 function matchRoute(method, pathname) {
 	switch (method.toLowerCase()) {
@@ -74,7 +74,7 @@ async function invokeRoute(route, url, request) {
 	try {
 		if (route) {
 			const [handler, params = {}, meta] = route;
-			const response = await handler({ request, url, params, meta, data: {} });
+			const response = await handler({ request, url, params, meta });
 			if (response) return response;
 		}
 		if (request.headers.get('Accept')?.includes('text/html')) {
@@ -111,17 +111,28 @@ export function getMatchedRoute(method, url) {
   return null;
 }
 
+export async function handler(context) {
+	const response = await router(context.request);
+	if (response.body) {
+		//context.waitUntil?.(once(Readable.from(response.body), "end"));
+	}
+	return response;
+}
+
 export async function router(request) {
   try {
     const url = new URL(request.url);
-    const { pathname } = url;
+    let { pathname } = url;
 
-    if (pathname !== '/' && pathname.endsWith('/')) {
-      url.pathname = pathname.replace(/\/+$/, '');
-      console.log('Redirecting to', url.href);
-      return Response.redirect(url.href);
+    if (pathname !== '/') {
+      if (pathname.endsWith('/')) {
+        pathname = pathname.replace(/\/+$/, '');
+
+        url.pathname = pathname;
+        return Response.redirect(url.href);
+
+      }
     }
-
     const route = matchRoute(request.method, pathname);
     return await invokeRoute(route, url, request) || new Response(null, {
       statusText: `Not Found (No route matched ${pathname})`,

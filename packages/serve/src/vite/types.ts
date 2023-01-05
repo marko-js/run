@@ -1,6 +1,33 @@
 import type { RoutableFileType, HttpVerb, RoutableFileTypes } from "./constants";
+import type { Options as MarkoViteOptions} from "@marko/vite";
+import type { ResolvedConfig, UserConfig } from "vite";
 
 export type { RoutableFileType, HttpVerb };
+
+
+export type StartServer = (port?: number) => Promise<void>;
+export interface Adapter {
+  readonly name: string;
+  pluginOptions?(options: Options): Promise<Options> | Options | undefined;
+  viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
+  getEntryFile?(): Promise<string> | string;
+  startDev?(port: number): Promise<void> | void;
+  startPreview?(dir: string, entry: string, cmd?: string, port?: number): Promise<void> | void;
+  buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
+}
+
+export interface MarkoServeOptions {
+  routesDir?: string;
+  emitRoutes?(routes: Route[]): void | Promise<void>;
+  adapter?: Adapter
+  codegen?: CodegenOptions
+}
+
+export interface CodegenOptions {
+  trailingSlashes: 'Ignore' | 'RedirectWithout' | 'RedirectWith' | 'RewriteWithout' | 'RewriteWith'
+}
+
+export type Options = MarkoServeOptions & MarkoViteOptions;
 
 export interface Route {
   key: string;
@@ -46,3 +73,6 @@ export interface BuiltRoutes {
   special: SpecialRoutes;
 }
 
+export interface BuildInfo {
+  entryFile: string
+}

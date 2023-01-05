@@ -1,9 +1,27 @@
-import { httpVerbs, RoutableFileTypes, serverEntryQuery, virtualFilePrefix, markoServeFilePrefix } from '../constants';
-import { createStringWriter } from './writer';
-import { createRouteTrie } from '../routes/routeTrie';
-import type { HttpVerb, Route, BuiltRoutes, RouteTrie, ParamInfo, RoutableFile } from '../types';
-import type { Writer } from './writer';
-import { getVerbs, hasVerb } from '../utils/route';
+import {
+  httpVerbs,
+  RoutableFileTypes,
+  serverEntryQuery,
+  virtualFilePrefix,
+  markoServeFilePrefix,
+} from "../constants";
+import { createStringWriter } from "./writer";
+import { createRouteTrie } from "../routes/routeTrie";
+import type {
+  HttpVerb,
+  Route,
+  BuiltRoutes,
+  RouteTrie,
+  ParamInfo,
+  RoutableFile,
+  CodegenOptions,
+} from "../types";
+import type { Writer } from "./writer";
+import { getVerbs, hasVerb } from "../utils/route";
+
+export const DefaultCodegenOptions: CodegenOptions = {
+  trailingSlashes: "RedirectWithout",
+};
 
 export function renderRouteTemplate(route: Route): string {
   if (!route.page) {
@@ -11,20 +29,28 @@ export function renderRouteTemplate(route: Route): string {
   }
 
   const writer = createStringWriter();
-  writer.writeLines(`// ${virtualFilePrefix}/${markoServeFilePrefix}route__${route.key}.marko`);
-  writer.branch('imports')
-  writer.writeLines('')
+  writer.writeLines(
+    `// ${virtualFilePrefix}/${markoServeFilePrefix}route__${route.key}.marko`
+  );
+  writer.branch("imports");
+  writer.writeLines("");
   writeRouteTemplateTag(writer, [...route.layouts, route.page]);
 
   return writer.end();
 }
 
-function writeRouteTemplateTag(writer: Writer, [file, ...rest]: RoutableFile[], index: number = 1): void {
+function writeRouteTemplateTag(
+  writer: Writer,
+  [file, ...rest]: RoutableFile[],
+  index: number = 1
+): void {
   if (file) {
     const isLast = !rest.length;
-    const tag = isLast ? 'page' : `layout${index}`;
+    const tag = isLast ? "page" : `layout${index}`;
 
-    writer.branch('imports').writeLines(`import ${tag} from './${file.importPath}';`)
+    writer
+      .branch("imports")
+      .writeLines(`import ${tag} from './${file.importPath}';`);
 
     if (isLast) {
       writer.writeLines(`<${tag} ...input />`);
@@ -36,20 +62,23 @@ function writeRouteTemplateTag(writer: Writer, [file, ...rest]: RoutableFile[], 
   }
 }
 
-
 export function renderRouteEntry(route: Route): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
-  
-  if (!verbs) {
-    throw new Error(`Route ${key} doesn't have a handler or page for any HTTP verbs`);
-  }
-  
-  const writer = createStringWriter();
-  
-  writer.writeLines(`// ${virtualFilePrefix}/${markoServeFilePrefix}route__${key}.js`);
 
-  const imports = writer.branch('imports');
+  if (!verbs) {
+    throw new Error(
+      `Route ${key} doesn't have a handler or page for any HTTP verbs`
+    );
+  }
+
+  const writer = createStringWriter();
+
+  writer.writeLines(
+    `// ${virtualFilePrefix}/${markoServeFilePrefix}route__${key}.js`
+  );
+
+  const imports = writer.branch("imports");
 
   let i = 1;
   for (const { importPath } of middleware) {
@@ -58,23 +87,31 @@ export function renderRouteEntry(route: Route): string {
   }
 
   if (handler?.verbs?.length) {
-    const names = handler.verbs.map(verb => `${verb === 'delete' ? 'del' : verb} as handler$${verb}`);
-    imports.writeLines(`import { ${names.join(', ')} } from './${handler.importPath}';`);
+    const names = handler.verbs.map(
+      (verb) => `${verb === "delete" ? "del" : verb} as handler$${verb}`
+    );
+    imports.writeLines(
+      `import { ${names.join(", ")} } from './${handler.importPath}';`
+    );
   }
   if (page) {
-    imports.writeLines(`import page from '${virtualFilePrefix}/${markoServeFilePrefix}route__${key}.marko${serverEntryQuery}';`);
+    imports.writeLines(
+      `import page from '${virtualFilePrefix}/${markoServeFilePrefix}route__${key}.marko${serverEntryQuery}';`
+    );
   }
   if (meta) {
-    imports.writeLines(`export { default as meta$${index} } from './${meta.importPath}';`);
+    imports.writeLines(
+      `export { default as meta$${index} } from './${meta.importPath}';`
+    );
   }
 
   if (!page || verbs.length > 1) {
     writer
-      .writeLines('')
+      .writeLines("")
       .writeBlockStart(`function create204Response() {`)
       .writeBlockStart(`return new Response(null, {`)
       .writeLines(`status: 204`)
-      .writeBlockEnd(`})`)	
+      .writeBlockEnd(`})`)
       .writeBlockEnd(`}`);
   }
 
@@ -87,38 +124,45 @@ export function renderRouteEntry(route: Route): string {
 
 function writePageResponseContinuation(writer: Writer): void {
   writer.writeBlock(
-    `return new Response(page.stream(ctx), {`,[
-      'status: 200,',
-      'headers: { "content-type": "text/html;charset=UTF-8" }'],
-    '});')
+    `return new Response(page.stream(ctx), {`,
+    ["status: 200,", 'headers: { "content-type": "text/html;charset=UTF-8" }'],
+    "});"
+  );
 }
 
-function writeRouteEntryHandler(writer: Writer, route: Route, verb: HttpVerb): void {
+function writeRouteEntryHandler(
+  writer: Writer,
+  route: Route,
+  verb: HttpVerb
+): void {
   const { key, index, page, handler, middleware } = route;
   const len = middleware.length;
 
   let nextName: string;
   let currentName: string;
   let hasBody = false;
-  
-  writer.writeLines('').writeBlockStart(`export async function ${verb}$${index}(ctx) {`);
 
-  const continuations = writer.branch('cont');
+  writer
+    .writeLines("")
+    .writeBlockStart(`export async function ${verb}$${index}(ctx) {`);
 
-  if (page && verb === 'get') {
-    currentName = 'createPageResponse';
+  const continuations = writer.branch("cont");
+
+  if (page && verb === "get") {
+    currentName = "createPageResponse";
     if (handler?.verbs?.includes(verb)) {
       continuations.writeBlockStart(`async function ${currentName}() {`);
       writePageResponseContinuation(continuations);
-      continuations.writeBlockEnd('}');
-      
+      continuations.writeBlockEnd("}");
+
       if (len) {
-        nextName = currentName
+        nextName = currentName;
         currentName = `__handler$${verb}`;
         continuations.writeBlock(
-          `async function ${currentName}() {`, [
-            `return await handler$${verb}(ctx, ${nextName});`],
-          '}');
+          `async function ${currentName}() {`,
+          [`return await handler$${verb}(ctx, ${nextName});`],
+          "}"
+        );
       } else {
         writer.writeLines(`return await handler$${verb}(ctx, ${currentName})`);
         hasBody = true;
@@ -126,7 +170,7 @@ function writeRouteEntryHandler(writer: Writer, route: Route, verb: HttpVerb): v
     } else if (len) {
       continuations.writeBlockStart(`async function ${currentName}() {`);
       writePageResponseContinuation(continuations);
-      continuations.writeBlockEnd('}');
+      continuations.writeBlockEnd("}");
       nextName = currentName;
     } else {
       writePageResponseContinuation(continuations);
@@ -137,27 +181,33 @@ function writeRouteEntryHandler(writer: Writer, route: Route, verb: HttpVerb): v
 
     if (len) {
       continuations.writeBlock(
-        `async function ${currentName}() {`, [
-          `return await handler$${verb}(ctx, create204Response);`],
-        '}');
+        `async function ${currentName}() {`,
+        [`return await handler$${verb}(ctx, create204Response);`],
+        "}"
+      );
     } else {
-      writer.writeLines(`return await handler$${verb}(ctx, create204Response);`);
+      writer.writeLines(
+        `return await handler$${verb}(ctx, create204Response);`
+      );
       hasBody = true;
     }
   } else {
     throw new Error(`Route ${key} has no handler for ${verb} requests`);
   }
-  
+
   if (!hasBody) {
     let i = len;
     while (--i) {
       nextName = currentName;
       currentName = `__middleware${i + 1}`;
 
-      continuations.writeLines('').writeBlock(
-        `async function ${currentName}() {`, [
-          `return await middleware$${i + 1}(ctx, ${nextName});`],
-        '}');
+      continuations
+        .writeLines("")
+        .writeBlock(
+          `async function ${currentName}() {`,
+          [`return await middleware$${i + 1}(ctx, ${nextName});`],
+          "}"
+        );
     }
 
     writer.writeLines(`return await middleware$1(ctx, ${currentName});`);
@@ -165,53 +215,63 @@ function writeRouteEntryHandler(writer: Writer, route: Route, verb: HttpVerb): v
 
   continuations.join();
 
-  writer.writeBlockEnd('}')
+  writer.writeBlockEnd("}");
 }
 
-
-export function renderRouter(routes: BuiltRoutes): string {
+export function renderRouter(
+  routes: BuiltRoutes,
+  options: CodegenOptions = DefaultCodegenOptions
+): string {
   const writer = createStringWriter();
-  
+
   writer.writeLines(`// @marko/serve/router`);
 
-  const imports = writer.branch('imports');
+  const imports = writer.branch("imports");
+
+  // imports.writeLines(
+  //   `import { once } from "events";`,
+  //   `import { Readable } from "stream";`
+  // );
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
-    const names = verbs.map(verb => `${verb}$${route.index}`);
+    const names = verbs.map((verb) => `${verb}$${route.index}`);
     route.meta && names.push(`meta$${route.index}`);
 
-    imports.writeLines(`import { ${names.join(', ')} } from '${virtualFilePrefix}/${markoServeFilePrefix}route__${route.key}.js';`);
+    imports.writeLines(
+      `import { ${names.join(
+        ", "
+      )} } from '${virtualFilePrefix}/${markoServeFilePrefix}route__${
+        route.key
+      }.js';`
+    );
   }
   for (const { key } of Object.values(routes.special)) {
-    imports.writeLines(`import page$${key} from '${virtualFilePrefix}/${markoServeFilePrefix}special__${key}.marko${serverEntryQuery}';`);
+    imports.writeLines(
+      `import page$${key} from '${virtualFilePrefix}/${markoServeFilePrefix}special__${key}.marko${serverEntryQuery}';`
+    );
   }
 
   writer
-    .writeLines('')
-    .writeLines('globalThis.__MARKO_SERVE_RUNTIME__ = { router, getMatchedRoute };')
-    .writeLines('')
+    .writeLines("")
     .writeBlockStart(`function matchRoute(method, pathname) {`)
     .writeBlockStart(`switch (method.toLowerCase()) {`);
 
   for (const verb of httpVerbs) {
-    const filteredRoutes = routes.list.filter(route => hasVerb(route, verb));
+    const filteredRoutes = routes.list.filter((route) => hasVerb(route, verb));
     if (filteredRoutes.length) {
       const trie = createRouteTrie(filteredRoutes);
-      writer.writeBlockStart(`case '${verb}': {`)
+      writer.writeBlockStart(`case '${verb}': {`);
       writeRouterVerb(writer, trie, verb);
-      writer.writeBlockEnd('}');
+      writer.writeBlockEnd("}");
     }
   }
 
-  writer
-    .writeBlockEnd('}')
-    .writeBlockEnd('}');
+  writer.writeBlockEnd("}").writeBlockEnd("}");
 
   writer
-    .writeLines('')
+    .writeLines("")
     .writeBlockStart(`async function invokeRoute(route, url, request) {`);
-
 
   const errorRoute = routes.special[RoutableFileTypes.Error];
   if (errorRoute) {
@@ -219,23 +279,30 @@ export function renderRouter(routes: BuiltRoutes): string {
   }
 
   writer.writeBlock(
-    `if (route) {`, [
+    `if (route) {`,
+    [
       `const [handler, params = {}, meta] = route;`,
-      `const response = await handler({ request, url, params, meta, data: {} });`,
-      `if (response) return response;`],
-    `}`);
-
+      `const response = await handler({ request, url, params, meta });`,
+      `if (response) return response;`,
+    ],
+    `}`
+  );
 
   const notFoundRoute = routes.special[RoutableFileTypes.NotFound];
   if (notFoundRoute) {
     writer
-      .writeBlockStart(`if (request.headers.get('Accept')?.includes('text/html')) {`)
+      .writeBlockStart(
+        `if (request.headers.get('Accept')?.includes('text/html')) {`
+      )
       .writeBlock(
-        `return new Response(page$404.stream({ request, url, params: {} }), {`, [
-            `status: 404,`,
-            `headers: { "content-type": "text/html;charset=UTF-8" },`],
-        `});`)
-      .writeBlockEnd('}')
+        `return new Response(page$404.stream({ request, url, params: {} }), {`,
+        [
+          `status: 404,`,
+          `headers: { "content-type": "text/html;charset=UTF-8" },`,
+        ],
+        `});`
+      )
+      .writeBlockEnd("}");
   }
 
   writer.writeLines(`return null;`);
@@ -244,18 +311,23 @@ export function renderRouter(routes: BuiltRoutes): string {
     writer.indent--;
     writer
       .writeBlockStart(`} catch (err) {`)
-      .writeBlockStart(`if (request.headers.get('Accept')?.includes('text/html')) {`)
+      .writeBlockStart(
+        `if (request.headers.get('Accept')?.includes('text/html')) {`
+      )
       .writeBlock(
-        `return new Response(page$500.stream({ request, url, params: {}, error: err }), {`, [
-            `status: 500,`,
-            `headers: { "content-type": "text/html;charset=UTF-8" },`],
-        `});`)
-      .writeBlockEnd('}')
+        `return new Response(page$500.stream({ request, url, params: {}, error: err }), {`,
+        [
+          `status: 500,`,
+          `headers: { "content-type": "text/html;charset=UTF-8" },`,
+        ],
+        `});`
+      )
+      .writeBlockEnd("}")
       .writeLines(`throw err;`)
-      .writeBlockEnd('}');
+      .writeBlockEnd("}");
   }
 
-  writer.writeBlockEnd('}');
+  writer.writeBlockEnd("}");
 
   writer.write(`
 export function getMatchedRoute(method, url) {
@@ -274,17 +346,54 @@ export function getMatchedRoute(method, url) {
   return null;
 }
 
+export async function handler(context) {
+	const response = await router(context.request);
+	//if (response.body) {
+	//	context.waitUntil?.(once(Readable.from(response.body), "end"));
+	//}
+	return response;
+}
+
 export async function router(request) {
   try {
     const url = new URL(request.url);
-    const { pathname } = url;
+    let { pathname } = url;
 
-    if (pathname !== '/' && pathname.endsWith('/')) {
-      url.pathname = pathname.replace(/\\/+$/, '');
-      console.log('Redirecting to', url.href);
-      return Response.redirect(url.href);
+    if (pathname !== '/') {
+      if (pathname.endsWith('/')) {
+        pathname = pathname.replace(/\\/+$/, '');
+`)
+
+switch (options.trailingSlashes) {
+  case 'RedirectWithout':
+    writer.write(`
+        url.pathname = pathname;
+        return Response.redirect(url.href);
+`);
+    break;
+  case 'RedirectWith':
+    writer.write(`
+      } else {
+        url.pathname = pathname + '/';
+        return Response.redirect(url.href);
+`);
+    break;
+  case 'RewriteWithout':
+    writer.write(`
+        url.pathname = pathname;
+`);
+    break;
+  case 'RewriteWith':
+    writer.write(`
+      } else {
+        url.pathname = pathname + '/';
+`);
+    break;
+}
+
+    writer.write(`
+      }
     }
-
     const route = matchRoute(request.method, pathname);
     return await invokeRoute(route, url, request) || new Response(null, {
       statusText: \`Not Found (No route matched \${pathname})\`,
@@ -315,7 +424,14 @@ export async function router(request) {
   return writer.end();
 }
 
-function writeRouterVerb(writer: Writer, trie: RouteTrie, verb: HttpVerb, level: number = 0, pathIndex: number = 0, useSwitch?: boolean): void {
+function writeRouterVerb(
+  writer: Writer,
+  trie: RouteTrie,
+  verb: HttpVerb,
+  level: number = 0,
+  pathIndex: number = 0,
+  useSwitch?: boolean
+): void {
   const { key, route: value, static: children, dynamic, catchAll } = trie;
   pathIndex += key.length;
 
@@ -323,13 +439,18 @@ function writeRouterVerb(writer: Writer, trie: RouteTrie, verb: HttpVerb, level:
     level = 0;
 
     if (value) {
-      writer.writeLines(`if (pathname === '/') return ${renderMatch(verb, value)}; // ${value.path}`)
+      writer.writeLines(
+        `if (pathname === '/') return ${renderMatch(verb, value)}; // ${
+          value.path
+        }`
+      );
     }
-  
+
     if (children || dynamic) {
       writer.writeLines(
         `const segments = pathname.split('/');`,
-        `const len = segments.length;`);
+        `const len = segments.length;`
+      );
     }
   } else {
     if (!key) {
@@ -337,22 +458,30 @@ function writeRouterVerb(writer: Writer, trie: RouteTrie, verb: HttpVerb, level:
     } else if (useSwitch) {
       writer.writeBlockStart(`case '${key}':`);
     } else {
-      writer.writeBlockStart(`if (segments[${level}]?.toLowerCase() === '${key}') {`);
+      writer.writeBlockStart(
+        `if (segments[${level}]?.toLowerCase() === '${key}') {`
+      );
     }
-    
+
     if (value) {
-      writer.writeLines(`if (len === ${level + 1}) return ${renderMatch(verb, value)}; // ${value.path}`);
+      writer.writeLines(
+        `if (len === ${level + 1}) return ${renderMatch(verb, value)}; // ${
+          value.path
+        }`
+      );
     }
   }
 
   if (children || dynamic) {
     if (children) {
       if (children.size > 1) {
-        writer.writeBlockStart(`switch(segments[${level + 1}]?.toLowerCase()) {`);
+        writer.writeBlockStart(
+          `switch(segments[${level + 1}]?.toLowerCase()) {`
+        );
         for (const child of children.values()) {
           writeRouterVerb(writer, child, verb, level + 1, pathIndex, true);
         }
-        writer.writeBlockEnd('}');
+        writer.writeBlockEnd("}");
       } else {
         for (const child of children.values()) {
           writeRouterVerb(writer, child, verb, level + 1, pathIndex);
@@ -366,29 +495,30 @@ function writeRouterVerb(writer: Writer, trie: RouteTrie, verb: HttpVerb, level:
   }
 
   if (catchAll) {
-    writer.writeLines(`return ${renderMatch(verb, catchAll, pathIndex)}; // ${catchAll.path}`);
+    writer.writeLines(
+      `return ${renderMatch(verb, catchAll, pathIndex)}; // ${catchAll.path}`
+    );
 
     if (level > 0) {
       writer.indent--;
     }
   } else if (level === 0) {
-    writer.writeLines('return;');
+    writer.writeLines("return;");
   } else if (useSwitch) {
-    writer.writeLines('break;').indent--;
+    writer.writeLines("break;").indent--;
   } else {
-    writer.writeBlockEnd('}');
+    writer.writeBlockEnd("}");
   }
 }
 
-
 function renderParamsInfo(params: ParamInfo[], pathIndex?: number): string {
-  let result = '';
-  let catchAll = '';
-  let dynamicLength = '';
+  let result = "";
+  let catchAll = "";
+  let dynamicLength = "";
 
   for (const { name, index } of params) {
     if (index >= 0) {
-      result += result ? ', ' : '{ ';
+      result += result ? ", " : "{ ";
       result += `'${name}': segments[${index + 1}]`;
       dynamicLength += ` + segments[${index + 1}].length`;
     } else if (pathIndex && pathIndex >= 0) {
@@ -397,14 +527,18 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: number): string {
   }
 
   if (catchAll) {
-    result += result ? ', ' : '{ ';
+    result += result ? ", " : "{ ";
     result += `'${catchAll}': pathname.slice(${pathIndex}${dynamicLength})`;
-  } 
+  }
 
-  return result ? result + ' }' : '{}';
+  return result ? result + " }" : "{}";
 }
 
-function renderMatch(verb: HttpVerb, { index, params, meta }: Route, pathIndex?: number) {
+function renderMatch(
+  verb: HttpVerb,
+  { index, params, meta }: Route,
+  pathIndex?: number
+) {
   const tuple = [`${verb}$${index}`];
   if (params?.length) {
     tuple[1] = renderParamsInfo(params, pathIndex);
@@ -412,5 +546,5 @@ function renderMatch(verb: HttpVerb, { index, params, meta }: Route, pathIndex?:
   if (meta) {
     tuple[2] = `meta$${index}`;
   }
-  return `[${tuple.join(', ')}]`;
+  return `[${tuple.join(", ")}]`;
 }
