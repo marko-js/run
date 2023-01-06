@@ -3,7 +3,7 @@
   <h1>
     <img alt="" src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
     <br/>
-    @marko/serve… <b><i>2!</i></b>
+    @marko/run
   </h1>
 
   <!-- Language -->
@@ -22,7 +22,7 @@
 ## Installation
 
 ```sh
-npm install @marko/serve
+npm install @marko/run
 ```
 
 ## Vite Plugin
@@ -32,7 +32,7 @@ This package’s Vite plugin discovers your route files, generates the routing c
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite"; // Import the Vite plugin
+import marko from "@marko/run/vite"; // Import the Vite plugin
 
 export default defineConfig({
   plugins: [marko()], // Register the Vite plugin
@@ -48,7 +48,7 @@ export default defineConfig({
 Generally, using one of the adapters is more convenient <!-- TODO: is an “adapter” the same thing as using the Vite plugin above? -->, but this package also provides a runtime API:
 
 ```ts
-import { router, getMatchedRoute } from "@marko/serve";
+import { router, getMatchedRoute } from '@marko/run`;
 ```
 
 ### `router`
@@ -93,7 +93,7 @@ To change what directory routes are found in:
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite";
+import marko from "@marko/run/vite";
 
 export default defineConfig({
   plugins: [marko({

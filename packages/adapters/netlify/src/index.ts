@@ -1,10 +1,10 @@
 import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
-import type { Adapter } from "@marko/serve/vite";
+import type { Adapter } from "@marko/run/vite";
 
 import { bundle } from "@hattip/bundler-netlify";
-import baseAdapter from "@marko/serve/adapter";
+import baseAdapter from "@marko/run/adapter";
 import { existsSync } from "fs";
 import { spawn } from "child_process";
 
@@ -43,7 +43,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(_dir, _entry, _cmd, port) {
+    async startPreview(_dir, _entry, port) {
       const args = ["--framework", "#static", "--dir", "netlify/static"];
       if (port !== undefined) {
         args.push("--port", "" + port);

@@ -3,7 +3,7 @@
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { build as viteBuild, resolveConfig as viteResolveConfig, type InlineConfig, type ResolvedConfig} from "vite";
+import { build as viteBuild, resolveConfig, type ResolvedConfig } from "vite";
 import sade from "sade";
 import {
   getMarkoServeOptions,
@@ -12,32 +12,25 @@ import {
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
 import { spawnServer } from "../vite/utils/server";
-import { loadBuildInfo } from "../vite/plugin";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cwd = process.cwd();
 const defaultPort = +process.env.PORT! || 3000;
 
-const prog = sade("marko-serve")
+const prog = sade("marko-run")
   .version("0.0.1")
   .option("-c, --config", "Provide path to a Vite config");
 
 prog
-  .command("serve [entry]", "", { default: true })
+  .command("preview [entry]", "", { default: true })
   .describe("Start production-like server against built assets")
   .option("-o, --output", "Directory to serve files")
   .option("-p, --port", "Port to use for dev server")
-  .option("-b, --build", "Build project first")
+  .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
     const config = await getViteConfig(cwd, opts.config);
-    if (opts.build) {
-      const buildEntry =
-        typeof opts.build === "string" ? opts.build : undefined;
-      await build(buildEntry, config, opts.output);
-    }
-
-    const cmd = opts._.length ? `${entry} ${opts._.join(" ")}` : undefined;
-    await serve(cmd ? undefined : entry, cmd, config, opts.port, opts.output);
+    await build(entry, config, opts.output);
+    await preview(opts.entry, config, opts.port, opts.output);
   });
 
 prog
@@ -68,22 +61,23 @@ prog
 
 prog.parse(process.argv);
 
-async function serve(
+async function preview(
   entry: string | undefined,
-  cmd: string | undefined,
   configFile: string,
   port?: number,
   outDir?: string
 ) {
-  let config = outDir ? { configFile, build: { outDir } } : configFile;
-  const resolvedConfig = await resolveConfig(config, "serve");
+  const resolvedConfig = await resolveConfig(
+    { root: cwd, configFile, build: { outDir } },
+    "serve"
+  );
 
   if (port === undefined) {
     port = resolvedConfig.preview.port ?? defaultPort;
   }
 
   const adapter = await resolveAdapter(resolvedConfig);
-  
+
   if (!adapter) {
     throw new Error("No adapter specified for serve command");
   } else if (!adapter.startPreview) {
@@ -91,13 +85,15 @@ async function serve(
   }
 
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
-  const buildInfo = await loadBuildInfo(dir);
-  const entryFile = path.join(dir, entry || buildInfo.entryFile);
-  await adapter.startPreview(dir, entryFile, cmd, port);
+  const entryFile = entry ? path.join(dir, entry) : await findFileWithExt(dir, "index", [".mjs", ".js"]);
+  await adapter.startPreview(dir, entryFile, port);
 }
 
 async function dev(cmd: string | undefined, configFile: string, port?: number) {
-  const resolvedConfig = await resolveConfig(configFile);
+  const resolvedConfig = await resolveConfig(
+    { root: cwd, configFile },
+    "build"
+  );
 
   if (port === undefined) {
     port = resolvedConfig.preview.port ?? defaultPort;
@@ -126,7 +122,10 @@ async function build(
   skipClient: boolean = false
 ) {
   if (!entry) {
-    const resolvedConfig = await resolveConfig(configFile);
+    const resolvedConfig = await resolveConfig(
+      { root: cwd, configFile },
+      "build"
+    );
     const adapter = await resolveAdapter(resolvedConfig);
 
     if (!adapter) {
@@ -162,6 +161,11 @@ async function build(
     build: {
       ...buildConfig.build,
       ssr: entry,
+      rollupOptions: {
+        output: {
+          entryFileNames: 'index.mjs', // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
+        },
+      },
     },
   });
 
@@ -200,28 +204,20 @@ async function getViteConfig(
     if (!fs.existsSync(path.join(dir, configFile))) {
       throw new Error(`Unable to load config file '${configFile}' from ${dir}`);
     }
-    console.log(`Using config file '${configFile}'`);
+    //console.log(`Using config file '${configFile}'`);
     return configFile;
   }
 
   for (const base of bases) {
     configFile = findFileWithExt(dir, base);
     if (configFile) {
-      console.log(`Found config file '${configFile}'`);
+      //console.log(`Found config file '${configFile}'`);
       return configFile;
     }
   }
 
-  console.log(`No user config file was found`);
+  //console.log(`No user config file was found`);
   return path.join(__dirname, "default.config.mjs");
-}
-
-async function resolveConfig(
-  configFile: string | InlineConfig,
-  command: "serve" | "build" = "build"
-) {
-  const config = typeof configFile === "string" ? { configFile } : configFile;
-  return await viteResolveConfig({ root: cwd, ...config }, command);
 }
 
 async function resolveAdapter(

@@ -1,1 +1,1 @@
-export { router } from '@marko/serve';
+export { router } from '@marko/run';

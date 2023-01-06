@@ -1,7 +1,7 @@
 import createStaticServe from "serve-static";
 import { createServer } from "http";
 import { createMiddleware } from "@hattip/adapter-node";
-import { handler } from "@marko/serve";
+import { handler } from "@marko/run";
 
 const { PORT = 3456 } = process.env;
 

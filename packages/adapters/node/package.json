@@ -1,5 +1,5 @@
 {
-  "name": "@marko/serve-adapter-node",
+  "name": "@marko/run-adapter-node",
   "version": "0.0.1",
   "description": "",
   "keywords": [],
@@ -38,7 +38,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/serve": ""
+    "@marko/run": ""
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
@@ -50,7 +50,6 @@
     "prettier": "^2.7.1",
     "tsx": "^3.9.0",
     "typescript": "^4.7.4",
-    "undici": "^5.10.0",
     "vite": "^3.0.8"
   }
 }

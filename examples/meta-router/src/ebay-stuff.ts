@@ -1,4 +1,4 @@
-import type { Route } from "@marko/serve/vite";
+import type { Route } from "@marko/run/vite";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";

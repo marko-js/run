@@ -1,5 +1,5 @@
-import baseAdapter from '@marko/serve/adapter';
-import type { Adapter } from '@marko/serve/adapter';
+import baseAdapter from '@marko/run/adapter';
+import type { Adapter } from '@marko/run/adapter';
 
 export default function(): Adapter {
   return {

@@ -1,7 +1,7 @@
 import { createMiddleware } from "@hattip/adapter-node";
 import type { AdapterRequestContext } from "@hattip/core";
 import type { NodePlatformInfo, NodeMiddleware } from "@hattip/adapter-node";
-import type { MatchedRoute, RouteMatcher } from "@marko/serve";
+import type { MatchedRoute, RouteMatcher } from "@marko/run";
 
 export interface Route {
   invoke: NodeMiddleware;
@@ -68,7 +68,7 @@ export const matchMiddleware = asyncMiddleware(async () => {
   let getMatchedRoute: RouteMatcher;
 
   if (process.env.NODE_ENV !== "production") {
-    const { createViteDevMiddleware } = await import("@marko/serve/adapter");
+    const { createViteDevMiddleware } = await import("@marko/run/adapter");
     const { createServer } = await import("vite");
     const devServer = await createServer({
       appType: "custom",
@@ -78,7 +78,7 @@ export const matchMiddleware = asyncMiddleware(async () => {
     const devMiddleware = createViteDevMiddleware<RouteMatcher>(
       devServer,
       async () =>
-        (await devServer.ssrLoadModule("@marko/serve")).getMatchedRoute,
+        (await devServer.ssrLoadModule("@marko/run")).getMatchedRoute,
       (matcher) => {
         getMatchedRoute = matcher;
         return match;
@@ -88,17 +88,17 @@ export const matchMiddleware = asyncMiddleware(async () => {
     return devServer.middlewares.use(devMiddleware);
   }
 
-  ({ getMatchedRoute } = await import("@marko/serve"));
+  ({ getMatchedRoute } = await import("@marko/run"));
   return match;
 });
 
 export const routerMiddleware = asyncMiddleware(async () => {
   if (process.env.NODE_ENV !== "production") {
-    const { createDevServer } = await import("@marko/serve/adapter");
+    const { createDevServer } = await import("@marko/run/adapter");
     return await createDevServer();
   }
 
-  const { handler } = await import("@marko/serve");
+  const { handler } = await import("@marko/run");
   return createMiddleware(handler);
 });
 
@@ -111,11 +111,11 @@ export const importRouterMiddleware = asyncMiddleware(async () => {
     });
 
     return devServer.middlewares.use(async (_req, _res, next) => {
-      await devServer.ssrLoadModule("@marko/serve");
+      await devServer.ssrLoadModule("@marko/run");
       next();
     });
   }
 
-  await import("@marko/serve");
+  await import("@marko/run");
   return passthrough;
 });

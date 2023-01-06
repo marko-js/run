@@ -224,7 +224,7 @@ export function renderRouter(
 ): string {
   const writer = createStringWriter();
 
-  writer.writeLines(`// @marko/serve/router`);
+  writer.writeLines(`// @marko/run/router`);
 
   const imports = writer.branch("imports");
 
