@@ -1,4 +1,4 @@
-// @marko/serve/router
+// @marko/run/router
 import { once } from "events";
 import { Readable } from "stream";
 import { get$1, put$1, post$1, delete$1, meta$1 } from 'virtual:marko-serve/__marko-serve__route__index.js';

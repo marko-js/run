@@ -2,7 +2,7 @@
 import type { Handler, RouteMatcher, Router } from './types';
 
 function notImplemented(): unknown {
-  throw new Error('This should have been replaced by the @marko/serve plugin at build/dev time');
+  throw new Error('This should have been replaced by the @marko/run plugin at build/dev time');
 }
 
 export const handler = notImplemented as Handler;

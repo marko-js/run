@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "marko-serve build src/index.ts",
-    "dev": "marko-serve dev -- tsx src/index.ts",
-    "start": "marko-serve"
+    "build": "marko-run build src/index.ts",
+    "dev": "marko-run dev -- tsx src/index.ts",
+    "start": "marko-run"
   },
   "devDependencies": {
     "@marko/compiler": "^5.22.6",
-    "@marko/serve": "^0.0.1",
-    "@marko/serve-adapter-node": "^0.0.1",
+    "@marko/run": "^0.0.1",
+    "@marko/run-adapter-node": "^0.0.1",
     "@marko/vite": "^2.3.7",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.6",

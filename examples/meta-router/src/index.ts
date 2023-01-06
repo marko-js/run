@@ -1,6 +1,6 @@
 import express from "express";
 import compressionMiddleware from "compression";
-import { matchMiddleware } from "@marko/serve-adapter-node/middleware";
+import { matchMiddleware } from "@marko/run-adapter-node/middleware";
 
 // @ts-expect-error
 import metaRouterMiddleware from "meta-router/middleware/index.js"; 

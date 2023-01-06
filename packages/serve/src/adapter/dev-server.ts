@@ -1,6 +1,5 @@
 import { createServer, ViteDevServer } from "vite";
 import { createMiddleware, type NodeMiddleware } from "@hattip/adapter-node";
-import type { Server } from "http";
 
 export function createViteDevMiddleware<T>(
   devServer: ViteDevServer,
@@ -27,7 +26,7 @@ export function createViteDevMiddleware<T>(
   };
 }
 
-export async function createDevServer(configFile: string): Promise<Server> {
+export async function createDevServer(configFile?: string) {
   const devServer = await createServer({
     configFile,
     appType: "custom",
@@ -35,8 +34,8 @@ export async function createDevServer(configFile: string): Promise<Server> {
   });
   const middleware = createViteDevMiddleware(
     devServer,
-    async () => (await devServer.ssrLoadModule("@marko/serve")).handler,
+    async () => (await devServer.ssrLoadModule("@marko/run")).handler,
     createMiddleware
   );
-  return devServer.middlewares.use(middleware) as unknown as Server;
+  return devServer.middlewares.use(middleware);
 }
