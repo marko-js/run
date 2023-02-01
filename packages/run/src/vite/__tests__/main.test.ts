@@ -4,7 +4,7 @@ import snap from "mocha-snap";
 import { createTestWalker } from "../routes/walk";
 import { buildRoutes } from "../routes/builder";
 import { createDirectory } from "./utils/fakeFS";
-import { renderRouteEntry, renderRouter, renderRouteTemplate } from "../codegen";
+import { renderMiddleware, renderRouteEntry, renderRouter, renderRouteTemplate, renderRouteTypeInfo } from "../codegen";
 import { httpVerbs } from "../constants";
 import type { HttpVerb } from "../types";
 
@@ -27,6 +27,14 @@ for (const entry of fs.readdirSync(FIXTURES)) {
     const routes = await buildRoutes(createTestWalker(fakeDirectory), 'src/routes');
 
     let routesSnap = '';
+
+    if (routes.middleware.length) {
+      routesSnap += `# Middleware\n`;
+      routesSnap += '```js\n'
+      routesSnap += renderMiddleware(routes.middleware);
+      routesSnap += '```\n\n\n';
+    }
+
     let i = 0;
     for (const route of routes.list) {
       if (route.handler) {
@@ -40,7 +48,6 @@ for (const entry of fs.readdirSync(FIXTURES)) {
         routesSnap += '## Template\n'
         routesSnap += '```marko\n'
         routesSnap += renderRouteTemplate(route);
-        // routesSnap += '-'.repeat(100);
         routesSnap += '```\n';
       }
       routesSnap += '## Handler\n'
@@ -60,9 +67,12 @@ for (const entry of fs.readdirSync(FIXTURES)) {
     
     const routerSnap = renderRouter(routes);
 
+    const typesSnap = renderRouteTypeInfo(routes);
+    
     await Promise.all([
       snap(routesSnap, ".routes.md", dir),
-      snap(routerSnap, ".router.js", dir)
+      snap(routerSnap, ".router.js", dir),
+      snap(typesSnap, ".routetypes.d.ts", dir)
     ]);
   });
 }

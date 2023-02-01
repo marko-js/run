@@ -1,14 +1,28 @@
 import net from "net";
 import cp from "child_process";
-
+import { parse, config } from 'dotenv';
+import fs from "fs";
 export interface SpawnedServer {
   port: number,
   close(): void
 }
 
+export async function parseEnv(envFile: string) {
+  if (fs.existsSync(envFile)) {
+    const content = await fs.promises.readFile(envFile, 'utf8');
+    return parse(content);
+  }
+}
+
+export function loadEnv(envFile: string) {
+  config({ path: envFile });
+}
+
+
 export async function spawnServer(
   cmd: string,
   port: number = 0,
+  env?: string | Record<string, string>,
   cwd: string = process.cwd(),
   wait: number = 30_000
 ): Promise<SpawnedServer> {
@@ -16,12 +30,16 @@ export async function spawnServer(
     port = await getAvailablePort();
   }
 
+  if (typeof env === 'string') {
+    env = await parseEnv(env);
+  }
+
   const proc = cp.spawn(cmd, {
     cwd,
     shell: true,
     stdio: "inherit",
     windowsHide: true,
-    env: { NODE_ENV: "development", ...process.env, PORT: `${port}` },
+    env: { ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` },
   });
 
   const close = () => {

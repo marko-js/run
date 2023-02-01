@@ -1,5 +1,6 @@
 import path from "path";
 import crypto from "crypto";
+import fs from 'fs';
 
 import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
@@ -15,20 +16,24 @@ import {
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type { Options, BuiltRoutes, HttpVerb } from "./types";
-import { renderRouteEntry, renderRouter, renderRouteTemplate } from "./codegen";
+import { renderMiddleware, renderRouteEntry, renderRouter, renderRouteTemplate, renderRouteTypeInfo } from "./codegen";
 import {
   virtualFilePrefix,
   httpVerbs,
   browserEntryQuery,
   RoutableFileTypes,
+  markoRunFilePrefix,
+  virtualRuntimePrefix,
 } from "./constants";
 import { getExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
 
-import { getMarkoServeOptions, setMarkoServeOptions } from "./utils/config";
+import { getMarkoRunOptions, setMarkoRunOptions } from "./utils/config";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const markoExt = ".marko";
-const markoServeFilePrefix = "__marko-serve__";
 
 function isMarkoFile(id: string) {
   return id.endsWith(markoExt);
@@ -55,6 +60,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   let resolvedRoutesDir: string;
   let isBuild = false;
   let isSSRBuild = false;
+  let tsConfigExists: boolean | undefined;
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devServer: ViteDevServer;
@@ -85,18 +91,18 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       }
       if (route.page) {
         virtualFiles.set(
-          path.join(root, `${markoServeFilePrefix}route__${route.key}.marko`),
+          path.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
           render ? renderRouteTemplate(route) : ""
         );
       }
       virtualFiles.set(
-        path.join(root, `${markoServeFilePrefix}route__${route.key}.js`),
+        path.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
         render ? renderRouteEntry(route) : ""
       );
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.join(root, `${markoServeFilePrefix}special__${route.key}.marko`),
+        path.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
         render ? renderRouteTemplate(route) : ""
       );
     }
@@ -104,12 +110,22 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       "@marko/run/router",
       render ? renderRouter(routes, opts.codegen) : ""
     );
+    
+    virtualFiles.set(
+      path.join(root, `${markoRunFilePrefix}middleware.js`),
+      render ? renderMiddleware(routes.middleware) : ""
+    );
   }
 
   const buildVirtualFiles = single(async () => {
     const startTime = performance.now();
     routes = await buildRoutes(createFSWalker(resolvedRoutesDir), routesDir);
     times.routesBuild = performance.now() - startTime;
+
+    tsConfigExists ??= fs.existsSync(path.join(root, 'tsconfig.json'));
+    if (tsConfigExists) {
+      fs.promises.writeFile(path.join(routesDir, 'routetypes.d.ts'), renderRouteTypeInfo(routes));
+    }
 
     await setVirtualFiles(false);
 
@@ -129,7 +145,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       name: "marko-run-vite:pre",
       enforce: "pre",
       async config(config, env) {
-        const externalPluginOptions = getMarkoServeOptions(config);
+        const externalPluginOptions = getMarkoRunOptions(config);
         if (externalPluginOptions) {
           opts = mergeConfig(opts, externalPluginOptions);
         }
@@ -169,7 +185,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           pluginConfig = mergeConfig(pluginConfig, adapterConfig);
         }
 
-        return setMarkoServeOptions(pluginConfig, opts);
+        return setMarkoRunOptions(pluginConfig, opts);
       },
       configResolved(config) {
         resolvedConfig = config;
@@ -211,6 +227,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
               // TODO: figure out how to make this better
               for (const id of virtualFiles.keys()) {
                 devServer.watcher.emit("change", id);
+                break;
               }
             }
           }
@@ -245,7 +262,13 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer, { ssr }) {
         let resolved: string | undefined;
-        if (importee.startsWith(virtualFilePrefix)) {
+        if (importee.startsWith(virtualRuntimePrefix)) {
+          return this.resolve(
+            path.resolve(__dirname, "../runtime/internal"),
+            importer,
+            { skipSelf: true }
+          );
+        } else if (importee.startsWith(virtualFilePrefix)) {
           importee = path.resolve(
             root,
             importee.slice(virtualFilePrefix.length + 1)
@@ -253,7 +276,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         } else if (
           !isBuild &&
           importer === devEntryFile &&
-          importee.startsWith(`/${markoServeFilePrefix}`)
+          importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
         }

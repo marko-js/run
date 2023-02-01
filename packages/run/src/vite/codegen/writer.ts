@@ -2,7 +2,7 @@ export interface Writer {
   indent: number;
   branch(name: string): Writer;
   join(closeBranches?: boolean): void;
-  write(data: string): Writer;
+  write(data: string, indent?: boolean): Writer;
   writeLines(...lines: string[]): Writer;
   writeBlockStart(data: string): Writer;
   writeBlockEnd(data: string): Writer;
@@ -31,6 +31,18 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
   const branches: (Branch | null)[] = [];
   const openWriters = new Map<string, Writer>();
 
+  function write(data: string) {
+    if (!writer.__isActive) {
+      throw new Error('Cannot write to branch that has been joined')
+    }
+    if (openWriters.size) {
+      buffer += data;
+    } else {
+      sink(data);
+    }
+    return writer;
+  }
+
   const writer: WriterInternal = {
     __isActive: true,
     get indent() {
@@ -47,24 +59,16 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
         }
       }
     },
-    write(data) {
-      if (!writer.__isActive) {
-        throw new Error('Cannot write to branch that has been joined')
+    write(data, indent = false) {
+      if (indent && indentString) {
+        write(indentString);
       }
-      if (openWriters.size) {
-        buffer += data;
-      } else {
-        sink(data);
-      }
-      return writer;
+      return write(data);
     },
     writeLines(...lines) {
       for (const line of lines) {
         if (line) {
-          if (indentString) {
-            writer.write(indentString);
-          }
-          writer.write(line)
+          writer.write(line, true)
         }
         writer.write('\n');
       }

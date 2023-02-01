@@ -1,19 +1,19 @@
-import { createMiddleware } from "@hattip/adapter-node";
-import type { AdapterRequestContext } from "@hattip/core";
-import type { NodePlatformInfo, NodeMiddleware } from "@hattip/adapter-node";
-import type { MatchedRoute, RouteMatcher } from "@marko/run";
+import type { IncomingMessage } from "http";
+import createMiddleware, {
+  type NodeMiddleware,
+} from "@marko/run/adapter/middleware";
+import type { MatchRoute, Route, InvokeRoute } from "@marko/run";
 
-export interface Route {
+export interface MatchedRoute {
   invoke: NodeMiddleware;
-  url: URL;
-  match: MatchedRoute;
+  match: Route;
   config: {
     _handler: NodeMiddleware;
     [key: string]: unknown;
   };
 }
 
-type MatchedRequest = NodePlatformInfo["request"] & { route: Route };
+type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
 const passthrough: NodeMiddleware = (_req, _res, next) => {
   next?.();
@@ -37,23 +37,22 @@ function asyncMiddleware<Options = undefined>(
 }
 
 export const matchMiddleware = asyncMiddleware(async () => {
-  const invoke = createMiddleware(async (context) => {
-    const { request, platform } =
-      context as AdapterRequestContext<NodePlatformInfo>;
-    const { route } = platform.request as MatchedRequest;
-    return await route.match.invoke(request);
-  });
+  let matchRoute: MatchRoute;
+  let invokeRoute: InvokeRoute;
 
-  const match = createMiddleware((context) => {
-    const { request, platform } =
-      context as AdapterRequestContext<NodePlatformInfo>;
-    const url = new URL(request.url);
-    const match = getMatchedRoute(request.method, url);
+  const invoke = createMiddleware((context) =>
+    invokeRoute(
+      (context.platform.request as MatchedRequest).route.match,
+      context
+    )
+  );
+
+  const match: NodeMiddleware = (req, _res, next) => {
+    const match = matchRoute(req.method!, req.url!);
 
     if (match) {
-      (platform.request as MatchedRequest).route = {
+      (req as MatchedRequest).route = {
         invoke,
-        url,
         match,
         config: {
           ...(match.meta as any),
@@ -61,11 +60,9 @@ export const matchMiddleware = asyncMiddleware(async () => {
         },
       };
     }
-    context.passThrough();
-    return new Response();
-  });
 
-  let getMatchedRoute: RouteMatcher;
+    next?.();
+  };
 
   if (process.env.NODE_ENV !== "production") {
     const { createViteDevMiddleware } = await import("@marko/run/adapter");
@@ -75,12 +72,11 @@ export const matchMiddleware = asyncMiddleware(async () => {
       server: { middlewareMode: true },
     });
 
-    const devMiddleware = createViteDevMiddleware<RouteMatcher>(
+    const devMiddleware = createViteDevMiddleware(
       devServer,
-      async () =>
-        (await devServer.ssrLoadModule("@marko/run")).getMatchedRoute,
-      (matcher) => {
-        getMatchedRoute = matcher;
+      async () => await devServer.ssrLoadModule("@marko/run/router"),
+      (module) => {
+        ({ matchRoute, invokeRoute } = module);
         return match;
       }
     );
@@ -88,7 +84,7 @@ export const matchMiddleware = asyncMiddleware(async () => {
     return devServer.middlewares.use(devMiddleware);
   }
 
-  ({ getMatchedRoute } = await import("@marko/run"));
+  ({ matchRoute, invokeRoute } = await import("@marko/run/router"));
   return match;
 });
 
@@ -97,9 +93,7 @@ export const routerMiddleware = asyncMiddleware(async () => {
     const { createDevServer } = await import("@marko/run/adapter");
     return await createDevServer();
   }
-
-  const { handler } = await import("@marko/run");
-  return createMiddleware(handler);
+  return createMiddleware((await import("@marko/run/router")).router);
 });
 
 export const importRouterMiddleware = asyncMiddleware(async () => {
@@ -111,11 +105,11 @@ export const importRouterMiddleware = asyncMiddleware(async () => {
     });
 
     return devServer.middlewares.use(async (_req, _res, next) => {
-      await devServer.ssrLoadModule("@marko/run");
+      await devServer.ssrLoadModule("@marko/run/router");
       next();
     });
   }
 
-  await import("@marko/run");
+  await import("@marko/run/router");
   return passthrough;
 });

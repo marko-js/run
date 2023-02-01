@@ -1,32 +1,28 @@
-/(home)
-  +handler.get_put_post_delete.ts
-  +page.marko
-  +layout.marko
-  +meta.json
-/(foo)
-  /sales
-    /about
+/_protected
+  /_home
+    /new
+      +handler.post.ts
       +page.marko
-      +meta.marko
-      +handler.post_delete.js
-  /$$
-    +page.marko
-/sales
-  /(overview)
-    +page.marko
-  /invoicing
-    /$$rest
-      +page.marko
-    /$id
-      +page.marko
-    /foo
-      +page.marko
-    +page.marko
+      +meta.json
+    /notes
+      /$id
+        /comments
+          +handler.post.ts
+          +meta.ts
+        +handler.post.ts
+        +middleware.ts
+        +page.marko
     +layout.marko
     +middleware.ts
-  /summary
     +page.marko
-  +layout.marko
-+middleware.ts
+  +middleware.ts
+/callback
+  /oauth2
+    +handler.get.ts
+/my
+  +handler.get.ts
+  +page.marko        
 +404.marko
 +500.marko
++layout.marko
++middleware.ts

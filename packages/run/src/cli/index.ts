@@ -6,8 +6,8 @@ import { fileURLToPath } from "url";
 import { build as viteBuild, resolveConfig, type ResolvedConfig } from "vite";
 import sade from "sade";
 import {
-  getMarkoServeOptions,
-  setMarkoServeOptions,
+  getMarkoRunOptions,
+  setMarkoRunOptions,
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
@@ -19,7 +19,8 @@ const defaultPort = +process.env.PORT! || 3000;
 
 const prog = sade("marko-run")
   .version("0.0.1")
-  .option("-c, --config", "Provide path to a Vite config");
+  .option("-c, --config", "Provide path to a Vite config")
+  .option("-e, --env", "Provide path to a dotenv file");
 
 prog
   .command("preview [entry]", "", { default: true })
@@ -29,8 +30,8 @@ prog
   .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
     const config = await getViteConfig(cwd, opts.config);
-    await build(entry, config, opts.output);
-    await preview(opts.entry, config, opts.port, opts.output);
+    await build(entry, config, opts.output, false, opts.env);
+    await preview(opts.entry, config, opts.port, opts.output, opts.env);
   });
 
 prog
@@ -45,7 +46,7 @@ prog
       ? `node ${entry}`
       : undefined;
     const config = await getViteConfig(cwd, opts.config);
-    await dev(cmd, config, opts.port);
+    await dev(cmd, config, opts.port, opts.env);
   });
 
 prog
@@ -56,7 +57,7 @@ prog
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {
     const config = await getViteConfig(cwd, opts.config);
-    await build(entry, config, opts.ouput, opts["skip-client"]);
+    await build(entry, config, opts.ouput, opts["skip-client"], opts.env);
   });
 
 prog.parse(process.argv);
@@ -65,7 +66,8 @@ async function preview(
   entry: string | undefined,
   configFile: string,
   port?: number,
-  outDir?: string
+  outDir?: string,
+  envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile, build: { outDir } },
@@ -86,10 +88,14 @@ async function preview(
 
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
   const entryFile = entry ? path.join(dir, entry) : await findFileWithExt(dir, "index", [".mjs", ".js"]);
-  await adapter.startPreview(dir, entryFile, port);
+  if (envFile) {
+    envFile = path.resolve(cwd, envFile);
+  }
+
+  await adapter.startPreview(dir, entryFile, port, envFile);
 }
 
-async function dev(cmd: string | undefined, configFile: string, port?: number) {
+async function dev(cmd: string | undefined, configFile: string, port?: number, envFile?: string) {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile },
     "build"
@@ -98,9 +104,12 @@ async function dev(cmd: string | undefined, configFile: string, port?: number) {
   if (port === undefined) {
     port = resolvedConfig.preview.port ?? defaultPort;
   }
+  if (envFile) {
+    envFile = path.resolve(cwd, envFile);
+  }
 
   if (cmd) {
-    await spawnServer(cmd, port);
+    await spawnServer(cmd, port, envFile);
   } else {
     const adapter = await resolveAdapter(resolvedConfig);
     if (!adapter) {
@@ -110,7 +119,7 @@ async function dev(cmd: string | undefined, configFile: string, port?: number) {
     } else if (!adapter.startDev) {
       throw new Error(`Adapter ${adapter.name} does not support serve command`);
     } else {
-      await adapter.startDev(configFile, port!);
+      await adapter.startDev(configFile, port!, envFile);
     }
   }
 }
@@ -119,7 +128,8 @@ async function build(
   entry: string | undefined,
   configFile: string,
   outDir?: string,
-  skipClient: boolean = false
+  skipClient: boolean = false,
+  envFile?: string
 ) {
   if (!entry) {
     const resolvedConfig = await resolveConfig(
@@ -141,13 +151,17 @@ async function build(
     }
   }
 
-  const buildConfig = setMarkoServeOptions(
+  if (envFile) {
+    envFile = path.resolve(cwd, envFile);
+  }
+
+  const buildConfig = setMarkoRunOptions(
     {
       root: cwd,
       configFile,
       build: {
         ssr: false,
-        outDir,
+        outDir
       },
     },
     {
@@ -159,6 +173,7 @@ async function build(
   await viteBuild({
     ...buildConfig,
     build: {
+      target: 'esnext',
       ...buildConfig.build,
       ssr: entry,
       rollupOptions: {
@@ -223,7 +238,7 @@ async function getViteConfig(
 async function resolveAdapter(
   config: ResolvedConfig
 ): Promise<Adapter | undefined> {
-  const options = getMarkoServeOptions(config);
+  const options = getMarkoRunOptions(config);
   if (!options) {
     throw new Error("Unable to resolve Marko Serve options");
   }

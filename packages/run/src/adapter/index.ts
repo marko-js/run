@@ -4,7 +4,7 @@ import type { Adapter } from "../vite";
 
 import { createDevServer } from "./dev-server";
 import type { AddressInfo } from "net";
-import { spawnServer } from "../vite/utils/server";
+import { loadEnv, spawnServer } from "../vite/utils/server";
 
 export { createDevServer, createViteDevMiddleware } from "./dev-server";
 
@@ -12,17 +12,18 @@ export type { Adapter };
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
+
 export default function adapter(): Adapter {
   return {
     name: "base-adapter",
 
     async getEntryFile() {
-      
       const entry = path.join(__dirname, "default-entry");
       return entry;
     },
 
-    async startDev(configFile, port) {
+    async startDev(configFile, port, envFile) {
+      envFile && await loadEnv(envFile);
       const server = await createDevServer(configFile);
       
       return new Promise((resolve) => {
@@ -34,8 +35,8 @@ export default function adapter(): Adapter {
       });
     },
 
-    async startPreview(dir, entry, port) {
-      const server = await spawnServer(`node ${entry}`, port, dir);
+    async startPreview(dir, entry, port, envFile) {
+      const server = await spawnServer(`node ${entry}`, port, envFile, dir);
       console.log(`Preview server started: http://localhost:${server.port}`);
     },
   };

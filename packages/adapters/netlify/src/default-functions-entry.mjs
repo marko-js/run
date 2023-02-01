@@ -1,4 +1,4 @@
 import netlifyFunctionsAdapter from "@hattip/adapter-netlify-functions";
-import { handler } from "@marko/run";
+import { handler } from "@marko/run/router";
 
-export const handler = netlifyFunctionsAdapter(hattipHandler);
+export default netlifyFunctionsAdapter(handler);

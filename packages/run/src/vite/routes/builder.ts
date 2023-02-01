@@ -39,7 +39,9 @@ export function scorePath(path: string, index: number): number {
     segments.reduce(
       (score, segment) => score + (segment.startsWith("$") ? 3 : 4),
       segments.length + (splat === undefined ? 1 : 2)
-    ) * 10000 - index
+    ) *
+      10000 -
+    index
   );
 }
 
@@ -55,7 +57,11 @@ export async function buildRoutes(
   walk: Walker,
   basePath?: string
 ): Promise<BuiltRoutes> {
-  const dirStack: string[] = basePath ? basePath.split("/") : [];
+  if (basePath) {
+    basePath = basePath.replace(/^\/+|\/+$/g, "");
+  }
+
+  const dirStack: string[] = []; //basePath ? basePath.split("/") : [];
   const pathStack: string[] = [];
   const paramStack: ParamInfo[] = [];
   const layoutsStack: RoutableFile[] = [];
@@ -63,9 +69,11 @@ export async function buildRoutes(
 
   const routes = new Map<string, Route>();
   const special: SpecialRoutes = {};
+  const middleware = new Set<RoutableFile>();
 
   let isRoot = true;
-  let nextId = 1;
+  let nextFileId = 1;
+  let nextRouteIndex = 1;
   let current: RouteDirectoryInfo | undefined;
   let children: RouteDirectoryInfo[] = [];
 
@@ -96,10 +104,17 @@ export async function buildRoutes(
       if (!entries) {
         current.files.set(type, (entries = []));
       }
+
+      const relativePath = current.originalPath
+        ? `${current.originalPath}/${entry.name}`
+        : entry.name;
+
       entries.push({
+        id: String(nextFileId++),
         type,
         filePath: entry.path,
-        importPath: `${current.originalPath}/${entry.name}`,
+        relativePath,
+        importPath: `${basePath}/${relativePath}`,
         name: entry.name,
         verbs: type === RoutableFileTypes.Page ? ["get"] : undefined,
       });
@@ -110,15 +125,20 @@ export async function buildRoutes(
       }
 
       const { path, files } = current;
-      const middleware = files.get(RoutableFileTypes.Middleware)?.[0];
-      const layout = files.get(RoutableFileTypes.Layout)?.[0];
+      const localMiddleware = files.get(RoutableFileTypes.Middleware)?.[0];
+      const localLayout = files.get(RoutableFileTypes.Layout)?.[0];
       const handler = files.get(RoutableFileTypes.Handler)?.[0];
       const page = files.get(RoutableFileTypes.Page)?.[0];
 
       const middlewareStackLength = middlewareStack.length;
       const layoutsStackLength = layoutsStack.length;
-      middleware && middlewareStack.push(middleware);
-      layout && layoutsStack.push(layout);
+
+      if (localMiddleware) {
+        middlewareStack.push(localMiddleware);
+      }
+      if (localLayout) {
+        layoutsStack.push(localLayout);
+      }
 
       if (handler || page) {
         const key =
@@ -131,7 +151,7 @@ export async function buildRoutes(
         if (routes.has(key)) {
           console.warn(`Duplicate route for path ${path} -- ignoring`, current);
         } else {
-          const index = nextId++;
+          const index = nextRouteIndex++;
           routes.set(key, {
             index,
             key,
@@ -144,6 +164,10 @@ export async function buildRoutes(
             handler,
             score: scorePath(path, index),
           });
+
+          for (const mw of middlewareStack) {
+            middleware.add(mw);
+          }
         }
       }
 
@@ -180,8 +204,9 @@ export async function buildRoutes(
 
       if (
         name.charCodeAt(0) === 95 ||
-        (name.charCodeAt(0) === 40 && name.charCodeAt(name.length - 1) === 41) ||
-        name.toLowerCase() === 'index'
+        (name.charCodeAt(0) === 40 &&
+          name.charCodeAt(name.length - 1) === 41) ||
+        name.toLowerCase() === "index"
       ) {
         // Is empty segment -- name starts with '_' OR starts with '(' and ends with ')'
       } else {
@@ -224,5 +249,6 @@ export async function buildRoutes(
   return {
     list: [...routes.values()],
     special,
+    middleware: [...middleware],
   };
 }

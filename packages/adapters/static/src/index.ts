@@ -5,7 +5,7 @@ import type { Adapter, Route } from "@marko/run/vite";
 import { Pool } from "undici";
 import createCrawler from "./crawler";
 import fs from "fs/promises";
-import { getAvailablePort, spawnServer } from "@marko/run/vite";
+import { getAvailablePort, spawnServer, loadEnv } from "@marko/run/vite";
 import baseAdapter from "@marko/run/adapter";
 import createStaticServe from "serve-static";
 import { createServer } from "http";
@@ -37,7 +37,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(dir, _entry, port) {
+    async startPreview(dir, _entry, port, envFile) {
+      envFile && await loadEnv(envFile)
+      
       const staticServe = createStaticServe(dir, {
         index: "index.html"
       });

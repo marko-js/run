@@ -1,10 +1,10 @@
 type ValuesOf<T> = T[keyof T];
 
-export const markoServeFilePrefix = '__marko-serve__'
+export const markoRunFilePrefix = '__marko-run__'
 
-export const virtualFilePrefix = 'virtual:marko-serve';
-
+export const virtualFilePrefix = 'virtual:marko-run';
 export const virtualRoutesPrefix = `${virtualFilePrefix}/routes`;
+export const virtualRuntimePrefix = `${virtualFilePrefix}/internal`;
 
 export const httpVerbs = ['get', 'post', 'put', 'delete'] as const;
 
