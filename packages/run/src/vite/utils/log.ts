@@ -1,10 +1,10 @@
 import Table, { HorizontalAlignment } from "cli-table3";
 import kleur from "kleur";
 import { gzipSizeSync } from "gzip-size";
-import prettyBytes from "pretty-bytes";
 import type { OutputBundle, OutputChunk, OutputAsset } from "rollup";
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
+import format from 'human-format';
 
 const HttpVerbColors = {
   get: kleur.green,
@@ -37,7 +37,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     colAligns.push("center");
   }
 
-  headings.push("Size");
+  headings.push("Size/GZipped");
   colAligns.push("right");
 
   const table = new Table({
@@ -74,7 +74,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
       row.push(entryType.join(" -> "));
       hasMiddleware && row.push(route.middleware.length || "");
       hasMeta && row.push(route.meta ? "✓" : "");
-      row.push(size || { hAlign: "center", content: "-" });
+      row.push(size || '');
 
       table.push(row);
     }
@@ -84,6 +84,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     const row = [kleur.bold(kleur.white("*")), key, kleur.yellow("page")];
     hasMiddleware && row.push("");
     hasMeta && row.push("");
+
     row.push(prettySize(computeRouteSize(route, bundle)));
 
     table.push(row);
@@ -92,49 +93,68 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
   console.log(table.toString());
 }
 
-function computeRouteSize(route: Route, bundle: OutputBundle) {
+function computeRouteSize(route: Route, bundle: OutputBundle): [number, number] {
   if (route.page) {
     for (const chunk of Object.values(bundle)) {
-      if (chunk.type === "chunk" && chunk.modules[route.page.filePath]) {
-        return computeChunkSize(chunk, bundle);
+      if (chunk.type === "chunk") {
+        for (const key of Object.keys(chunk.modules)) {
+          if (key.startsWith(route.page.filePath)) {
+            return computeChunkSize(chunk, bundle); 
+          }
+        }
       }
     }
   }
 
-  return 0;
+  return [0,0];
+}
+
+function byteSize(str: string | Uint8Array): number {
+  return new Blob([str]).size;
 }
 
 function computeChunkSize(
   chunk: OutputChunk | OutputAsset,
   bundle: OutputBundle,
   seen: Set<string> = new Set()
-): number {
+): [number, number] {
   if (chunk.type === "asset") {
-    return gzipSizeSync(chunk.source as string | Buffer);
+    return [
+      byteSize(chunk.source),
+      gzipSizeSync(chunk.source as string | Buffer)
+    ];
   }
 
-  let size = gzipSizeSync(chunk.code);
+  const size: [number, number] = [byteSize(chunk.code), gzipSizeSync(chunk.code)];
   for (const id of chunk.imports) {
     if (!seen.has(id)) {
-      size += computeChunkSize(bundle[id], bundle, seen);
+      const [bytes, compBytes] = computeChunkSize(bundle[id], bundle, seen);
+      size[0] += bytes;
+      size[1] += compBytes;
       seen.add(id);
     }
   }
-  return size;
+  return size
 }
 
 // Taken from Next.js
-function prettySize(size: number) {
-  const _size = prettyBytes(size, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).replace(/\sB$/, " B ");
+function prettySize([bytes, compBytes]: [number, number]): string {
+  if (bytes <= 0) {
+    return kleur.gray('0.0 kB');
+  }
+
+  const [size, prefix] = format(bytes, { decimals: 1 }).split(/\s+/);
+  const compSize = format(compBytes, { decimals: 1, prefix, unit: 'B'});
+
+  let str = kleur.white(size) + kleur.gray('/');
+
   // green for 0-20kb
-  if (size < 20 * 1000) return kleur.green(_size);
+  if (compBytes < 20 * 1000) str += kleur.green(compSize);
   // yellow for 20-50kb
-  if (size < 50 * 1000) return kleur.yellow(_size);
+  else if (compBytes < 50 * 1000) str +=  kleur.yellow(compSize);
   // red for >= 50kb
-  return kleur.bold(kleur.red(_size));
+  else kleur.bold(kleur.red(compSize));
+  return str
 }
 
 function prettyPath(path: string) {

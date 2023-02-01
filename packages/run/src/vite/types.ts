@@ -11,8 +11,8 @@ export interface Adapter {
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(configFile: string, port: number): Promise<void> | void;
-  startPreview?(dir: string, entry?: string, port?: number): Promise<void> | void;
+  startDev?(configFile: string, port: number, envFile?: string): Promise<void> | void;
+  startPreview?(dir: string, entry?: string, port?: number, envFile?: string): Promise<void> | void;
   buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
 }
 
@@ -53,9 +53,11 @@ export interface SpecialRoutes {
 }
 
 export interface RoutableFile {
+  id: string;
   name: string;
   type: RoutableFileType;
   filePath: string;
+  relativePath: string;
   importPath: string;
   verbs?: HttpVerb[];
 }
@@ -71,4 +73,5 @@ export interface RouteTrie {
 export interface BuiltRoutes {
   list: Route[];
   special: SpecialRoutes;
+  middleware: RoutableFile[];
 }

@@ -1,174 +1,26 @@
+# Middleware
+```js
+// virtual:marko-run/__marko-run__middleware.js
+import { normalize } from 'virtual:marko-run/internal';
+import mware4 from './src/routes/+middleware.ts';
+import mware5 from './src/routes/_protected/+middleware.ts';
+import mware7 from './src/routes/_protected/_home/+middleware.ts';
+import mware13 from './src/routes/_protected/_home/notes/$id/+middleware.ts';
+
+export const mware$4 = normalize(mware4);
+export const mware$5 = normalize(mware5);
+export const mware$7 = normalize(mware7);
+export const mware$13 = normalize(mware13);
+```
+
+
 # Route `/`
 ## Template
 ```marko
-// virtual:marko-serve/__marko-serve__route__index.marko
-import layout1 from './src/routes/(home)/+layout.marko';
-import page from './src/routes/(home)/+page.marko';
-
-<layout1 ...input>
-	<page ...input />
-</>
-```
-## Handler
-```js
-// virtual:marko-serve/__marko-serve__route__index.js
-import middleware$1 from './src/routes/+middleware.ts';
-import { get as handler$get, put as handler$put, post as handler$post, del as handler$delete } from './src/routes/(home)/+handler.get_put_post_delete.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__index.marko?marko-server-entry';
-export { default as meta$1 } from './src/routes/(home)/+meta.json';
-
-function create204Response() {
-	return new Response(null, {
-		status: 204
-	})
-}
-
-export async function get$1(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-	async function __handler$get() {
-		return await handler$get(ctx, createPageResponse);
-	}
-	return await middleware$1(ctx, __handler$get);
-}
-
-export async function put$1(ctx) {
-	async function __handler$put() {
-		return await handler$put(ctx, create204Response);
-	}
-	return await middleware$1(ctx, __handler$put);
-}
-
-export async function post$1(ctx) {
-	async function __handler$post() {
-		return await handler$post(ctx, create204Response);
-	}
-	return await middleware$1(ctx, __handler$post);
-}
-
-export async function delete$1(ctx) {
-	async function __handler$delete() {
-		return await handler$delete(ctx, create204Response);
-	}
-	return await middleware$1(ctx, __handler$delete);
-}
-```
-
-
-# Route `/sales/about`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__sales__about.marko
-import page from './src/routes/(foo)/sales/about/+page.marko';
-
-<page ...input />
-```
-## Handler
-```js
-// virtual:marko-serve/__marko-serve__route__sales__about.js
-import middleware$1 from './src/routes/+middleware.ts';
-import { post as handler$post, del as handler$delete } from './src/routes/(foo)/sales/about/+handler.post_delete.js';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__about.marko?marko-server-entry';
-export { default as meta$2 } from './src/routes/(foo)/sales/about/+meta.marko';
-
-function create204Response() {
-	return new Response(null, {
-		status: 204
-	})
-}
-
-export async function get$2(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-	return await middleware$1(ctx, createPageResponse);
-}
-
-export async function post$2(ctx) {
-	async function __handler$post() {
-		return await handler$post(ctx, create204Response);
-	}
-	return await middleware$1(ctx, __handler$post);
-}
-
-export async function delete$2(ctx) {
-	async function __handler$delete() {
-		return await handler$delete(ctx, create204Response);
-	}
-	return await middleware$1(ctx, __handler$delete);
-}
-```
-
-
-# Route `/$$`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__$$.marko
-import page from './src/routes/(foo)/$$/+page.marko';
-
-<page ...input />
-```
-## Handler
-```js
-// virtual:marko-serve/__marko-serve__route__$$.js
-import middleware$1 from './src/routes/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__$$.marko?marko-server-entry';
-
-export async function get$3(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-	return await middleware$1(ctx, createPageResponse);
-}
-```
-
-
-# Route `/sales`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__sales.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import page from './src/routes/sales/(overview)/+page.marko';
-
-<layout1 ...input>
-	<page ...input />
-</>
-```
-## Handler
-```js
-// virtual:marko-serve/__marko-serve__route__sales.js
-import middleware$1 from './src/routes/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales.marko?marko-server-entry';
-
-export async function get$4(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-	return await middleware$1(ctx, createPageResponse);
-}
-```
-
-
-# Route `/sales/invoicing`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__sales__invoicing.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import layout2 from './src/routes/sales/invoicing/+layout.marko';
-import page from './src/routes/sales/invoicing/+page.marko';
+// virtual:marko-run/__marko-run__route__index.marko
+import layout1 from './src/routes/+layout.marko';
+import layout2 from './src/routes/_protected/_home/+layout.marko';
+import page from './src/routes/_protected/_home/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
@@ -178,34 +30,30 @@ import page from './src/routes/sales/invoicing/+page.marko';
 ```
 ## Handler
 ```js
-// virtual:marko-serve/__marko-serve__route__sales__invoicing.js
-import middleware$1 from './src/routes/+middleware.ts';
-import middleware$2 from './src/routes/sales/invoicing/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__invoicing.marko?marko-server-entry';
+// virtual:marko-run/__marko-run__route__index.js
+import { call } from 'virtual:marko-run/internal';
+import { mware$4, mware$5, mware$7 } from 'virtual:marko-run/__marko-run__middleware.js';
+import page from 'virtual:marko-run/__marko-run__route__index.marko?marko-server-entry';
 
-export async function get$5(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-
-	async function __middleware2() {
-		return await middleware$2(ctx, createPageResponse);
-	}
-	return await middleware$1(ctx, __middleware2);
+export async function get$1(context) {
+	const __page = () => new Response(page.stream(context), {
+		status: 200,
+		headers: { "content-type": "text/html;charset=UTF-8" }
+	});
+	const __mware$7 = () => call(mware$7, __page, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
 }
 ```
 
 
-# Route `/sales/invoicing/$$rest`
+# Route `/new`
 ## Template
 ```marko
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__$$.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import layout2 from './src/routes/sales/invoicing/+layout.marko';
-import page from './src/routes/sales/invoicing/$$rest/+page.marko';
+// virtual:marko-run/__marko-run__route__new.marko
+import layout1 from './src/routes/+layout.marko';
+import layout2 from './src/routes/_protected/_home/+layout.marko';
+import page from './src/routes/_protected/_home/new/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
@@ -215,34 +63,41 @@ import page from './src/routes/sales/invoicing/$$rest/+page.marko';
 ```
 ## Handler
 ```js
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__$$.js
-import middleware$1 from './src/routes/+middleware.ts';
-import middleware$2 from './src/routes/sales/invoicing/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__$$.marko?marko-server-entry';
+// virtual:marko-run/__marko-run__route__new.js
+import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { mware$4, mware$5, mware$7 } from 'virtual:marko-run/__marko-run__middleware.js';
+import { post } from './src/routes/_protected/_home/new/+handler.post.ts';
+import page from 'virtual:marko-run/__marko-run__route__new.marko?marko-server-entry';
+export { default as meta$2 } from './src/routes/_protected/_home/new/+meta.json';
 
-export async function get$6(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
+const handler$post = normalize(post);
 
-	async function __middleware2() {
-		return await middleware$2(ctx, createPageResponse);
-	}
-	return await middleware$1(ctx, __middleware2);
+export async function get$2(context) {
+	const __page = () => new Response(page.stream(context), {
+		status: 200,
+		headers: { "content-type": "text/html;charset=UTF-8" }
+	});
+	const __mware$7 = () => call(mware$7, __page, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
+}
+
+export async function post$2(context) {
+	const __handler$post = () => call(handler$post, noContent, context);
+	const __mware$7 = () => call(mware$7, __handler$post, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
 }
 ```
 
 
-# Route `/sales/invoicing/$id`
+# Route `/notes/$id`
 ## Template
 ```marko
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__$.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import layout2 from './src/routes/sales/invoicing/+layout.marko';
-import page from './src/routes/sales/invoicing/$id/+page.marko';
+// virtual:marko-run/__marko-run__route__notes__$.marko
+import layout1 from './src/routes/+layout.marko';
+import layout2 from './src/routes/_protected/_home/+layout.marko';
+import page from './src/routes/_protected/_home/notes/$id/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
@@ -252,89 +107,86 @@ import page from './src/routes/sales/invoicing/$id/+page.marko';
 ```
 ## Handler
 ```js
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__$.js
-import middleware$1 from './src/routes/+middleware.ts';
-import middleware$2 from './src/routes/sales/invoicing/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__$.marko?marko-server-entry';
+// virtual:marko-run/__marko-run__route__notes__$.js
+import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { mware$4, mware$5, mware$7, mware$13 } from 'virtual:marko-run/__marko-run__middleware.js';
+import { post } from './src/routes/_protected/_home/notes/$id/+handler.post.ts';
+import page from 'virtual:marko-run/__marko-run__route__notes__$.marko?marko-server-entry';
 
-export async function get$7(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
+const handler$post = normalize(post);
 
-	async function __middleware2() {
-		return await middleware$2(ctx, createPageResponse);
-	}
-	return await middleware$1(ctx, __middleware2);
+export async function get$3(context) {
+	const __page = () => new Response(page.stream(context), {
+		status: 200,
+		headers: { "content-type": "text/html;charset=UTF-8" }
+	});
+	const __mware$13 = () => call(mware$13, __page, context);
+	const __mware$7 = () => call(mware$7, __mware$13, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
+}
+
+export async function post$3(context) {
+	const __handler$post = () => call(handler$post, noContent, context);
+	const __mware$13 = () => call(mware$13, __handler$post, context);
+	const __mware$7 = () => call(mware$7, __mware$13, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
 }
 ```
 
 
-# Route `/sales/invoicing/foo`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__foo.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import layout2 from './src/routes/sales/invoicing/+layout.marko';
-import page from './src/routes/sales/invoicing/foo/+page.marko';
-
-<layout1 ...input>
-	<layout2 ...input>
-		<page ...input />
-	</>
-</>
-```
+# Route `/notes/$id/comments`
 ## Handler
 ```js
-// virtual:marko-serve/__marko-serve__route__sales__invoicing__foo.js
-import middleware$1 from './src/routes/+middleware.ts';
-import middleware$2 from './src/routes/sales/invoicing/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__foo.marko?marko-server-entry';
+// virtual:marko-run/__marko-run__route__notes__$__comments.js
+import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { mware$4, mware$5, mware$7, mware$13 } from 'virtual:marko-run/__marko-run__middleware.js';
+import { post } from './src/routes/_protected/_home/notes/$id/comments/+handler.post.ts';
+export { default as meta$4 } from './src/routes/_protected/_home/notes/$id/comments/+meta.ts';
 
-export async function get$8(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
+const handler$post = normalize(post);
 
-	async function __middleware2() {
-		return await middleware$2(ctx, createPageResponse);
-	}
-	return await middleware$1(ctx, __middleware2);
+export async function post$4(context) {
+	const __handler$post = () => call(handler$post, noContent, context);
+	const __mware$13 = () => call(mware$13, __handler$post, context);
+	const __mware$7 = () => call(mware$7, __mware$13, context);
+	const __mware$5 = () => call(mware$5, __mware$7, context);
+	return call(mware$4, __mware$5, context);
 }
 ```
 
 
-# Route `/sales/summary`
-## Template
-```marko
-// virtual:marko-serve/__marko-serve__route__sales__summary.marko
-import layout1 from './src/routes/sales/+layout.marko';
-import page from './src/routes/sales/summary/+page.marko';
-
-<layout1 ...input>
-	<page ...input />
-</>
-```
+# Route `/callback/oauth2`
 ## Handler
 ```js
-// virtual:marko-serve/__marko-serve__route__sales__summary.js
-import middleware$1 from './src/routes/+middleware.ts';
-import page from 'virtual:marko-serve/__marko-serve__route__sales__summary.marko?marko-server-entry';
+// virtual:marko-run/__marko-run__route__callback__oauth2.js
+import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { mware$4 } from 'virtual:marko-run/__marko-run__middleware.js';
+import { get } from './src/routes/callback/oauth2/+handler.get.ts';
 
-export async function get$9(ctx) {
-	async function createPageResponse() {
-		return new Response(page.stream(ctx), {
-			status: 200,
-			headers: { "content-type": "text/html;charset=UTF-8" }
-		});
-	}
-	return await middleware$1(ctx, createPageResponse);
+const handler$get = normalize(get);
+
+export async function get$5(context) {
+	const __handler$get = () => call(handler$get, noContent, context);
+	return call(mware$4, __handler$get, context);
+}
+```
+
+
+# Route `/my`
+## Handler
+```js
+// virtual:marko-run/__marko-run__route__my.js
+import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { mware$4 } from 'virtual:marko-run/__marko-run__middleware.js';
+import { get } from './src/routes/my/+handler.get.ts';
+
+const handler$get = normalize(get);
+
+export async function get$6(context) {
+	const __handler$get = () => call(handler$get, noContent, context);
+	return call(mware$4, __handler$get, context);
 }
 ```
 
@@ -342,18 +194,24 @@ export async function get$9(ctx) {
 # Special `404`
 ## Template
 ```marko
-// virtual:marko-serve/__marko-serve__route__404.marko
+// virtual:marko-run/__marko-run__route__404.marko
+import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+404.marko';
 
-<page ...input />
+<layout1 ...input>
+	<page ...input />
+</>
 ```
 
 
 # Special `500`
 ## Template
 ```marko
-// virtual:marko-serve/__marko-serve__route__500.marko
+// virtual:marko-run/__marko-run__route__500.marko
+import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+500.marko';
 
-<page ...input />
+<layout1 ...input>
+	<page ...input />
+</>
 ```

@@ -1,36 +1,83 @@
-import type { AdapterRequestContext } from '@hattip/core';
+type Awaitable<T> = Promise<T> | T;
+type OneOrMany<T> = T | T[];
 
-export interface RouteContext<
-  Params extends Record<string, string> = {},
-  Meta = unknown
-> {
-  request: Request;
+export interface RouteContextExtensions {}
+
+export interface Platform {}
+
+export interface RequestContext<T = Platform> {
   url: URL;
-  params: Params;
-  meta: Meta;
-  error?: unknown;
+  method: string;
+  request: Request;
+  platform: T;
 }
+
+interface RouteContextBase
+  extends Readonly<RequestContext>,
+    RouteContextExtensions {
+  readonly url: URL;
+  readonly error?: unknown;
+}
+export type RouteContext<
+  TRoute extends Route = Route,
+  Data extends RouteData = RouteData
+> = TRoute extends any
+  ? RouteContextBase & {
+      readonly route: TRoute["path"];
+      readonly params: TRoute["params"];
+      readonly meta: TRoute["meta"];
+      readonly data: Data;
+    }
+  : never;
+
+export type NextFunction = () => Awaitable<Response>;
+
+export type HandlerLike<
+  TRoute extends Route = Route,
+  Data extends RouteData = RouteData
+> = Awaitable<OneOrMany<RouteHandler<TRoute, Data>>>;
 
 export type RouteHandler<
-  Params extends Record<string, string> = {},
-  Meta = unknown
-> = (context: RouteContext<Params, Meta>) => Promise<Response>;
+  TRoute extends Route = Route,
+  Data extends RouteData = RouteData
+> = (
+  context: RouteContext<TRoute, Data>,
+  next: NextFunction
+) => Awaitable<Response | void>;
 
-export interface MatchedRoute<
+export interface Route<
   Params extends Record<string, string> = {},
-  Meta = unknown
+  Meta = unknown,
+  Path extends string = string
 > {
-  handler: RouteHandler;
+  path: Path;
   params: Params;
   meta: Meta;
-  invoke: Router;
 }
 
-export type Router = (request: Request) => Promise<Response>;
-export type RouteMatcher = (method: string, url: URL) => MatchedRoute | null;
-export type Handler = (context: AdapterRequestContext) => Promise<Response>;
-
-export interface Runtime {
-  router: Router,
-  getMatchedRoute: RouteMatcher
+export interface RouteWithHandler<
+  Params extends Record<string, string> = {},
+  Meta = unknown,
+  Path extends string = string
+> extends Route<Params, Meta, Path> {
+  handler: RouteHandler<this>;
 }
+
+export type MatchRoute = (
+  method: string,
+  pathname: string
+) => RouteWithHandler | null;
+
+export type Router<T = Platform> = (
+  context: RequestContext<T>
+) => Promise<Response | void>;
+
+export type InvokeRoute<T = Platform> = (
+  route: Route | null,
+  context: RequestContext<T>
+) => Promise<Response | void>;
+
+export type RouteData<
+  Providing extends Record<string, any> = {},
+  Existing extends Record<string, any> = {}
+> = Existing & Partial<Providing>;

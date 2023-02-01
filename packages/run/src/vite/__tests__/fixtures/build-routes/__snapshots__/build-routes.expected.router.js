@@ -1,92 +1,105 @@
 // @marko/run/router
-import { once } from "events";
-import { Readable } from "stream";
-import { get$1, put$1, post$1, delete$1, meta$1 } from 'virtual:marko-serve/__marko-serve__route__index.js';
-import { get$2, post$2, delete$2, meta$2 } from 'virtual:marko-serve/__marko-serve__route__sales__about.js';
-import { get$3 } from 'virtual:marko-serve/__marko-serve__route__$$.js';
-import { get$4 } from 'virtual:marko-serve/__marko-serve__route__sales.js';
-import { get$5 } from 'virtual:marko-serve/__marko-serve__route__sales__invoicing.js';
-import { get$6 } from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__$$.js';
-import { get$7 } from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__$.js';
-import { get$8 } from 'virtual:marko-serve/__marko-serve__route__sales__invoicing__foo.js';
-import { get$9 } from 'virtual:marko-serve/__marko-serve__route__sales__summary.js';
-import page$404 from 'virtual:marko-serve/__marko-serve__special__404.marko?marko-server-entry';
-import page$500 from 'virtual:marko-serve/__marko-serve__special__500.marko?marko-server-entry';
+import { get$1 } from 'virtual:marko-run/__marko-run__route__index.js';
+import { get$2, post$2, meta$2 } from 'virtual:marko-run/__marko-run__route__new.js';
+import { get$3, post$3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
+import { post$4, meta$4 } from 'virtual:marko-run/__marko-run__route__notes__$__comments.js';
+import { get$5 } from 'virtual:marko-run/__marko-run__route__callback__oauth2.js';
+import { get$6 } from 'virtual:marko-run/__marko-run__route__my.js';
+import page$404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
+import page$500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
 
-function matchRoute(method, pathname) {
+function findRoute(method, pathname) {
 	switch (method.toLowerCase()) {
 		case 'get': {
-			if (pathname === '/') return [get$1, , meta$1]; // /
-			const segments = pathname.split('/');
-			const len = segments.length;
-			if (segments[1]?.toLowerCase() === 'sales') {
-				if (len === 2) return [get$4]; // /sales
-				switch(segments[2]?.toLowerCase()) {
-					case 'about':
-						if (len === 3) return [get$2, , meta$2]; // /sales/about
-						break;
-					case 'invoicing':
-						if (len === 3) return [get$5]; // /sales/invoicing
-						if (segments[3]?.toLowerCase() === 'foo') {
-							if (len === 4) return [get$8]; // /sales/invoicing/foo
+			const len = pathname.length;
+			if (len === 1) return { handler: get$1, params: {}, meta: {} }; // /
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				switch (pathname.slice(1, i1 ? -1 : len).toLowerCase()) {
+					case 'new': return { handler: get$2, params: {}, meta: meta$2 }; // /new
+					case 'my': return { handler: get$6, params: {}, meta: {} }; // /my
+				}
+			} else {
+				switch (pathname.slice(1, i1 - 1).toLowerCase()) {
+					case 'notes': {
+						const i2 = pathname.indexOf('/', 7) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = pathname.slice(7, i2 ? -1 : len);
+							if (s2) return { handler: get$3, params: { id: s2}, meta: {} }; // /notes/$id
 						}
-						if (segments[3]) {
-							if (len === 4) return [get$7, { 'id': segments[3] }]; // /sales/invoicing/$id
+					}
+					case 'callback': {
+						const i2 = pathname.indexOf('/', 10) + 1;
+						if (!i2 || i2 === len) {
+							if (pathname.slice(10, i2 ? -1 : len).toLowerCase() === 'oauth2') return { handler: get$5, params: {}, meta: {} }; // /callback/oauth2
 						}
-						return [get$6, { 'rest': pathname.slice(14) }]; // /sales/invoicing/$$rest
-					case 'summary':
-						if (len === 3) return [get$9]; // /sales/summary
-						break;
+					}
 				}
 			}
-			return [get$3, {}]; // /$$
+			return null;
 		}
 		case 'post': {
-			if (pathname === '/') return [post$1, , meta$1]; // /
-			const segments = pathname.split('/');
-			const len = segments.length;
-			if (segments[1]?.toLowerCase() === 'sales') {
-				if (segments[2]?.toLowerCase() === 'about') {
-					if (len === 3) return [post$2, , meta$2]; // /sales/about
+			const len = pathname.length;
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (!i1 || i1 === len) {
+					if (pathname.slice(1, i1 ? -1 : len).toLowerCase() === 'new') return { handler: post$2, params: {}, meta: meta$2 }; // /new
+				} else {
+					if (pathname.slice(1, i1 - 1).toLowerCase() === 'notes') {
+						const i2 = pathname.indexOf('/', 7) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = pathname.slice(7, i2 ? -1 : len);
+							if (s2) return { handler: post$3, params: { id: s2}, meta: {} }; // /notes/$id
+						} else {
+							const s2 = pathname.slice(7, i2 - 1);
+							if (s2) {
+								const i3 = pathname.indexOf('/', i2) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: post$4, params: { id: s2}, meta: meta$4 }; // /notes/$id/comments
+								}
+							}
+						}
+					}
 				}
 			}
-			return;
-		}
-		case 'put': {
-			if (pathname === '/') return [put$1, , meta$1]; // /
-			return;
-		}
-		case 'delete': {
-			if (pathname === '/') return [delete$1, , meta$1]; // /
-			const segments = pathname.split('/');
-			const len = segments.length;
-			if (segments[1]?.toLowerCase() === 'sales') {
-				if (segments[2]?.toLowerCase() === 'about') {
-					if (len === 3) return [delete$2, , meta$2]; // /sales/about
-				}
-			}
-			return;
+			return null;
 		}
 	}
+	return null;
 }
 
-async function invokeRoute(route, url, request) {
+export function matchRoute(method, pathname) {
+  if (!pathname) {
+    pathname = '/';
+  } else if (pathname.charAt(0) !== '/') {
+    pathname = '/' + pathname;
+  }
+  return findRoute(method, pathname);
+}
+
+export async function invokeRoute(route, context) {
 	try {
 		if (route) {
-			const [handler, params = {}, meta] = route;
-			const response = await handler({ request, url, params, meta });
+			context.data = {};
+			context.params = route.params;
+			context.meta = route.meta;
+			const response = await route.handler(context);
 			if (response) return response;
-		}
-		if (request.headers.get('Accept')?.includes('text/html')) {
-			return new Response(page$404.stream({ request, url, params: {} }), {
-				status: 404,
-				headers: { "content-type": "text/html;charset=UTF-8" },
-			});
-		}
-		return null;
-	} catch (err) {
-		if (request.headers.get('Accept')?.includes('text/html')) {
-			return new Response(page$500.stream({ request, url, params: {}, error: err }), {
+    } else {
+      context.data = {};
+      context.params = {};
+      context.meta = {};
+    }
+    if (context.request.headers.get('Accept')?.includes('text/html')) {
+      return new Response(page$404.stream(context), {
+        status: 404,
+        headers: { "content-type": "text/html;charset=UTF-8" },
+      });
+    }	} catch (err) {
+		if (err == null) return;
+		if (context.request.headers.get('Accept')?.includes('text/html')) {
+			context.data.error = err;
+			return new Response(page$500.stream(context), {
 				status: 500,
 				headers: { "content-type": "text/html;charset=UTF-8" },
 			});
@@ -95,49 +108,17 @@ async function invokeRoute(route, url, request) {
 	}
 }
 
-export function getMatchedRoute(method, url) {
-  const route = matchRoute(method, url.pathname);
-  if (route) {
-    const [handler, params = {}, meta] = route;
-    return {
-      handler,
-      params,
-      meta,
-      async invoke(request) {
-        return await invokeRoute(route, url, request);
-      }
-    }
-  }
-  return null;
-}
-
-export async function handler(context) {
-	const response = await router(context.request);
-	if (response.body) {
-		//context.waitUntil?.(once(Readable.from(response.body), "end"));
-	}
-	return response;
-}
-
-export async function router(request) {
+export async function router(context) {
   try {
-    const url = new URL(request.url);
+    const { url, method } = context;
     let { pathname } = url;
+    if (pathname !== '/' && pathname.endsWith('/')) {
+      url.pathname = pathname.slice(0, -1);
+      return Response.redirect(url);
+    }   
 
-    if (pathname !== '/') {
-      if (pathname.endsWith('/')) {
-        pathname = pathname.replace(/\/+$/, '');
-
-        url.pathname = pathname;
-        return Response.redirect(url.href);
-
-      }
-    }
-    const route = matchRoute(request.method, pathname);
-    return await invokeRoute(route, url, request) || new Response(null, {
-      statusText: `Not Found (No route matched ${pathname})`,
-      status: 404
-    });
+    const route = matchRoute(method, pathname);
+    return await invokeRoute(route, context);
   } catch (err) {
     const message = import.meta.env.DEV
       ? `Internal Server Error (${err.message})`

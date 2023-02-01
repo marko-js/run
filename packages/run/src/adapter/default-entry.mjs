@@ -1,12 +1,16 @@
 import createStaticServe from "serve-static";
+import compression from "compression";
 import { createServer } from "http";
-import { createMiddleware } from "@hattip/adapter-node";
-import { handler } from "@marko/run";
+import createMiddleware from "@marko/run/adapter/middleware";
+import { router } from "@marko/run/router";
 
 const { PORT = 3456 } = process.env;
 
 const dir = process.cwd();
-const middleware = createMiddleware(handler);
+const middleware = createMiddleware(router);
+const compress = compression({
+  threshold: 500,
+});
 const staticServe = createStaticServe(dir, {
   index: false,
   immutable: true,
@@ -14,5 +18,7 @@ const staticServe = createStaticServe(dir, {
 });
 
 createServer((req, res) =>
+  compress(req, res, () => 
   staticServe(req, res, () => middleware(req, res))
+  )
 ).listen(PORT);

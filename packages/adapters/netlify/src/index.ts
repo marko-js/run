@@ -44,7 +44,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
     startDev,
 
     async startPreview(_dir, _entry, port) {
-      const args = ["--framework", "#static", "--dir", "netlify/static"];
+      const args = ["--framework", "#static", "--dir", "netlify"];
       if (port !== undefined) {
         args.push("--port", "" + port);
       }
@@ -71,7 +71,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
       for (const dir of ["assets"]) {
         await fs.cp(
           path.join(distDir, dir),
-          path.join(config.root, "netlify", "static", dir),
+          path.join(config.root, "netlify", dir),
           { recursive: true, force: true }
         );
       }
