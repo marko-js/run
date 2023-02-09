@@ -1,12 +1,19 @@
 import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
-import type { Adapter } from "@marko/run/vite";
-
-import { bundle } from "@hattip/bundler-netlify";
-import baseAdapter from "@marko/run/adapter";
+import baseAdapter, { type Adapter } from "@marko/run/adapter";
+import {
+  bundleEdgeFunction,
+  bundleRegularFunction,
+  type NetlifyBundlerOptions,
+} from "@hattip/bundler-netlify";
 import { existsSync } from "fs";
 import { spawn } from "child_process";
+
+export type {
+  NetlifyFunctionsPlatformInfo,
+  NetlifyEdgePlatformInfo,
+} from "./types";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -14,7 +21,7 @@ export interface Options {
   edge?: boolean;
 }
 
-export default function staticAdapter(options: Options = {}): Adapter {
+export default function netlifyAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
   return {
     name: "netlify-adapter",
@@ -55,46 +62,86 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
     async buildEnd(config, _routes, builtEntries, _sourceEntries) {
       const distDir = config.build.outDir;
+      const netlifyDir = await ensureDir(
+        path.join(config.root, "netlify"),
+        true
+      );
       const entry = builtEntries[0];
-      await bundle({
-        edgeEntry: options.edge ? entry : undefined,
-        functionEntry: options.edge ? undefined : entry,
-
-        manipulateEsbuildOptions(options) {
+      const esbuildOptionsFn: NetlifyBundlerOptions["manipulateEsbuildOptions"] =
+        (options) => {
           options.minify = false;
           options.minifyIdentifiers = false;
           options.minifySyntax = false;
           options.minifyWhitespace = false;
-        },
-      });
+        };
 
-      for (const dir of ["assets"]) {
-        await fs.cp(
-          path.join(distDir, dir),
-          path.join(config.root, "netlify", dir),
-          { recursive: true, force: true }
-        );
+      for (const dir of [
+        ".netlify/functions-serve",
+        ".netlify/edge-functions",
+      ]) {
+        const dirpath = path.join(config.root, dir);
+        if (existsSync(dirpath)) {
+          fs.rm(dirpath, { recursive: true, force: true });
+        }
       }
 
       if (options.edge) {
-        const functionsDir = path.join(
-          config.root,
-          "netlify",
-          "edge-functions"
-        );
-        const functionsDir2 = path.join(functionsDir, "edge");
-        if (existsSync(functionsDir2)) {
-          await fs.cp(functionsDir2, functionsDir, { recursive: true, force: true });
-          await fs.rm(functionsDir2, { recursive: true });
-        }
+        const outDir = await ensureDir(path.join(netlifyDir, "edge-functions"));
+        await bundleEdgeFunction(entry, outDir, esbuildOptionsFn);
+        await writeEdgeFunctionManifest(config.root);
+      } else {
+        const outDir = await ensureDir(path.join(netlifyDir, "functions"));
+        await bundleRegularFunction(entry, outDir, esbuildOptionsFn);
+        await writeFunctionRedirects(config.root);
+      }
 
-        const metaDir = path.join(config.root, ".netlify", "edge-functions");
-        if (!existsSync(metaDir)) {
-          await fs.mkdir(metaDir, { recursive: true });
-        }
-        await fs.writeFile(
-          path.join(metaDir, "manifest.json"),
-          `{
+      for (const dir of ["assets"]) {
+        await fs.cp(path.join(distDir, dir), path.join(netlifyDir, dir), {
+          recursive: true,
+          force: true,
+        });
+      }
+    },
+
+    writeTypeInfo() {
+      return options.edge
+        ? `
+import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';
+declare module '@marko/run' {
+  interface RouteContextExtensions {
+    platform: NetlifyEdgePlatformInfo
+  }
+}
+`
+        : `
+import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';
+declare module '@marko/run' {
+  interface RouteContextExtensions {
+    platform: NetlifyFunctionsPlatformInfo
+  }
+}
+`;
+    },
+  };
+}
+
+async function ensureDir(dir: string, clear?: boolean): Promise<string> {
+  let exists = existsSync(dir);
+  if (exists && clear) {
+    await fs.rm(dir, { force: true, recursive: true });
+    exists = false;
+  }
+  if (!exists) {
+    await fs.mkdir(dir, { recursive: true });
+  }
+  return dir;
+}
+
+async function writeEdgeFunctionManifest(rootDir: string) {
+  const dir = await ensureDir(path.join(rootDir, ".netlify", "edge-functions"));
+  await fs.writeFile(
+    path.join(dir, "manifest.json"),
+    `{
   "functions": [
     {
       "function": "index",
@@ -103,12 +150,15 @@ export default function staticAdapter(options: Options = {}): Adapter {
   ],
   "version": 1
 }`,
-          "utf-8"
-        );
-      } else {
-      }
+    "utf-8"
+  );
+}
 
-      //await fs.rm(distDir, { recursive: true, maxRetries: 5 });
-    },
-  };
+async function writeFunctionRedirects(rootDir: string) {
+  const dir = await ensureDir(path.join(rootDir, "netlify"));
+  await fs.writeFile(
+    path.join(dir, "_redirects"),
+    "/*  /.netlify/functions/index  200\n",
+    "utf-8"
+  );
 }

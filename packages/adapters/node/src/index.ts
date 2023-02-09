@@ -1,9 +1,20 @@
-import baseAdapter from '@marko/run/adapter';
-import type { Adapter } from '@marko/run/adapter';
+import baseAdapter, { type Adapter } from "@marko/run/adapter";
 
-export default function(): Adapter {
+export type { NodePlatformInfo } from "@marko/run/adapter";
+
+export default function (): Adapter {
   return {
     ...baseAdapter(),
-    name: 'node-adapter'
+    name: "node-adapter",
+    writeTypeInfo() {
+      return `
+import type { NodePlatformInfo } from '@marko/run-adapter-node';
+declare module '@marko/run' {
+  interface RouteContextExtensions {
+    platform: NodePlatformInfo
   }
-};
+}
+`;
+    },
+  };
+}

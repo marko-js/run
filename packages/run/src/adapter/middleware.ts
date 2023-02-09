@@ -1,12 +1,8 @@
 import * as webStream from "stream/web";
-import installCrypto from "@hattip/polyfills/crypto";
-import type { RequestContext, Router } from "@marko/run";
+import installCrypto from '@hattip/polyfills/crypto';
+import type { RequestContext, Router } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
-/*
-  POLYFILL
-  - cyrpto
-  - web stream
-*/
+
 installCrypto();
 for (const key of Object.keys(webStream)) {
   if (!(key in global)) {
@@ -29,10 +25,6 @@ declare module "http" {
   interface ServerResponse {
     appendHeader(key: string, value: string | string[]): this;
   }
-}
-
-declare module "@marko/run" {
-  interface Platform extends NodePlatformInfo {}
 }
 
 export interface NodePlatformInfo {
@@ -137,28 +129,27 @@ export default function createMiddleware(
     origin ??= getOrigin(req, protocol, host, trustProxy);
 
     const url = new URL(req.url!, origin);
+
     const ip =
       req.ip ||
       (trustProxy && getForwardedHeader(req, "for")) ||
       req.socket.remoteAddress ||
       "";
 
-    const platform: NodePlatformInfo = {
-      ip,
-      request: req,
-      response: res,
-      setCookie(cookie) {
-        res.appendHeader("set-cookie", cookie);
-      },
-    };
-
-    const context: Omit<RequestContext, "request"> = {
+    const requestContext = {
       method: req.method!,
       url,
-      platform,
-    };
+      platform: {
+        ip,
+        request: req,
+        response: res,
+        setCookie(cookie) {
+          res.appendHeader("set-cookie", cookie);
+        },
+      }
+    } as RequestContext<NodePlatformInfo>;
 
-    Object.defineProperty(context, "request", {
+    Object.defineProperty(requestContext, "request", {
       get() {
         const headers = req.headers as any;
         // TODO: Do we need to remove http2 psuedo headers?
@@ -203,7 +194,7 @@ export default function createMiddleware(
       configurable: true,
     });
 
-    const response = await router(context as RequestContext<NodePlatformInfo>);
+    const response = await router(requestContext);
 
     if (!response) {
       if (next) {
@@ -286,51 +277,5 @@ export default function createMiddleware(
         cancel(error);
       }
     }
-
-    // const contentLengthSet = response.headers.get("content-length");
-    // if (response.body) {
-    //   if (contentLengthSet) {
-    //     for await (const chunk of response.body as any) {
-    //       res.write(Buffer.from(chunk));
-    //       res.flush?.();
-    //     }
-    //   } else {
-    //     const reader = (
-    //       response.body as any as AsyncIterable<Buffer | string>
-    //     )[Symbol.asyncIterator]();
-
-    //     // const reader = response.body.getReader();
-    //     // reader.read()
-
-    //     const first = await reader.next();
-    //     if (first.done) {
-    //       res.setHeader("content-length", "0");
-    //     } else {
-    //       const secondPromise = reader.next();
-    //       let second = await Promise.race([
-    //         secondPromise,
-    //         Promise.resolve(null),
-    //       ]);
-
-    //       if (second && second.done) {
-    //         res.setHeader("content-length", first.value.length);
-    //         res.write(first.value);
-    //         res.flush?.();
-    //       } else {
-    //         res.write(first.value);
-    //         res.flush?.();
-    //         second = await secondPromise;
-    //         for (; !second.done; second = await reader.next()) {
-    //           res.write(Buffer.from(second.value));
-    //           res.flush?.();
-    //         }
-    //       }
-    //     }
-    //   }
-    // } else if (!contentLengthSet) {
-    //   res.setHeader("content-length", "0");
-    // }
-
-    // res.end();
   };
 }

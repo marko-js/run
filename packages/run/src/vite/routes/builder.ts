@@ -215,7 +215,7 @@ export async function buildRoutes(
           if (name.charCodeAt(1) === 36) {
             // Is catch-all segment -- name starts with '$$'
             paramStack.push({
-              name: name.slice(2) || "*",
+              name: name.slice(2) || "rest",
               index: -1,
             });
           } else if (name.length > 1) {

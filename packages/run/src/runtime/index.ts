@@ -1,16 +1,22 @@
-import type { HandlerLike, Route } from "./types";
+import type { HandlerLike, ParamsObject, Route } from "./types";
 declare global {
   namespace Marko {
-    function route<
-      Data extends Record<string, unknown> = {},
-      Params extends Record<string, string> = {},
+    interface CurrentRoute extends Route {}
+
+    type Handler<
+      Params extends ParamsObject = {},
       Meta = unknown
-    >(handler: HandlerLike<Route<Params, Meta, string>, Data>): typeof handler;
+    > = HandlerLike<Route<Params, Meta, string>>;
+
+    function route<Params extends ParamsObject = {}, Meta = unknown>(
+      handler: Handler<Params, Meta>
+    ): typeof handler;
   }
 }
 
 export type {
   HandlerLike,
+  InputObject,
   InvokeRoute,
   MatchRoute,
   NextFunction,
@@ -18,7 +24,6 @@ export type {
   Route,
   RouteContext,
   RouteContextExtensions,
-  RouteData,
   RouteHandler,
   RouteWithHandler,
   Router,

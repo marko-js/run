@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.0.1-beta2",
+  "version": "0.0.1-beta3",
   "description": "File-based routing for Marko based on Vite",
   "keywords": [],
   "author": "Ryan Turnquist <rturnq@gmail.com>",
@@ -47,19 +47,19 @@
   "typesVersions": {
     "*": {
       "*": [
-        "./src/runtime/index.ts"
+        "./dist/runtime/index.d.ts"
       ],
       "router": [
-        "./src/runtime/router.ts"
+        "./dist/runtime/router.d.ts"
       ],
       "vite": [
-        "./src/vite/index.ts"
+        "./dist/vite/index.d.ts"
       ],
       "adapter/middleware": [
-        "./src/adapter/middleware.ts"
+        "./dist/adapter/middleware.d.ts"
       ],
       "adapter": [
-        "./src/adapter/index.ts"
+        "./dist/adapter/index.d.ts"
       ]
     }
   },
@@ -74,6 +74,7 @@
   "devDependencies": {
     "@babel/types": "^7.19.0",
     "@marko/compiler": "^5.22.6",
+    "@types/glob": "^8.0.1",
     "@types/human-format": "^1.0.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.11.18",
@@ -93,6 +94,7 @@
     "cli-table3": "^0.6.3",
     "compression": "^1.7.4",
     "dotenv": "^16.0.3",
+    "glob": "^8.1.0",
     "gzip-size": "^7.0.0",
     "human-format": "^1.0.0",
     "kleur": "^4.1.5",

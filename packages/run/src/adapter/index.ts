@@ -1,17 +1,15 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Adapter } from "../vite";
-
 import { createDevServer } from "./dev-server";
 import type { AddressInfo } from "net";
 import { loadEnv, spawnServer } from "../vite/utils/server";
 
 export { createDevServer, createViteDevMiddleware } from "./dev-server";
-
 export type { Adapter };
+export type { NodePlatformInfo } from './middleware';
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-
 
 export default function adapter(): Adapter {
   return {

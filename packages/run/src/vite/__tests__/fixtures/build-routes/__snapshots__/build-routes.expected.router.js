@@ -1,10 +1,12 @@
 // @marko/run/router
+import { RequestNotHandled, RequestNotMatched, createInput } from 'virtual:marko-run/internal';
 import { get$1 } from 'virtual:marko-run/__marko-run__route__index.js';
 import { get$2, post$2, meta$2 } from 'virtual:marko-run/__marko-run__route__new.js';
 import { get$3, post$3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
 import { post$4, meta$4 } from 'virtual:marko-run/__marko-run__route__notes__$__comments.js';
 import { get$5 } from 'virtual:marko-run/__marko-run__route__callback__oauth2.js';
 import { get$6 } from 'virtual:marko-run/__marko-run__route__my.js';
+import { get$7 } from 'virtual:marko-run/__marko-run__route__$$.js';
 import page$404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
 import page$500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
 
@@ -25,7 +27,7 @@ function findRoute(method, pathname) {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = pathname.slice(7, i2 ? -1 : len);
-							if (s2) return { handler: get$3, params: { id: s2}, meta: {} }; // /notes/$id
+							if (s2) return { handler: get$3, params: { id: s2 }, meta: {} }; // /notes/$id
 						}
 					}
 					case 'callback': {
@@ -36,7 +38,7 @@ function findRoute(method, pathname) {
 					}
 				}
 			}
-			return null;
+			return { handler: get$7, params: { match: pathname.slice(1) }, meta: {} }; // /$$match
 		}
 		case 'post': {
 			const len = pathname.length;
@@ -49,13 +51,13 @@ function findRoute(method, pathname) {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = pathname.slice(7, i2 ? -1 : len);
-							if (s2) return { handler: post$3, params: { id: s2}, meta: {} }; // /notes/$id
+							if (s2) return { handler: post$3, params: { id: s2 }, meta: {} }; // /notes/$id
 						} else {
 							const s2 = pathname.slice(7, i2 - 1);
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: post$4, params: { id: s2}, meta: meta$4 }; // /notes/$id/comments
+									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: post$4, params: { id: s2 }, meta: meta$4 }; // /notes/$id/comments
 								}
 							}
 						}
@@ -79,32 +81,38 @@ export function matchRoute(method, pathname) {
 
 export async function invokeRoute(route, context) {
 	try {
+    const buildInput = createInput(context);
 		if (route) {
-			context.data = {};
 			context.params = route.params;
 			context.meta = route.meta;
-			const response = await route.handler(context);
-			if (response) return response;
+      try {
+				const response = await route.handler(context, buildInput);
+				if (response) return response;
+			} catch (error) {
+				if (error === RequestNotHandled) {
+					return;
+				} else if (error !== RequestNotMatched) {
+					throw error;
+				}
+			}
     } else {
-      context.data = {};
       context.params = {};
       context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page$404.stream(context), {
+      return new Response(page$404.stream(buildInput()), {
         status: 404,
         headers: { "content-type": "text/html;charset=UTF-8" },
       });
-    }	} catch (err) {
-		if (err == null) return;
+    }
+	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			context.data.error = err;
-			return new Response(page$500.stream(context), {
+			return new Response(page$500.stream(buildInput({ error })), {
 				status: 500,
 				headers: { "content-type": "text/html;charset=UTF-8" },
 			});
 		}
-		throw err;
+		throw error;
 	}
 }
 
@@ -119,9 +127,9 @@ export async function router(context) {
 
     const route = matchRoute(method, pathname);
     return await invokeRoute(route, context);
-  } catch (err) {
+  } catch (error) {
     const message = import.meta.env.DEV
-      ? `Internal Server Error (${err.message})`
+      ? `Internal Server Error (${error.message})`
       : "Internal Server Error";
 
     return new Response(
@@ -129,7 +137,7 @@ export async function router(context) {
         error: {
           message,
           stack: import.meta.env.DEV
-            ? `This will only be seen in development mode\n\n${err.stack}`
+            ? `This will only be seen in development mode\n\n${error.stack}`
             : ""
         }
       }),

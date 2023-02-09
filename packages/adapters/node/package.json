@@ -25,10 +25,10 @@
   "typesVersions": {
     "*": {
       "*": [
-        "./src/index.ts"
+        "./dist/index.d.ts"
       ],
       "middleware": [
-        "./src/middleware.ts"
+        "./dist/middleware.d.ts"
       ]
     }
   },
