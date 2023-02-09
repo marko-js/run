@@ -1,5 +1,6 @@
 import type {
   InputObject,
+  Loader,
   NextFunction,
   Route,
   RouteContext,
@@ -9,44 +10,49 @@ import type {
 globalThis.Marko ??= {} as any;
 globalThis.Marko.route = (handler) => handler;
 
-export const RequestNotHandled = Symbol();
-export const RequestNotMatched = Symbol();
+const loadersMap = new WeakMap<RouteContext, Loader[]>();
 
 export function createInput(context: RouteContext) {
-  let existing: InputObject | undefined;
-  return (data: InputObject) => {
-    existing ??= {
-      $global: {
-        context,
-      },
-    };
-    return data ? Object.assign(existing, data) : existing;
+  const loaders: Loader[] = [];
+  loadersMap.set(context, loaders);
+  return (loader?: Loader | InputObject): InputObject => {
+    const input = loaders.reduce<InputObject>(
+      (acc, fn) => Object.assign(acc, fn()),
+      loader ? (typeof loader === "function" ? loader() : loader) : {}
+    );
+    input.$global ??= {};
+    input.$global.context = context;
+    return input;
   };
 }
 
 export async function call(
-  handler: RouteHandler<Route>,
-  next: NextFunction,
-  context: RouteContext
+  handler: RouteHandler<Route, any>,
+  next: NextFunction<any>,
+  context: RouteContext,
+  loader?: Loader
 ): Promise<Response> {
-  let response: Response | null | void;
+  let response: Loader | Response | void;
+
+  loader && loadersMap.get(context)!.push(loader);
 
   if (process.env.NODE_ENV !== "production") {
     let nextCallCount = 0;
-    let didThrow = false;
+    let hasResponse = false;
     try {
-      response = await handler(context, () => {
+      response = await handler(context, (data) => {
         nextCallCount++;
-        return next();
+        return next(data);
       });
-    } catch (error) {
-      didThrow = true;
-      if (error instanceof Response) {
-        return error;
+      hasResponse = !!response;
+    } catch (err) {
+      hasResponse = true;
+      if (err instanceof Response) {
+        return err;
       }
-      throw error;
+      throw err;
     } finally {
-      if (!response && !didThrow && nextCallCount > 0) {
+      if (!hasResponse && nextCallCount > 0) {
         console.warn(
           `Handler '${handler.name}' called its next function but no response was returned. ` +
             "This will cause the next function to be called again which is wasteful. " +
@@ -63,21 +69,42 @@ export async function call(
   } else {
     try {
       response = await handler(context, next);
-    } catch (error) {
-      if (error == null) {
-        throw RequestNotHandled;
-      } else if (error instanceof Response) {
-        return error;
+    } catch (err) {
+      if (err instanceof Response) {
+        return err;
       }
-      throw error;
+      throw err;
     }
   }
 
-  if (response === null) {
-    throw RequestNotMatched;
+  if (typeof response === "function") {
+    return (next as NextFunction<any>)(response);
   }
-  return response || next();
+  return response || (next as NextFunction)();
 }
+
+// export async function call(
+//   handler: RouteHandler,
+//   next: NextFunction,
+//   context: RouteContext,
+//   locals: Record<string, any>,
+//   data?: Record<string, any>
+// ): Promise<Response> {
+//   let response: Response | void;
+//   try {
+//     response = await handler(
+//       context,
+//       data ? Object.assign(locals, data) : locals,
+//       next
+//     );
+//   } catch (err) {
+//     if (err instanceof Response) {
+//       return err;
+//     }
+//     throw err;
+//   }
+//   return response || next();
+// }
 
 export function compose(handlers: RouteHandler[]): RouteHandler {
   const len = handlers.length;
@@ -86,10 +113,12 @@ export function compose(handlers: RouteHandler[]): RouteHandler {
   } else if (len === 1) {
     return handlers[0];
   }
-  return (context, next) => {
+  return (context, next: NextFunction<any>) => {
     let i = 0;
-    return (function nextHandler() {
-      return i < len ? call(handlers[i++], nextHandler, context) : next();
+    return (function nextHandler(loader?: Loader) {
+      return i < len
+        ? call(handlers[i++], nextHandler, context, loader)
+        : next(loader);
     })();
   };
 }
@@ -124,8 +153,4 @@ export function noContent() {
 
 export function notHandled() {
   throw null;
-}
-
-export function notMatched() {
-  return null;
 }

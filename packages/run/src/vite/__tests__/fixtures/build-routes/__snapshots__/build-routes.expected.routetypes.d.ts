@@ -3,10 +3,7 @@
   Do NOT manually edit this file or your changes will be lost.
 */
   
-import { HandlerLike, Route, RouteData } from "@marko/run";
-type Combine<T> = T extends object ? { [P in keyof T]: T[P] } : T;
-type ExtractHandlerData<T> = T extends HandlerLike<any, RouteData<infer P, infer E>> ? Combine<P & E> : undefined;
-interface Empty {}
+import type { HandlerLike, Route } from "@marko/run";
     
 interface Route1 extends Route<{}, undefined, `/`> {}
 interface Route2 extends Route<{}, typeof import('./_protected/_home/new/+meta.json'), `/new`> {}
@@ -14,88 +11,94 @@ interface Route3 extends Route<{ id: string; }, undefined, `/notes/:id`> {}
 interface Route4 extends Route<{ id: string; }, typeof import('./_protected/_home/notes/$id/comments/+meta')['default'], `/notes/:id/comments`> {}
 interface Route5 extends Route<{}, undefined, `/callback/oauth2`> {}
 interface Route6 extends Route<{}, undefined, `/my`> {}
-type Data4 = ExtractHandlerData<typeof import('./+middleware')['default']>;
-type Data5 = ExtractHandlerData<typeof import('./_protected/+middleware')['default']>;
-type Data7 = ExtractHandlerData<typeof import('./_protected/_home/+middleware')['default']>;
-type Data13 = ExtractHandlerData<typeof import('./_protected/_home/notes/$id/+middleware')['default']>;
+interface Route7 extends Route<{ match: string; }, undefined, `/:match*`> {}
 
 declare module './_protected/_home/new/+handler.post' {
   namespace Marko {
-    interface CurrentRoute extends Route2 {}
-    type CurrentData = Combine<Data4 & Data5 & Data7>;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route2;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './_protected/_home/notes/$id/+handler.post' {
   namespace Marko {
-    interface CurrentRoute extends Route3 {}
-    type CurrentData = Combine<Data4 & Data5 & Data7 & Data13>;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route3;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './_protected/_home/notes/$id/comments/+handler.post' {
   namespace Marko {
-    interface CurrentRoute extends Route4 {}
-    type CurrentData = Combine<Data4 & Data5 & Data7 & Data13>;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route4;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './callback/oauth2/+handler.get' {
   namespace Marko {
-    interface CurrentRoute extends Route5 {}
-    type CurrentData = Data4;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route5;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './my/+handler.get' {
   namespace Marko {
-    interface CurrentRoute extends Route6 {}
-    type CurrentData = Data4;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route6;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
+  }
+}
+
+declare module './$$match/+handler.get' {
+  namespace Marko {
+    type CurrentRoute = Route7;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './+middleware' {
   namespace Marko {
-    type CurrentRoute = Route1 | Route2 | Route3 | Route4 | Route5 | Route6;
-    type CurrentData = Empty;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type CurrentRoute = Route1 | Route2 | Route3 | Route4 | Route5 | Route6 | Route7;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './_protected/+middleware' {
   namespace Marko {
     type CurrentRoute = Route1 | Route2 | Route3 | Route4;
-    type CurrentData = Data4;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './_protected/_home/+middleware' {
   namespace Marko {
     type CurrentRoute = Route1 | Route2 | Route3 | Route4;
-    type CurrentData = Combine<Data4 & Data5>;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }
 
 declare module './_protected/_home/notes/$id/+middleware' {
   namespace Marko {
     type CurrentRoute = Route3 | Route4;
-    type CurrentData = Combine<Data4 & Data5 & Data7>;
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
   }
 }

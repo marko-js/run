@@ -1,5 +1,5 @@
 import { createServer, ViteDevServer } from "vite";
-import createMiddleware, { type NodeMiddleware } from "@marko/run/adapter/middleware";
+import createMiddleware, { type NodeMiddleware } from "./middleware";
 
 export function createViteDevMiddleware<T>(
   devServer: ViteDevServer,

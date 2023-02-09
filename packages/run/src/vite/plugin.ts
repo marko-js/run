@@ -1,6 +1,7 @@
 import path from "path";
 import crypto from "crypto";
-import fs from 'fs';
+import fs from "fs";
+import glob from "glob";
 
 import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
@@ -16,7 +17,13 @@ import {
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type { Options, BuiltRoutes, HttpVerb } from "./types";
-import { renderMiddleware, renderRouteEntry, renderRouter, renderRouteTemplate, renderRouteTypeInfo } from "./codegen";
+import {
+  renderMiddleware,
+  renderRouteEntry,
+  renderRouter,
+  renderRouteTemplate,
+  renderRouteTypeInfo,
+} from "./codegen";
 import {
   virtualFilePrefix,
   httpVerbs,
@@ -28,7 +35,11 @@ import {
 import { getExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
 
-import { getMarkoRunOptions, setMarkoRunOptions } from "./utils/config";
+import {
+  getExternalAdapterOptions,
+  getExternalPluginOptions,
+  setExternalPluginOptions,
+} from "./utils/config";
 import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -58,6 +69,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   let store: BuildStore;
   let root: string;
   let resolvedRoutesDir: string;
+  let typesDir: string;
   let isBuild = false;
   let isSSRBuild = false;
   let tsConfigExists: boolean | undefined;
@@ -69,6 +81,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   let routeDataFilename = "routes.json";
   let extractVerbs: (filePath: string) => Promise<HttpVerb[]>;
   let resolvedConfig: ResolvedConfig;
+  let typesFile: string | undefined;
 
   let isStale = true;
   let isRendered = false;
@@ -78,6 +91,27 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     routesBuild: 0,
     routesRender: 0,
   };
+
+  async function writeTypesFile() {
+    if (
+      (tsConfigExists ??= await globFileExists(
+        root,
+        "{.tsconfig*,tsconfig*.json}"
+      ))
+    ) {
+      const filepath = path.join(typesDir, "routes.d.ts");
+      const adapterTypeInfo =
+        adapter?.writeTypeInfo && (await adapter?.writeTypeInfo());
+      const data =
+        renderRouteTypeInfo(routes, path.relative(typesDir, routesDir)) +
+        adapterTypeInfo;
+
+      if (data !== typesFile || !fs.existsSync(filepath)) {
+        await ensureDir(typesDir);
+        await fs.promises.writeFile(filepath, (typesFile = data));
+      }
+    }
+  }
 
   async function setVirtualFiles(render: boolean = false) {
     for (const route of routes.list) {
@@ -108,9 +142,13 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     }
     virtualFiles.set(
       "@marko/run/router",
-      render ? renderRouter(routes, opts.codegen) : ""
+      render
+        ? renderRouter(routes, {
+            trailingSlashes: opts.trailingSlashes || "RedirectWithout",
+          })
+        : ""
     );
-    
+
     virtualFiles.set(
       path.join(root, `${markoRunFilePrefix}middleware.js`),
       render ? renderMiddleware(routes.middleware) : ""
@@ -122,12 +160,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     routes = await buildRoutes(createFSWalker(resolvedRoutesDir), routesDir);
     times.routesBuild = performance.now() - startTime;
 
-    tsConfigExists ??= fs.existsSync(path.join(root, 'tsconfig.json'));
-    if (tsConfigExists) {
-      fs.promises.writeFile(path.join(routesDir, 'routetypes.d.ts'), renderRouteTypeInfo(routes));
-    }
-
-    await setVirtualFiles(false);
+    await Promise.all([writeTypesFile(), setVirtualFiles(false)]);
 
     isStale = false;
     isRendered = false;
@@ -145,13 +178,19 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       name: "marko-run-vite:pre",
       enforce: "pre",
       async config(config, env) {
-        const externalPluginOptions = getMarkoRunOptions(config);
+        const externalPluginOptions = getExternalPluginOptions(config);
         if (externalPluginOptions) {
           opts = mergeConfig(opts, externalPluginOptions);
         }
-        const adapterOptions = await adapter?.pluginOptions?.(opts);
-        if (adapterOptions) {
-          opts = mergeConfig(opts, adapterOptions);
+        if (adapter) {
+          const externalAdapterConfig = getExternalAdapterOptions(config);
+          if (externalAdapterConfig && adapter.configure) {
+            adapter.configure(externalAdapterConfig);
+          }
+          const adapterOptions = await adapter.pluginOptions?.(opts);
+          if (adapterOptions) {
+            opts = mergeConfig(opts, adapterOptions);
+          }
         }
 
         root = normalizePath(config.root || process.cwd());
@@ -166,6 +205,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         isBuild = env.command === "build";
         isSSRBuild = isBuild && Boolean(config.build?.ssr);
         resolvedRoutesDir = path.resolve(root, routesDir);
+        typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
 
         let pluginConfig: UserConfig = {
@@ -185,7 +225,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           pluginConfig = mergeConfig(pluginConfig, adapterConfig);
         }
 
-        return setMarkoRunOptions(pluginConfig, opts);
+        return setExternalPluginOptions(pluginConfig, opts);
       },
       configResolved(config) {
         resolvedConfig = config;
@@ -341,11 +381,6 @@ export default function markoServe(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else if (isBuild) {
-          // console.log(
-          //   `\n\nRoutes built in ${(
-          //     times.routesBuild + times.routesRender
-          //   ).toFixed(2)}ms\n`
-          // );
           logRoutesTable(routes, bundle);
         }
       },
@@ -411,4 +446,21 @@ function single<P extends any[], R>(
     promise = undefined;
     return result;
   };
+}
+
+async function globFileExists(root: string, pattern: string) {
+  return new Promise<boolean>((resolve, reject) => {
+    glob(pattern, { root }, (err, matches) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(matches.length > 0);
+    });
+  });
+}
+
+async function ensureDir(dir: string) {
+  if (!fs.existsSync(dir)) {
+    await fs.promises.mkdir(dir, { recursive: true });
+  }
 }

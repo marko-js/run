@@ -1,52 +1,45 @@
 type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
+type Combine<T> = T extends object ? { [P in keyof T]: T[P] } : T;
 
 export interface RouteContextExtensions {}
 
-export interface Platform {}
+export type ParamsObject = Record<string, string>;
+export type InputObject = Record<PropertyKey, any>;
 
-export interface RequestContext<T = Platform> {
+export interface RequestContext<T = unknown> {
   url: URL;
   method: string;
   request: Request;
   platform: T;
 }
 
-interface RouteContextBase
-  extends Readonly<RequestContext>,
-    RouteContextExtensions {
-  readonly url: URL;
-  readonly error?: unknown;
-}
-export type RouteContext<
-  TRoute extends Route = Route,
-  Data extends RouteData = RouteData
-> = TRoute extends any
-  ? RouteContextBase & {
-      readonly route: TRoute["path"];
-      readonly params: TRoute["params"];
-      readonly meta: TRoute["meta"];
-      readonly data: Data;
-    }
+export type RouteContext<TRoute extends Route = Route> = TRoute extends any
+  ? Combine<
+      RouteContextExtensions &
+        Readonly<
+          RequestContext & {
+            route: TRoute["path"];
+            params: TRoute["params"];
+            meta: TRoute["meta"];
+          }
+        >
+    >
   : never;
 
 export type NextFunction = () => Awaitable<Response>;
 
-export type HandlerLike<
-  TRoute extends Route = Route,
-  Data extends RouteData = RouteData
-> = Awaitable<OneOrMany<RouteHandler<TRoute, Data>>>;
+export type HandlerLike<TRoute extends Route = Route> = Awaitable<
+  OneOrMany<RouteHandler<TRoute>>
+>;
 
-export type RouteHandler<
-  TRoute extends Route = Route,
-  Data extends RouteData = RouteData
-> = (
-  context: RouteContext<TRoute, Data>,
+export type RouteHandler<TRoute extends Route = Route> = (
+  context: RouteContext<TRoute>,
   next: NextFunction
-) => Awaitable<Response | void>;
+) => Awaitable<Response | null | void>;
 
 export interface Route<
-  Params extends Record<string, string> = {},
+  Params extends ParamsObject = {},
   Meta = unknown,
   Path extends string = string
 > {
@@ -56,7 +49,7 @@ export interface Route<
 }
 
 export interface RouteWithHandler<
-  Params extends Record<string, string> = {},
+  Params extends ParamsObject = {},
   Meta = unknown,
   Path extends string = string
 > extends Route<Params, Meta, Path> {
@@ -68,16 +61,11 @@ export type MatchRoute = (
   pathname: string
 ) => RouteWithHandler | null;
 
-export type Router<T = Platform> = (
+export type Router<T = unknown> = (
   context: RequestContext<T>
 ) => Promise<Response | void>;
 
-export type InvokeRoute<T = Platform> = (
+export type InvokeRoute<T = unknown> = (
   route: Route | null,
   context: RequestContext<T>
 ) => Promise<Response | void>;
-
-export type RouteData<
-  Providing extends Record<string, any> = {},
-  Existing extends Record<string, any> = {}
-> = Existing & Partial<Providing>;

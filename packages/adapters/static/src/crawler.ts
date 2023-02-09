@@ -114,7 +114,9 @@ export default function createCrawler(
           },
         });
 
-        await res.body?.pipeTo(writable);
+        if (res.body) {
+          await res.body.pipeTo(writable);
+        }
       }
     } finally {
       fsWriter?.end();

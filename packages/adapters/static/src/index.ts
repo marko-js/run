@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Adapter, Route } from "@marko/run/vite";
+import type { Adapter, Route, AdapterConfig } from "@marko/run/vite";
 
 import { Pool } from "undici";
 import createCrawler from "./crawler";
@@ -21,13 +21,17 @@ function noop() {}
 
 export default function staticAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
+  let adapterConfig: AdapterConfig = {};
   return {
     name: "static-adapter",
+    
+    configure(config) {
+      adapterConfig = config;
+    },
+
     async pluginOptions() {
       return {
-        codegen: {
-          trailingSlashes: "RedirectWith",
-        },
+        trailingSlashes: "RedirectWith",
       };
     },
 
@@ -38,10 +42,10 @@ export default function staticAdapter(options: Options = {}): Adapter {
     startDev,
 
     async startPreview(dir, _entry, port, envFile) {
-      envFile && await loadEnv(envFile)
-      
+      envFile && (await loadEnv(envFile));
+
       const staticServe = createStaticServe(dir, {
-        index: "index.html"
+        index: "index.html",
       });
       const server = await createServer((req, res) =>
         staticServe(req, res, noop)
@@ -59,13 +63,15 @@ export default function staticAdapter(options: Options = {}): Adapter {
     },
 
     async buildEnd(_config, routes, builtEntries, sourceEntries) {
+      const { envFile } = adapterConfig;
+
       const pathsToVisit: string[] = [];
       for (const route of routes) {
         if (!route.params?.length) {
           pathsToVisit.push(route.path);
         }
       }
-      if (typeof options.urls === 'function') {
+      if (typeof options.urls === "function") {
         pathsToVisit.push(...(await options.urls(routes)));
       } else if (options.urls) {
         pathsToVisit.push(...options.urls);
@@ -74,18 +80,31 @@ export default function staticAdapter(options: Options = {}): Adapter {
       const defaultEntry = await this.getEntryFile!();
 
       if (sourceEntries[0] === defaultEntry) {
+        envFile && await loadEnv(envFile);
         const { router } = await import(builtEntries[0]);
-        const crawler = createCrawler(router, {});
+        const crawler = createCrawler(
+          async (request) => {
+            const response = await router({
+              request,
+              method: request.method,
+              url: new URL(request.url, 'http://localhost'),
+              platform: {},
+            });
+
+            return response;
+          },
+          {}
+        );
         await crawler.crawl(pathsToVisit);
       } else {
         const port = await getAvailablePort();
         const origin = `http://localhost:${port}`;
         const client = new Pool(origin);
 
-        const server = await spawnServer(`node ${builtEntries[0]}`, port);
+        const server = await spawnServer(`node ${builtEntries[0]}`, port, envFile);
         const crawler = createCrawler(
           async (request) => {
-            const url = new URL(request.url);
+            const url = new URL(request.url, origin);
             const headers: Record<string, string> = {};
             request.headers.forEach((value, key) => {
               headers[key] = value;
@@ -117,6 +136,16 @@ export default function staticAdapter(options: Options = {}): Adapter {
       for (const file of builtEntries) {
         await fs.rm(file, { maxRetries: 5 }).catch(() => {});
       }
+    },
+
+    writeTypeInfo() {
+      return `
+declare module '@marko/run' {
+  interface RouteContextExtensions {
+    platform: {}
+  }
+}
+`;
     },
   };
 }
