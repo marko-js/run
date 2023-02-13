@@ -21,7 +21,9 @@
     +handler.get.ts
 /my
   +handler.get.ts
-  +page.marko        
+  +page.marko
+/$$match
+  +handler.get.ts
 +404.marko
 +500.marko
 +layout.marko

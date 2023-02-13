@@ -37,7 +37,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     colAligns.push("center");
   }
 
-  headings.push("Size/GZipped");
+  headings.push("Size/GZip");
   colAligns.push("right");
 
   const table = new Table({

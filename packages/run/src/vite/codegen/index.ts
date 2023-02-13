@@ -15,14 +15,10 @@ import type {
   RouteTrie,
   ParamInfo,
   RoutableFile,
-  CodegenOptions,
+  RouterOptions,
 } from "../types";
 import type { Writer } from "./writer";
 import { getVerbs, hasVerb } from "../utils/route";
-
-export const DefaultCodegenOptions: CodegenOptions = {
-  trailingSlashes: "RedirectWithout",
-};
 
 export function renderRouteTemplate(route: Route): string {
   if (!route.page) {
@@ -141,9 +137,10 @@ export function renderRouteEntry(route: Route): string {
 }
 
 function writePageResponse(writer: Writer, wrapFn?: string): void {
-  const pre = wrapFn ? `const ${wrapFn} = () =>` : "return";
   writer.writeBlock(
-    `${pre} new Response(page.stream(context), {`,
+    `${
+      wrapFn ? `const ${wrapFn} = () =>` : `return`
+    } new Response(page.stream(buildInput()), {`,
     ["status: 200,", 'headers: { "content-type": "text/html;charset=UTF-8" }'],
     "});"
   );
@@ -155,8 +152,13 @@ function writeMiddleware(
   next: string,
   wrapFn?: string
 ): void {
-  const pre = wrapFn ? `const ${wrapFn} = () =>` : "return";
-  writer.writeLines(`${pre} call(${middleware}, ${next}, context);`);
+  if (wrapFn) {
+    writer.writeLines(
+      `const ${wrapFn} = () => call(${middleware}, ${next}, context);`
+    );
+  } else {
+    writer.writeLines(`return call(${middleware}, ${next}, context);`);
+  }
 }
 
 function writeRouteEntryHandler(
@@ -173,7 +175,9 @@ function writeRouteEntryHandler(
 
   writer
     .writeLines("")
-    .writeBlockStart(`export async function ${verb}$${index}(context) {`);
+    .writeBlockStart(
+      `export async function ${verb}$${index}(context, buildInput) {`
+    );
 
   const continuations = writer.branch("cont");
 
@@ -232,13 +236,19 @@ function writeRouteEntryHandler(
 
 export function renderRouter(
   routes: BuiltRoutes,
-  options: CodegenOptions = DefaultCodegenOptions
+  options: RouterOptions = {
+    trailingSlashes: "RedirectWithout",
+  }
 ): string {
   const writer = createStringWriter();
 
   writer.writeLines(`// @marko/run/router`);
 
   const imports = writer.branch("imports");
+
+  imports.writeLines(
+    `import { RequestNotHandled, RequestNotMatched, createInput } from 'virtual:marko-run/internal';`
+  );
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
@@ -288,45 +298,50 @@ export function matchRoute(method, pathname) {
 
 export async function invokeRoute(route, context) {
 	try {
+    const buildInput = createInput(context);
 		if (route) {
-			context.data = {};
 			context.params = route.params;
 			context.meta = route.meta;
-			const response = await route.handler(context);
-			if (response) return response;
+      try {
+				const response = await route.handler(context, buildInput);
+				if (response) return response;
+			} catch (error) {
+				if (error === RequestNotHandled) {
+					return;
+				} else if (error !== RequestNotMatched) {
+					throw error;
+				}
+			}
 `).indent = 2;
 
   if (routes.special[RoutableFileTypes.NotFound]) {
     writer.write(
       `    } else {
-      context.data = {};
       context.params = {};
       context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page$404.stream(context), {
+      return new Response(page$404.stream(buildInput()), {
         status: 404,
         headers: { "content-type": "text/html;charset=UTF-8" },
       });
-    }`
+    }
+`
     );
   } else {
     writer.writeBlockEnd("}");
   }
 
   writer.indent--;
-  writer
-    .writeBlockStart(`} catch (err) {`)
-    .writeLines(`if (err == null) return;`);
+  writer.writeBlockStart(`} catch (error) {`);
 
   if (routes.special[RoutableFileTypes.Error]) {
     writer
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`
       )
-      .writeLines(`context.data.error = err;`)
       .writeBlock(
-        `return new Response(page$500.stream(context), {`,
+        `return new Response(page$500.stream(buildInput({ error })), {`,
         [
           `status: 500,`,
           `headers: { "content-type": "text/html;charset=UTF-8" },`,
@@ -336,7 +351,8 @@ export async function invokeRoute(route, context) {
       .writeBlockEnd("}");
   }
 
-  writer.writeLines(`throw err;`).writeBlockEnd("}").writeBlockEnd("}").write(`
+  writer.writeLines(`throw error;`).writeBlockEnd("}").writeBlockEnd("}")
+    .write(`
 export async function router(context) {
   try {
     const { url, method } = context;
@@ -375,9 +391,9 @@ export async function router(context) {
 
     const route = matchRoute(method, pathname);
     return await invokeRoute(route, context);
-  } catch (err) {
+  } catch (error) {
     const message = import.meta.env.DEV
-      ? \`Internal Server Error (\${err.message})\`
+      ? \`Internal Server Error (\${error.message})\`
       : "Internal Server Error";
 
     return new Response(
@@ -385,7 +401,7 @@ export async function router(context) {
         error: {
           message,
           stack: import.meta.env.DEV
-            ? \`This will only be seen in development mode\\n\\n\${err.stack}\`
+            ? \`This will only be seen in development mode\\n\\n\${error.stack}\`
             : ""
         }
       }),
@@ -962,9 +978,9 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
     return "{}";
   }
 
-  let result = "{";
+  let result = "";
   let catchAll = "";
-  let sep = "";
+  let sep = "{";
 
   for (const { name, index } of params) {
     if (index >= 0) {
@@ -972,7 +988,6 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
       sep ||= ",";
     } else if (pathIndex) {
       catchAll = name;
-      sep ||= ",";
     }
   }
 
@@ -982,7 +997,7 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
     )}: pathname.slice(${pathIndex})`;
   }
 
-  return sep ? result + "}" : "{}";
+  return result ? result + " }" : "{}";
 }
 
 function renderParamsInfoType(params: ParamInfo[]): string {
@@ -1039,7 +1054,10 @@ function stripTsExtension(path: string) {
   return path;
 }
 
-export function renderRouteTypeInfo(routes: BuiltRoutes) {
+export function renderRouteTypeInfo(
+  routes: BuiltRoutes,
+  pathPrefix: string = "."
+) {
   const writer = createStringWriter();
   writer.writeLines(
     `/*
@@ -1047,14 +1065,12 @@ export function renderRouteTypeInfo(routes: BuiltRoutes) {
   Do NOT manually edit this file or your changes will be lost.
 */
   `,
-    `import { HandlerLike, Route, RouteData } from "@marko/run";`,
-    `type Combine<T> = T extends object ? { [P in keyof T]: T[P] } : T;`,
-    `type ExtractHandlerData<T> = T extends HandlerLike<any, RouteData<infer P, infer E>> ? Combine<P & E> : undefined;`,
-    `interface Empty {}
-    `);
+    `import type { HandlerLike, Route } from "@marko/run";
+    `
+  );
 
   const routesWriter = writer.branch("types");
-  const dataWriter = writer.branch("data");
+  //const dataWriter = writer.branch("data");
 
   const middlewareRouteTypes = new Map<
     RoutableFile,
@@ -1064,34 +1080,31 @@ export function renderRouteTypeInfo(routes: BuiltRoutes) {
   for (const route of routes.list) {
     const { meta, handler, params, middleware } = route;
     const routeType = `Route${route.index}`;
-    const pathType = `\`${route.path.replace(/\/\$([^\/]+)/g, "/:$1")}\``;
+    const pathType = `\`${route.path.replace(
+      /\/\$(\$?)([^\/]*)/,
+      (_, catchAll, name) => (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
+    )}\``;
     const paramsType = params ? renderParamsInfoType(params) : "{}";
     let metaType = "undefined";
 
     if (meta) {
-      metaType = `typeof import('./${stripTsExtension(meta.relativePath)}')`;
+      metaType = `typeof import('${pathPrefix}/${stripTsExtension(
+        meta.relativePath
+      )}')`;
       if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
         metaType += `['default']`;
       }
     }
 
     if (handler) {
-      let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
-      if (!middleware.length) {
-        dataType = "Empty";
-      } else if (middleware.length > 1) {
-        dataType = `Combine<${dataType}>`;
-      }
+      // let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
+      // if (!middleware.length) {
+      //   dataType = "Empty";
+      // } else if (middleware.length > 1) {
+      //   dataType = `Combine<${dataType}>`;
+      // }
 
-      writer.writeLines(`
-declare module './${stripTsExtension(handler.relativePath)}' {
-  namespace Marko {
-    interface CurrentRoute extends ${routeType} {}
-    type CurrentData = ${dataType};
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
-  }
-}`);
+      writeRouteTypeModule(writer, pathPrefix, handler.relativePath, routeType);
     }
 
     if (middleware) {
@@ -1115,32 +1128,47 @@ declare module './${stripTsExtension(handler.relativePath)}' {
     );
   }
 
-  for (const [file, { routeTypes, middleware }] of middlewareRouteTypes) {
-    let dataImport = `typeof import('./${stripTsExtension(file.relativePath)}')`;
-    if (/\.(ts|js|mjs)$/.test(file.relativePath)) {
-      dataImport += `['default']`;
-    }
-    dataWriter.writeLines(
-      `type Data${file.id} = ExtractHandlerData<${dataImport}>;`
-    );
+  for (const [file, { routeTypes }] of middlewareRouteTypes) {
+    // let dataImport = `typeof import('./${stripTsExtension(
+    //   file.relativePath
+    // )}')`;
+    // if (/\.(ts|js|mjs)$/.test(file.relativePath)) {
+    //   dataImport += `['default']`;
+    // }
+    // dataWriter.writeLines(
+    //   `type Data${file.id} = ExtractHandlerData<${dataImport}>;`
+    // );
 
-    let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
-    if (!middleware.length) {
-      dataType = "Empty";
-    } else if (middleware.length > 1) {
-      dataType = `Combine<${dataType}>`;
-    }
-    
-    writer.writeLines(`
-declare module './${stripTsExtension(file.relativePath)}' {
-  namespace Marko {
-    type CurrentRoute = ${routeTypes.join(" | ")};
-    type CurrentData = ${dataType};
-    type Handler<Data extends Record<string, any> = {}, _Params = any, _Meta = any> = HandlerLike<CurrentRoute, RouteData<Data, CurrentData>>;
-    function route<Data extends Record<string, any> = {}, _Params = any, _Meta = any>(handler: Handler<Data>): typeof handler;
-  }
-}`);
+    // let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
+    // if (!middleware.length) {
+    //   dataType = "Empty";
+    // } else if (middleware.length > 1) {
+    //   dataType = `Combine<${dataType}>`;
+    // }
+
+    const routeType =
+      routeTypes.length > 1
+        ? routeTypes.join(" | ") /*`CombineRoutes<[${routeTypes.join(", ")}]>`*/
+        : routeTypes[0];
+    writeRouteTypeModule(writer, pathPrefix, file.relativePath, routeType);
   }
 
   return writer.end();
+}
+
+function writeRouteTypeModule(
+  writer: Writer,
+  pathPrefix: string,
+  path: string,
+  routeType: string
+) {
+  writer.writeLines(`
+declare module '${pathPrefix}/${stripTsExtension(path)}' {
+  namespace Marko {
+    type CurrentRoute = ${routeType};
+    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    function route(handler: Handler): typeof handler;
+    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
+  }
+}`);
 }

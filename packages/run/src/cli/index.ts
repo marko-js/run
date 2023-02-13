@@ -6,8 +6,9 @@ import { fileURLToPath } from "url";
 import { build as viteBuild, resolveConfig, type ResolvedConfig } from "vite";
 import sade from "sade";
 import {
-  getMarkoRunOptions,
-  setMarkoRunOptions,
+  getExternalPluginOptions,
+  setExternalAdapterOptions,
+  setExternalPluginOptions,
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
@@ -89,7 +90,9 @@ async function preview(
   }
 
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
-  const entryFile = entry ? path.join(dir, entry) : await findFileWithExt(dir, "index", [".mjs", ".js"]);
+  const entryFile = entry
+    ? path.join(dir, entry)
+    : await findFileWithExt(dir, "index", [".mjs", ".js"]);
   if (envFile) {
     envFile = path.resolve(cwd, envFile);
   }
@@ -97,7 +100,12 @@ async function preview(
   await adapter.startPreview(dir, entryFile, port, envFile);
 }
 
-async function dev(cmd: string | undefined, configFile: string, port?: number, envFile?: string) {
+async function dev(
+  cmd: string | undefined,
+  configFile: string,
+  port?: number,
+  envFile?: string
+) {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile },
     "build"
@@ -133,23 +141,23 @@ async function build(
   skipClient: boolean = false,
   envFile?: string
 ) {
+  const resolvedConfig = await resolveConfig(
+    { root: cwd, configFile },
+    "build"
+  );
+  const adapter = await resolveAdapter(resolvedConfig);
+
+  if (!adapter) {
+    throw new Error("No adapter specified for build command without entry"); // How should we suggest the user sets an entry for this error and others like it?
+  }
+
   if (!entry) {
-    const resolvedConfig = await resolveConfig(
-      { root: cwd, configFile },
-      "build"
-    );
-    const adapter = await resolveAdapter(resolvedConfig);
-
-    if (!adapter) {
-      throw new Error("No adapter specified for building without an entry"); // How should we suggest the user sets an entry for this error and others like it?
-    }
-
     entry = await adapter.getEntryFile?.();
 
     if (!entry) {
       throw new Error(
         `Adapter '${adapter.name}' does not support building without an entry`
-      );
+      ); 
     }
   }
 
@@ -157,30 +165,33 @@ async function build(
     envFile = path.resolve(cwd, envFile);
   }
 
-  const buildConfig = setMarkoRunOptions(
-    {
-      root: cwd,
-      configFile,
-      build: {
-        ssr: false,
-        outDir
-      },
+  let buildConfig = {
+    root: cwd,
+    configFile,
+    build: {
+      ssr: false,
+      outDir,
     },
-    {
-      store: new MemoryStore(),
-    }
-  );
+  };
+
+  buildConfig = setExternalPluginOptions(buildConfig, {
+    store: new MemoryStore(),
+  });
+
+  buildConfig = setExternalAdapterOptions(buildConfig, {
+    envFile,
+  });
 
   // build SSR
   await viteBuild({
     ...buildConfig,
     build: {
-      target: 'esnext',
+      target: "esnext",
       ...buildConfig.build,
       ssr: entry,
       rollupOptions: {
         output: {
-          entryFileNames: 'index.mjs', // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
+          entryFileNames: "index.mjs", // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
         },
       },
     },
@@ -239,7 +250,7 @@ async function getViteConfig(
 async function resolveAdapter(
   config: ResolvedConfig
 ): Promise<Adapter | undefined> {
-  const options = getMarkoRunOptions(config);
+  const options = getExternalPluginOptions(config);
   if (!options) {
     throw new Error("Unable to resolve @marko/serve options");
   }
