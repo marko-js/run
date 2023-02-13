@@ -11,8 +11,5 @@ export default async function (request: Request, context: Context) {
       context
     }
   });
-
-  response?.headers.delete('content-length');
-
   return response || context.next();
 }
