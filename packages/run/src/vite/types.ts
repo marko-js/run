@@ -11,8 +11,8 @@ export interface Adapter {
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(port: number): Promise<void> | void;
-  startPreview?(dir: string, entry: string, cmd?: string, port?: number): Promise<void> | void;
+  startDev?(configFile: string, port: number): Promise<void> | void;
+  startPreview?(dir: string, entry?: string, port?: number): Promise<void> | void;
   buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
 }
 
@@ -71,8 +71,4 @@ export interface RouteTrie {
 export interface BuiltRoutes {
   list: Route[];
   special: SpecialRoutes;
-}
-
-export interface BuildInfo {
-  entryFile: string
 }

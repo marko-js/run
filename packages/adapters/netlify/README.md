@@ -2,7 +2,7 @@
   <!-- Logo -->
   <img src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
   <br/>
-  @marko/serve-adapter-netlify
+  @marko/run-adapter-netlify
 	<br/>
 
   <!-- Language -->
@@ -15,22 +15,22 @@
   </a>
 </h1>
 
-Adapter for [@marko/serve](../serve/README.md) to deploy to Netlify Functions/Edge Functions
+Adapter for [@marko/run](../serve/README.md) to deploy to Netlify Functions/Edge Functions
 
 ## Intallation
 
 ```
-npm install @marko/serve-adapter-static
+npm install @marko/run-adapter-static
 ```
 
 ## Usage
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/serve` Vite plugin:
+In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
 
 ```
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite";
-import netlifyAdapter from "@marko/serve-adapter-netlify";
+import marko from "@marko/run/vite";
+import netlifyAdapter from "@marko/run-adapter-netlify";
 
 export default defineConfig({
   plugins: [

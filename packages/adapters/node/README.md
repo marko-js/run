@@ -2,7 +2,7 @@
   <!-- Logo -->
   <img src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
   <br/>
-  @marko/serve-adapter-node
+  @marko/run-adapter-node
 	<br/>
 
   <!-- Language -->
@@ -15,22 +15,22 @@
   </a>
 </h1>
 
-Adapter for [@marko/serve](../serve/README.md) for use with Connect-style servers
+Adapter for [@marko/run](../serve/README.md) for use with Connect-style servers
 
 ## Intallation
 
 ```
-npm install @marko/serve-adapter-node
+npm install @marko/run-adapter-node
 ```
 
 ## Usage
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/serve` Vite plugin:
+In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
 
 ```
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite";
-import nodeAdapter from "@marko/serve-adapter-node";
+import marko from "@marko/run/vite";
+import nodeAdapter from "@marko/run-adapter-node";
 
 export default defineConfig({
   plugins: [
@@ -51,7 +51,7 @@ This middleware fully handles requests that match a route.
 ```ts
 // my-app-server.ts
 import express from 'express'
-import { routerMiddleware } from "@marko/serve-adapter-node/middleware";
+import { routerMiddleware } from "@marko/run-adapter-node/middleware";
 
 express()
   .use("/assets", express.static("assets"))
@@ -65,7 +65,7 @@ This middleware attaches the matched route onto the request object where it can 
 ```ts
 // my-app-server.ts
 import express from 'express'
-import { matchMiddleware } from "@marko/serve-adapter-node/middleware";
+import { matchMiddleware } from "@marko/run-adapter-node/middleware";
 
 express()
   .use("/assets", express.static("assets"))

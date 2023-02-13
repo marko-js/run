@@ -2,7 +2,7 @@
   <!-- Logo -->
   <img src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
   <br/>
-  @marko/serve
+  @marko/run
 	<br/>
 
   <!-- Language -->
@@ -20,7 +20,7 @@ Vite plugin for Marko with these features
 ## Intallation
 
 ```
-npm install @marko/serve
+npm install @marko/run
 ```
 
 ## Vite Plugin
@@ -30,7 +30,7 @@ This package provides both a Vite plugin and a runtime import. The Vite plugin i
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite"; // Import the Vite plugin
+import marko from "@marko/run/vite"; // Import the Vite plugin
 
 export default defineConfig({
   plugins: [marko()], // Register the Vite plugin
@@ -46,7 +46,7 @@ export default defineConfig({
 Generally you'll want to use one of the adapters to provide a more convenient experience but this package provides the following runtime interface:
 
 ```ts
-import { router, getMatchedRoute } from '@marko/serve`;
+import { router, getMatchedRoute } from '@marko/run`;
 ```
 
 ### `router`
@@ -81,7 +81,7 @@ By default, the plugin will look for files in the configured _routes directory_.
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import marko from "@marko/serve/vite";
+import marko from "@marko/run/vite";
 
 export default defineConfig({
   plugins: [marko({

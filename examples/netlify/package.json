@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "marko-serve build",
-    "dev": "marko-serve dev",
-    "start": "marko-serve"
+    "build": "marko-run build",
+    "dev": "marko-run dev",
+    "start": "marko-run"
   },
   "devDependencies": {
     "@marko/compiler": "^5.22.6",
-    "@marko/serve": "^0.0.1",
-    "@marko/serve-adapter-netlify": "^0.0.1",
+    "@marko/run": "^0.0.1",
+    "@marko/run-adapter-netlify": "^0.0.1",
     "@marko/vite": "^2.3.7",
     "@types/compression": "^1.7.2",
     "@types/express": "^4.17.14",

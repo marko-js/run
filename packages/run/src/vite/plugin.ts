@@ -1,6 +1,5 @@
 import path from "path";
 import crypto from "crypto";
-import fs from "fs/promises";
 
 import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
@@ -15,7 +14,7 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, BuiltRoutes, HttpVerb, BuildInfo } from "./types";
+import type { Options, BuiltRoutes, HttpVerb } from "./types";
 import { renderRouteEntry, renderRouter, renderRouteTemplate } from "./codegen";
 import {
   virtualFilePrefix,
@@ -28,7 +27,6 @@ import { logRoutesTable } from "./utils/log";
 
 import { getMarkoServeOptions, setMarkoServeOptions } from "./utils/config";
 
-const buildInfoFilename = ".markobuildinfo";
 const markoExt = ".marko";
 const markoServeFilePrefix = "__marko-serve__";
 
@@ -103,7 +101,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       );
     }
     virtualFiles.set(
-      "@marko/serve/router",
+      "@marko/run/router",
       render ? renderRouter(routes, opts.codegen) : ""
     );
   }
@@ -128,7 +126,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
 
   return [
     {
-      name: "marko-serve-vite:pre",
+      name: "marko-run-vite:pre",
       enforce: "pre",
       async config(config, env) {
         const externalPluginOptions = getMarkoServeOptions(config);
@@ -291,7 +289,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       },
     }) as any),
     {
-      name: "marko-serve-vite:post",
+      name: "marko-run-vite:post",
       enforce: "post",
       async writeBundle(options, bundle) {
         if (isSSRBuild) {
@@ -318,23 +316,13 @@ export default function markoServe(opts: Options = {}): Plugin[] {
 
           await store.set(routeDataFilename, JSON.stringify(routeData));
 
-          const buildInfo: BuildInfo = {
-            entryFile: path.relative(options.dir!, builtEntries[0]),
-          };
-
-          await fs.writeFile(
-            path.join(options.dir!, buildInfoFilename),
-            JSON.stringify(buildInfo),
-            "utf-8"
-          );
-
           await opts?.emitRoutes?.(routes.list);
         } else if (isBuild) {
-          console.log(
-            `\n\nRoutes built in ${(
-              times.routesBuild + times.routesRender
-            ).toFixed(2)}ms\n`
-          );
+          // console.log(
+          //   `\n\nRoutes built in ${(
+          //     times.routesBuild + times.routesRender
+          //   ).toFixed(2)}ms\n`
+          // );
           logRoutesTable(routes, bundle);
         }
       },
@@ -350,11 +338,6 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       },
     },
   ];
-}
-
-export async function loadBuildInfo(dir: string): Promise<BuildInfo> {
-  const filepath = path.join(dir, buildInfoFilename);
-  return JSON.parse(await fs.readFile(filepath, "utf-8")) as BuildInfo;
 }
 
 async function getVerbsFromFileBuild(context: PluginContext, filePath: string) {

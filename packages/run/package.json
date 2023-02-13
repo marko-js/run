@@ -1,5 +1,5 @@
 {
-  "name": "@marko/serve",
+  "name": "@marko/run",
   "version": "0.0.1",
   "description": "File-based routing for Marko based on Vite",
   "keywords": [],
@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "marko-serve": "./dist/cli/index.mjs"
+    "marko-run": "./dist/cli/index.mjs"
   },
   "scripts": {
     "mocha": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.ts\"",
@@ -66,7 +66,6 @@
   "devDependencies": {
     "@babel/types": "^7.19.0",
     "@marko/compiler": "^5.22.6",
-    "@marko/tags-api-preview": "^0.5.6",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.6",
     "acorn": "^8.8.0",
@@ -77,17 +76,18 @@
     "mocha-snap": "^4.3.0",
     "prettier": "^2.7.1",
     "tsx": "^3.9.0",
-    "typescript": "^4.7.4",
-    "vite": "^3.0.8"
+    "typescript": "^4.7.4"
   },
   "dependencies": {
     "@hattip/adapter-node": "^0.0.24",
     "@hattip/core": "^0.0.24",
+    "@marko/vite": "^2.3.11",
     "cli-table3": "^0.6.3",
     "gzip-size": "^7.0.0",
     "kleur": "^4.1.5",
     "pretty-bytes": "^6.0.0",
     "sade": "^1.8.1",
-    "serve-static": "^1.15.0"
+    "serve-static": "^1.15.0",
+    "vite": "^3.0.8"
   }
 }

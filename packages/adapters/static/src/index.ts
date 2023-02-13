@@ -1,12 +1,12 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Adapter, Route } from "@marko/serve/vite";
+import type { Adapter, Route } from "@marko/run/vite";
 
 import { Pool } from "undici";
 import createCrawler from "./crawler";
 import fs from "fs/promises";
-import { getAvailablePort, spawnServer } from "@marko/serve/vite";
-import baseAdapter from "@marko/serve/adapter";
+import { getAvailablePort, spawnServer } from "@marko/run/vite";
+import baseAdapter from "@marko/run/adapter";
 import createStaticServe from "serve-static";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
@@ -37,11 +37,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(dir, _entry, _cmd, port) {
+    async startPreview(dir, _entry, port) {
       const staticServe = createStaticServe(dir, {
-        index: "index.html",
-        immutable: true,
-        maxAge: "365 days",
+        index: "index.html"
       });
       const server = await createServer((req, res) =>
         staticServe(req, res, noop)

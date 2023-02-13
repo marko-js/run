@@ -17,16 +17,14 @@ export default function adapter(): Adapter {
     name: "base-adapter",
 
     async getEntryFile() {
-      return path.join(__dirname, "default-entry");
+      
+      const entry = path.join(__dirname, "default-entry");
+      return entry;
     },
 
-    async startDev(port) {
-      const server = await createDevServer();
-      server.on("error", (err) => {
-        console.error(err);
-        process.exit(1);
-      });
-
+    async startDev(configFile, port) {
+      const server = await createDevServer(configFile);
+      
       return new Promise((resolve) => {
         const listener = server.listen(port, () => {
           const address = listener.address() as AddressInfo;
@@ -36,8 +34,8 @@ export default function adapter(): Adapter {
       });
     },
 
-    async startPreview(dir, entry, cmd, port) {
-      const server = await spawnServer(cmd || `node ${entry}`, port, dir);
+    async startPreview(dir, entry, port) {
+      const server = await spawnServer(`node ${entry}`, port, dir);
       console.log(`Preview server started: http://localhost:${server.port}`);
     },
   };
