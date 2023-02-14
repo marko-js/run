@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.0.1-beta3",
+  "version": "0.0.1-beta4",
   "description": "File-based routing for Marko based on Vite",
   "keywords": [],
   "author": "Ryan Turnquist <rturnq@gmail.com>",

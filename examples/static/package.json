@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "@marko/compiler": "^5.22.6",
-    "@marko/run": "^0.0.1-beta2",
-    "@marko/run-adapter-static": "^0.0.1-beta1",
+    "@marko/run": "^0.0.1-beta4",
+    "@marko/run-adapter-static": "^0.0.1-beta3",
     "@marko/vite": "^2.3.7",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.6",
@@ -20,6 +20,6 @@
     "vite": "^3.0.8"
   },
   "dependencies": {
-    "marko": "^5.21.9"
+    "marko": "^5.22.4"
   }
 }
