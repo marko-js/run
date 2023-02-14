@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "lib": ["DOM", "ESNext"],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
     "sourceMap": false,
-    "declaration": true,
+    "composite": true,
     "incremental": true,
     "stripInternal": true,
     "noUnusedLocals": true,

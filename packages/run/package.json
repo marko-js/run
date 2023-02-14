@@ -1,0 +1,105 @@
+{
+  "name": "@marko/run",
+  "version": "0.0.1-beta3",
+  "description": "File-based routing for Marko based on Vite",
+  "keywords": [],
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "marko-run": "./dist/cli/index.mjs"
+  },
+  "scripts": {
+    "mocha": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.ts\"",
+    "test": "npm run mocha",
+    "test:watch": "npm run mocha -- --watch",
+    "test:inspect": "npm test -- --inspect",
+    "test:update": "npm run mocha -- --update",
+    "build": "tsc -b && tsx scripts/build.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js",
+      "require": "./dist/runtime/index.cjs"
+    },
+    "./router": {
+      "types": "./dist/runtime/router.d.ts",
+      "import": "./dist/runtime/router.js",
+      "require": "./dist/runtime/router.cjs"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js",
+      "require": "./dist/vite/index.cjs"
+    },
+    "./adapter/middleware": {
+      "types": "./dist/adapter/middleware.d.ts",
+      "import": "./dist/adapter/middleware.js",
+      "require": "./dist/adapter/middleware.cjs"
+    },
+    "./adapter": {
+      "types": "./dist/adapter/index.d.ts",
+      "import": "./dist/adapter/index.js",
+      "require": "./dist/adapter/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/runtime/index.d.ts"
+      ],
+      "router": [
+        "./dist/runtime/router.d.ts"
+      ],
+      "vite": [
+        "./dist/vite/index.d.ts"
+      ],
+      "adapter/middleware": [
+        "./dist/adapter/middleware.d.ts"
+      ],
+      "adapter": [
+        "./dist/adapter/index.d.ts"
+      ]
+    }
+  },
+  "types": "./dist/runtime/index.d.ts",
+  "main": "./src/runtime/index.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@marko/vite": "^2.3.9"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.19.0",
+    "@marko/compiler": "^5.22.6",
+    "@types/glob": "^8.0.1",
+    "@types/human-format": "^1.0.0",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.11.18",
+    "acorn": "^8.8.0",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.15.7",
+    "marko": "^5.22.4",
+    "mocha": "^10.0.0",
+    "mocha-snap": "^4.3.0",
+    "prettier": "^2.7.1",
+    "tsx": "^3.9.0",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "@hattip/polyfills": "^0.0.27",
+    "@marko/vite": "^2.3.9",
+    "cli-table3": "^0.6.3",
+    "compression": "^1.7.4",
+    "dotenv": "^16.0.3",
+    "glob": "^8.1.0",
+    "gzip-size": "^7.0.0",
+    "human-format": "^1.0.0",
+    "kleur": "^4.1.5",
+    "sade": "^1.8.1",
+    "serve-static": "^1.15.0",
+    "vite": "^3.0.8"
+  }
+}

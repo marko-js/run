@@ -1,0 +1,30 @@
+/_protected
+  /_home
+    /new
+      +handler.post.ts
+      +page.marko
+      +meta.json
+    /notes
+      /$id
+        /comments
+          +handler.post.ts
+          +meta.ts
+        +handler.post.ts
+        +middleware.ts
+        +page.marko
+    +layout.marko
+    +middleware.ts
+    +page.marko
+  +middleware.ts
+/callback
+  /oauth2
+    +handler.get.ts
+/my
+  +handler.get.ts
+  +page.marko
+/$$match
+  +handler.get.ts
++404.marko
++500.marko
++layout.marko
++middleware.ts

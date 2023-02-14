@@ -2,7 +2,7 @@
   <!-- Logo -->
   <img src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
   <br/>
-  Marko Serve
+  Marko Run
 	<br/>
 
   <!-- Language -->
@@ -17,13 +17,16 @@ Marko's application framework
 
 This is a monorepo facilitated by [npm workspaces](https://docs.npmjs.com/cli/v8/using-npm/workspaces) and contains the following packages:
 
-### [packages/serve](./packages/serve/README.md)
+### [packages/run](./packages/run/README.md)
 This is the core package which consists of
 - A Vite plugin that discovers route files in you application and generates routing code
 - A runtime which provides a way to import and access the generated routing code
 
-### packages/serve-express
+### [adapters/node](./packages/adapters/node/README.md)
 
+### [adapters/netlify](./packages/adapters/netlify/README.md)
+
+### [adapters/static](./packages/adapters/static/README.md)
 
 ## Contributing
 

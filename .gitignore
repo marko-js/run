@@ -3,3 +3,5 @@ dist
 *.tgz
 *.tsbuildinfo
 *.ds_store
+# Local Netlify folder
+.netlify
