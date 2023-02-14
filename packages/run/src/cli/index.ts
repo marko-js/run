@@ -148,7 +148,7 @@ async function build(
   const adapter = await resolveAdapter(resolvedConfig);
 
   if (!adapter) {
-    throw new Error("No adapter specified for build command without entry");
+    throw new Error("No adapter specified for build command without entry"); // How should we suggest the user sets an entry for this error and others like it?
   }
 
   if (!entry) {
