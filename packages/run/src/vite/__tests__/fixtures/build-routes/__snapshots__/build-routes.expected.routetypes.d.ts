@@ -3,8 +3,29 @@
   Do NOT manually edit this file or your changes will be lost.
 */
   
-import type { HandlerLike, Route } from "@marko/run";
-    
+import type { HandlerLike, Route, RouteContext, ValidatePath, ValidateHref } from "@marko/run";
+
+declare global {
+  namespace MarkoRun {
+    type GetPaths =
+      | '/'
+      | '/new'
+      | '/notes/${id}'
+      | '/callback/oauth2'
+      | '/my'
+      | '/${...match}';
+
+    type PostPaths =
+      | '/new'
+      | '/notes/${id}'
+      | '/notes/${id}/comments';
+
+    type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
+    type GetableHref<T extends string> = ValidateHref<GetPaths, T>; 
+    type PostablePath<T extends string> = ValidatePath<PostPaths, T>;
+    type PostableHref<T extends string> = ValidateHref<PostPaths, T>; 
+  }
+}
 interface Route1 extends Route<{}, undefined, `/`> {}
 interface Route2 extends Route<{}, typeof import('./_protected/_home/new/+meta.json'), `/new`> {}
 interface Route3 extends Route<{ id: string; }, undefined, `/notes/:id`> {}
@@ -14,8 +35,9 @@ interface Route6 extends Route<{}, undefined, `/my`> {}
 interface Route7 extends Route<{ match: string; }, undefined, `/:match*`> {}
 
 declare module './_protected/_home/new/+handler.post' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route2;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -23,8 +45,9 @@ declare module './_protected/_home/new/+handler.post' {
 }
 
 declare module './_protected/_home/notes/$id/+handler.post' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route3;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -32,8 +55,9 @@ declare module './_protected/_home/notes/$id/+handler.post' {
 }
 
 declare module './_protected/_home/notes/$id/comments/+handler.post' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route4;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -41,8 +65,9 @@ declare module './_protected/_home/notes/$id/comments/+handler.post' {
 }
 
 declare module './callback/oauth2/+handler.get' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route5;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -50,8 +75,9 @@ declare module './callback/oauth2/+handler.get' {
 }
 
 declare module './my/+handler.get' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route6;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -59,8 +85,9 @@ declare module './my/+handler.get' {
 }
 
 declare module './$$match/+handler.get' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route7;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -68,8 +95,9 @@ declare module './$$match/+handler.get' {
 }
 
 declare module './+middleware' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route1 | Route2 | Route3 | Route4 | Route5 | Route6 | Route7;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -77,8 +105,9 @@ declare module './+middleware' {
 }
 
 declare module './_protected/+middleware' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route1 | Route2 | Route3 | Route4;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -86,8 +115,9 @@ declare module './_protected/+middleware' {
 }
 
 declare module './_protected/_home/+middleware' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route1 | Route2 | Route3 | Route4;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
@@ -95,10 +125,89 @@ declare module './_protected/_home/+middleware' {
 }
 
 declare module './_protected/_home/notes/$id/+middleware' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = Route3 | Route4;
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
+  }
+}
+
+declare module './_protected/_home/+page.marko' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route1;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './_protected/_home/new/+page.marko' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route2;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './_protected/_home/notes/$id/+page.marko' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route3;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './my/+page.marko' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route6;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './+layout.marko' {
+  export interface Input {
+    renderBody: Marko.Body;
+  }
+
+  namespace MarkoRun {
+    type CurrentRoute = Route1 | Route2 | Route3 | Route6;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './_protected/_home/+layout.marko' {
+  export interface Input {
+    renderBody: Marko.Body;
+  }
+
+  namespace MarkoRun {
+    type CurrentRoute = Route1 | Route2 | Route3;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './+404.marko' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}
+
+declare module './+500.marko' {
+  export interface Input {
+    error: unknown;
+  }
+
+  namespace MarkoRun {
+    type CurrentRoute = Route;
+    type CurrentContext = RouteContext<CurrentRoute>;
   }
 }

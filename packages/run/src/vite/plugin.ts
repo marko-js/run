@@ -160,7 +160,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     routes = await buildRoutes(createFSWalker(resolvedRoutesDir), routesDir);
     times.routesBuild = performance.now() - startTime;
 
-    await Promise.all([writeTypesFile(), setVirtualFiles(false)]);
+    await setVirtualFiles(false);
 
     isStale = false;
     isRendered = false;
@@ -169,6 +169,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   const renderVirtualFiles = single(async () => {
     const startTime = performance.now();
     await setVirtualFiles(true);
+    await writeTypesFile();
     times.routesRender = performance.now() - startTime;
     isRendered = true;
   });

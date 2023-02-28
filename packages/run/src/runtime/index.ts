@@ -1,7 +1,14 @@
-import type { HandlerLike, ParamsObject, Route } from "./types";
+import type { HandlerLike, ParamsObject, Route, RouteContext } from "./types";
 declare global {
   namespace Marko {
+    interface Global {
+      context: RouteContext;
+    }
+  }
+
+  namespace MarkoRun {
     interface CurrentRoute extends Route {}
+    interface CurrentContext extends RouteContext<CurrentRoute> {}
 
     type Handler<
       Params extends ParamsObject = {},
@@ -20,6 +27,7 @@ export type {
   InvokeRoute,
   MatchRoute,
   NextFunction,
+  PathTemplate,
   RequestContext,
   Route,
   RouteContext,
@@ -27,4 +35,6 @@ export type {
   RouteHandler,
   RouteWithHandler,
   Router,
+  ValidateHref,
+  ValidatePath,
 } from "./types";

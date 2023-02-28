@@ -6,8 +6,8 @@ import type {
   RouteHandler,
 } from "./types";
 
-globalThis.Marko ??= {} as any;
-globalThis.Marko.route = (handler) => handler;
+globalThis.MarkoRun ??= {} as any;
+globalThis.MarkoRun.route = (handler) => handler;
 
 export const RequestNotHandled = Symbol();
 export const RequestNotMatched = Symbol();

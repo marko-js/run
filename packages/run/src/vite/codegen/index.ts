@@ -1065,20 +1065,37 @@ export function renderRouteTypeInfo(
   Do NOT manually edit this file or your changes will be lost.
 */
   `,
-    `import type { HandlerLike, Route } from "@marko/run";
-    `
+    `import type { HandlerLike, Route, RouteContext, ValidatePath, ValidateHref } from "@marko/run";
+
+declare global {
+  namespace MarkoRun {`
   );
+  const pathsWriter = writer.branch("paths");
+
+  writer.write(`
+    type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
+    type GetableHref<T extends string> = ValidateHref<GetPaths, T>; 
+    type PostablePath<T extends string> = ValidatePath<PostPaths, T>;
+    type PostableHref<T extends string> = ValidateHref<PostPaths, T>; 
+  }
+}
+`);
 
   const routesWriter = writer.branch("types");
-  //const dataWriter = writer.branch("data");
+  const serverWriter = writer.branch("server");
 
   const middlewareRouteTypes = new Map<
     RoutableFile,
     { routeTypes: string[]; middleware: RoutableFile[] }
   >();
 
+  const layoutRouteTypes = new Map<RoutableFile, { routeTypes: string[] }>();
+
+  const getPaths = new Set<string>();
+  const postPaths = new Set<string>();
+
   for (const route of routes.list) {
-    const { meta, handler, params, middleware } = route;
+    const { meta, handler, params, middleware, page, layouts } = route;
     const routeType = `Route${route.index}`;
     const pathType = `\`${route.path.replace(
       /\/\$(\$?)([^\/]*)/,
@@ -1086,6 +1103,25 @@ export function renderRouteTypeInfo(
     )}\``;
     const paramsType = params ? renderParamsInfoType(params) : "{}";
     let metaType = "undefined";
+
+    if (page || handler) {
+      const isGet = page || handler?.verbs?.includes("get");
+      const isPost = handler?.verbs?.includes("post");
+
+      if (isGet || isPost) {
+        const path = route.path.replace(/\$(\$?)([^/]+)/g, (_, s, name) =>
+          s ? `\${...${name}}` : `\${${name}}`
+        );
+        const splatIndex = path.indexOf("/${...");
+        if (splatIndex >= 0) {
+          const path2 = path.slice(0, splatIndex) || "/";
+          isGet && getPaths.add(path2);
+          isPost && postPaths.add(path2);
+        }
+        isGet && getPaths.add(path);
+        isPost && postPaths.add(path);
+      }
+    }
 
     if (meta) {
       metaType = `typeof import('${pathPrefix}/${stripTsExtension(
@@ -1104,7 +1140,24 @@ export function renderRouteTypeInfo(
       //   dataType = `Combine<${dataType}>`;
       // }
 
-      writeRouteTypeModule(writer, pathPrefix, handler.relativePath, routeType);
+      writeRouteTypeModule(
+        serverWriter,
+        pathPrefix,
+        handler.relativePath,
+        routeType
+      );
+    }
+
+    if (page) {
+      writer.writeLines(`
+declare module '${pathPrefix}/${page.relativePath}' {
+  export interface Input {}
+
+  namespace MarkoRun {
+    type CurrentRoute = ${routeType};
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}`);
     }
 
     if (middleware) {
@@ -1123,35 +1176,83 @@ export function renderRouteTypeInfo(
       }
     }
 
+    if (layouts) {
+      for (const layout of layouts) {
+        const existing = layoutRouteTypes.get(layout);
+        if (!existing) {
+          layoutRouteTypes.set(layout, {
+            routeTypes: [routeType],
+          });
+        } else {
+          existing.routeTypes.push(routeType);
+        }
+      }
+    }
+
     routesWriter.writeLines(
       `interface ${routeType} extends Route<${paramsType}, ${metaType}, ${pathType}> {}`
     );
   }
 
-  for (const [file, { routeTypes }] of middlewareRouteTypes) {
-    // let dataImport = `typeof import('./${stripTsExtension(
-    //   file.relativePath
-    // )}')`;
-    // if (/\.(ts|js|mjs)$/.test(file.relativePath)) {
-    //   dataImport += `['default']`;
-    // }
-    // dataWriter.writeLines(
-    //   `type Data${file.id} = ExtractHandlerData<${dataImport}>;`
-    // );
-
-    // let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
-    // if (!middleware.length) {
-    //   dataType = "Empty";
-    // } else if (middleware.length > 1) {
-    //   dataType = `Combine<${dataType}>`;
-    // }
-
-    const routeType =
-      routeTypes.length > 1
-        ? routeTypes.join(" | ") /*`CombineRoutes<[${routeTypes.join(", ")}]>`*/
-        : routeTypes[0];
-    writeRouteTypeModule(writer, pathPrefix, file.relativePath, routeType);
+  pathsWriter.write("    type GetPaths =");
+  for (const path of getPaths) {
+    pathsWriter.write(`\n      | '${path}'`);
   }
+  pathsWriter.writeLines(";", "");
+  pathsWriter.write("    type PostPaths =");
+  for (const path of postPaths) {
+    pathsWriter.write(`\n      | '${path}'`);
+  }
+  pathsWriter.writeLines(";");
+
+  pathsWriter.join();
+
+  for (const [file, { routeTypes }] of middlewareRouteTypes) {
+    writeRouteTypeModule(
+      serverWriter,
+      pathPrefix,
+      file.relativePath,
+      routeTypes.join(" | ")
+    );
+  }
+
+  for (const [file, { routeTypes }] of layoutRouteTypes) {
+    writer.writeLines(`
+declare module '${pathPrefix}/${file.relativePath}' {
+  export interface Input {
+    renderBody: Marko.Body;
+  }
+
+  namespace MarkoRun {
+    type CurrentRoute = ${routeTypes.join(" | ")};
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}`);
+  }
+
+  for (const route of [routes.special["404"], routes.special["500"]]) {
+    if (route && route.page) {
+      writer.write(`
+declare module '${pathPrefix}/${route.page.relativePath}' {
+  export interface Input {`);
+
+      if (route.page.type === RoutableFileTypes.Error) {
+        writer.write(`
+    error: unknown;
+  `);
+      }
+
+      writer.writeLines(`}
+
+  namespace MarkoRun {
+    type CurrentRoute = Route;
+    type CurrentContext = RouteContext<CurrentRoute>;
+  }
+}`);
+    }
+  }
+
+  serverWriter.join();
 
   return writer.end();
 }
@@ -1164,8 +1265,9 @@ function writeRouteTypeModule(
 ) {
   writer.writeLines(`
 declare module '${pathPrefix}/${stripTsExtension(path)}' {
-  namespace Marko {
+  namespace MarkoRun {
     type CurrentRoute = ${routeType};
+    type CurrentContext = RouteContext<CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
