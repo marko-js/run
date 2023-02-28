@@ -55,7 +55,7 @@ prog
 prog
   .command("build [entry]")
   .describe("Build the application (without serving it)")
-  .option("-o, --output", "Directory to write built files (default: )")
+  .option("-o, --output", "Directory to write built files (default: 'build.outDir' in Vite config)")
   .option("--skip-client", "Skip the client-side build")
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {

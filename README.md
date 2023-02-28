@@ -13,20 +13,31 @@
 
 Marko's application framework
 
+## Design
+Marko Run is designed to be opinionated but also be flexible enough to meet a variety of needs.
+
 ## Packages
 
 This is a monorepo facilitated by [npm workspaces](https://docs.npmjs.com/cli/v8/using-npm/workspaces) and contains the following packages:
 
-### [packages/run](./packages/run/README.md)
+### [@marko/run](./packages/run/README.md)
 This is the core package which consists of
-- A Vite plugin that discovers route files in you application and generates routing code
-- A runtime which provides a way to import and access the generated routing code
+- A Vite plugin that discovers route files in you application and generates typed routing code
+- A runtime which provides a way to import and interact with the generated routing code
+- A CLI to simplify starting dev mode along with creating and previewing production builds
+- A base adapter for node to enable a low-config experience without extra dependencies
 
-### [adapters/node](./packages/adapters/node/README.md)
+### Adapters
+Adapters provide the means to change the development, build and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
 
-### [adapters/netlify](./packages/adapters/netlify/README.md)
+- ### [@marko/run-adapter-node](./packages/adapters/node/README.md)
 
-### [adapters/static](./packages/adapters/static/README.md)
+- ### [@marko/run-adapter-netlify](./packages/adapters/netlify/README.md)
+
+- ### [@marko/run-adapter-static](./packages/adapters/static/README.md)
+
+
+
 
 ## Contributing
 
@@ -49,13 +60,13 @@ To run the tests
 npm run test
 ```
 
-OR to run specific tests use:
+To run specific tests:
 
 ```
 npm run test -- --grep "build-routes"
 ```
 
-To debug, you can use:
+To debug a specific test:
 
 ```
 npm run test -- --inspect-brk --grep "build-routes"
