@@ -1,14 +1,8 @@
-import * as webStream from "stream/web";
-import installCrypto from '@hattip/polyfills/crypto';
+import { installPolyfills } from './polyfill';
 import type { RequestContext, Router } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
 
-installCrypto();
-for (const key of Object.keys(webStream)) {
-  if (!(key in global)) {
-    (global as any)[key] = (webStream as any)[key];
-  }
-}
+installPolyfills();
 
 declare module "net" {
   interface Socket {
