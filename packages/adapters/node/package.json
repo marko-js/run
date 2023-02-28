@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-node",
-  "version": "0.0.1-beta2",
+  "version": "0.0.1-beta3",
   "description": "",
   "keywords": [],
   "author": "Ryan Turnquist <rturnq@gmail.com>",
@@ -38,7 +38,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/run": ""
+    "@marko/run": "^0.0.1-beta6"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
