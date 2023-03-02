@@ -101,10 +101,8 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
       const adapterTypeInfo =
-        adapter?.writeTypeInfo && (await adapter?.writeTypeInfo());
-      const data =
-        renderRouteTypeInfo(routes, path.relative(typesDir, routesDir)) +
-        adapterTypeInfo;
+        (adapter?.writeTypeInfo && (await adapter?.writeTypeInfo()));
+      const data = renderRouteTypeInfo(routes, path.relative(typesDir, routesDir), adapterTypeInfo);
 
       if (data !== typesFile || !fs.existsSync(filepath)) {
         await ensureDir(typesDir);
@@ -408,8 +406,8 @@ async function getVerbsFromFileBuild(context: PluginContext, filePath: string) {
   if (result) {
     const exportIds = getExportIdentifiers(result.ast);
     for (const id of exportIds) {
-      const verb = id === "del" ? "delete" : (id as HttpVerb);
-      if (httpVerbs.includes(verb)) {
+      const verb = id.toLowerCase() as HttpVerb;
+      if (id === verb.toUpperCase() && httpVerbs.includes(verb)) {
         verbs.push(verb);
       }
     }
@@ -421,12 +419,20 @@ async function getVerbsFromFileDev(devServer: ViteDevServer, filePath: string) {
   const verbs: HttpVerb[] = [];
   const result = await devServer.transformRequest(filePath, { ssr: true });
   if (result && result.code) {
-    const verbMatchReg = /__vite_ssr_exports__,\s+["'](get|post|put|del)["']/g;
+    const verbMatchReg =
+      /__vite_ssr_exports__,\s+["'](GET|POST|PUT|DELETE)["']/gi;
     let match = verbMatchReg.exec(result.code);
     while (match) {
-      const verb = match[1] === "del" ? "delete" : (match[1] as HttpVerb);
+      const id = match[1];
+      const verb = id.toLowerCase() as HttpVerb;
       if (httpVerbs.includes(verb)) {
-        verbs.push(verb);
+        if (id === verb.toUpperCase()) {
+          verbs.push(verb);
+        } else {
+          console.warn(
+            `Found export '${id}' in handler ${filePath} which is close to '${verb.toUpperCase()}'. Exported handlers need to be uppercase: GET, POST, PUT or DELETE.`
+          );
+        }
       }
       match = verbMatchReg.exec(result.code);
     }

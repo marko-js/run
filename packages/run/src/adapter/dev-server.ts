@@ -1,5 +1,6 @@
 import { createServer, ViteDevServer } from "vite";
-import createMiddleware, { type NodeMiddleware } from "./middleware";
+import type { RuntimeModule } from "../runtime";
+import { createMiddleware, type NodeMiddleware } from "./middleware";
 
 export function createViteDevMiddleware<T>(
   devServer: ViteDevServer,
@@ -34,8 +35,8 @@ export async function createDevServer(configFile?: string) {
   });
   const middleware = createViteDevMiddleware(
     devServer,
-    async () => (await devServer.ssrLoadModule("@marko/run/router")).router,
-    createMiddleware
+    async () => (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
+    (module) => createMiddleware(module.fetch)
   );
   return devServer.middlewares.use(middleware);
 }

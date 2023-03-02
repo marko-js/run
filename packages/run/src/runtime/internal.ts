@@ -6,19 +6,22 @@ import type {
   RouteHandler,
 } from "./types";
 
-globalThis.MarkoRun ??= {} as any;
-globalThis.MarkoRun.route = (handler) => handler;
+export const NotHandled = Symbol();
+export const NotMatched = Symbol();
 
-export const RequestNotHandled = Symbol();
-export const RequestNotMatched = Symbol();
+globalThis.MarkoRun ??= {
+  NotHandled,
+  NotMatched,
+  route(handler) {
+    return handler;
+  }
+};
 
 export function createInput(context: RouteContext) {
   let existing: InputObject | undefined;
   return (data: InputObject) => {
     existing ??= {
-      $global: {
-        context,
-      },
+      $global: context
     };
     return data ? Object.assign(existing, data) : existing;
   };
@@ -65,7 +68,7 @@ export async function call(
       response = await handler(context, next);
     } catch (error) {
       if (error == null) {
-        throw RequestNotHandled;
+        throw NotHandled;
       } else if (error instanceof Response) {
         return error;
       }
@@ -74,7 +77,7 @@ export async function call(
   }
 
   if (response === null) {
-    throw RequestNotMatched;
+    throw NotMatched;
   }
   return response || next();
 }

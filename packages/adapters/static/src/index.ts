@@ -10,6 +10,7 @@ import baseAdapter from "@marko/run/adapter";
 import createStaticServe from "serve-static";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
+import type { Fetch } from "@marko/run/*";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -81,17 +82,11 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       if (sourceEntries[0] === defaultEntry) {
         envFile && await loadEnv(envFile);
-        const { router } = await import(builtEntries[0]);
+        const fetch: Fetch = (await import(builtEntries[0])).fetch;
         const crawler = createCrawler(
           async (request) => {
-            const response = await router({
-              request,
-              method: request.method,
-              url: new URL(request.url, 'http://localhost'),
-              platform: {},
-            });
-
-            return response;
+            const response = await fetch(request, {});
+            return response || new Response(null, { status: 404 });
           },
           {}
         );
@@ -139,13 +134,11 @@ export default function staticAdapter(options: Options = {}): Adapter {
     },
 
     writeTypeInfo() {
-      return `
-declare module '@marko/run' {
+      return `declare module '@marko/run' {
   interface RouteContextExtensions {
     platform: {}
   }
-}
-`;
+}`;
     },
   };
 }

@@ -1,3 +1,6 @@
+> **Warning**
+> This project is in BETA - use at your own peril, but please do provide helpful feedback.
+
 <div align="center">
   <!-- Logo -->
   <h1>
@@ -51,9 +54,9 @@ The package provides a command line tool `marko-run` which can be run using scri
 > npx marko-run build
 ```
 
-**`preview`** - Create a production build and serve
+**`serve`** - Create a production build and serve
 ```bash
-> npx marko-run preview
+> npx marko-run serve
 ```
 or (default command)
 ```bash
@@ -76,38 +79,30 @@ export default defineConfig({
 
 ## Adapters
 
-*🎗 TODO: provide a quick overview*
+<!-- TODO: link to existing adapters>
+
+<!-- *🎗 TODO: provide a quick overview* -->
 
 ## Runtime
 
 Generally, when using an adapter, this runtime will be abstracted away.
 
+<!-- TODO: Add examples -->
+<!-- TODO: Split fetch and match + invoke in two sections and explain why you might use one or the other  -->
+
 ```ts
 import { router, matchRoute, invokeRoute } from '@marko/run/router`;
 ```
 
-### `router`
+### `fetch`
 
 ```ts
-interface RequestContext<T> {
-  url: URL;
-  method: string;
-  request: Request;
-  platform: T;
-}
-
-async function router(context: RequestContext) => Promise<Response | void>;
+async function fetch<T>(request: Request, platform: T) => Promise<Response | void>;
 ```
 
-This asynchronous function takes a context object and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
+This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) object and an object containing any platform specific data you may want access to and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
 
-The context object contains the following properties
-- `url`: The URL reprensting the requested resource
-- `method`: The HTTP method used
-- `request`: [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class)
-- `platform`: An object containing any platform-specific data (eg Node request/response) and will vary between adapters.
-
-### `matchRoute`
+### `match`
 
 ```ts
 interface interface Route {
@@ -115,7 +110,7 @@ interface interface Route {
   meta: unknown;
 }
 
-function matchRoute(method: string, pathname: string) => Route | null;
+function match(method: string, pathname: string) => Route | null;
 ```
 
 This synchronous function takes an HTTP method and path name, then returns an object representing the best match — or `null` if no match is found.
@@ -123,20 +118,20 @@ This synchronous function takes an HTTP method and path name, then returns an ob
 - `params` - a `{ key: value }` collection of any path parameters for the route
 - `meta` - metadata for the route
 
-### `invokeRoute`
+### `invoke`
 
 ```ts
-function invokeRoute(route: Route, context: RequestContext) => Promise<Response | void>;
+async function invoke<T>(route: Route, request: Request, platform: T) => Promise<Response | void>;
 ```
-This asynchronous function takes a route object returned by [matchRoute](#matchRoute) and a context object and returns a response in the same way the [router](#router) does.
+This asynchronous function takes a route object returned by [match](#match) the request and platform data and returns a response in the same way the [fetch](#fetch) does.
 
 
 
 ## File-based Routing
 
-### Nested Routing
+<!-- ### Nested Routing
 
-*🎗 TODO: provide a quick overview*
+*🎗 TODO: provide a quick overview* -->
 
 ### Routes Directory
 
@@ -276,6 +271,8 @@ Responses with this page will have a `500` status code.
 
 ### Execution Order
 
+<!-- TODO: add file tree and update flow-chart with file names -->
+
 For a matched route, the routable files execute in the following order:
 
 1. Middlewares from root-most to leaf-most
@@ -315,16 +312,15 @@ Within the _routes directory_, the directory structure will determine the path t
   /projects
   ```
 
-2. **Pathless directories** - These directories do **not** contribute their name to the route's served path. Directory names that start with an underscore (`_`) or directories named `index` will be a pathless directory.
+2. **Pathless directories** - These directories do **not** contribute their name to the route's served path. Directory names that start with an underscore (`_`) will be a pathless directory.
 
   Examples:
   ```
   /_users
   /_public
-  /index
   ```
 
-3. **Dynamic directories** - These directories introduce a dynamic parameter to the route's served path and will match any value at that segment. Any directory name that starts with a single dollar sign (`$`) will be a dynamic directory, and the remaining directory name will be the parameter at runtime. If the directory name is exactly `$/`, the parameter will not exist at runtime but will be matched.
+3. **Dynamic directories** - These directories introduce a dynamic parameter to the route's served path and will match any value at that segment. Any directory name that starts with a single dollar sign (`$`) will be a dynamic directory, and the remaining directory name will be the parameter at runtime. If the directory name is exactly `$`, the parameter will not be captured but it will be matched.
 
   Examples:
   ```
@@ -333,7 +329,7 @@ Within the _routes directory_, the directory structure will determine the path t
   /$
   ```
 
-4. **Catch-all directories** - These directories are similar to dynamic directories and introduce a dynamic parameter, but instead of matching a single path segment, they match to the end of the path. Any directory that starts with two dollar signs (`$$`) will be a catch-all directory, and the remaining directory name will be the parameter at runtime. In the case of a directory named `$$/`, the parameter name at runtime will be `*`. Catch-all directories can be used to make `404` Not Found routes at any level, including the root.
+4. **Catch-all directories** - These directories are similar to dynamic directories and introduce a dynamic parameter, but instead of matching a single path segment, they match to the end of the path. Any directory that starts with two dollar signs (`$$`) will be a catch-all directory, and the remaining directory name will be the parameter at runtime. In the case of a directory named `$$`, the parameter name will not be captured but it will match. Catch-all directories can be used to make `404` Not Found routes at any level, including the root.
 
   Because catch-all directories match any path segment and consume the rest of the path, you cannot nest route files in them and no further directories will be traversed.
 
@@ -344,6 +340,10 @@ Within the _routes directory_, the directory structure will determine the path t
   /$$
   ```
 
-### Match Ranking
+<!-- ### Match Ranking
 
-*TODO: Write some things*
+*TODO: Write some things* -->
+
+
+## TypeScript
+

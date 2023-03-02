@@ -149,7 +149,18 @@ export async function buildRoutes(
             .replace(/\//g, "__") || "index";
 
         if (routes.has(key)) {
-          console.warn(`Duplicate route for path ${path} -- ignoring`, current);
+          const existing = routes.get(key)!;
+          const existingFiles = [existing.handler, existing.page]
+            .filter(Boolean)
+            .map((f) => f!.filePath);
+          const currentFiles = [handler, page]
+            .filter(Boolean)
+            .map((f) => f!.filePath);
+          throw new Error(`Duplicate routes for path ${path} were defined. A route established by:
+  ${existingFiles}
+    collides with
+  ${currentFiles.join(" and ")}
+  `);
         } else {
           const index = nextRouteIndex++;
           routes.set(key, {
@@ -202,22 +213,19 @@ export async function buildRoutes(
       const prevCurrent = current;
       const prevIsRoot = isRoot;
 
-      if (
-        name.charCodeAt(0) === 95 ||
-        (name.charCodeAt(0) === 40 &&
-          name.charCodeAt(name.length - 1) === 41) ||
-        name.toLowerCase() === "index"
-      ) {
-        // Is empty segment -- name starts with '_' OR starts with '(' and ends with ')'
+      if (name.charCodeAt(0) === 95) {
+        // Is empty segment -- name starts with '_'
       } else {
         if (name.charCodeAt(0) === 36) {
           // Is dynamic segment -- name starts with '$'
           if (name.charCodeAt(1) === 36) {
             // Is catch-all segment -- name starts with '$$'
-            paramStack.push({
-              name: name.slice(2) || "rest",
-              index: -1,
-            });
+            if (name.length > 2) {
+              paramStack.push({
+                name: name.slice(2),
+                index: -1,
+              });
+            }
           } else if (name.length > 1) {
             paramStack.push({
               name: name.slice(1),

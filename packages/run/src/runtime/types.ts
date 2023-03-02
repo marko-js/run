@@ -7,23 +7,20 @@ export interface RouteContextExtensions {}
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
 
-export interface RequestContext<T = unknown> {
-  url: URL;
-  method: string;
-  request: Request;
-  platform: T;
-}
-
-export type RouteContext<TRoute extends Route = Route> = TRoute extends any
+export type RouteContext<
+  Platform = unknown,
+  TRoute extends Route = Route,
+> = TRoute extends any
   ? Combine<
       RouteContextExtensions &
-        Readonly<
-          RequestContext & {
-            route: TRoute["path"];
-            params: TRoute["params"];
-            meta: TRoute["meta"];
-          }
-        >
+        Readonly<{
+          url: URL;
+          request: Request;
+          route: TRoute["path"];
+          params: TRoute["params"];
+          meta: TRoute["meta"];
+          platform: Platform;
+        }>
     >
   : never;
 
@@ -34,7 +31,7 @@ export type HandlerLike<TRoute extends Route = Route> = Awaitable<
 >;
 
 export type RouteHandler<TRoute extends Route = Route> = (
-  context: RouteContext<TRoute>,
+  context: RouteContext<unknown, TRoute>,
   next: NextFunction
 ) => Awaitable<Response | null | void>;
 
@@ -56,19 +53,37 @@ export interface RouteWithHandler<
   handler: RouteHandler<this>;
 }
 
-export type MatchRoute = (
+export type Fetch<Platform = unknown> = (
+  request: Request,
+  platform: Platform
+) => Promise<Response | void>;
+
+export type Match = (
   method: string,
   pathname: string
 ) => RouteWithHandler | null;
 
-export type Router<T = unknown> = (
-  context: RequestContext<T>
-) => Promise<Response | void>;
+export type Invoke = <Platform = unknown>(
+  route: RouteWithHandler | null,
+  request: Request,
+  platform: Platform
+) => Promise<Response | void>
 
-export type InvokeRoute<T = unknown> = (
-  route: Route | null,
-  context: RequestContext<T>
-) => Promise<Response | void>;
+export interface RuntimeModule {
+  fetch: <Platform = unknown>(
+    request: Request,
+    platform: Platform
+  ) => Promise<Response | void>;
+  match: (
+    method: string,
+    pathname: string
+  ) => RouteWithHandler | null;
+  invoke: <Platform = unknown>(
+    route: RouteWithHandler | null,
+    request: Request,
+    platform: Platform
+  ) => Promise<Response | void>
+}
 
 type Member<T, U> = T extends T ? (U extends T ? T : never) : never;
 

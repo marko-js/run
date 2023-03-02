@@ -1,12 +1,13 @@
 import type { IncomingMessage } from "http";
-import createMiddleware, {
+import {
+  createMiddleware,
   type NodeMiddleware,
 } from "@marko/run/adapter/middleware";
-import type { MatchRoute, Route, InvokeRoute } from "@marko/run";
+import type { RuntimeModule, RouteWithHandler } from "@marko/run";
 
 export interface MatchedRoute {
   invoke: NodeMiddleware;
-  match: Route;
+  match: RouteWithHandler;
   config: {
     _handler: NodeMiddleware;
     [key: string]: unknown;
@@ -37,22 +38,21 @@ function asyncMiddleware<Options = undefined>(
 }
 
 export const matchMiddleware = asyncMiddleware(async () => {
-  let matchRoute: MatchRoute;
-  let invokeRoute: InvokeRoute;
+  let runtime: RuntimeModule;
 
-  const invoke = createMiddleware((context) =>
-    invokeRoute(
-      (context.platform.request as MatchedRequest).route.match,
-      context
+  const invoke = createMiddleware((request, platform) =>
+    runtime.invoke(
+      (platform.request as MatchedRequest).route.match,
+      request,
+      platform
     )
   );
 
   const match: NodeMiddleware = (req, _res, next) => {
-    const match = matchRoute(req.method!, req.url!);
-
+    const match = runtime.match(req.method!, req.url!);
     if (match) {
       (req as MatchedRequest).route = {
-        invoke,
+        invoke: invoke,
         match,
         config: {
           ...(match.meta as any),
@@ -74,9 +74,10 @@ export const matchMiddleware = asyncMiddleware(async () => {
 
     const devMiddleware = createViteDevMiddleware(
       devServer,
-      async () => await devServer.ssrLoadModule("@marko/run/router"),
+      async () =>
+        (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
       (module) => {
-        ({ matchRoute, invokeRoute } = module);
+        runtime = module;
         return match;
       }
     );
@@ -84,7 +85,7 @@ export const matchMiddleware = asyncMiddleware(async () => {
     return devServer.middlewares.use(devMiddleware);
   }
 
-  ({ matchRoute, invokeRoute } = await import("@marko/run/router"));
+  runtime = await import("@marko/run/router");
   return match;
 });
 
@@ -93,7 +94,7 @@ export const routerMiddleware = asyncMiddleware(async () => {
     const { createDevServer } = await import("@marko/run/adapter");
     return await createDevServer();
   }
-  return createMiddleware((await import("@marko/run/router")).router);
+  return createMiddleware((await import("@marko/run/router")).fetch);
 });
 
 export const importRouterMiddleware = asyncMiddleware(async () => {

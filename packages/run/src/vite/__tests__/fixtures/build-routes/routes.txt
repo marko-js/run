@@ -7,9 +7,9 @@
     /notes
       /$id
         /comments
-          +handler.post.ts
+          +handler.put_post_delete.ts
           +meta.ts
-        +handler.post.ts
+        +handler.put_post_delete.ts
         +middleware.ts
         +page.marko
     +layout.marko

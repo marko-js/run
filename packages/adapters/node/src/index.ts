@@ -7,14 +7,13 @@ export default function (): Adapter {
     ...baseAdapter(),
     name: "node-adapter",
     writeTypeInfo() {
-      return `
-import type { NodePlatformInfo } from '@marko/run-adapter-node';
+      return `import type { NodePlatformInfo } from '@marko/run-adapter-node';
+
 declare module '@marko/run' {
   interface RouteContextExtensions {
     platform: NodePlatformInfo
   }
-}
-`;
+}`;
     },
   };
 }

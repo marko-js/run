@@ -33,8 +33,8 @@ export default function adapter(): Adapter {
       });
     },
 
-    async startPreview(dir, entry, port, envFile) {
-      const server = await spawnServer(`node ${entry}`, port, envFile, dir);
+    async startPreview(_dir, entry, port, envFile) {
+      const server = await spawnServer(`node ${entry}`, port, envFile);
       console.log(`Preview server started: http://localhost:${server.port}`);
     },
   };

@@ -96,7 +96,7 @@ export function renderRouteEntry(route: Route): string {
   }
 
   if (middleware.length) {
-    const names = middleware.map((m) => `mware$${m.id}`);
+    const names = middleware.map((m) => `mware${m.id}`);
     imports.writeLines(
       `import { ${names.join(
         ", "
@@ -109,10 +109,9 @@ export function renderRouteEntry(route: Route): string {
 
     const names: string[] = [];
     for (const verb of handler.verbs) {
-      const name = verb === "delete" ? "del" : verb;
-      names.push(name);
-      // writer.writeLines(`let handler$${name};`);
-      writer.writeLines(`const handler$${name} = normalize(${name});`);
+      const importName = verb.toUpperCase();
+      names.push(importName);
+      writer.writeLines(`const ${verb}Handler = normalize(${importName});`);
     }
     imports.writeLines(
       `import { ${names.join(", ")} } from './${handler.importPath}';`
@@ -125,7 +124,7 @@ export function renderRouteEntry(route: Route): string {
   }
   if (meta) {
     imports.writeLines(
-      `export { default as meta$${index} } from './${meta.importPath}';`
+      `export { default as meta${index} } from './${meta.importPath}';`
     );
   }
 
@@ -173,18 +172,22 @@ function writeRouteEntryHandler(
   let currentName: string;
   let hasBody = false;
 
-  writer
-    .writeLines("")
-    .writeBlockStart(
-      `export async function ${verb}$${index}(context, buildInput) {`
+  writer.writeLines("");
+
+  if (page) {
+    writer.writeBlockStart(
+      `export async function ${verb}${index}(context, buildInput) {`
     );
+  } else {
+    writer.writeBlockStart(`export async function ${verb}${index}(context) {`);
+  }
 
   const continuations = writer.branch("cont");
 
   if (page && verb === "get") {
     currentName = "__page";
     if (handler?.verbs?.includes(verb)) {
-      const name = `handler$${verb}`;
+      const name = `${verb}Handler`;
 
       writePageResponse(continuations, currentName);
 
@@ -204,7 +207,7 @@ function writeRouteEntryHandler(
       hasBody = true;
     }
   } else if (handler) {
-    const name = `handler$${verb}`;
+    const name = `${verb}Handler`;
     currentName = `__${name}`;
     nextName = "noContent";
 
@@ -222,7 +225,7 @@ function writeRouteEntryHandler(
     let i = len;
     while (i--) {
       const { id } = middleware[i];
-      const name = `mware$${id}`;
+      const name = `mware${id}`;
       nextName = currentName;
       currentName = i ? `__${name}` : "";
       writeMiddleware(continuations, name, nextName, currentName);
@@ -247,13 +250,13 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { RequestNotHandled, RequestNotMatched, createInput } from 'virtual:marko-run/internal';`
+    `import { NotHandled, NotMatched, createInput } from 'virtual:marko-run/internal';`
   );
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
-    const names = verbs.map((verb) => `${verb}$${route.index}`);
-    route.meta && names.push(`meta$${route.index}`);
+    const names = verbs.map((verb) => `${verb}${route.index}`);
+    route.meta && names.push(`meta${route.index}`);
 
     imports.writeLines(
       `import { ${names.join(
@@ -265,13 +268,20 @@ export function renderRouter(
   }
   for (const { key } of Object.values(routes.special)) {
     imports.writeLines(
-      `import page$${key} from '${virtualFilePrefix}/${markoRunFilePrefix}special__${key}.marko${serverEntryQuery}';`
+      `import page${key} from '${virtualFilePrefix}/${markoRunFilePrefix}special__${key}.marko${serverEntryQuery}';`
     );
   }
 
   writer
     .writeLines(``)
-    .writeBlockStart(`function findRoute(method, pathname) {`)
+    .writeBlockStart(`export function match(method, pathname) {`)
+    .writeLines(
+      `if (!pathname) {
+    pathname = '/';
+  } else if (pathname.charAt(0) !== '/') {
+    pathname = '/' + pathname;
+  }`
+    )
     .writeBlockStart(`switch (method.toLowerCase()) {`);
 
   for (const verb of httpVerbs) {
@@ -287,16 +297,12 @@ export function renderRouter(
   writer.writeBlockEnd("}").writeLines("return null;").writeBlockEnd("}");
 
   writer.write(`
-export function matchRoute(method, pathname) {
-  if (!pathname) {
-    pathname = '/';
-  } else if (pathname.charAt(0) !== '/') {
-    pathname = '/' + pathname;
-  }
-  return findRoute(method, pathname);
-}
-
-export async function invokeRoute(route, context) {
+export async function invoke(route, request, platform, url = new URL(request.url)) {
+  const context = {
+    url,
+    request,
+    platform
+  };
 	try {
     const buildInput = createInput(context);
 		if (route) {
@@ -306,9 +312,9 @@ export async function invokeRoute(route, context) {
 				const response = await route.handler(context, buildInput);
 				if (response) return response;
 			} catch (error) {
-				if (error === RequestNotHandled) {
+				if (error === NotHandled) {
 					return;
-				} else if (error !== RequestNotMatched) {
+				} else if (error !== NotMatched) {
 					throw error;
 				}
 			}
@@ -321,7 +327,7 @@ export async function invokeRoute(route, context) {
       context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page$404.stream(buildInput()), {
+      return new Response(page404.stream(buildInput()), {
         status: 404,
         headers: { "content-type": "text/html;charset=UTF-8" },
       });
@@ -341,7 +347,7 @@ export async function invokeRoute(route, context) {
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`
       )
       .writeBlock(
-        `return new Response(page$500.stream(buildInput({ error })), {`,
+        `return new Response(page500.stream(buildInput({ error })), {`,
         [
           `status: 500,`,
           `headers: { "content-type": "text/html;charset=UTF-8" },`,
@@ -353,9 +359,9 @@ export async function invokeRoute(route, context) {
 
   writer.writeLines(`throw error;`).writeBlockEnd("}").writeBlockEnd("}")
     .write(`
-export async function router(context) {
+export async function fetch(request, platform) {
   try {
-    const { url, method } = context;
+    const url = new URL(request.url);
     let { pathname } = url;`);
 
   switch (options.trailingSlashes) {
@@ -389,8 +395,8 @@ export async function router(context) {
 
   writer.write(`   
 
-    const route = matchRoute(method, pathname);
-    return await invokeRoute(route, context);
+    const route = match(request.method, pathname);
+    return await invoke(route, request, platform, url);
   } catch (error) {
     const message = import.meta.env.DEV
       ? \`Internal Server Error (\${error.message})\`
@@ -566,409 +572,6 @@ function writeRouterVerb(
   }
 }
 
-// function writeRouterVerb(
-//   writer: Writer,
-//   trie: RouteTrie,
-//   verb: HttpVerb,
-//   level: number = 0,
-//   offset: number | string = 1
-// ): void {
-//   const { route: value, static: children, dynamic, catchAll } = trie;
-//   const next = level + 1;
-//   const index = `i${next}`;
-//   const segment = `s${next}`;
-//   let needsClose = false;
-
-//   if (level === 0) {
-//     writer.writeLines(`const len = pathname.length;`);
-
-//     if (value) {
-//       writer.writeLines(
-//         `if (len === 1) return ${renderMatch(verb, value)}; // ${value.path}`
-//       );
-//     } else if (children || dynamic) {
-//       writer.writeBlockStart(`if (len > 1) {`);
-//       needsClose = true;
-//     }
-//   }
-//   if (children || dynamic) {
-//     writer.writeLines(`const ${index} = pathname.indexOf('/', ${offset}) + 1;`);
-
-//     let terminalRoutes: RouteTrie[] | undefined;
-//     let terminalSwitch = false;
-//     let childrenRoutes: RouteTrie[] | undefined;
-//     let childrenSwitch = false;
-//     const terminalWriter = writer.branch("terminal" + level);
-//     const childrenWriter = writer.branch("children" + level);
-//     childrenWriter.indent++;
-
-//     if (children) {
-//       for (const child of children.values()) {
-//         if (child.route) {
-//           if (!terminalRoutes) {
-//             terminalRoutes = [child];
-//             terminalWriter
-//               .writeBlockStart(`if (!${index} || ${index} === len) {`)
-//               .writeLines(
-//                 `const ${segment} = pathname.slice(${offset}, ${index} ? -1 : len);`
-//               );
-//           } else {
-//             if (terminalRoutes.push(child) === 2) {
-//               const pending = terminalRoutes[0];
-//               terminalSwitch = true;
-//               terminalWriter
-//                 .writeBlockStart(`switch (${segment}.toLowerCase()) {`)
-//                 .writeLines(
-//                   `case '${pending.key}': return ${renderMatch(
-//                     verb,
-//                     pending.route!
-//                   )}; // ${pending.route!.path}`
-//                 );
-//             }
-//             terminalWriter.writeLines(
-//               `case '${child.key}': return ${renderMatch(
-//                 verb,
-//                 child.route
-//               )}; // ${child.route.path}`
-//             );
-//           }
-//         }
-
-//         if (child.static || child.dynamic || child.catchAll) {
-//           if (!childrenRoutes) {
-//             childrenRoutes = [child];
-//             childrenWriter.writeLines(
-//               `const ${segment} = pathname.slice(${offset}, ${index} - 1);`
-//             );
-//           } else {
-//             if (childrenRoutes.push(child) === 2) {
-//               const pending = childrenRoutes[0];
-//               childrenSwitch = true;
-//               childrenWriter
-//                 .writeBlockStart(`switch (${segment}.toLowerCase()) {`)
-//                 .writeBlockStart(`case '${pending.key}': {`);
-//               writeRouterVerb(
-//                 childrenWriter,
-//                 pending,
-//                 verb,
-//                 next,
-//                 typeof offset === "string"
-//                   ? index
-//                   : offset + pending.key.length + 1
-//               );
-//               childrenWriter.writeBlockEnd("}");
-//             }
-//             childrenWriter.writeBlockStart(`case '${child.key}': {`);
-//             writeRouterVerb(
-//               childrenWriter,
-//               child,
-//               verb,
-//               next,
-//               typeof offset === "string" ? index : offset + child.key.length + 1
-//             );
-//             childrenWriter.writeBlockEnd("}");
-//           }
-//         }
-//       }
-//     }
-
-//     if (dynamic) {
-//       if (dynamic.route) {
-//         if (!terminalRoutes) {
-//           terminalRoutes = [];
-//           terminalWriter
-//             .writeBlockStart(`if (!${index} || ${index} === len) {`)
-//             .writeLines(
-//               `const ${segment} = pathname.slice(${offset}, ${index} ? -1 : len);`
-//             );
-//         } else {
-//           if (terminalRoutes.push(dynamic) === 2) {
-//             const pending = terminalRoutes[0];
-//             terminalWriter.writeLines(
-//               `if (${segment}.toLowerCase() === '${
-//                 pending.key
-//               }') return ${renderMatch(verb, pending.route!)}; // ${
-//                 pending.route!.path
-//               }`
-//             );
-//           }
-//         }
-//           terminalWriter.writeLines(
-//             `if (${segment}) return ${renderMatch(verb, dynamic.route)}; // ${
-//               dynamic.route.path
-//             }`
-//           );
-//       }
-//       if (dynamic.static || dynamic.dynamic || dynamic.catchAll) {
-//         if (!childrenRoutes) {
-//           childrenRoutes = [];
-//           childrenWriter.writeLines(
-//             `const ${segment} = pathname.slice(${offset}, ${index} - 1);`
-//           );
-//         } else {
-//           childrenRoutes.push(dynamic);
-//         }
-//         childrenWriter.writeBlockStart(`if (s${next}) {`);
-//         writeRouterVerb(childrenWriter, dynamic, verb, next, `i${next}`);
-//         childrenWriter.writeBlockEnd(`}`);
-//       }
-//     }
-
-//     if (terminalRoutes) {
-//       if (terminalRoutes.length === 1) {
-//         const pending = terminalRoutes[0];
-//         terminalWriter.writeLines(
-//           `if (${segment}.toLowerCase() === '${
-//             pending.key
-//           }') return ${renderMatch(verb, pending.route!)}; // ${
-//             pending.route!.path
-//           }`
-//         );
-//       } else if (terminalSwitch) {
-//         terminalWriter.writeBlockEnd("}");
-//       }
-//     }
-
-//     if (childrenRoutes) {
-//       if (childrenRoutes.length === 1) {
-//         const pending = childrenRoutes[0];
-//         childrenWriter.writeBlockStart(
-//           `if (${segment}.toLowerCase() === '${pending.key}') {`
-//         );
-//         writeRouterVerb(
-//           childrenWriter,
-//           pending,
-//           verb,
-//           next,
-//           typeof offset === "string" ? index : offset + pending.key.length + 1
-//         );
-//         childrenWriter.writeBlockEnd("}");
-//       } else if (childrenSwitch) {
-//         childrenWriter.writeBlockEnd("}");
-//       }
-//     }
-
-//     if (terminalRoutes && childrenRoutes) {
-//       terminalWriter.writeBlockEnd("} else {");
-//       childrenWriter.writeBlockEnd('}');
-//     } else if (terminalRoutes) {
-//       terminalWriter.writeBlockEnd("}");
-//     } else if (childrenRoutes) {
-//       terminalWriter.writeBlockStart(`if (${index} && ${index} !== len) {`);
-//       childrenWriter.writeBlockEnd("}");
-//     } else {
-//     }
-//     terminalWriter.join();
-//     childrenWriter.join();
-//   }
-
-//   if (needsClose) {
-//     writer.writeBlockEnd('}');
-//   }
-
-//   if (catchAll) {
-//     writer.writeLines(
-//       `return ${renderMatch(verb, catchAll, String(offset))}; // ${
-//         catchAll.path
-//       }`
-//     );
-//   } else if (level === 0) {
-//     writer.writeLines("return null;");
-//   }
-// }
-
-// function writeRouterVerb(
-//   writer: Writer,
-//   trie: RouteTrie,
-//   verb: HttpVerb,
-//   level: number = 0,
-//   offset: number | string = 1
-// ): void {
-//   const { route: value, static: children, dynamic, catchAll } = trie;
-
-//   if (level === 0) {
-//     writer.writeLines(`const len = pathname.length;`);
-//   }
-
-//   if (value) {
-//     if (level > 0) {
-//       writer.writeLines(
-//         `if (i${level} === -1 || i${level} === iLast) return ${renderMatch(verb, value)}; // ${
-//           value.path
-//         }`
-//       );
-//     } else {
-//       writer.writeLines(
-//         `if (len === 1) return ${renderMatch(verb, value)}; // ${value.path}`
-//       );
-//     }
-//   }
-
-//   if (children || dynamic) {
-//     if (!value) {
-//       if (level === 0) {
-//         writer.writeBlockStart(`if (len > 1) {`);
-//       } else {
-//         writer.writeBlockStart(`if (i${level} !== -1 && i${level} !== iLast) {`);
-//       }
-//     }
-
-//     if (level === 0) {
-//       writer.writeLines(`const iLast = len - 1;`);
-//     }
-
-//     const next = level + 1;
-//     const index = `i${next}`;
-//     const segment = `s${next}`;
-//     writer.writeLines(
-//       `const ${index} = pathname.indexOf('/', ${offset});`,
-//       `const ${segment} = pathname.slice(${offset}, ${index} === -1 ? len : ${index});`
-//     );
-
-//     if (children) {
-//       const useSwitch = children.size > 1;
-//       if (useSwitch) {
-//         writer.writeBlockStart(`switch(${segment}.toLowerCase()) {`);
-//       }
-//       for (const child of children.values()) {
-//         if (useSwitch) {
-//           writer.writeBlockStart(`case '${child.key}': {`);
-//         } else {
-//           writer.writeBlockStart(
-//             `if (${segment}.toLowerCase() === '${child.key}') {`
-//           );
-//         }
-
-//         if (typeof offset === "string") {
-//           writeRouterVerb(writer, child, verb, next, `${index} + 1`);
-//         } else {
-//           writeRouterVerb(
-//             writer,
-//             child,
-//             verb,
-//             next,
-//             offset + child.key.length + 1
-//           );
-//         }
-//         if (useSwitch && !child.catchAll) {
-//           writer.writeLines("break;");
-//         }
-//         writer.writeBlockEnd("}");
-//       }
-//       if (useSwitch) {
-//         writer.writeBlockEnd("}");
-//       }
-//     }
-
-//     if (dynamic) {
-//       writer.writeBlockStart(`if (s${next}) {`);
-//       writeRouterVerb(writer, dynamic, verb, next, `i${next} + 1`);
-//       writer.writeBlockEnd("}");
-//     }
-
-//     if (!value) {
-//       writer.writeBlockEnd(`}`);
-//     }
-//   }
-
-//   if (catchAll) {
-//     writer.writeLines(
-//       `return ${renderMatch(verb, catchAll, String(offset))}; // ${
-//         catchAll.path
-//       }`
-//     );
-//   } else if (level === 0) {
-//     writer.writeLines("return null;");
-//   }
-// }
-
-// function writeRouterVerb__split(
-//   writer: Writer,
-//   trie: RouteTrie,
-//   verb: HttpVerb,
-//   level: number = 0,
-//   pathIndex: number = 0,
-//   useSwitch?: boolean
-// ): void {
-//   const { key, route: value, static: children, dynamic, catchAll } = trie;
-//   pathIndex += key.length;
-
-//   if (level <= 0) {
-//     level = 0;
-
-//     if (value) {
-//       writer.writeLines(
-//         `if (pathname === '/') return ${renderMatch(verb, value)}; // ${
-//           value.path
-//         }`
-//       );
-//     }
-
-//     if (children || dynamic) {
-//       writer.writeLines(
-//         `const segments = pathname.split('/');`,
-//         `const len = segments.length;`
-//       );
-//     }
-//   } else {
-//     if (!key) {
-//       writer.writeBlockStart(`if (segments[${level}]) {`);
-//     } else if (useSwitch) {
-//       writer.writeBlockStart(`case '${key}':`);
-//     } else {
-//       writer.writeBlockStart(
-//         `if (segments[${level}]?.toLowerCase() === '${key}') {`
-//       );
-//     }
-
-//     if (value) {
-//       writer.writeLines(
-//         `if (len === ${level + 1}) return ${renderMatch(verb, value)}; // ${
-//           value.path
-//         }`
-//       );
-//     }
-//   }
-
-//   if (children || dynamic) {
-//     if (children) {
-//       if (children.size > 1) {
-//         writer.writeBlockStart(
-//           `switch(segments[${level + 1}]?.toLowerCase()) {`
-//         );
-//         for (const child of children.values()) {
-//           writeRouterVerb(writer, child, verb, level + 1, pathIndex, true);
-//         }
-//         writer.writeBlockEnd("}");
-//       } else {
-//         for (const child of children.values()) {
-//           writeRouterVerb(writer, child, verb, level + 1, pathIndex);
-//         }
-//       }
-//     }
-
-//     if (dynamic) {
-//       writeRouterVerb(writer, dynamic, verb, level + 1, pathIndex);
-//     }
-//   }
-
-//   if (catchAll) {
-//     writer.writeLines(
-//       `return ${renderMatch(verb, catchAll, pathIndex)}; // ${catchAll.path}`
-//     );
-
-//     if (level > 0) {
-//       writer.indent--;
-//     }
-//   } else if (level === 0) {
-//     writer.writeLines("return null;");
-//   } else if (useSwitch) {
-//     writer.writeLines("break;").indent--;
-//   } else {
-//     writer.writeBlockEnd("}");
-//   }
-// }
-
 function wrapPropertyName(name: string) {
   return /^[^A-Za-z_$]|[^A-Za-z0-9$_]/.test(name) ? `'${name}'` : name;
 }
@@ -1012,13 +615,11 @@ function renderParamsInfoType(params: ParamInfo[]): string {
 }
 
 function renderMatch(verb: HttpVerb, route: Route, pathIndex?: string) {
-  // return `'${verb}:${route.path}'`
-  const handler = `${verb}$${route.index}`;
+  const handler = `${verb}${route.index}`;
   const params = route.params?.length
     ? renderParamsInfo(route.params, pathIndex)
     : "{}";
-  const meta = route.meta ? `meta$${route.index}` : "{}";
-  //return `[${handler}, ${params}, ${meta}]`;
+  const meta = route.meta ? `meta${route.index}` : "{}";
   return `{ handler: ${handler}, params: ${params}, meta: ${meta} }`;
 }
 
@@ -1034,9 +635,9 @@ export function renderMiddleware(middleware: RoutableFile[]): string {
   writer.writeLines("");
 
   for (const { id, importPath } of middleware) {
-    const importName = `mware${id}`;
+    const importName = `middleware${id}`;
     imports.writeLines(`import ${importName} from './${importPath}';`);
-    writer.writeLines(`export const mware$${id} = normalize(${importName});`);
+    writer.writeLines(`export const mware${id} = normalize(${importName});`);
   }
 
   imports.join();
@@ -1056,7 +657,8 @@ function stripTsExtension(path: string) {
 
 export function renderRouteTypeInfo(
   routes: BuiltRoutes,
-  pathPrefix: string = "."
+  pathPrefix: string = ".",
+  adapterTypes: string = ""
 ) {
   const writer = createStringWriter();
   writer.writeLines(
@@ -1064,8 +666,10 @@ export function renderRouteTypeInfo(
   WARNING: This file is automatically generated and any changes made to it will be overwritten without warning.
   Do NOT manually edit this file or your changes will be lost.
 */
-  `,
-    `import type { HandlerLike, Route, RouteContext, ValidatePath, ValidateHref } from "@marko/run";
+`,
+`import type { HandlerLike, Route, RouteContext, ValidatePath, ValidateHref } from "@marko/run";`,
+adapterTypes,
+`
 
 declare global {
   namespace MarkoRun {`
@@ -1155,7 +759,7 @@ declare module '${pathPrefix}/${page.relativePath}' {
 
   namespace MarkoRun {
     type CurrentRoute = ${routeType};
-    type CurrentContext = RouteContext<CurrentRoute>;
+    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
   }
 }`);
     }
@@ -1225,7 +829,7 @@ declare module '${pathPrefix}/${file.relativePath}' {
 
   namespace MarkoRun {
     type CurrentRoute = ${routeTypes.join(" | ")};
-    type CurrentContext = RouteContext<CurrentRoute>;
+    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
   }
 }`);
   }
@@ -1246,7 +850,7 @@ declare module '${pathPrefix}/${route.page.relativePath}' {
 
   namespace MarkoRun {
     type CurrentRoute = Route;
-    type CurrentContext = RouteContext<CurrentRoute>;
+    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
   }
 }`);
     }
@@ -1267,7 +871,7 @@ function writeRouteTypeModule(
 declare module '${pathPrefix}/${stripTsExtension(path)}' {
   namespace MarkoRun {
     type CurrentRoute = ${routeType};
-    type CurrentContext = RouteContext<CurrentRoute>;
+    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
     type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
     function route(handler: Handler): typeof handler;
     function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;

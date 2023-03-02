@@ -23,8 +23,12 @@ for (const entry of fs.readdirSync(FIXTURES)) {
     // Use this if you want to psuedo test on windows locally.
     // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
 
+    debugger;
+
     const fakeDirectory = createDirectory(src);
     const routes = await buildRoutes(createTestWalker(fakeDirectory), 'src/routes');
+
+    
 
     let routesSnap = '';
 
@@ -39,7 +43,7 @@ for (const entry of fs.readdirSync(FIXTURES)) {
     for (const route of routes.list) {
       if (route.handler) {
         const meta = route.handler.name.split('.', 2)[1];
-        const verbs = (meta.split('_') as HttpVerb[]).filter(v => httpVerbs.includes(v));
+        const verbs = (meta.toLowerCase().split('_') as HttpVerb[]).filter(v => httpVerbs.includes(v));
         route.handler.verbs = verbs.length ? verbs : httpVerbs as any;
       }
       if (i > 0) routesSnap += `\n\n`;

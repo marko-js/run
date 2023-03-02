@@ -1,25 +1,30 @@
 // @marko/run/router
-import { RequestNotHandled, RequestNotMatched, createInput } from 'virtual:marko-run/internal';
-import { get$1 } from 'virtual:marko-run/__marko-run__route__index.js';
-import { get$2, post$2, meta$2 } from 'virtual:marko-run/__marko-run__route__new.js';
-import { get$3, post$3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
-import { post$4, meta$4 } from 'virtual:marko-run/__marko-run__route__notes__$__comments.js';
-import { get$5 } from 'virtual:marko-run/__marko-run__route__callback__oauth2.js';
-import { get$6 } from 'virtual:marko-run/__marko-run__route__my.js';
-import { get$7 } from 'virtual:marko-run/__marko-run__route__$$.js';
-import page$404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
-import page$500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
+import { NotHandled, NotMatched, createInput } from 'virtual:marko-run/internal';
+import { get1 } from 'virtual:marko-run/__marko-run__route__index.js';
+import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route__new.js';
+import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
+import { put4, post4, delete4, meta4 } from 'virtual:marko-run/__marko-run__route__notes__$__comments.js';
+import { get5 } from 'virtual:marko-run/__marko-run__route__callback__oauth2.js';
+import { get6 } from 'virtual:marko-run/__marko-run__route__my.js';
+import { get7 } from 'virtual:marko-run/__marko-run__route__$$.js';
+import page404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
+import page500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
 
-function findRoute(method, pathname) {
+export function match(method, pathname) {
+	if (!pathname) {
+    pathname = '/';
+  } else if (pathname.charAt(0) !== '/') {
+    pathname = '/' + pathname;
+  }
 	switch (method.toLowerCase()) {
 		case 'get': {
 			const len = pathname.length;
-			if (len === 1) return { handler: get$1, params: {}, meta: {} }; // /
+			if (len === 1) return { handler: get1, params: {}, meta: {} }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len).toLowerCase()) {
-					case 'new': return { handler: get$2, params: {}, meta: meta$2 }; // /new
-					case 'my': return { handler: get$6, params: {}, meta: {} }; // /my
+					case 'new': return { handler: get2, params: {}, meta: meta2 }; // /new
+					case 'my': return { handler: get6, params: {}, meta: {} }; // /my
 				}
 			} else {
 				switch (pathname.slice(1, i1 - 1).toLowerCase()) {
@@ -27,37 +32,85 @@ function findRoute(method, pathname) {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = pathname.slice(7, i2 ? -1 : len);
-							if (s2) return { handler: get$3, params: { id: s2 }, meta: {} }; // /notes/$id
+							if (s2) return { handler: get3, params: { id: s2 }, meta: {} }; // /notes/$id
 						}
 					}
 					case 'callback': {
 						const i2 = pathname.indexOf('/', 10) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(10, i2 ? -1 : len).toLowerCase() === 'oauth2') return { handler: get$5, params: {}, meta: {} }; // /callback/oauth2
+							if (pathname.slice(10, i2 ? -1 : len).toLowerCase() === 'oauth2') return { handler: get5, params: {}, meta: {} }; // /callback/oauth2
 						}
 					}
 				}
 			}
-			return { handler: get$7, params: { match: pathname.slice(1) }, meta: {} }; // /$$match
+			return { handler: get7, params: { match: pathname.slice(1) }, meta: {} }; // /$$match
 		}
 		case 'post': {
 			const len = pathname.length;
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len).toLowerCase() === 'new') return { handler: post$2, params: {}, meta: meta$2 }; // /new
+					if (pathname.slice(1, i1 ? -1 : len).toLowerCase() === 'new') return { handler: post2, params: {}, meta: meta2 }; // /new
 				} else {
 					if (pathname.slice(1, i1 - 1).toLowerCase() === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = pathname.slice(7, i2 ? -1 : len);
-							if (s2) return { handler: post$3, params: { id: s2 }, meta: {} }; // /notes/$id
+							if (s2) return { handler: post3, params: { id: s2 }, meta: {} }; // /notes/$id
 						} else {
 							const s2 = pathname.slice(7, i2 - 1);
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: post$4, params: { id: s2 }, meta: meta$4 }; // /notes/$id/comments
+									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: post4, params: { id: s2 }, meta: meta4 }; // /notes/$id/comments
+								}
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+		case 'put': {
+			const len = pathname.length;
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (i1 && i1 !== len) {
+					if (pathname.slice(1, i1 - 1).toLowerCase() === 'notes') {
+						const i2 = pathname.indexOf('/', 7) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = pathname.slice(7, i2 ? -1 : len);
+							if (s2) return { handler: put3, params: { id: s2 }, meta: {} }; // /notes/$id
+						} else {
+							const s2 = pathname.slice(7, i2 - 1);
+							if (s2) {
+								const i3 = pathname.indexOf('/', i2) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: put4, params: { id: s2 }, meta: meta4 }; // /notes/$id/comments
+								}
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+		case 'delete': {
+			const len = pathname.length;
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (i1 && i1 !== len) {
+					if (pathname.slice(1, i1 - 1).toLowerCase() === 'notes') {
+						const i2 = pathname.indexOf('/', 7) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = pathname.slice(7, i2 ? -1 : len);
+							if (s2) return { handler: delete3, params: { id: s2 }, meta: {} }; // /notes/$id
+						} else {
+							const s2 = pathname.slice(7, i2 - 1);
+							if (s2) {
+								const i3 = pathname.indexOf('/', i2) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(i2, i3 ? -1 : len).toLowerCase() === 'comments') return { handler: delete4, params: { id: s2 }, meta: meta4 }; // /notes/$id/comments
 								}
 							}
 						}
@@ -70,16 +123,12 @@ function findRoute(method, pathname) {
 	return null;
 }
 
-export function matchRoute(method, pathname) {
-  if (!pathname) {
-    pathname = '/';
-  } else if (pathname.charAt(0) !== '/') {
-    pathname = '/' + pathname;
-  }
-  return findRoute(method, pathname);
-}
-
-export async function invokeRoute(route, context) {
+export async function invoke(route, request, platform, url = new URL(request.url)) {
+  const context = {
+    url,
+    request,
+    platform
+  };
 	try {
     const buildInput = createInput(context);
 		if (route) {
@@ -89,9 +138,9 @@ export async function invokeRoute(route, context) {
 				const response = await route.handler(context, buildInput);
 				if (response) return response;
 			} catch (error) {
-				if (error === RequestNotHandled) {
+				if (error === NotHandled) {
 					return;
-				} else if (error !== RequestNotMatched) {
+				} else if (error !== NotMatched) {
 					throw error;
 				}
 			}
@@ -100,14 +149,14 @@ export async function invokeRoute(route, context) {
       context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page$404.stream(buildInput()), {
+      return new Response(page404.stream(buildInput()), {
         status: 404,
         headers: { "content-type": "text/html;charset=UTF-8" },
       });
     }
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return new Response(page$500.stream(buildInput({ error })), {
+			return new Response(page500.stream(buildInput({ error })), {
 				status: 500,
 				headers: { "content-type": "text/html;charset=UTF-8" },
 			});
@@ -116,17 +165,17 @@ export async function invokeRoute(route, context) {
 	}
 }
 
-export async function router(context) {
+export async function fetch(request, platform) {
   try {
-    const { url, method } = context;
+    const url = new URL(request.url);
     let { pathname } = url;
     if (pathname !== '/' && pathname.endsWith('/')) {
       url.pathname = pathname.slice(0, -1);
       return Response.redirect(url);
     }   
 
-    const route = matchRoute(method, pathname);
-    return await invokeRoute(route, context);
+    const route = match(request.method, pathname);
+    return await invoke(route, request, platform, url);
   } catch (error) {
     const message = import.meta.env.DEV
       ? `Internal Server Error (${error.message})`

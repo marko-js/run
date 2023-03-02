@@ -1,5 +1,5 @@
-import { installPolyfills } from './polyfill';
-import type { RequestContext, Router } from "../runtime";
+import { installPolyfills } from "./polyfill";
+import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
 
 installPolyfills();
@@ -105,8 +105,8 @@ export function getOrigin(
  * Creates a request handler to be passed to http.createServer() or used as a
  * middleware in Connect-style frameworks like Express.
  */
-export default function createMiddleware(
-  router: Router<NodePlatformInfo>,
+export function createMiddleware(
+  fetch: Fetch<NodePlatformInfo>,
   options: NodeAdapterOptions = {}
 ): NodeMiddleware {
   const { trustProxy = process.env.TRUST_PROXY === "1" } = options;
@@ -130,65 +130,44 @@ export default function createMiddleware(
       req.socket.remoteAddress ||
       "";
 
-    const requestContext = {
-      method: req.method!,
-      url,
-      platform: {
-        ip,
-        request: req,
-        response: res,
-        setCookie(cookie) {
-          res.appendHeader("set-cookie", cookie);
-        },
-      }
-    } as RequestContext<NodePlatformInfo>;
+    const headers = req.headers as HeadersInit;
+    // TODO: Do we need to remove http2 psuedo headers?
+    // if (headers[":method"]) {
+    //   headers = Object.fromEntries(
+    //     Object.entries(headers).filter(([key]) => !key.startsWith(":"))
+    //   );
+    // }
 
-    Object.defineProperty(requestContext, "request", {
-      get() {
-        const headers = req.headers as any;
-        // TODO: Do we need to remove http2 psuedo headers?
-        // if (headers[":method"]) {
-        //   headers = Object.fromEntries(
-        //     Object.entries(headers).filter(([key]) => !key.startsWith(":"))
-        //   );
-        // }
+    const body =
+      req.method === "GET" || req.method === "HEAD"
+        ? undefined
+        : req.socket // Deno has no req.socket and can't convert req to ReadableStream
+        ? (req as unknown as ReadableStream)
+        : // Convert to a ReadableStream for Deno
+          new ReadableStream({
+            start(controller) {
+              req.on("data", (chunk) => controller.enqueue(chunk));
+              req.on("end", () => controller.close());
+              req.on("error", (err) => controller.error(err));
+            },
+          });
 
-        const body =
-          req.method === "GET" || req.method === "HEAD"
-            ? undefined
-            : req.socket // Deno has no req.socket and can't convert req to ReadableStream
-            ? (req as unknown as ReadableStream)
-            : // Convert to a ReadableStream for Deno
-              new ReadableStream({
-                start(controller) {
-                  req.on("data", (chunk) => controller.enqueue(chunk));
-                  req.on("end", () => controller.close());
-                  req.on("error", (err) => controller.error(err));
-                },
-              });
-
-        const request = new Request(url, {
-          method: req.method,
-          headers,
-          body,
-
-          // @ts-expect-error: Node requires this for streams
-          duplex: "half",
-        });
-
-        Object.defineProperty(this, "request", {
-          value: request,
-          enumerable: true,
-          configurable: true,
-        });
-
-        return request;
-      },
-      enumerable: true,
-      configurable: true,
+    const request = new Request(url, {
+      method: req.method,
+      headers,
+      body,
+      // @ts-expect-error: Node requires this for streams
+      duplex: "half",
     });
 
-    const response = await router(requestContext);
+    const response = await fetch(request, {
+      ip,
+      request: req,
+      response: res,
+      setCookie(cookie) {
+        res.appendHeader("set-cookie", cookie);
+      },
+    });
 
     if (!response) {
       if (next) {

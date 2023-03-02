@@ -1,5 +1,4 @@
-import { router } from "@marko/run/router";
-import type { RequestContext } from "@marko/run";
+import { fetch } from "@marko/run/router";
 import type {
   HandlerEvent,
   HandlerContext,
@@ -11,47 +10,25 @@ export async function handler(
   event: HandlerEvent,
   context: HandlerContext
 ): Promise<HandlerResponse> {
-  const requestContext = {
+  const request = new Request(event.rawUrl, {
     method: event.httpMethod,
-    url: new URL(event.rawUrl),
-    platform: {
-      event,
-      context,
-      ip: event.headers["x-nf-client-connection-ip"]!,
-    },
-  } as RequestContext<NetlifyFunctionsPlatformInfo>;
+    headers: event.headers as HeadersInit,
+    body:
+      !event.body || event.httpMethod === "GET" || event.httpMethod === "HEAD"
+        ? undefined
+        : event.isBase64Encoded
+        ? Buffer.from(event.body, "base64")
+        : event.body,
 
-  Object.defineProperty(requestContext, "request", {
-    get() {
-      const request = new Request(event.rawUrl, {
-        method: event.httpMethod,
-        headers: event.headers as HeadersInit,
-        body:
-          !event.body ||
-          event.httpMethod === "GET" ||
-          event.httpMethod === "HEAD"
-            ? undefined
-            : event.isBase64Encoded
-            ? Buffer.from(event.body, "base64")
-            : event.body,
-
-        // @ts-expect-error: Node requires this for streams
-        duplex: "half",
-      });
-
-      Object.defineProperty(this, "request", {
-        value: request,
-        enumerable: true,
-        configurable: true,
-      });
-
-      return request;
-    },
-    enumerable: true,
-    configurable: true,
+    // @ts-expect-error: Node requires this for streams
+    duplex: "half",
   });
 
-  const response = await router(requestContext);
+  const response = await fetch<NetlifyFunctionsPlatformInfo>(request, {
+    event,
+    context,
+    ip: event.headers["x-nf-client-connection-ip"]!,
+  });
 
   const res: HandlerResponse = {
     statusCode: 404,
