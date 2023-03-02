@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-static",
-  "version": "0.0.1-beta3",
+  "version": "0.0.1-beta4",
   "description": "",
   "keywords": [],
   "author": "Ryan Turnquist <rturnq@gmail.com>",
@@ -30,7 +30,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/run": "^0.0.1-beta6"
+    "@marko/run": "^0.0.1-beta7"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
