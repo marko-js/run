@@ -69,7 +69,8 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/vite": "^2.3.9"
+    "@marko/vite": "^2.3.9",
+    "marko": "^5"
   },
   "devDependencies": {
     "@babel/types": "^7.19.0",

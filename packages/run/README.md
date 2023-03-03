@@ -15,7 +15,7 @@
   </a>
 </div>
 
-`@marko/run` is an application framework for [Marko](https://markojs.com), with these features:
+`@marko/run` will help you get up and *running* with [Marko](https://markojs.com)
 
 - Vite plugin that encapsulates [`@marko/vite`](https://github.com/marko-js/vite)
 - CLI to simplify build modes
@@ -36,10 +36,12 @@ The package provides a command line tool `marko-run` which can be run using scri
 
 ### Getting Started / Zero Config
 
+
+
 `marko-run` makes it easy to get started without little to no config. The package ships with a default Vite config and node-based adapter that means a minimal project start can be:
 1. Install `@marko/run`
 2. Create file `src/routes/+page.marko`
-3. Run `npx marko-run dev`
+3. Run `npx marko-run`
 4. Open browser to `http://localhost:3000`
 
 ### Commands
@@ -48,6 +50,11 @@ The package provides a command line tool `marko-run` which can be run using scri
 ```bash
 > npx marko-run dev
 ```
+or (default command)
+```bash
+> npx marko-run
+```
+
 
 **`build`** - Create a production build
 ```bash
@@ -58,11 +65,6 @@ The package provides a command line tool `marko-run` which can be run using scri
 ```bash
 > npx marko-run serve
 ```
-or (default command)
-```bash
-> npx marko-run
-```
-
 ## Vite Plugin
 
 This package’s Vite plugin discovers your route files, generates the routing code, and registers the `@marko/vite` plugin to compile your `.marko` files.
@@ -73,15 +75,36 @@ import { defineConfig } from "vite";
 import marko from "@marko/run/vite"; // Import the Vite plugin
 
 export default defineConfig({
-  plugins: [marko()], // Register the Vite plugin
+  plugins: [marko()] // Register the Vite plugin
 })
 ```
 
 ## Adapters
 
-<!-- TODO: link to existing adapters>
+Adapters provide the means to change the development, build and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
 
-<!-- *🎗 TODO: provide a quick overview* -->
+### Configure
+
+Specify your adapter in the Vite config when registering the `@marko/run` plugin
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import marko from "@marko/run/vite";
+import netlify from "@makor/run-adapter-netlify" // Import the adapter
+
+export default defineConfig({
+  plugins: [marko({
+    adapter: netlify({ edge: true }) // Configure and apply the adapter
+  })]
+})
+```
+
+### Adapter List
+
+- ### [@marko/run-adapter-node](./packages/adapters/node/README.md)
+- ### [@marko/run-adapter-netlify](./packages/adapters/netlify/README.md)
+- ### [@marko/run-adapter-static](./packages/adapters/static/README.md)
 
 ## Runtime
 
@@ -91,18 +114,52 @@ Generally, when using an adapter, this runtime will be abstracted away.
 <!-- TODO: Split fetch and match + invoke in two sections and explain why you might use one or the other  -->
 
 ```ts
-import { router, matchRoute, invokeRoute } from '@marko/run/router`;
+import * as Run from '@marko/run/router`;
 ```
 
-### `fetch`
+### Emdedding in Existing Server
+
+
+
+### `Run.fetch`
 
 ```ts
 async function fetch<T>(request: Request, platform: T) => Promise<Response | void>;
 ```
 
+
+
 This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) object and an object containing any platform specific data you may want access to and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
 
-### `match`
+Express example:
+```ts
+import express from "express";
+import * as Run from "@marko/run/router";
+
+express()
+  .use(async (req, res, next) => {
+    const request = // ...code to create a WHATWG Request from `req`
+
+    const response = await Run.fetch(request, {
+      req,
+      res
+    });
+
+    if (response) {
+      // ...code to apply response to `res`
+    } else {
+      next();
+    }
+  })
+  .listen(3000);
+```
+
+
+### Other APIs
+
+In some cases you might want more control over when route matching and invokation (creating a response) occur. For instance you may have middleware in your server which need to know if there is a matched route. The runtime provides these additional methods
+
+### `Run.match`
 
 ```ts
 interface interface Route {
@@ -118,12 +175,49 @@ This synchronous function takes an HTTP method and path name, then returns an ob
 - `params` - a `{ key: value }` collection of any path parameters for the route
 - `meta` - metadata for the route
 
-### `invoke`
+### `Run.invoke`
 
 ```ts
 async function invoke<T>(route: Route, request: Request, platform: T) => Promise<Response | void>;
 ```
-This asynchronous function takes a route object returned by [match](#match) the request and platform data and returns a response in the same way the [fetch](#fetch) does.
+This asynchronous function takes a route object returned by [Run.match](#Run.match) the request and platform data and returns a response in the same way the [Run.fetch](#Run.fetch) does.
+
+Express example:
+```ts
+import express from "express";
+import * as Run from "@marko/run/router";
+
+express()
+  .use((req, res) => {
+    const matchedRoute = Run.match(req.method, req.path);
+    if (matchedRoute) {
+      req.match = matchedRoute;
+    }
+  })
+
+  // ...other middleware
+
+  .use(async (req, res, next) => {
+    // Check if a route was previously matched
+    if (!req.match) {
+      next();
+      return;
+    }
+
+    const request = // ...code to create a WHATWG Request from `req`
+    const response = await Run.invoke(req.match, request, {
+      req,
+      res
+    });
+
+    if (response) {
+      // ...code to apply response to `res`
+    } else {
+      next();
+    }
+  })
+  .listen(3000);
+```
 
 
 
@@ -184,26 +278,35 @@ Typically, these will be `.js` or `.ts` files depending on your project. Like pa
 <details>
   <summary>More Info</summary>
   
-  - Valid exports are functions named `get`, `post`, `put`, or `del`.
-  - Each export receives a `context` and `next` argument, and should return a WHATWG `Response` either synchronously or asynchronously.
-    - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-    - The `next` argument will call the page for get requests where applicable or return a `204` response.
+  - Valid exports are functions named `GET`, `POST`, `PUT`, or `DELETE`.
+  - Exports can be one of the following
+    - Handler function (see below)
+    - Array of handler functions - will be composed by calling them in order
+    - Promise that resolves to a handler function or array of handler functions 
+  - Handler functions are synchronous or asynchronous functions that
+    - Receives a `context` and `next` argument,
+      - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
+      - The `next` argument will call the page for get requests where applicable or return a `204` response.
+    - Return a WHATWG response, throw a WHATWG response, return undefined. If the function return's undefined the `next` argument with be automatically called and used as the response.
 
   ```js
-  export function post(context, next) {
+  export function POST(context, next) {
     const { request, params, url, meta } = context;
     return new Response('Successfully updated', { status: 200 });
   }
 
-  export function put(context, next) {
-    return new Response('Successfully created', { status: 201 }); // handle the request
+  export function PUT(context, next) {
+    // `next` will be called for you by the runtime
   }
 
-  export function get(context, next) {
-    return next(); // Call the next handler
+  export async function GET(context, next) {
+    // do something before calling `next`
+    const response = await next();
+    // do something with the response from `next`
+    return response;
   }
 
-  export function del(context, next) {
+  export function DELETE(context, next) {
     return new Response('Successfully removed', { status: 204 });
   }
   ```
@@ -219,18 +322,23 @@ These files are like layouts, but for handlers. Middleware get called before han
 <details>
   <summary>More Info</summary>
   
-  Expects a `default` export that receives a `context` and `next` argument, and should return a WHATWG response either synchronously or asynchronously.
-	
-  - The `context` argument contains the WHATWG `Request` object, path parameters, URL, and route metadata.
-  - The `next` argument will call the next middleware, handler, or page for the route.
+  - Expects a `default` export that can be one of the following
+    - Handler function (see below)
+    - Array of handler functions - will be composed by calling them in order
+    - Promise that resolves to a handler function or array of handler functions 
+  - Handler functions are synchronous or asynchronous functions that
+    - Receives a `context` and `next` argument,
+      - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
+      - The `next` argument will call the page for get requests where applicable or return a `204` response.
+    - Return a WHATWG response, throw a WHATWG response, return undefined. If the function return's undefined the `next` argument with be automatically called and used as the response.
 
   ```ts
   export default async function(context, next) {
-    const requestName = `${ctx.request.method} ${ctx.url.href}`; // TODO: could this be just `ctx.url` with a `toString` that then grabs `.href`?
+    const requestName = `${context.request.method} ${context.url.href}`;
     let success = true;
     console.log(`${requestName} request started`)
     try {
-      return await next(); // Wait for subsequent middleware/handler/page
+      return await next(); // Wait for subsequent middleware, handler and page
     } catch (err) {
       success = false;
       throw err;
@@ -243,7 +351,9 @@ These files are like layouts, but for handlers. Middleware get called before han
 
 #### `+meta.*`
 
-These files represent metadata to attach to the route. This metadata will be automatically provided on the the route `context` when invoking a route. 
+These files represent static metadata to attach to the route. This metadata will be automatically provided on the the route `context` when invoking a route.
+
+
 
 ### Special Files
 
@@ -271,9 +381,21 @@ Responses with this page will have a `500` status code.
 
 ### Execution Order
 
-<!-- TODO: add file tree and update flow-chart with file names -->
+Given the following routes directory structure
 
-For a matched route, the routable files execute in the following order:
+<pre>
+routes/
+  about/
+    +handler.js
+    +layout.marko
+    +middleware.js
+    +page.marko
+  +layout.marko
+  +middleware.js
+  +page.marko
+</pre>
+
+When the path `"/about"` is requested, the routable files execute in the following order:
 
 1. Middlewares from root-most to leaf-most
 2. Handler
@@ -282,21 +404,21 @@ For a matched route, the routable files execute in the following order:
 
 ```mermaid
 sequenceDiagram
-    participant Middleware1
-    participant Middleware2
-    participant Handler
-    participant Layout1
-    participant Layout2
-    participant Page
-    Note over Layout1,Page: Combined at build-time as a single component
-    Middleware1->>Middleware2: next()
-    Middleware2->>Handler: next()
-    Handler->>Layout1: next()
-    Layout1->Layout2: ${input.renderBody}
-    Layout2->Page: ${input.renderBody}
-    Layout1-->>Handler: Stream Response
-    Handler-->>Middleware2: Response
-    Middleware2-->>Middleware1: Response
+    participant MW1 as routes/+middleware.js
+    participant MW2 as routes/about/+middleware.js
+    participant H as routes/about/+handler.js
+    participant L1 as routes/+layout.marko
+    participant L2 as routes/about/+layout.marko
+    participant P as routes/about/+page.marko
+    Note over L1,P: Combined at build-time as a single component
+    MW1->>MW2: next()
+    MW2->>H: next()
+    H->>L1: next()
+    L1->L2: ${input.renderBody}
+    L2->P: ${input.renderBody}
+    L1-->>H: Stream Response
+    H-->>MW2: Response
+    MW2-->>MW1: Response
 ```
 
 ### Path Structure
@@ -347,3 +469,36 @@ Within the _routes directory_, the directory structure will determine the path t
 
 ## TypeScript
 
+
+### Global Namespace
+marko/run provides a global namespace `MarkoRun` with the folling types:
+
+**`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
+
+**`MarkoRun.CurrentRoute`** - Type of the route's params and meta data
+
+**`MarkoRun.CurrentContext`** - Type of the request context object in a handler and `out.global` in your Marko files
+
+
+### Generated Types
+If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in the project root, the Vite plugin will automatically generate a .d.ts file which provides more specific types for each of your middleware, handlers, layouts and pages. This file will be generated at `.marko-run/routes.d.ts` whenever the project is built - including dev.
+> **Note** TypeScript will not include this file by default. If you are not using the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and you will need to [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
+
+These types are replaced with more specific versions per routeable file:
+
+**`MarkoRun.Handler`**
+- Overrides context with specific MarkoRun.CurrentContext
+
+**`MarkoRun.CurrentRoute`**
+- Adds specific parameters and meta types 
+- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that file will see
+
+**`MarkoRun.CurrentContext`**
+- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that file will see.
+- When an adapter is used, it can provide types for the platform
+
+## Beta Roadmap
+
+- Error handling
+- Error component
+- Redirect component

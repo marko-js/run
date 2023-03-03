@@ -303,8 +303,8 @@ export async function invoke(route, request, platform, url = new URL(request.url
     request,
     platform
   };
+  const buildInput = createInput(context);
 	try {
-    const buildInput = createInput(context);
 		if (route) {
 			context.params = route.params;
 			context.meta = route.meta;

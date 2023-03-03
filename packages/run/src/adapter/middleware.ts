@@ -1,6 +1,7 @@
 import { installPolyfills } from "./polyfill";
 import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
+import type { ViteDevServer } from "vite";
 
 installPolyfills();
 
@@ -57,6 +58,7 @@ export interface NodeAdapterOptions {
    * is set to `1`, otherwise false.
    */
   trustProxy?: boolean;
+  devServer?: ViteDevServer;
 }
 
 // TODO: Support the newer `Forwarded` standard header
@@ -107,9 +109,9 @@ export function getOrigin(
  */
 export function createMiddleware(
   fetch: Fetch<NodePlatformInfo>,
-  options: NodeAdapterOptions = {}
+  options: NodeAdapterOptions = {},
 ): NodeMiddleware {
-  const { trustProxy = process.env.TRUST_PROXY === "1" } = options;
+  const { trustProxy = process.env.TRUST_PROXY === "1", devServer } = options;
 
   let { origin = process.env.ORIGIN } = options;
   let protocol: string | undefined;
@@ -223,7 +225,19 @@ export function createMiddleware(
       res.off("close", cancel);
       res.off("error", cancel);
       reader.cancel(error).catch(() => {});
-      error && res.destroy(error);
+      if (error) {
+        if (process.env.NODE_ENV !== "production" && devServer) {
+          // If a Vite dev server is being used, and a mid-stream error occurs,
+          // end the response gracefully and send an error message via the web socket.
+          res.end();
+          devServer.ws.send({
+            type: "error",
+            err: { message: error.message, stack: error.stack || "" },
+          });
+        } else {
+          res.destroy(error);
+        }
+      }
     }
 
     async function write() {
