@@ -1,8 +1,6 @@
 import { createServer, ViteDevServer } from "vite";
 import type { RuntimeModule } from "../runtime";
-import { createMiddleware, type NodeMiddleware } from "./middleware";
-
-const fixedErrors = new WeakSet<Error>();
+import type { NodeMiddleware } from "./middleware";
 
 export function createViteDevMiddleware<T>(
   devServer: ViteDevServer,
@@ -23,12 +21,7 @@ export function createViteDevMiddleware<T>(
     } catch (err) {
       res.statusCode = 500;
       if (err instanceof Error) {
-        // This issue seems to be occurring here: https://github.com/vitejs/vite/issues/11037
-        // despite apparently being fixed in Vite
-        if (!fixedErrors.has(err)) {
-          fixedErrors.add(err);
-          devServer.ssrFixStacktrace(err);
-        }
+        devServer.ssrFixStacktrace(err);
         res.end(err.stack);
       } else {
         res.end();
@@ -45,11 +38,15 @@ export async function createDevServer(configFile?: string) {
     resolve: {
       dedupe: ["marko"],
       conditions: ["worker"],
-    }
+    },
   });
+  const { createMiddleware } = await devServer.ssrLoadModule(
+    "@marko/run/adapter/middleware"
+  );
   const middleware = createViteDevMiddleware(
     devServer,
-    async () => (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
+    async () =>
+      (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
     (module) => createMiddleware(module.fetch, { devServer })
   );
   return devServer.middlewares.use(middleware);

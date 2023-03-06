@@ -177,23 +177,11 @@ export async function fetch(request, platform) {
     const route = match(request.method, pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
-    const message = import.meta.env.DEV
-      ? `Internal Server Error (${error.message})`
-      : "Internal Server Error";
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          message,
-          stack: import.meta.env.DEV
-            ? `This will only be seen in development mode\n\n${error.stack}`
-            : ""
-        }
-      }),
-      {
-        statusText: message,
-        status: 500,
-      }
-    );
+    const body = import.meta.env.DEV
+      ? error.stack || error.message || "Internal Server Error"
+      : null;
+    return new Response(body, {
+      status: 500
+    });
   }
 }

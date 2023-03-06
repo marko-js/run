@@ -26,7 +26,7 @@ const prog = sade("marko-run")
   .option("-e, --env", "Provide path to a dotenv file");
 
 prog
-  .command("serve [entry]")
+  .command("preview [entry]")
   .describe("Start a production-like server for already-built app files")
   .option("-o, --output", "Directory to serve files from, and write asset files to if `--build` (default: )") // The awkwardness of this makes me wonder if instead the build command should have a `--serve` option?
   .option("-p, --port", "Port the server should listen on (defaults: `$PORT` env variable or 3000)")

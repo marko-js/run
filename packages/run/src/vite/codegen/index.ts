@@ -88,6 +88,9 @@ export function renderRouteEntry(route: Route): string {
   if (!page || verbs.length > 1) {
     runtimeImports.push("noContent");
   }
+  if (page) {
+    runtimeImports.push("pageResponse");
+  }
 
   if (runtimeImports.length) {
     imports.writeLines(
@@ -136,12 +139,10 @@ export function renderRouteEntry(route: Route): string {
 }
 
 function writePageResponse(writer: Writer, wrapFn?: string): void {
-  writer.writeBlock(
+  writer.writeLines(
     `${
       wrapFn ? `const ${wrapFn} = () =>` : `return`
-    } new Response(page.stream(buildInput()), {`,
-    ["status: 200,", 'headers: { "content-type": "text/html;charset=UTF-8" }'],
-    "});"
+    } pageResponse(page, buildInput());`
   );
 }
 
@@ -398,24 +399,12 @@ export async function fetch(request, platform) {
     const route = match(request.method, pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
-    const message = import.meta.env.DEV
-      ? \`Internal Server Error (\${error.message})\`
-      : "Internal Server Error";
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          message,
-          stack: import.meta.env.DEV
-            ? \`This will only be seen in development mode\\n\\n\${error.stack}\`
-            : ""
-        }
-      }),
-      {
-        statusText: message,
-        status: 500,
-      }
-    );
+    const body = import.meta.env.DEV
+      ? error.stack || error.message || "Internal Server Error"
+      : null;
+    return new Response(body, {
+      status: 500
+    });
   }
 }`);
 
@@ -667,7 +656,7 @@ export function renderRouteTypeInfo(
   Do NOT manually edit this file or your changes will be lost.
 */
 `,
-`import type { HandlerLike, Route, RouteContext, ValidatePath, ValidateHref } from "@marko/run";`,
+`import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ValidatePath, ValidateHref } from "@marko/run";`,
 adapterTypes,
 `
 
@@ -758,8 +747,8 @@ declare module '${pathPrefix}/${page.relativePath}' {
   export interface Input {}
 
   namespace MarkoRun {
-    type CurrentRoute = ${routeType};
-    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
+    type Route = ${routeType};
+    type Context = AnyContext<AnyContext['platform'], Route>;
   }
 }`);
     }
@@ -794,7 +783,7 @@ declare module '${pathPrefix}/${page.relativePath}' {
     }
 
     routesWriter.writeLines(
-      `interface ${routeType} extends Route<${paramsType}, ${metaType}, ${pathType}> {}`
+      `interface ${routeType} extends AnyRoute<${paramsType}, ${metaType}, ${pathType}> {}`
     );
   }
 
@@ -828,8 +817,8 @@ declare module '${pathPrefix}/${file.relativePath}' {
   }
 
   namespace MarkoRun {
-    type CurrentRoute = ${routeTypes.join(" | ")};
-    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
+    type Route = ${routeTypes.join(" | ")};
+    type Context = AnyContext<AnyContext['platform'], Route>;
   }
 }`);
   }
@@ -849,8 +838,8 @@ declare module '${pathPrefix}/${route.page.relativePath}' {
       writer.writeLines(`}
 
   namespace MarkoRun {
-    type CurrentRoute = Route;
-    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
+    type Route = AnyRoute;
+    type Context = AnyContext<AnyContext['platform'], Route>;
   }
 }`);
     }
@@ -870,11 +859,11 @@ function writeRouteTypeModule(
   writer.writeLines(`
 declare module '${pathPrefix}/${stripTsExtension(path)}' {
   namespace MarkoRun {
-    type CurrentRoute = ${routeType};
-    type CurrentContext = RouteContext<RouteContext['platform'], CurrentRoute>;
-    type Handler<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']> = HandlerLike<CurrentRoute>;
+    type Route = ${routeType};
+    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
-    function route<_Params = CurrentRoute['params'], _Meta = CurrentRoute['meta']>(handler: Handler): typeof handler;
+    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
   }
 }`);
 }

@@ -31,15 +31,12 @@ import page from './src/routes/_protected/_home/+page.marko';
 ## Handler
 ```js
 // virtual:marko-run/__marko-run__route__index.js
-import { call } from 'virtual:marko-run/internal';
+import { call, pageResponse } from 'virtual:marko-run/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import page from 'virtual:marko-run/__marko-run__route__index.marko?marko-server-entry';
 
 export async function get1(context, buildInput) {
-	const __page = () => new Response(page.stream(buildInput()), {
-		status: 200,
-		headers: { "content-type": "text/html;charset=UTF-8" }
-	});
+	const __page = () => pageResponse(page, buildInput());
 	const __mware7 = () => call(mware7, __page, context);
 	const __mware5 = () => call(mware5, __mware7, context);
 	return call(mware4, __mware5, context);
@@ -64,7 +61,7 @@ import page from './src/routes/_protected/_home/new/+page.marko';
 ## Handler
 ```js
 // virtual:marko-run/__marko-run__route__new.js
-import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { POST } from './src/routes/_protected/_home/new/+handler.post.ts';
 import page from 'virtual:marko-run/__marko-run__route__new.marko?marko-server-entry';
@@ -73,10 +70,7 @@ export { default as meta2 } from './src/routes/_protected/_home/new/+meta.json';
 const postHandler = normalize(POST);
 
 export async function get2(context, buildInput) {
-	const __page = () => new Response(page.stream(buildInput()), {
-		status: 200,
-		headers: { "content-type": "text/html;charset=UTF-8" }
-	});
+	const __page = () => pageResponse(page, buildInput());
 	const __mware7 = () => call(mware7, __page, context);
 	const __mware5 = () => call(mware5, __mware7, context);
 	return call(mware4, __mware5, context);
@@ -108,7 +102,7 @@ import page from './src/routes/_protected/_home/notes/$id/+page.marko';
 ## Handler
 ```js
 // virtual:marko-run/__marko-run__route__notes__$.js
-import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/internal';
 import { mware4, mware5, mware7, mware13 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { PUT, POST, DELETE } from './src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts';
 import page from 'virtual:marko-run/__marko-run__route__notes__$.marko?marko-server-entry';
@@ -118,10 +112,7 @@ const postHandler = normalize(POST);
 const deleteHandler = normalize(DELETE);
 
 export async function get3(context, buildInput) {
-	const __page = () => new Response(page.stream(buildInput()), {
-		status: 200,
-		headers: { "content-type": "text/html;charset=UTF-8" }
-	});
+	const __page = () => pageResponse(page, buildInput());
 	const __mware13 = () => call(mware13, __page, context);
 	const __mware7 = () => call(mware7, __mware13, context);
 	const __mware5 = () => call(mware5, __mware7, context);
@@ -224,7 +215,7 @@ import page from './src/routes/my/+page.marko';
 ## Handler
 ```js
 // virtual:marko-run/__marko-run__route__my.js
-import { normalize, call } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/my/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route__my.marko?marko-server-entry';
@@ -232,10 +223,7 @@ import page from 'virtual:marko-run/__marko-run__route__my.marko?marko-server-en
 const getHandler = normalize(GET);
 
 export async function get6(context, buildInput) {
-	const __page = () => new Response(page.stream(buildInput()), {
-		status: 200,
-		headers: { "content-type": "text/html;charset=UTF-8" }
-	});
+	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware4, __getHandler, context);
 }

@@ -16,10 +16,6 @@ declare module "http" {
     ip?: string;
     protocol?: string;
   }
-
-  interface ServerResponse {
-    appendHeader(key: string, value: string | string[]): this;
-  }
 }
 
 export interface NodePlatformInfo {

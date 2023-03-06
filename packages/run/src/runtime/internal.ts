@@ -2,12 +2,22 @@ import type {
   InputObject,
   NextFunction,
   Route,
-  RouteContext,
+  Context,
   RouteHandler,
 } from "./types";
 
-export const NotHandled = Symbol();
-export const NotMatched = Symbol();
+
+const pageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8" }
+};
+
+export function pageResponse(template: any, input: Record<PropertyKey, unknown>): Response {
+  return new Response(template.stream(input), pageResponseInit);
+}
+
+export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
+export const NotMatched: typeof MarkoRun.NotMatched = Symbol() as any;
 
 globalThis.MarkoRun ??= {
   NotHandled,
@@ -17,7 +27,7 @@ globalThis.MarkoRun ??= {
   }
 };
 
-export function createInput(context: RouteContext) {
+export function createInput(context: Context) {
   let existing: InputObject | undefined;
   return (data: InputObject) => {
     existing ??= {
@@ -30,7 +40,7 @@ export function createInput(context: RouteContext) {
 export async function call(
   handler: RouteHandler<Route>,
   next: NextFunction,
-  context: RouteContext
+  context: Context
 ): Promise<Response> {
   let response: Response | null | void;
 

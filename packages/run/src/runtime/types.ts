@@ -2,17 +2,17 @@ type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
 type Combine<T> = T extends object ? { [P in keyof T]: T[P] } : T;
 
-export interface RouteContextExtensions {}
+export interface ContextExtensions {}
 
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
 
-export type RouteContext<
+export type Context<
   Platform = unknown,
   TRoute extends Route = Route,
 > = TRoute extends any
   ? Combine<
-      RouteContextExtensions &
+      ContextExtensions &
         Readonly<{
           url: URL;
           request: Request;
@@ -31,7 +31,7 @@ export type HandlerLike<TRoute extends Route = Route> = Awaitable<
 >;
 
 export type RouteHandler<TRoute extends Route = Route> = (
-  context: RouteContext<unknown, TRoute>,
+  context: Context<unknown, TRoute>,
   next: NextFunction
 ) => Awaitable<Response | null | void>;
 
