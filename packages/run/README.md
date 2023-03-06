@@ -13,7 +13,7 @@
 * 🚀 Fastest way to build a Marko app
 * 💖 Scales from zero configuration
 * ⚡️ Pages live-reload as you make changes
-* 📁 Directory-based routes, layouts and middleware
+* 📁 Directory-based routes, layouts, and middleware
 * 🖌️ TypeScript powered editor support
 * 🧬 [Designed with web standards](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/URLPattern) to run anywhere
 
@@ -25,7 +25,6 @@ And when you build your production-ready app:
 * 🚢 Deploy to multiple platforms
 
 ## Installation
-
 > **Warning**
 > This project is in BETA - use at your own peril, but please do provide helpful feedback.
 
@@ -52,23 +51,23 @@ Finally open `http://localhost:3000` 🚀
 
 ### CLI
 
-**`dev`** - Start development server in watch mode
-```bash
+**`dev`** - Start a development server in watch mode
+```sh
 > npm exec marko-run
 ```
 or (with explicit sub command)
-```bash
+```sh
 > npm exec marko-run dev
 ```
 
 
 **`build`** - Create a production build
-```bash
+```sh
 > npm exec marko-run build
 ```
 
-**`preview`** - Create a production build and start preview server
-```bash
+**`preview`** - Create a production build and start the preview server
+```sh
 > npm exec marko-run preview
 ```
 
@@ -98,19 +97,17 @@ export default defineConfig({
 
 ### Routeable Files
 
-To allow for colocation of files that shouldn’t be served (like tests, assets, etc.), the router only recognizes certain filenames.
-
-The following filenames will be discovered in any directory inside your application’s [routes directory](#routes-directory).
+The router only recognizes certain filenames which are all prefixed with `+` ([Why?](#What-about-markoserve)). The following filenames will be discovered in any directory inside your application’s [routes directory](#routes-directory).
 
 #### `+page.marko`
 
-These files establish a route at the current directory path which will be served for `GET` requests with the HTML content of the page. Only one page may exists for any served path.
+These files establish a route at the current directory path which will be served for `GET` requests with the HTML content of the page. Only one page may exist for any served path.
 
 #### `+layout.marko`
 
 These files provide a **layout component**, which will wrap all nested layouts and pages.
 
-Layouts are like any other Marko component with no extra constraints. Each layout receives the request, path params, URL, and route metadata as input, as well as a `renderBody` which will be the next layout or page to project. 
+Layouts are like any other Marko component, with no extra constraints. Each layout receives the request, path params, URL, and route metadata as input, as well as a `renderBody` which refers to the nested page that is being rendered.
 
 ```marko
 <main>
@@ -137,36 +134,36 @@ Typically, these will be `.js` or `.ts` files depending on your project. Like pa
   - Handler functions are synchronous or asynchronous functions that
     - Receives a `context` and `next` argument,
       - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-      - The `next` argument will call the page for get requests where applicable or return a `204` response.
-    - Return a WHATWG response, throw a WHATWG response, return undefined. If the function return's undefined the `next` argument with be automatically called and used as the response.
+      - The `next` argument will call the page for `GET` requests where applicable or return a `204` response.
+    - Return a WHATWG response, throw a WHATWG response, and return undefined. If the function returns undefined the `next` argument with be automatically called and used as the response.
 
-  ```js
-  export function POST(context, next) {
-    const { request, params, url, meta } = context;
-    return new Response('Successfully updated', { status: 200 });
-  }
+        ```js
+        export function POST(context, next) {
+          const { request, params, url, meta } = context;
+          return new Response('Successfully updated', { status: 200 });
+        }
 
-  export function PUT(context, next) {
-    // `next` will be called for you by the runtime
-  }
+        export function PUT(context, next) {
+          // `next` will be called for you by the runtime
+        }
 
-  export async function GET(context, next) {
-    // do something before calling `next`
-    const response = await next();
-    // do something with the response from `next`
-    return response;
-  }
+        export async function GET(context, next) {
+          // do something before calling `next`
+          const response = await next();
+          // do something with the response from `next`
+          return response;
+        }
 
-  export function DELETE(context, next) {
-    return new Response('Successfully removed', { status: 204 });
-  }
-  ```
+        export function DELETE(context, next) {
+          return new Response('Successfully removed', { status: 204 });
+        }
+        ```
 </details>
 
 
 #### `+middleware.*`
 
-These files are like layouts, but for handlers. Middleware get called before handlers and let you perform arbitrary work before and after.
+These files are like layouts, but for handlers. Middleware files are called before handlers and let you perform arbitrary work before and after.
 
 > **Note**: Unlike handlers, middleware run for all HTTP methods.
 
@@ -180,33 +177,33 @@ These files are like layouts, but for handlers. Middleware get called before han
   - Handler functions are synchronous or asynchronous functions that
     - Receives a `context` and `next` argument,
       - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-      - The `next` argument will call the page for get requests where applicable or return a `204` response.
-    - Return a WHATWG response, throw a WHATWG response, return undefined. If the function return's undefined the `next` argument with be automatically called and used as the response.
+      - The `next` argument will call the page for `GET` requests where applicable or return a `204` response.
+    - Return a WHATWG response, throw a WHATWG response, and return undefined. If the function returns undefined the `next` argument with be automatically called and used as the response.
 
-  ```ts
-  export default async function(context, next) {
-    const requestName = `${context.request.method} ${context.url.href}`;
-    let success = true;
-    console.log(`${requestName} request started`)
-    try {
-      return await next(); // Wait for subsequent middleware, handler and page
-    } catch (err) {
-      success = false;
-      throw err;
-    } finally {
-      console.log(`${requestName} completed ${success ? 'successfully' : 'with errors'}`);
-    }
-  }
-  ```
+        ```ts
+        export default async function(context, next) {
+          const requestName = `${context.request.method} ${context.url.href}`;
+          let success = true;
+          console.log(`${requestName} request started`)
+          try {
+            return await next(); // Wait for subsequent middleware, handler, and page
+          } catch (err) {
+            success = false;
+            throw err;
+          } finally {
+            console.log(`${requestName} completed ${success ? 'successfully' : 'with errors'}`);
+          }
+        }
+        ```
 </details>
 
 #### `+meta.*`
 
-These files represent static metadata to attach to the route. This metadata will be automatically provided on the the route `context` when invoking a route.
+These files represent static metadata to attach to the route. This metadata will be automatically provided on the route `context` when invoking a route.
 
 ### Special Files
 
-In addition to the files above which can be defined in any directory under the _routes directory_, there are some special files which can only be defined at the top-level of the _routes directory_. <!-- TODO: do we want to keep this restriction? Having nested 404s would be handy for disambiguating things like “there’s no user with that name” or “that promotion wasn’t found, it may have expired” -->
+In addition to the files above which can be defined in any directory under the [routes directory](#routes-directory), some special files can only be defined at its top level. <!-- TODO: do we want to keep this restriction? Having nested 404s would be handy for disambiguating things like “there’s no user with that name” or “that promotion wasn’t found, it may have expired” -->
 
 These special pages are subject to a root layout file (`pages/+layout.marko` in the default configuration).
 
@@ -244,7 +241,7 @@ routes/
   +page.marko
 </pre>
 
-When the path `"/about"` is requested, the routable files execute in the following order:
+When the path `/about` is requested, the routable files execute in the following order:
 
 1. Middlewares from root-most to leaf-most
 2. Handler
@@ -272,44 +269,44 @@ sequenceDiagram
 
 ### Path Structure
 
-Within the _routes directory_, the directory structure will determine the path the route will be served. There are four types of directory names: static, pathless, dynamic, and catch-all.
+Within the [routes directory](#routes-directory), the directory structure determines the path from which the route is served. There are four types of directory names: **static**, **pathless**, **dynamic**, and **catch-all**.
 
-1. **Static directories** - The most common type. Each static directory contributes its name as a segment in the route's served path, like a traditional fileserver. Unless a directory name matches the requirements for one of the below types, it defaults to a static directory.
+1. **Static directories** - The most common type, and the default behavior. Each static directory contributes its name as a segment in the route's served path, like a traditional fileserver. Unless a directory name matches the requirements for one of the below types, it is seen as a static directory.
 
-  Examples:
-  ```
-  /foo
-  /users
-  /projects
-  ```
+    Examples:
+    ```
+    /foo
+    /users
+    /projects
+    ```
 
-2. **Pathless directories** - These directories do **not** contribute their name to the route's served path. Directory names that start with an underscore (`_`) will be a pathless directory.
+2. **Pathless directories** - These directories do **not** contribute their name to the route's served path. Directory names that start with an underscore (`_`) will be ignored when parsing the route.
 
-  Examples:
-  ```
-  /_users
-  /_public
-  ```
+    Examples:
+    ```
+    /_users
+    /_public
+    ```
 
 3. **Dynamic directories** - These directories introduce a dynamic parameter to the route's served path and will match any value at that segment. Any directory name that starts with a single dollar sign (`$`) will be a dynamic directory, and the remaining directory name will be the parameter at runtime. If the directory name is exactly `$`, the parameter will not be captured but it will be matched.
 
-  Examples:
-  ```
-  /$id
-  /$name
-  /$
-  ```
+    Examples:
+    ```
+    /$id
+    /$name
+    /$
+    ```
 
 4. **Catch-all directories** - These directories are similar to dynamic directories and introduce a dynamic parameter, but instead of matching a single path segment, they match to the end of the path. Any directory that starts with two dollar signs (`$$`) will be a catch-all directory, and the remaining directory name will be the parameter at runtime. In the case of a directory named `$$`, the parameter name will not be captured but it will match. Catch-all directories can be used to make `404` Not Found routes at any level, including the root.
 
-  Because catch-all directories match any path segment and consume the rest of the path, you cannot nest route files in them and no further directories will be traversed.
+    Because catch-all directories match any path segment and consume the rest of the path, you cannot nest route files in them and no further directories will be traversed.
 
-  Examples:
-  ```
-  /$$all
-  /$$rest
-  /$$
-  ```
+    Examples:
+    ```
+    /$$all
+    /$$rest
+    /$$
+    ```
 
 <!-- ### Match Ranking
 
@@ -334,7 +331,7 @@ export default defineConfig({
 
 ### Adapters
 
-Adapters provide the means to change the development, build and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
+Adapters provide the means to change the development, build, and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
 
 Specify your adapter in the Vite config when registering the `@marko/run` plugin
 
@@ -356,7 +353,6 @@ export default defineConfig({
 - [@marko/run-adapter-node](https://github.com/marko-js/run/blob/main/packages/adapters/node/README.md)
 - [@marko/run-adapter-netlify](https://github.com/marko-js/run/blob/main/packages/adapters/netlify/README.md)
 - [@marko/run-adapter-static](https://github.com/marko-js/run/blob/main/packages/adapters/static/README.md)
-
 ## Runtime
 
 Generally, when using an adapter, this runtime will be abstracted away.
@@ -380,7 +376,12 @@ async function fetch<T>(request: Request, platform: T) => Promise<Response | voi
 
 
 
-This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) object and an object containing any platform specific data you may want access to and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
+This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) and an object containing any platform-specific data you may want access to, and returns any of
+
+- a [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) (generated from executing any matched route files)
+- `undefined` (if the request was not explicitly handled)
+- a `404` status code response (if no route matches the requested path)
+- a `500` status code response (if an error occurs)
 
 Express example:
 ```ts
@@ -397,7 +398,7 @@ express()
     });
 
     if (response) {
-      // ...code to apply response to `res`
+      // ...code to apply a response to `res`
     } else {
       next();
     }
@@ -408,12 +409,12 @@ express()
 
 ### Other APIs
 
-In some cases you might want more control over when route matching and invokation (creating a response) occur. For instance you may have middleware in your server which need to know if there is a matched route. The runtime provides these additional methods
+In some cases, you might want more control over when route matching and invocation (creating a response) occur. For instance, you may have middleware in your server which needs to know if there is a matched route. The runtime provides these additional methods:
 
 ### `Run.match`
 
 ```ts
-interface interface Route {
+interface Route {
   params: Record<string, string>;
   meta: unknown;
 }
@@ -421,7 +422,7 @@ interface interface Route {
 function match(method: string, pathname: string) => Route | null;
 ```
 
-This synchronous function takes an HTTP method and path name, then returns an object representing the best match — or `null` if no match is found.
+This synchronous function takes an HTTP method and path name and returns an object representing the best match, or `null` if no match is found.
 
 - `params` - a `{ key: value }` collection of any path parameters for the route
 - `meta` - metadata for the route
@@ -462,7 +463,7 @@ express()
     });
 
     if (response) {
-      // ...code to apply response to `res`
+      // ...code to apply a response to `res`
     } else {
       next();
     }
@@ -476,30 +477,30 @@ express()
 
 
 ### Global Namespace
-marko/run provides a global namespace `MarkoRun` with the folling types:
+`marko/run` provides a global namespace `MarkoRun` with the following types:
 
 **`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
 
-**`MarkoRun.CurrentRoute`** - Type of the route's params and meta data
+**`MarkoRun.CurrentRoute`** - Type of the route's params and metadata
 
 **`MarkoRun.CurrentContext`** - Type of the request context object in a handler and `out.global` in your Marko files
 
 
 ### Generated Types
-If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in the project root, the Vite plugin will automatically generate a .d.ts file which provides more specific types for each of your middleware, handlers, layouts and pages. This file will be generated at `.marko-run/routes.d.ts` whenever the project is built - including dev.
-> **Note** TypeScript will not include this file by default. If you are not using the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and you will need to [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
+If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in the project root, the Vite plugin will automatically generate a .d.ts file which provides more specific types for each of your middleware, handlers, layouts, and pages. This file will be generated at `.marko-run/routes.d.ts` whenever the project is built - including dev.
+> **Note** TypeScript will not include this file by default. You should use the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
 
-These types are replaced with more specific versions per routeable file:
+These types are replaced with more specific versions per routable file:
 
 **`MarkoRun.Handler`**
 - Overrides context with specific MarkoRun.CurrentContext
 
 **`MarkoRun.CurrentRoute`**
 - Adds specific parameters and meta types 
-- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that file will see
+- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see
 
 **`MarkoRun.CurrentContext`**
-- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that file will see.
+- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see.
 - When an adapter is used, it can provide types for the platform
 
 ## Beta Roadmap
@@ -512,10 +513,10 @@ These types are replaced with more specific versions per routeable file:
 
 Once stable @marko/run will replace @marko/serve and improves upon that project in several critical ways.
 
-1. Special "route files" (eg `+page.marko`) improve the developer ergonomics quite substantially. While they may cause a double take initially, making these explicit allows colocating additional components, tests, stories, config, utilities and whatever else you need along side the page components. With `@marko/serve` it was far to easy to "accidentally" serve some of your test fixtures :see-no-evil:.
-2. @marko/serve was built around Webpack. Since Webpack doesn't have great support for SSR'd apps it meant that a lot of this work was up to us. This was not only a maintenance burden but also lead to some rough edges such as no HMR support (just full page reloading in dev). By switching to Vite with first class SSR support things all come together much more smoothly. And we're in good company (LINK TO OTHER META FRAMEWORKS ON VITE)!
-3. @marko/serve was primarily designed with a node target in mind. @marko/run instead supports an "adaptor" model, where you can author in web standard apis and build your application to run in Node, Deno, Netlify, Cloudflare and even a static site.
-4. The programatic api of `@marko/serve` left some to be desired which made it difficult to integrate into existing development servers and projects. Because of this public facing eBay applications (The largest consumer of Marko) we're note able to bring in `@marko/serve`. With `@marko/run` we've worked from the ground up to ensure a flexible enough programatic api to allow embedding in existing complex applications. Because of this we're confident that `@marko/run` will see much more use than `@marko/serve` and more investment from us!
-5. Built in layout management. Strictly speaking Marko does not need the concept of `+layout.marko` "route file". If you've used Marko before you know it's very easy to treat layouts as normal components. But by bringing these layouts into the router we're able to reduce the amount of JavaScript naively sent to the browser, reduce the amount of boilerplate, and prime ourselves for some plans we have post Marko 6 :eyes:.
+1. Special "route files" (e.g. `+page.marko`) improve the developer ergonomics quite substantially. While they may cause a double take initially, making these explicit allows colocating additional components, tests, stories, config, utilities, and whatever else you need alongside the page components. With `@marko/serve` it was far too easy to "accidentally" serve some of your test fixtures :see-no-evil:.
+2. @marko/serve was built around Webpack. Since Webpack doesn't have great support for SSR, a lot of this work was up to us. This was not only a maintenance burden but also lead to some rough edges such as no HMR support (just full page reloading in dev). By switching to Vite with its first-class SSR support, things all come together much more smoothly. <!-- TODO: And we're in good company (LINK TO OTHER META FRAMEWORKS ON VITE)! -->
+3. @marko/serve was primarily designed with a node target in mind. @marko/run instead supports an "adapter" model, where you can author in web standard APIs and build your application to run in Node, Deno, Netlify, Cloudflare, and even a static site.
+4. The programmatic API of `@marko/serve` left some to be desired which made it difficult to integrate into existing development servers and projects. Because of this, public-facing applications at eBay (the largest consumer of Marko) were not able to bring in `@marko/serve`. With `@marko/run` we've worked from the ground up to ensure a flexible enough programmatic API to allow embedding in existing complex applications. Because of this, we're confident that `@marko/run` will see much more use than `@marko/serve` and more investment from us!
+5. Built-in layout management. Strictly speaking, Marko does not need the concept of `+layout.marko` "route file". If you've used Marko before you know it's very easy to treat layouts as normal components. But by bringing these layouts into the router we're able to reduce the amount of JavaScript naively sent to the browser, reduce the amount of boilerplate, and prime ourselves for some plans we have for after Marko 6 is out :eyes:.
 
-There's more of course, but we're committed to make `@marko/run` _the best way_ to build a Marko application.
+There's more of course, but we're committed to making `@marko/run` the _best way_ to build a Marko application.

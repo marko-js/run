@@ -14,7 +14,7 @@ Preview and deploy [@marko/run](../serve/README.md) apps on Connect-style server
 
 ## Intallation
 
-```
+```sh
 npm install @marko/run-adapter-node
 ```
 
@@ -22,7 +22,7 @@ npm install @marko/run-adapter-node
 
 In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
 
-```
+```ts
 import { defineConfig } from "vite";
 import marko from "@marko/run/vite";
 import nodeAdapter from "@marko/run-adapter-node";
