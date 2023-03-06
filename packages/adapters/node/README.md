@@ -10,7 +10,7 @@
 	<br/>
 </h1>
 
-Adapter for [@marko/run](../serve/README.md) for use with Connect-style servers
+Preview and deploy [@marko/run](../serve/README.md) apps on Connect-style servers
 
 ## Intallation
 

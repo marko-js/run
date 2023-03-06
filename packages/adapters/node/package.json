@@ -1,10 +1,20 @@
 {
   "name": "@marko/run-adapter-node",
   "version": "0.0.1-beta4",
-  "description": "",
-  "keywords": [],
-  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "description": "Preview and deploy @marko/run apps on Connect-style servers",
   "license": "MIT",
+  "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/node",
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marko-js/run.git"
+  },
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "keywords": [
+    "marko"
+  ],
   "type": "module",
   "scripts": {
     "test": "",
@@ -38,7 +48,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/run": "^0.0.1-beta7"
+    "@marko/run": "^0.0.1-beta8"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
@@ -50,6 +60,6 @@
     "prettier": "^2.7.1",
     "tsx": "^3.9.0",
     "typescript": "^4.7.4",
-    "vite": "^3.0.8"
+    "vite": "^4.1.4"
   }
 }

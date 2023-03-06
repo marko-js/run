@@ -1,24 +1,13 @@
-# Marko Run Docs
-
-> **Warning**
-> This project is in BETA - use at your own peril, but please do provide helpful feedback.
 
 
 <div align="center">
-  <br>
-  <!-- Logo -->
-  <h1>
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
-      <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
-      <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
-    </picture>
-    <br>
-    @marko/run
-  </h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
+    <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
+  </picture>
+  <h4>Get your app up and <em>running</em> with <a href="https://markojs.com">Marko</a>!</h4>
 </div>
-
-#### Get your app up and *running* with [Marko](https://markojs.com)!
 
 ## Features
 * 🚀 Fastest way to build a Marko app
@@ -36,6 +25,10 @@ And when you build your production-ready app:
 * 🚢 Deploy to multiple platforms
 
 ## Installation
+
+> **Warning**
+> This project is in BETA - use at your own peril, but please do provide helpful feedback.
+
 
 ```sh
 npm install @marko/run

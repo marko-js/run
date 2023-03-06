@@ -10,7 +10,7 @@
 	<br/>
 </h1>
 
-Adapter for [@marko/run](../serve/README.md) to produce staticly served files
+Preview and deploy [@marko/run](../serve/README.md) apps as static files
 
 ## Intallation
 
