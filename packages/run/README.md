@@ -1,28 +1,39 @@
+# Marko Run Docs
+
 > **Warning**
 > This project is in BETA - use at your own peril, but please do provide helpful feedback.
 
+
 <div align="center">
+  <br>
   <!-- Logo -->
   <h1>
-    <img alt="" src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
-    <br/>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../../assets/marko-run-darkmode.png">
+      <source media="(prefers-color-scheme: light)" srcset="../../assets/marko-run.png">
+      <img alt="Marko Run Logo" src="../../assets/marko-run.png" width="400">
+    </picture>
+    <br>
     @marko/run
   </h1>
-
-  <!-- Language -->
-  <a href="https://www.typescriptlang.org">
-    <img src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue.svg" alt="TypeScript"/>
-  </a>
 </div>
 
-`@marko/run` will help you get up and *running* with [Marko](https://markojs.com)
+#### Get your app up and *running* with [Marko](https://markojs.com)!
 
-- Vite plugin that encapsulates [`@marko/vite`](https://github.com/marko-js/vite)
-- CLI to simplify build modes
-- File-based routing with layouts and middleware
-- Efficient routing using a compiled static trie
-- [Designed with web standards](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/URLPattern) to run anywhere
-- TypeScript support
+## Features
+* 🚀 Fastest way to build a Marko app
+* 💖 Scales from zero configuration
+* ⚡️ Pages live-reload as you make changes
+* 📁 Directory-based routes, layouts and middleware
+* 🖌️ TypeScript powered editor support
+* 🧬 [Designed with web standards](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/URLPattern) to run anywhere
+
+And when you build your production-ready app:
+
+* 🔥 Blazing fast server-side rendering
+* 🌊 Streams content to users ASAP
+* 📦 Partial hydration & automatic code splitting
+* 🚢 Deploy to multiple platforms
 
 ## Installation
 
@@ -30,196 +41,43 @@
 npm install @marko/run
 ```
 
-## CLI
-
-The package provides a command line tool `marko-run` which can be run using scripts in your package.json or with npx.
-
 ### Getting Started / Zero Config
 
+`marko-run` makes it easy to get started without little to no config. The package ships with a default Vite config and node-based adapter.
 
+To get started from a template:
+1. `npm init marko -- -t basic`
+2. `cd ./<PROJECT_NAME>`
+4. `npm run dev`
 
-`marko-run` makes it easy to get started without little to no config. The package ships with a default Vite config and node-based adapter that means a minimal project start can be:
+Or manually create a project:
 1. Install `@marko/run`
 2. Create file `src/routes/+page.marko`
-3. Run `npx marko-run`
-4. Open browser to `http://localhost:3000`
+3. Run `npm exec marko-run`
 
-### Commands
+Finally open `http://localhost:3000` 🚀
+
+### CLI
 
 **`dev`** - Start development server in watch mode
 ```bash
-> npx marko-run dev
+> npm exec marko-run
 ```
-or (default command)
+or (with explicit sub command)
 ```bash
-> npx marko-run
+> npm exec marko-run dev
 ```
 
 
 **`build`** - Create a production build
 ```bash
-> npx marko-run build
+> npm exec marko-run build
 ```
 
-**`serve`** - Create a production build and serve
+**`preview`** - Create a production build and start preview server
 ```bash
-> npx marko-run serve
+> npm exec marko-run preview
 ```
-## Vite Plugin
-
-This package’s Vite plugin discovers your route files, generates the routing code, and registers the `@marko/vite` plugin to compile your `.marko` files.
-
-```ts
-// vite.config.ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite"; // Import the Vite plugin
-
-export default defineConfig({
-  plugins: [marko()] // Register the Vite plugin
-})
-```
-
-## Adapters
-
-Adapters provide the means to change the development, build and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
-
-### Configure
-
-Specify your adapter in the Vite config when registering the `@marko/run` plugin
-
-```ts
-// vite.config.ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite";
-import netlify from "@makor/run-adapter-netlify" // Import the adapter
-
-export default defineConfig({
-  plugins: [marko({
-    adapter: netlify({ edge: true }) // Configure and apply the adapter
-  })]
-})
-```
-
-### Adapter List
-
-- ### [@marko/run-adapter-node](./packages/adapters/node/README.md)
-- ### [@marko/run-adapter-netlify](./packages/adapters/netlify/README.md)
-- ### [@marko/run-adapter-static](./packages/adapters/static/README.md)
-
-## Runtime
-
-Generally, when using an adapter, this runtime will be abstracted away.
-
-<!-- TODO: Add examples -->
-<!-- TODO: Split fetch and match + invoke in two sections and explain why you might use one or the other  -->
-
-```ts
-import * as Run from '@marko/run/router`;
-```
-
-### Emdedding in Existing Server
-
-
-
-### `Run.fetch`
-
-```ts
-async function fetch<T>(request: Request, platform: T) => Promise<Response | void>;
-```
-
-
-
-This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) object and an object containing any platform specific data you may want access to and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
-
-Express example:
-```ts
-import express from "express";
-import * as Run from "@marko/run/router";
-
-express()
-  .use(async (req, res, next) => {
-    const request = // ...code to create a WHATWG Request from `req`
-
-    const response = await Run.fetch(request, {
-      req,
-      res
-    });
-
-    if (response) {
-      // ...code to apply response to `res`
-    } else {
-      next();
-    }
-  })
-  .listen(3000);
-```
-
-
-### Other APIs
-
-In some cases you might want more control over when route matching and invokation (creating a response) occur. For instance you may have middleware in your server which need to know if there is a matched route. The runtime provides these additional methods
-
-### `Run.match`
-
-```ts
-interface interface Route {
-  params: Record<string, string>;
-  meta: unknown;
-}
-
-function match(method: string, pathname: string) => Route | null;
-```
-
-This synchronous function takes an HTTP method and path name, then returns an object representing the best match — or `null` if no match is found.
-
-- `params` - a `{ key: value }` collection of any path parameters for the route
-- `meta` - metadata for the route
-
-### `Run.invoke`
-
-```ts
-async function invoke<T>(route: Route, request: Request, platform: T) => Promise<Response | void>;
-```
-This asynchronous function takes a route object returned by [Run.match](#Run.match) the request and platform data and returns a response in the same way the [Run.fetch](#Run.fetch) does.
-
-Express example:
-```ts
-import express from "express";
-import * as Run from "@marko/run/router";
-
-express()
-  .use((req, res) => {
-    const matchedRoute = Run.match(req.method, req.path);
-    if (matchedRoute) {
-      req.match = matchedRoute;
-    }
-  })
-
-  // ...other middleware
-
-  .use(async (req, res, next) => {
-    // Check if a route was previously matched
-    if (!req.match) {
-      next();
-      return;
-    }
-
-    const request = // ...code to create a WHATWG Request from `req`
-    const response = await Run.invoke(req.match, request, {
-      req,
-      res
-    });
-
-    if (response) {
-      // ...code to apply response to `res`
-    } else {
-      next();
-    }
-  })
-  .listen(3000);
-```
-
-
 
 ## File-based Routing
 
@@ -265,7 +123,7 @@ Layouts are like any other Marko component with no extra constraints. Each layou
 <main>
   <h1>My Products</h1>
 
-  ${input.renderBody} // render the page or layout here
+  <${input.renderBody}/> // render the page or layout here
 </main>
 ```
 
@@ -352,8 +210,6 @@ These files are like layouts, but for handlers. Middleware get called before han
 #### `+meta.*`
 
 These files represent static metadata to attach to the route. This metadata will be automatically provided on the the route `context` when invoking a route.
-
-
 
 ### Special Files
 
@@ -467,6 +323,162 @@ Within the _routes directory_, the directory structure will determine the path t
 *TODO: Write some things* -->
 
 
+
+
+## Vite Plugin
+
+This package’s Vite plugin discovers your route files, generates the routing code, and registers the `@marko/vite` plugin to compile your `.marko` files.
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import marko from "@marko/run/vite"; // Import the Vite plugin
+
+export default defineConfig({
+  plugins: [marko()] // Register the Vite plugin
+})
+```
+
+### Adapters
+
+Adapters provide the means to change the development, build and preview process to fit different deployment platforms and runtimes while allowing authors to write idiomatic code.
+
+Specify your adapter in the Vite config when registering the `@marko/run` plugin
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import marko from "@marko/run/vite";
+import netlify from "@marko/run-adapter-netlify" // Import the adapter
+
+export default defineConfig({
+  plugins: [marko({
+    adapter: netlify({ edge: true }) // Configure and apply the adapter
+  })]
+})
+```
+
+#### Available Adapters
+
+- [@marko/run-adapter-node](../adapters/node/README.md)
+- [@marko/run-adapter-netlify](../adapters/netlify/README.md)
+- [@marko/run-adapter-static](../adapters/static/README.md)
+
+## Runtime
+
+Generally, when using an adapter, this runtime will be abstracted away.
+
+<!-- TODO: Add examples -->
+<!-- TODO: Split fetch and match + invoke in two sections and explain why you might use one or the other  -->
+
+```ts
+import * as Run from '@marko/run/router`;
+```
+
+### Emdedding in Existing Server
+
+
+
+### `Run.fetch`
+
+```ts
+async function fetch<T>(request: Request, platform: T) => Promise<Response | void>;
+```
+
+
+
+This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) object and an object containing any platform specific data you may want access to and returns the [WHATWG `Response` object](https://fetch.spec.whatwg.org/#response-class) from executing any matched route files or undefined if the request was explicitly not handled. If no route matches the requested path, a `404` status code response will be returned. If an error occurs a `500` status code response will be returned.
+
+Express example:
+```ts
+import express from "express";
+import * as Run from "@marko/run/router";
+
+express()
+  .use(async (req, res, next) => {
+    const request = // ...code to create a WHATWG Request from `req`
+
+    const response = await Run.fetch(request, {
+      req,
+      res
+    });
+
+    if (response) {
+      // ...code to apply response to `res`
+    } else {
+      next();
+    }
+  })
+  .listen(3000);
+```
+
+
+### Other APIs
+
+In some cases you might want more control over when route matching and invokation (creating a response) occur. For instance you may have middleware in your server which need to know if there is a matched route. The runtime provides these additional methods
+
+### `Run.match`
+
+```ts
+interface interface Route {
+  params: Record<string, string>;
+  meta: unknown;
+}
+
+function match(method: string, pathname: string) => Route | null;
+```
+
+This synchronous function takes an HTTP method and path name, then returns an object representing the best match — or `null` if no match is found.
+
+- `params` - a `{ key: value }` collection of any path parameters for the route
+- `meta` - metadata for the route
+
+### `Run.invoke`
+
+```ts
+async function invoke(route: Route, request: Request, platform: any) => Promise<Response | void>;
+```
+This asynchronous function takes a route object returned by [Run.match](#Run.match) the request and platform data and returns a response in the same way the [Run.fetch](#Run.fetch) does.
+
+Express example:
+```ts
+import express from "express";
+import * as Run from "@marko/run/router";
+
+express()
+  .use((req, res) => {
+    const matchedRoute = Run.match(req.method, req.path);
+    if (matchedRoute) {
+      req.match = matchedRoute;
+    }
+  })
+
+  // ...other middleware
+
+  .use(async (req, res, next) => {
+    // Check if a route was previously matched
+    if (!req.match) {
+      next();
+      return;
+    }
+
+    const request = // ...code to create a WHATWG Request from `req`
+    const response = await Run.invoke(req.match, request, {
+      req,
+      res
+    });
+
+    if (response) {
+      // ...code to apply response to `res`
+    } else {
+      next();
+    }
+  })
+  .listen(3000);
+```
+
+
+
 ## TypeScript
 
 
@@ -502,3 +514,15 @@ These types are replaced with more specific versions per routeable file:
 - Error handling
 - Error component
 - Redirect component
+
+## What about @marko/serve?
+
+Once stable @marko/run will replace @marko/serve and improves upon that project in several critical ways.
+
+1. Special "route files" (eg `+page.marko`) improve the developer ergonomics quite substantially. While they may cause a double take initially, making these explicit allows colocating additional components, tests, stories, config, utilities and whatever else you need along side the page components. With `@marko/serve` it was far to easy to "accidentally" serve some of your test fixtures :see-no-evil:.
+2. @marko/serve was built around Webpack. Since Webpack doesn't have great support for SSR'd apps it meant that a lot of this work was up to us. This was not only a maintenance burden but also lead to some rough edges such as no HMR support (just full page reloading in dev). By switching to Vite with first class SSR support things all come together much more smoothly. And we're in good company (LINK TO OTHER META FRAMEWORKS ON VITE)!
+3. @marko/serve was primarily designed with a node target in mind. @marko/run instead supports an "adaptor" model, where you can author in web standard apis and build your application to run in Node, Deno, Netlify, Cloudflare and even a static site.
+4. The programatic api of `@marko/serve` left some to be desired which made it difficult to integrate into existing development servers and projects. Because of this public facing eBay applications (The largest consumer of Marko) we're note able to bring in `@marko/serve`. With `@marko/run` we've worked from the ground up to ensure a flexible enough programatic api to allow embedding in existing complex applications. Because of this we're confident that `@marko/run` will see much more use than `@marko/serve` and more investment from us!
+5. Built in layout management. Strictly speaking Marko does not need the concept of `+layout.marko` "route file". If you've used Marko before you know it's very easy to treat layouts as normal components. But by bringing these layouts into the router we're able to reduce the amount of JavaScript naively sent to the browser, reduce the amount of boilerplate, and prime ourselves for some plans we have post Marko 6 :eyes:.
+
+There's more of course, but we're committed to make `@marko/run` _the best way_ to build a Marko application.
