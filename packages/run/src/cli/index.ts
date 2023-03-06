@@ -32,6 +32,7 @@ prog
   .option("-p, --port", "Port the server should listen on (defaults: `$PORT` env variable or 3000)")
   .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
+    process.env.NODE_ENV = "production";
     const config = await getViteConfig(cwd, opts.config);
     await build(entry, config, opts.output, false, opts.env);
     await preview(opts.entry, config, opts.port, opts.output, opts.env);
@@ -59,6 +60,7 @@ prog
   .option("--skip-client", "Skip the client-side build")
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {
+    process.env.NODE_ENV = "production";
     const config = await getViteConfig(cwd, opts.config);
     await build(entry, config, opts.ouput, opts["skip-client"], opts.env);
   });
