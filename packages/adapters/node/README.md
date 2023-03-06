@@ -1,18 +1,13 @@
 <h1 align="center">
   <!-- Logo -->
-  <img src="https://user-images.githubusercontent.com/4985201/115444712-ca550500-a1c9-11eb-9897-238ece59129c.png" height="118"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
+    <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
+  </picture>
   <br/>
   @marko/run-adapter-node
 	<br/>
-
-  <!-- Language -->
-  <a href="http://typescriptlang.org">
-    <img src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue.svg" alt="TypeScript"/>
-  </a>
-  <!-- Format -->
-  <a href="https://github.com/prettier/prettier">
-    <img src="https://img.shields.io/badge/styled_with-prettier-ff69b4.svg" alt="Styled with prettier"/>
-  </a>
 </h1>
 
 Adapter for [@marko/run](../serve/README.md) for use with Connect-style servers
