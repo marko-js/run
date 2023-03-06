@@ -9,9 +9,9 @@
   <!-- Logo -->
   <h1>
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="../../assets/marko-run-darkmode.png">
-      <source media="(prefers-color-scheme: light)" srcset="../../assets/marko-run.png">
-      <img alt="Marko Run Logo" src="../../assets/marko-run.png" width="400">
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+      <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
+      <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
     </picture>
     <br>
     @marko/run
@@ -360,9 +360,9 @@ export default defineConfig({
 
 #### Available Adapters
 
-- [@marko/run-adapter-node](../adapters/node/README.md)
-- [@marko/run-adapter-netlify](../adapters/netlify/README.md)
-- [@marko/run-adapter-static](../adapters/static/README.md)
+- [@marko/run-adapter-node](https://github.com/marko-js/run/blob/main/packages/adapters/node/README.md)
+- [@marko/run-adapter-netlify](https://github.com/marko-js/run/blob/main/packages/adapters/netlify/README.md)
+- [@marko/run-adapter-static](https://github.com/marko-js/run/blob/main/packages/adapters/static/README.md)
 
 ## Runtime
 
