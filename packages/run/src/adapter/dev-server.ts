@@ -34,11 +34,7 @@ export async function createDevServer(configFile?: string) {
   const devServer = await createServer({
     configFile,
     appType: "custom",
-    server: { middlewareMode: true },
-    resolve: {
-      dedupe: ["marko"],
-      conditions: ["worker"],
-    },
+    server: { middlewareMode: true }
   });
   const { createMiddleware } = await devServer.ssrLoadModule(
     "@marko/run/adapter/middleware"
