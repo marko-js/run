@@ -10,7 +10,7 @@ export default function (): Adapter {
       return `import type { NodePlatformInfo } from '@marko/run-adapter-node';
 
 declare module '@marko/run' {
-  interface RouteContextExtensions {
+  interface ContextExtensions {
     platform: NodePlatformInfo
   }
 }`;

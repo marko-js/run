@@ -108,14 +108,14 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         ? `import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';
 
 declare module '@marko/run' {
-  interface RouteContextExtensions {
+  interface ContextExtensions {
     platform: NetlifyEdgePlatformInfo
   }
 }`
         : `import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';
 
 declare module '@marko/run' {
-  interface RouteContextExtensions {
+  interface ContextExtensions {
     platform: NetlifyFunctionsPlatformInfo
   }
 }`;
