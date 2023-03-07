@@ -318,7 +318,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
             { skipSelf: true }
           );
         } else if (importee.startsWith(virtualFilePrefix)) {
-          importee = path.posix.resolve(
+          importee = path.resolve(
             root,
             importee.slice(virtualFilePrefix.length + 1)
           );
@@ -327,7 +327,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           (importer === devEntryFile || importer === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
-          importee = path.posix.resolve(root, "." + importee);
+          importee = path.resolve(root, "." + importee);
         }
         
         importee = normalizePath(importee);
