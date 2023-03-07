@@ -75,6 +75,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   let tsConfigExists: boolean | undefined;
   let ssrEntryFiles: string[];
   let devEntryFile: string;
+  let devEntryFilePosix: string;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
@@ -123,18 +124,18 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       }
       if (route.page) {
         virtualFiles.set(
-          path.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
+          path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
           render ? renderRouteTemplate(route) : ""
         );
       }
       virtualFiles.set(
-        path.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
+        path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
         render ? renderRouteEntry(route) : ""
       );
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
+        path.posix.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
         render ? renderRouteTemplate(route) : ""
       );
     }
@@ -148,7 +149,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     );
 
     virtualFiles.set(
-      path.join(root, `${markoRunFilePrefix}middleware.js`),
+      path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
       render ? renderMiddleware(routes.middleware) : ""
     );
   }
@@ -206,6 +207,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
+        devEntryFilePosix = normalizePath(devEntryFile);
 
         let pluginConfig: UserConfig = {
           logLevel: isBuild ? "warn" : undefined,
@@ -308,16 +310,18 @@ export default function markoServe(opts: Options = {}): Plugin[] {
             { skipSelf: true }
           );
         } else if (importee.startsWith(virtualFilePrefix)) {
-          importee = path.resolve(
+          importee = path.posix.resolve(
             root,
             importee.slice(virtualFilePrefix.length + 1)
           );
         } else if (
           !isBuild &&
-          importer === devEntryFile &&
+          (importer === devEntryFile || importer === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
-          importee = path.resolve(root, "." + importee);
+          importee = path.posix.resolve(root, "." + importee);
+        } else {
+          importee = normalizePath(importee);
         }
 
         if (isStale) {
