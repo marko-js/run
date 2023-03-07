@@ -79,12 +79,10 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/vite": "^2.3.12",
     "marko": "^5"
   },
   "devDependencies": {
     "@babel/types": "^7.19.0",
-    "@marko/vite": "^2.3.12",
     "@types/glob": "^8.0.1",
     "@types/human-format": "^1.0.0",
     "@types/mocha": "^9.1.1",
@@ -100,6 +98,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "@marko/vite": "^2.3.13",
     "cli-table3": "^0.6.3",
     "compression": "^1.7.4",
     "dotenv": "^16.0.3",

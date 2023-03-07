@@ -3,7 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
+import { mergeConfig, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
 import type { PluginContext } from "rollup";
 
@@ -45,6 +45,14 @@ import { fileURLToPath } from "url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const markoExt = ".marko";
+
+const POSIX_SEP = "/";
+const WINDOWS_SEP = "\\";
+
+const normalizePath =
+  path.sep === WINDOWS_SEP
+    ? (id: string) => id.replace(/\\/g, POSIX_SEP)
+    : (id: string) => id;
 
 function isMarkoFile(id: string) {
   return id.endsWith(markoExt);
@@ -320,9 +328,9 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.posix.resolve(root, "." + importee);
-        } else {
-          importee = normalizePath(importee);
         }
+        
+        importee = normalizePath(importee);
 
         if (isStale) {
           await buildVirtualFiles();
