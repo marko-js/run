@@ -3,7 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, normalizePath, ResolvedConfig, UserConfig } from "vite";
+import { mergeConfig, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
 import type { PluginContext } from "rollup";
 
@@ -46,6 +46,14 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const markoExt = ".marko";
 
+const POSIX_SEP = "/";
+const WINDOWS_SEP = "\\";
+
+const normalizePath =
+  path.sep === WINDOWS_SEP
+    ? (id: string) => id.replace(/\\/g, POSIX_SEP)
+    : (id: string) => id;
+
 function isMarkoFile(id: string) {
   return id.endsWith(markoExt);
 }
@@ -75,6 +83,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
   let tsConfigExists: boolean | undefined;
   let ssrEntryFiles: string[];
   let devEntryFile: string;
+  let devEntryFilePosix: string;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
@@ -123,18 +132,18 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       }
       if (route.page) {
         virtualFiles.set(
-          path.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
+          path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
           render ? renderRouteTemplate(route) : ""
         );
       }
       virtualFiles.set(
-        path.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
+        path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
         render ? renderRouteEntry(route) : ""
       );
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
+        path.posix.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
         render ? renderRouteTemplate(route) : ""
       );
     }
@@ -148,7 +157,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     );
 
     virtualFiles.set(
-      path.join(root, `${markoRunFilePrefix}middleware.js`),
+      path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
       render ? renderMiddleware(routes.middleware) : ""
     );
   }
@@ -206,6 +215,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
+        devEntryFilePosix = normalizePath(devEntryFile);
 
         let pluginConfig: UserConfig = {
           logLevel: isBuild ? "warn" : undefined,
@@ -314,11 +324,14 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           );
         } else if (
           !isBuild &&
-          importer === devEntryFile &&
+          importer &&
+          (importer === devEntryFile || normalizePath(importer) === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
         }
+        
+        importee = normalizePath(importee);
 
         if (isStale) {
           await buildVirtualFiles();
