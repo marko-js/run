@@ -324,7 +324,8 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           );
         } else if (
           !isBuild &&
-          (importer === devEntryFile || importer === devEntryFilePosix) &&
+          importer &&
+          (importer === devEntryFile || normalizePath(importer) === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
