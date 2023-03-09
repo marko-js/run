@@ -7,6 +7,7 @@ import { mergeConfig, ResolvedConfig, UserConfig } from "vite";
 import type { ViteDevServer, Plugin } from "vite";
 import type { PluginContext } from "rollup";
 
+import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
 
@@ -74,6 +75,7 @@ interface RouteData {
 export default function markoServe(opts: Options = {}): Plugin[] {
   const { routesDir = "src/routes", adapter, ...markoOptions } = opts;
 
+  let compiler: typeof Compiler;
   let store: BuildStore;
   let root: string;
   let resolvedRoutesDir: string;
@@ -110,8 +112,12 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
       const adapterTypeInfo =
-        (adapter?.writeTypeInfo && (await adapter?.writeTypeInfo()));
-      const data = renderRouteTypeInfo(routes, path.relative(typesDir, routesDir), adapterTypeInfo);
+        adapter?.writeTypeInfo && (await adapter?.writeTypeInfo());
+      const data = renderRouteTypeInfo(
+        routes,
+        path.relative(typesDir, routesDir),
+        adapterTypeInfo
+      );
 
       if (data !== typesFile || !fs.existsSync(filepath)) {
         await ensureDir(typesDir);
@@ -132,7 +138,10 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       }
       if (route.page) {
         virtualFiles.set(
-          path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
+          path.posix.join(
+            root,
+            `${markoRunFilePrefix}route__${route.key}.marko`
+          ),
           render ? renderRouteTemplate(route) : ""
         );
       }
@@ -143,7 +152,10 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.posix.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
+        path.posix.join(
+          root,
+          `${markoRunFilePrefix}special__${route.key}.marko`
+        ),
         render ? renderRouteTemplate(route) : ""
       );
     }
@@ -200,6 +212,16 @@ export default function markoServe(opts: Options = {}): Plugin[] {
             opts = mergeConfig(opts, adapterOptions);
           }
         }
+
+        compiler ??= await import(opts.compiler || "@marko/compiler");
+        compiler.taglib.register("@marko/run", {
+          "<*>": {
+            template: path.resolve(
+              __dirname,
+              "../components/src-attributes-transformer.cjs"
+            ),
+          },
+        });
 
         root = normalizePath(config.root || process.cwd());
         store =
@@ -325,12 +347,13 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         } else if (
           !isBuild &&
           importer &&
-          (importer === devEntryFile || normalizePath(importer) === devEntryFilePosix) &&
+          (importer === devEntryFile ||
+            normalizePath(importer) === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
         }
-        
+
         importee = normalizePath(importee);
 
         if (isStale) {
@@ -484,3 +507,8 @@ async function ensureDir(dir: string) {
     await fs.promises.mkdir(dir, { recursive: true });
   }
 }
+
+// async function importJson(filePath: string): Promise<Record<string, unknown>> {
+//   const data = await fs.promises.readFile(filePath, 'utf8');
+//   return JSON.parse(data);
+// }
