@@ -132,7 +132,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         route.handler.verbs = await extractVerbs(route.handler.filePath);
         if (!route.handler.verbs.length) {
           console.warn(
-            `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'get', 'post', 'put' or 'del'`
+            `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`
           );
         }
       }
