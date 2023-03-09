@@ -1,18 +1,8 @@
-function post(ctx) {
+export function POST() {
   return new Response('posted', { status: 200 });
 }
 
-function put(ctx) {
-  return new Response('posted', { status: 200 });
-}
-
-// function get(ctx, next) {
-//   console.log('home route entry.js!')
-//   return next();
-// }
-
-export function del(ctx, next) {
+export function GET(_, next) {
+  console.log(`'/' route GET handler`)
   return next();
 }
-
-export { post, put, };

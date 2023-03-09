@@ -1,0 +1,13 @@
+{
+  "name": "zero-config-example",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "marko-run build",
+    "dev": "marko-run",
+    "start": "marko-run preview"
+  },
+  "dependencies": {
+    "marko": "^5.22.4"
+  }
+}

@@ -1,8 +1,7 @@
 import { defineConfig } from "vite";
 import marko from "@marko/run/vite";
 import nodeAdapter from "@marko/run-adapter-node";
-
-import { generateRoutesJson } from "./src/ebay-stuff";
+import { generateRoutesJson } from "./src/config";
 
 export default defineConfig({
   plugins: [
@@ -10,15 +9,5 @@ export default defineConfig({
       adapter: nodeAdapter(),
       emitRoutes: generateRoutesJson
     }),
-  ],
-  // ssr: {
-  //   noExternal: [
-  //     'makeup-prevent-scroll-keys',
-  //     'makeup-navigation-emitter',
-  //     'makeup-roving-tabindex',
-  //     'makeup-exit-emitter',
-  //     'makeup-next-id',
-  //     'makeup-typeahead'
-  //   ]
-  // }
+  ]
 });

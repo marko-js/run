@@ -4,30 +4,19 @@
     "name": "foo"
   },
   {
-    "route": "DELETE / => src/routes/+handler.js#delete$1",
-    "name": "foo"
-  },
-  {
     "route": "POST / => src/routes/+handler.js#post$1",
     "name": "foo"
   },
   {
-    "route": "PUT / => src/routes/+handler.js#put$1",
-    "name": "foo"
+    "route": "GET /users => src/routes/_one/users/+page.marko"
   },
   {
-    "route": "GET /:rest* => src/routes/$$rest/+page.marko"
+    "route": "GET /users/:id => src/routes/_one/users/$id/+page.marko"
   },
   {
-    "route": "POST /:rest* => src/routes/$$rest/+handler.ts#post$2"
+    "route": "GET /users/foo => src/routes/_two/users/foo/+page.marko"
   },
   {
-    "route": "GET /users => src/routes/(private)/users/+page.marko"
-  },
-  {
-    "route": "GET /users/:id => src/routes/(private)/users/$id/+page.marko"
-  },
-  {
-    "route": "GET /users/foo => src/routes/(public)/users/foo/+page.marko"
+    "route": "GET /other/:rest* => src/routes/other/$$rest/+page.marko"
   }
 ]

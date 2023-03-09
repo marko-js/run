@@ -4,13 +4,13 @@
   "type": "module",
   "scripts": {
     "build": "marko-run build src/index.ts",
-    "dev": "marko-run dev -- tsx src/index.ts",
-    "start": "marko-run"
+    "dev": "marko-run -- tsx src/index.ts",
+    "start": "marko-run preview src/index.ts"
   },
   "devDependencies": {
     "@marko/compiler": "^5.22.6",
-    "@marko/run": "^0.0.1-beta4",
-    "@marko/run-adapter-node": "^0.0.1-beta2",
+    "@marko/run": "^0.1.2",
+    "@marko/run-adapter-node": "^0.1.0",
     "@marko/vite": "^2.3.7",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.6",
@@ -20,8 +20,6 @@
     "vite": "^4.1.4"
   },
   "dependencies": {
-    "@ebay/ebayui-core": "^10.1.0",
-    "@ebay/skin": "^15.1.0",
     "compression": "^1.7.4",
     "express": "^4.18.1",
     "marko": "^5.22.4",
