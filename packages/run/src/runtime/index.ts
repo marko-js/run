@@ -28,16 +28,17 @@ declare global {
 }
 
 export type {
+  Context,
+  ContextExtensions,
   Fetch,
   HandlerLike,
   InputObject,
   Invoke,
   Match,
   NextFunction,
+  ParamsObject,
   PathTemplate,
   Route,
-  Context,
-  ContextExtensions,
   RouteHandler,
   RouteWithHandler,
   RuntimeModule,

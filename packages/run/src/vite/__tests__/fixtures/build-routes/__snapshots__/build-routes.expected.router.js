@@ -127,7 +127,8 @@ export async function invoke(route, request, platform, url = new URL(request.url
   const context = {
     url,
     request,
-    platform
+    platform,
+		serializedGlobals: { params: true }
   };
   const buildInput = createInput(context);
 	try {
