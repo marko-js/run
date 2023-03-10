@@ -29,7 +29,7 @@ export interface RouterOptions {
 export interface MarkoServeOptions extends Partial<RouterOptions> {
   routesDir?: string;
   emitRoutes?(routes: Route[]): void | Promise<void>;
-  adapter?: Adapter;
+  adapter?: Adapter | null;
 }
 
 export type Options = MarkoServeOptions & MarkoViteOptions

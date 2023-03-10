@@ -3,8 +3,8 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, ResolvedConfig, UserConfig } from "vite";
-import type { ViteDevServer, Plugin } from "vite";
+import { mergeConfig, resolvePackageData } from "vite";
+import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext } from "rollup";
 
 import type * as Compiler from "@marko/compiler";
@@ -17,7 +17,7 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, BuiltRoutes, HttpVerb } from "./types";
+import type { Options, Adapter, BuiltRoutes, HttpVerb } from "./types";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -72,8 +72,8 @@ interface RouteData {
   sourceEntries: string[];
 }
 
-export default function markoServe(opts: Options = {}): Plugin[] {
-  const { routesDir = "src/routes", adapter, ...markoOptions } = opts;
+export default function markoRun(opts: Options = {}): Plugin[] {
+  let { routesDir = "src/routes", adapter, ...markoOptions } = opts;
 
   let compiler: typeof Compiler;
   let store: BuildStore;
@@ -202,6 +202,10 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         if (externalPluginOptions) {
           opts = mergeConfig(opts, externalPluginOptions);
         }
+
+        root = normalizePath(config.root || process.cwd());
+        adapter = await resolveAdapter(root, opts, true);
+
         if (adapter) {
           const externalAdapterConfig = getExternalAdapterOptions(config);
           if (externalAdapterConfig && adapter.configure) {
@@ -222,8 +226,7 @@ export default function markoServe(opts: Options = {}): Plugin[] {
             ),
           },
         });
-
-        root = normalizePath(config.root || process.cwd());
+        
         store =
           opts.store ||
           new FileStore(
@@ -508,7 +511,30 @@ async function ensureDir(dir: string) {
   }
 }
 
-// async function importJson(filePath: string): Promise<Record<string, unknown>> {
-//   const data = await fs.promises.readFile(filePath, 'utf8');
-//   return JSON.parse(data);
-// }
+export async function resolveAdapter(root: string, options: Options, log?: boolean): Promise<Adapter | null> {
+  const { adapter } = options;
+  if (adapter !== undefined) {
+    return adapter;
+  }
+  
+  const pkg = resolvePackageData('.', root);
+  if (pkg) {
+    const dependecies = { ...pkg.data.dependecies, ...pkg.data.devDependencies };
+    for (const name of Object.keys(dependecies)) {
+      if (name.startsWith('@marko/run-adapter') || name.indexOf('marko-run-adapter') !== -1) {
+        try {
+          const module = await import(name);
+          log && console.log(`Using adapter ${name} listed in your package.json dependecies`);
+          return  module.default();
+        } catch (err) {
+          log && console.warn(`Attempt to use package '${name}' failed`, err);
+        }
+      }
+    }
+  }
+
+  const defaultAdapter = '@marko/run/adapter';
+  const module = await import(defaultAdapter);
+  log && console.log('Using default adapter')
+  return module.default();
+}
