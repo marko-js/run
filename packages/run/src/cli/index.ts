@@ -13,6 +13,7 @@ import {
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
 import { spawnServer } from "../vite/utils/server";
+import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cwd = process.cwd();
@@ -22,14 +23,25 @@ const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
 const prog = sade("marko-run")
   .version("0.0.1")
-  .option("-c, --config", `Provide path to a Vite config file (by default looks for a file starting with ${defaultConfigFileBases.join(" or ")} with one of these extensions: ${defaultConfigFileExts.join(", ")})`)
+  .option(
+    "-c, --config",
+    `Provide path to a Vite config file (by default looks for a file starting with ${defaultConfigFileBases.join(
+      " or "
+    )} with one of these extensions: ${defaultConfigFileExts.join(", ")})`
+  )
   .option("-e, --env", "Provide path to a dotenv file");
 
 prog
   .command("preview [entry]")
   .describe("Start a production-like server for already-built app files")
-  .option("-o, --output", "Directory to serve files from, and write asset files to if `--build` (default: )") // The awkwardness of this makes me wonder if instead the build command should have a `--serve` option?
-  .option("-p, --port", "Port the server should listen on (defaults: `$PORT` env variable or 3000)")
+  .option(
+    "-o, --output",
+    "Directory to serve files from, and write asset files to if `--build` (default: )"
+  ) // The awkwardness of this makes me wonder if instead the build command should have a `--serve` option?
+  .option(
+    "-p, --port",
+    "Port the server should listen on (defaults: `$PORT` env variable or 3000)"
+  )
   .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
     process.env.NODE_ENV = "production";
@@ -41,7 +53,10 @@ prog
 prog
   .command("dev [entry]", "", { default: true })
   .describe("Start development server in watch mode")
-  .option("-p, --port", "Port the dev server should listen on (defaults: 'preview.port' in config, or `$PORT` env variable, or 3000)")
+  .option(
+    "-p, --port",
+    "Port the dev server should listen on (defaults: 'preview.port' in config, or `$PORT` env variable, or 3000)"
+  )
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
     const cmd = opts._.length
@@ -56,7 +71,10 @@ prog
 prog
   .command("build [entry]")
   .describe("Build the application (without serving it)")
-  .option("-o, --output", "Directory to write built files (default: 'build.outDir' in Vite config)")
+  .option(
+    "-o, --output",
+    "Directory to write built files (default: 'build.outDir' in Vite config)"
+  )
   .option("--skip-client", "Skip the client-side build")
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {
@@ -75,7 +93,7 @@ async function preview(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, build: { outDir } },
+    { root: cwd, configFile, logLevel: 'silent', build: { outDir } },
     "serve"
   );
 
@@ -109,7 +127,7 @@ async function dev(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile },
+    { root: cwd, configFile, logLevel: 'silent' },
     "build"
   );
 
@@ -129,7 +147,9 @@ async function dev(
         "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
       );
     } else if (!adapter.startDev) {
-      throw new Error(`Adapter '${adapter.name}' does not support 'serve' command`);
+      throw new Error(
+        `Adapter '${adapter.name}' does not support 'serve' command`
+      );
     } else {
       await adapter.startDev(configFile, port!, envFile);
     }
@@ -144,7 +164,7 @@ async function build(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile },
+    { root: cwd, configFile, logLevel: 'silent' },
     "build"
   );
   const adapter = await resolveAdapter(resolvedConfig);
@@ -249,12 +269,10 @@ async function getViteConfig(
   return path.join(__dirname, "default.config.mjs");
 }
 
-async function resolveAdapter(
-  config: ResolvedConfig
-): Promise<Adapter | undefined> {
+async function resolveAdapter(config: ResolvedConfig): Promise<Adapter | null> {
   const options = getExternalPluginOptions(config);
   if (!options) {
-    throw new Error("Unable to resolve @marko/serve options");
+    throw new Error("Unable to resolve @marko/run options");
   }
-  return options.adapter;
+  return pluginResolveAdapter(config.root, options);
 }

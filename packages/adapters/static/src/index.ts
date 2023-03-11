@@ -133,12 +133,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
       }
     },
 
-    writeTypeInfo() {
-      return `declare module '@marko/run' {
-  interface RouteContextExtensions {
-    platform: {}
-  }
-}`;
+    typeInfo() {
+      return '{}';
     },
   };
 }

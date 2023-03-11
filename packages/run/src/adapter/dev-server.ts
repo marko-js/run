@@ -1,6 +1,7 @@
 import { createServer, ViteDevServer } from "vite";
 import type { RuntimeModule } from "../runtime";
 import type { NodeMiddleware } from "./middleware";
+import stripAnsi from 'strip-ansi';
 
 export function createViteDevMiddleware<T>(
   devServer: ViteDevServer,
@@ -22,7 +23,7 @@ export function createViteDevMiddleware<T>(
       res.statusCode = 500;
       if (err instanceof Error) {
         devServer.ssrFixStacktrace(err);
-        res.end(err.stack);
+        res.end(err.stack && stripAnsi(err.stack));
       } else {
         res.end();
       }

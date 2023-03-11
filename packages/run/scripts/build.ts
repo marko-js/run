@@ -1,6 +1,6 @@
 import path from "path";
 import { build, BuildOptions } from "esbuild";
-import { copyFile, mkdir } from "fs/promises";
+import { copyFile, mkdir, lstat, cp } from "fs/promises";
 
 const srcdir = path.resolve("src");
 const outdir = path.resolve("dist");
@@ -52,7 +52,7 @@ await Promise.all([
     format: "esm",
     outExtension: { ".js": ".mjs" },
   }),
-  copy("cli/default.config.mjs", "adapter/default-entry.mjs"),
+  copy("cli/default.config.mjs", "adapter/default-entry.mjs", 'components'),
 ]);
 
 async function copy(...items: ([string, string] | [string] | string)[]) {
@@ -75,7 +75,11 @@ async function copy(...items: ([string, string] | [string] | string)[]) {
         }
       }
 
-      await copyFile(from, to);
+      if ((await lstat(from)).isDirectory()) {
+        await cp(from, to, { recursive: true });
+      } else {
+        await copyFile(from, to);
+      }
     }
   }
 }

@@ -3,10 +3,11 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, ResolvedConfig, UserConfig } from "vite";
-import type { ViteDevServer, Plugin } from "vite";
+import { mergeConfig, resolvePackageData } from "vite";
+import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext } from "rollup";
 
+import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
 
@@ -16,7 +17,7 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, BuiltRoutes, HttpVerb } from "./types";
+import type { Options, Adapter, BuiltRoutes, HttpVerb } from "./types";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -71,9 +72,10 @@ interface RouteData {
   sourceEntries: string[];
 }
 
-export default function markoServe(opts: Options = {}): Plugin[] {
-  const { routesDir = "src/routes", adapter, ...markoOptions } = opts;
+export default function markoRun(opts: Options = {}): Plugin[] {
+  let { routesDir = "src/routes", adapter, ...markoOptions } = opts;
 
+  let compiler: typeof Compiler;
   let store: BuildStore;
   let root: string;
   let resolvedRoutesDir: string;
@@ -109,9 +111,11 @@ export default function markoServe(opts: Options = {}): Plugin[] {
       ))
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
-      const adapterTypeInfo =
-        (adapter?.writeTypeInfo && (await adapter?.writeTypeInfo()));
-      const data = renderRouteTypeInfo(routes, path.relative(typesDir, routesDir), adapterTypeInfo);
+      const data = await renderRouteTypeInfo(
+        routes,
+        path.relative(typesDir, routesDir),
+        adapter
+      );
 
       if (data !== typesFile || !fs.existsSync(filepath)) {
         await ensureDir(typesDir);
@@ -126,13 +130,16 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         route.handler.verbs = await extractVerbs(route.handler.filePath);
         if (!route.handler.verbs.length) {
           console.warn(
-            `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'get', 'post', 'put' or 'del'`
+            `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`
           );
         }
       }
       if (route.page) {
         virtualFiles.set(
-          path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.marko`),
+          path.posix.join(
+            root,
+            `${markoRunFilePrefix}route__${route.key}.marko`
+          ),
           render ? renderRouteTemplate(route) : ""
         );
       }
@@ -143,7 +150,10 @@ export default function markoServe(opts: Options = {}): Plugin[] {
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.posix.join(root, `${markoRunFilePrefix}special__${route.key}.marko`),
+        path.posix.join(
+          root,
+          `${markoRunFilePrefix}special__${route.key}.marko`
+        ),
         render ? renderRouteTemplate(route) : ""
       );
     }
@@ -190,6 +200,12 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         if (externalPluginOptions) {
           opts = mergeConfig(opts, externalPluginOptions);
         }
+
+        root = normalizePath(config.root || process.cwd());
+        isBuild = env.command === "build";
+        isSSRBuild = isBuild && Boolean(config.build?.ssr);
+        adapter = await resolveAdapter(root, opts, config.logLevel !== 'silent' && !isBuild || isSSRBuild);
+
         if (adapter) {
           const externalAdapterConfig = getExternalAdapterOptions(config);
           if (externalAdapterConfig && adapter.configure) {
@@ -201,7 +217,16 @@ export default function markoServe(opts: Options = {}): Plugin[] {
           }
         }
 
-        root = normalizePath(config.root || process.cwd());
+        compiler ??= await import(opts.compiler || "@marko/compiler");
+        compiler.taglib.register("@marko/run", {
+          "<*>": {
+            template: path.resolve(
+              __dirname,
+              "../components/src-attributes-transformer.cjs"
+            ),
+          },
+        });
+        
         store =
           opts.store ||
           new FileStore(
@@ -210,8 +235,6 @@ export default function markoServe(opts: Options = {}): Plugin[] {
               .update(root)
               .digest("hex")}`
           );
-        isBuild = env.command === "build";
-        isSSRBuild = isBuild && Boolean(config.build?.ssr);
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
@@ -325,12 +348,13 @@ export default function markoServe(opts: Options = {}): Plugin[] {
         } else if (
           !isBuild &&
           importer &&
-          (importer === devEntryFile || normalizePath(importer) === devEntryFilePosix) &&
+          (importer === devEntryFile ||
+            normalizePath(importer) === devEntryFilePosix) &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
         }
-        
+
         importee = normalizePath(importee);
 
         if (isStale) {
@@ -483,4 +507,32 @@ async function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     await fs.promises.mkdir(dir, { recursive: true });
   }
+}
+
+export async function resolveAdapter(root: string, options: Options, log?: boolean): Promise<Adapter | null> {
+  const { adapter } = options;
+  if (adapter !== undefined) {
+    return adapter;
+  }
+  
+  const pkg = resolvePackageData('.', root);
+  if (pkg) {
+    const dependecies = { ...pkg.data.dependecies, ...pkg.data.devDependencies };
+    for (const name of Object.keys(dependecies)) {
+      if (name.startsWith('@marko/run-adapter') || name.indexOf('marko-run-adapter') !== -1) {
+        try {
+          const module = await import(name);
+          log && console.log(`Using adapter ${name} listed in your package.json dependecies`);
+          return  module.default();
+        } catch (err) {
+          log && console.warn(`Attempt to use package '${name}' failed`, err);
+        }
+      }
+    }
+  }
+
+  const defaultAdapter = '@marko/run/adapter';
+  const module = await import(defaultAdapter);
+  log && console.log('Using default adapter')
+  return module.default();
 }

@@ -9,6 +9,7 @@ import {
 import { createStringWriter } from "./writer";
 import { createRouteTrie } from "../routes/routeTrie";
 import type {
+  Adapter,
   HttpVerb,
   Route,
   BuiltRoutes,
@@ -251,7 +252,7 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createInput } from 'virtual:marko-run/internal';`
+    `import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';`
   );
 
   for (const route of routes.list) {
@@ -274,7 +275,17 @@ export function renderRouter(
   }
 
   writer
-    .writeLines(``)
+    .writeLines(
+      `
+const page404ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};
+const page500ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};`
+    )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
       `if (!pathname) {
@@ -298,17 +309,10 @@ export function renderRouter(
   writer.writeBlockEnd("}").writeLines("return null;").writeBlockEnd("}");
 
   writer.write(`
-export async function invoke(route, request, platform, url = new URL(request.url)) {
-  const context = {
-    url,
-    request,
-    platform
-  };
-  const buildInput = createInput(context);
+export async function invoke(route, request, platform, url) {
+  const [context, buildInput] = createContext(route, request, platform, url);
 	try {
 		if (route) {
-			context.params = route.params;
-			context.meta = route.meta;
       try {
 				const response = await route.handler(context, buildInput);
 				if (response) return response;
@@ -324,14 +328,9 @@ export async function invoke(route, request, platform, url = new URL(request.url
   if (routes.special[RoutableFileTypes.NotFound]) {
     writer.write(
       `    } else {
-      context.params = {};
-      context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page404.stream(buildInput()), {
-        status: 404,
-        headers: { "content-type": "text/html;charset=UTF-8" },
-      });
+      return new Response(page404.stream(buildInput()), page404ResponseInit);
     }
 `
     );
@@ -347,13 +346,8 @@ export async function invoke(route, request, platform, url = new URL(request.url
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`
       )
-      .writeBlock(
-        `return new Response(page500.stream(buildInput({ error })), {`,
-        [
-          `status: 500,`,
-          `headers: { "content-type": "text/html;charset=UTF-8" },`,
-        ],
-        `});`
+      .writeLines(
+        `return new Response(page500.stream(buildInput({ error })), page500ResponseInit);`
       )
       .writeBlockEnd("}");
   }
@@ -644,10 +638,10 @@ function stripTsExtension(path: string) {
   return path;
 }
 
-export function renderRouteTypeInfo(
+export async function renderRouteTypeInfo(
   routes: BuiltRoutes,
   pathPrefix: string = ".",
-  adapterTypes: string = ""
+  adapter?: Adapter | null
 ) {
   const writer = createStringWriter();
   writer.writeLines(
@@ -656,24 +650,21 @@ export function renderRouteTypeInfo(
   Do NOT manually edit this file or your changes will be lost.
 */
 `,
-`import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ValidatePath, ValidateHref } from "@marko/run";`,
-adapterTypes,
-`
-
-declare global {
-  namespace MarkoRun {`
+    `import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ParamsObject, ValidatePath, ValidateHref } from "@marko/run";`
   );
-  const pathsWriter = writer.branch("paths");
 
-  writer.write(`
-    type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
-    type GetableHref<T extends string> = ValidateHref<GetPaths, T>; 
-    type PostablePath<T extends string> = ValidatePath<PostPaths, T>;
-    type PostableHref<T extends string> = ValidateHref<PostPaths, T>; 
+  let platformType = "unknown";
+  if (adapter && adapter.typeInfo) {
+    platformType = await adapter.typeInfo((data) => writer.write(data));
+    writer.writeLines("");
   }
-}
+
+  writer.writeLines(`
+interface NoParams extends ParamsObject {}
+interface NoMeta {}
 `);
 
+  const pathsWriter = writer.branch("paths");
   const routesWriter = writer.branch("types");
   const serverWriter = writer.branch("server");
 
@@ -687,6 +678,8 @@ declare global {
   const getPaths = new Set<string>();
   const postPaths = new Set<string>();
 
+  writeModuleDeclaration(serverWriter, undefined, undefined, platformType);
+
   for (const route of routes.list) {
     const { meta, handler, params, middleware, page, layouts } = route;
     const routeType = `Route${route.index}`;
@@ -694,8 +687,10 @@ declare global {
       /\/\$(\$?)([^\/]*)/,
       (_, catchAll, name) => (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
     )}\``;
-    const paramsType = params ? renderParamsInfoType(params) : "{}";
-    let metaType = "undefined";
+    const paramsType = params?.length
+      ? renderParamsInfoType(params)
+      : "NoParams";
+    let metaType = "NoMeta";
 
     if (page || handler) {
       const isGet = page || handler?.verbs?.includes("get");
@@ -717,40 +712,33 @@ declare global {
     }
 
     if (meta) {
-      metaType = `typeof import('${pathPrefix}/${stripTsExtension(
-        meta.relativePath
-      )}')`;
+      const path = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
+      metaType = `typeof import('${path}')`;
       if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
         metaType += `['default']`;
       }
     }
 
     if (handler) {
-      // let dataType = middleware.map((mw) => `Data${mw.id}`).join(" & ");
-      // if (!middleware.length) {
-      //   dataType = "Empty";
-      // } else if (middleware.length > 1) {
-      //   dataType = `Combine<${dataType}>`;
-      // }
-
-      writeRouteTypeModule(
+      writeModuleDeclaration(
         serverWriter,
-        pathPrefix,
-        handler.relativePath,
-        routeType
+        `${pathPrefix}/${handler.relativePath}`,
+        routeType,
+        platformType
       );
     }
 
     if (page) {
-      writer.writeLines(`
-declare module '${pathPrefix}/${page.relativePath}' {
-  export interface Input {}
-
-  namespace MarkoRun {
-    type Route = ${routeType};
-    type Context = AnyContext<AnyContext['platform'], Route>;
-  }
-}`);
+      writeModuleDeclaration(
+        writer,
+        `${pathPrefix}/${page.relativePath}`,
+        routeType,
+        platformType,
+        `
+  export interface Input {
+    renderBody: Marko.Body;
+  }`
+      );
     }
 
     if (middleware) {
@@ -783,66 +771,75 @@ declare module '${pathPrefix}/${page.relativePath}' {
     }
 
     routesWriter.writeLines(
-      `interface ${routeType} extends AnyRoute<${paramsType}, ${metaType}, ${pathType}> {}`
+      `type ${routeType} = AnyRoute<${paramsType}, ${metaType}, ${pathType}>;`
     );
   }
 
-  pathsWriter.write("    type GetPaths =");
-  for (const path of getPaths) {
-    pathsWriter.write(`\n      | '${path}'`);
+  pathsWriter.write(`type Get =`);
+  if (getPaths.size) {
+    for (const path of getPaths) {
+      pathsWriter.write(`\n  | '${path}'`);
+    }
+  } else {
+    pathsWriter.write(" never");
   }
   pathsWriter.writeLines(";", "");
-  pathsWriter.write("    type PostPaths =");
-  for (const path of postPaths) {
-    pathsWriter.write(`\n      | '${path}'`);
+  pathsWriter.write("type Post =");
+  if (postPaths.size) {
+    for (const path of postPaths) {
+      pathsWriter.write(`\n  | '${path}'`);
+    }
+  } else {
+    pathsWriter.write(" never");
   }
-  pathsWriter.writeLines(";");
+  pathsWriter.writeLines(";", "");
 
   pathsWriter.join();
 
   for (const [file, { routeTypes }] of middlewareRouteTypes) {
-    writeRouteTypeModule(
+    writeModuleDeclaration(
       serverWriter,
-      pathPrefix,
-      file.relativePath,
-      routeTypes.join(" | ")
+      `${pathPrefix}/${file.relativePath}`,
+      routeTypes.join(" | "),
+      platformType
     );
   }
 
   for (const [file, { routeTypes }] of layoutRouteTypes) {
-    writer.writeLines(`
-declare module '${pathPrefix}/${file.relativePath}' {
+    writeModuleDeclaration(
+      writer,
+      `${pathPrefix}/${file.relativePath}`,
+      routeTypes.join(" | "),
+      platformType,
+      `
   export interface Input {
     renderBody: Marko.Body;
+  }`
+    );
   }
 
-  namespace MarkoRun {
-    type Route = ${routeTypes.join(" | ")};
-    type Context = AnyContext<AnyContext['platform'], Route>;
-  }
-}`);
+  if (routes.special["404"]?.page) {
+    writeModuleDeclaration(
+      writer,
+      `${pathPrefix}/${routes.special["404"].page.relativePath}`,
+      undefined,
+      platformType,
+      `
+  export interface Input {}`
+    );
   }
 
-  for (const route of [routes.special["404"], routes.special["500"]]) {
-    if (route && route.page) {
-      writer.write(`
-declare module '${pathPrefix}/${route.page.relativePath}' {
-  export interface Input {`);
-
-      if (route.page.type === RoutableFileTypes.Error) {
-        writer.write(`
+  if (routes.special["500"]?.page) {
+    writeModuleDeclaration(
+      writer,
+      `${pathPrefix}/${routes.special["500"].page.relativePath}`,
+      undefined,
+      platformType,
+      `
+  export interface Input {
     error: unknown;
-  `);
-      }
-
-      writer.writeLines(`}
-
-  namespace MarkoRun {
-    type Route = AnyRoute;
-    type Context = AnyContext<AnyContext['platform'], Route>;
-  }
-}`);
-    }
+  }`
+    );
   }
 
   serverWriter.join();
@@ -850,20 +847,51 @@ declare module '${pathPrefix}/${route.page.relativePath}' {
   return writer.end();
 }
 
-function writeRouteTypeModule(
+function writeModuleDeclaration(
   writer: Writer,
-  pathPrefix: string,
-  path: string,
-  routeType: string
+  path: string = "global",
+  routeType: string = "AnyRoute",
+  platformType: string = "unknown",
+  moduleTypes?: string
 ) {
-  writer.writeLines(`
-declare module '${pathPrefix}/${stripTsExtension(path)}' {
+  writer.writeLines("");
+
+  if (path === "global") {
+    writer.write("declare global {");
+  } else {
+    writer.write(`declare module '${stripTsExtension(path)}' {`);
+  }
+
+  if (moduleTypes) {
+    writer.writeLines(moduleTypes);
+  }
+
+  const isMarko = path.endsWith(".marko");
+
+  writer.write(`
   namespace MarkoRun {
+    type GetPaths = Get;
+    type PostPaths = Post;
+    type GetablePath<T extends string> = ValidatePath<Get, T>;
+    type GetableHref<T extends string> = ValidateHref<Get, T>; 
+    type PostablePath<T extends string> = ValidatePath<Post, T>;
+    type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = ${platformType};`);
+
+  if (path !== "global") {
+    writer.write(`
     type Route = ${routeType};
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>${
+      isMarko ? " & Marko.Global" : ""
+    };
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
+    const NotHandled: unique symbol;
+    const NotMatched: unique symbol;`);
+  }
+
+  writer.writeLines(`
   }
 }`);
 }

@@ -1,14 +1,5 @@
 import type { HandlerLike, ParamsObject, Route as AnyRoute, Context as AnyContext } from "./types";
 declare global {
-  namespace Marko {
-
-    export interface Global extends MarkoRun.Context {}
-
-    export interface Out {
-      global: Global
-    }
-  }
-
   namespace MarkoRun {
     const NotHandled: unique symbol;
     const NotMatched: unique symbol;
@@ -28,16 +19,17 @@ declare global {
 }
 
 export type {
+  Context,
+  ContextExtensions,
   Fetch,
   HandlerLike,
   InputObject,
   Invoke,
   Match,
   NextFunction,
+  ParamsObject,
   PathTemplate,
   Route,
-  Context,
-  ContextExtensions,
   RouteHandler,
   RouteWithHandler,
   RuntimeModule,

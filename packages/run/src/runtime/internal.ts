@@ -3,16 +3,18 @@ import type {
   NextFunction,
   Route,
   Context,
-  RouteHandler,
+  RouteHandler
 } from "./types";
-
 
 const pageResponseInit = {
   status: 200,
-  headers: { "content-type": "text/html;charset=UTF-8" }
+  headers: { "content-type": "text/html;charset=UTF-8" },
 };
 
-export function pageResponse(template: any, input: Record<PropertyKey, unknown>): Response {
+export function pageResponse(
+  template: any,
+  input: Record<PropertyKey, unknown>
+): Response {
   return new Response(template.stream(input), pageResponseInit);
 }
 
@@ -24,17 +26,47 @@ globalThis.MarkoRun ??= {
   NotMatched,
   route(handler) {
     return handler;
-  }
+  },
 };
 
-export function createInput(context: Context) {
-  let existing: InputObject | undefined;
-  return (data: InputObject) => {
-    existing ??= {
-      $global: context
-    };
-    return data ? Object.assign(existing, data) : existing;
-  };
+const serializedGlobals = { params: true, url: true };
+
+export function createContext<Platform, TRoute extends Route>(
+  route: TRoute | undefined,
+  request: Request,
+  platform: Platform,
+  url: URL = new URL(request.url)
+): [Context, (data?: InputObject) => InputObject] {
+  const context: Context<Platform, TRoute> = route
+    ? {
+        request,
+        url,
+        platform,
+        meta: route.meta,
+        params: route.params,
+        route: route.path,
+        serializedGlobals
+      }
+    : {
+        request,
+        url,
+        platform,
+        meta: {},
+        params: {},
+        route: "",
+        serializedGlobals
+      };
+
+  let input: InputObject | undefined;
+  return [
+    context,
+    (data) => {
+      input ??= {
+        $global: context,
+      };
+      return data ? Object.assign(input, data) : input;
+    },
+  ];
 }
 
 export async function call(
