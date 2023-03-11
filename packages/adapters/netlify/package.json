@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-netlify",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Preview and deploy @marko/run apps to Netlify Functions/Edge Functions",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/node",
