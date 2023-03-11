@@ -103,22 +103,17 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       }
     },
 
-    writeTypeInfo() {
-      return options.edge
-        ? `import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';
-
-declare module '@marko/run' {
-  interface ContextExtensions {
-    platform: NetlifyEdgePlatformInfo
-  }
-}`
-        : `import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';
-
-declare module '@marko/run' {
-  interface ContextExtensions {
-    platform: NetlifyFunctionsPlatformInfo
-  }
-}`;
+    typeInfo(writer) {
+      if (options.edge) {
+        writer(
+          `import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';`
+        );
+        return "NetlifyEdgePlatformInfo";
+      }
+      writer(
+        `import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';`
+      );
+      return "NetlifyFunctionsPlatformInfo";
     },
   };
 }
