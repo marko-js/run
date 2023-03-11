@@ -29,7 +29,7 @@ globalThis.MarkoRun ??= {
   },
 };
 
-const serializedGlobals = { params: true };
+const serializedGlobals = { params: true, url: true };
 
 export function createContext<Platform, TRoute extends Route>(
   route: TRoute | undefined,
