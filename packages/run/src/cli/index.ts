@@ -93,7 +93,7 @@ async function preview(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, build: { outDir } },
+    { root: cwd, configFile, logLevel: 'silent', build: { outDir } },
     "serve"
   );
 
@@ -127,7 +127,7 @@ async function dev(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile },
+    { root: cwd, configFile, logLevel: 'silent' },
     "build"
   );
 
@@ -164,7 +164,7 @@ async function build(
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile },
+    { root: cwd, configFile, logLevel: 'silent' },
     "build"
   );
   const adapter = await resolveAdapter(resolvedConfig);

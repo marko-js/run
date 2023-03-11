@@ -1,29 +1,22 @@
 type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
-type Combine<T> = T extends object ? { [P in keyof T]: T[P] } : T;
 
 export interface ContextExtensions {}
+export type Context<
+  Platform = unknown,
+  TRoute extends Route = Route
+> = ContextExtensions & {
+  readonly url: URL;
+  readonly request: Request;
+  readonly route: TRoute["path"];
+  readonly params: TRoute["params"];
+  readonly meta: TRoute["meta"];
+  readonly platform: Platform;
+  readonly serializedGlobals: Record<string, boolean>;
+};
 
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
-
-export type Context<
-  Platform = unknown,
-  TRoute extends Route = Route,
-> = TRoute extends any
-  ? Combine<
-      ContextExtensions &
-        Readonly<{
-          url: URL;
-          request: Request;
-          route: TRoute["path"];
-          params: TRoute["params"];
-          meta: TRoute["meta"];
-          platform: Platform;
-        }>
-    >
-  : never;
-
 export type NextFunction = () => Awaitable<Response>;
 
 export type HandlerLike<TRoute extends Route = Route> = Awaitable<
@@ -67,22 +60,19 @@ export type Invoke = <Platform = unknown>(
   route: RouteWithHandler | null,
   request: Request,
   platform: Platform
-) => Promise<Response | void>
+) => Promise<Response | void>;
 
 export interface RuntimeModule {
   fetch: <Platform = unknown>(
     request: Request,
     platform: Platform
   ) => Promise<Response | void>;
-  match: (
-    method: string,
-    pathname: string
-  ) => RouteWithHandler | null;
+  match: (method: string, pathname: string) => RouteWithHandler | null;
   invoke: <Platform = unknown>(
     route: RouteWithHandler | null,
     request: Request,
     platform: Platform
-  ) => Promise<Response | void>
+  ) => Promise<Response | void>;
 }
 
 type Member<T, U> = T extends T ? (U extends T ? T : never) : never;

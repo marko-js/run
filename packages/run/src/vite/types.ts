@@ -19,7 +19,7 @@ export interface Adapter {
   startDev?(configFile: string, port: number, envFile?: string): Promise<void> | void;
   startPreview?(dir: string, entry?: string, port?: number, envFile?: string): Promise<void> | void;
   buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
-  writeTypeInfo?(): Promise<string> | string
+  typeInfo?(writer: (data: string) => void): Promise<string> | string
 }
 
 export interface RouterOptions {

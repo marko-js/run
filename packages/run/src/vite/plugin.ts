@@ -111,12 +111,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       ))
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
-      const adapterTypeInfo =
-        adapter?.writeTypeInfo && (await adapter?.writeTypeInfo());
-      const data = renderRouteTypeInfo(
+      const data = await renderRouteTypeInfo(
         routes,
         path.relative(typesDir, routesDir),
-        adapterTypeInfo
+        adapter
       );
 
       if (data !== typesFile || !fs.existsSync(filepath)) {
@@ -204,7 +202,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         root = normalizePath(config.root || process.cwd());
-        adapter = await resolveAdapter(root, opts, true);
+        isBuild = env.command === "build";
+        isSSRBuild = isBuild && Boolean(config.build?.ssr);
+        adapter = await resolveAdapter(root, opts, config.logLevel !== 'silent' && !isBuild || isSSRBuild);
 
         if (adapter) {
           const externalAdapterConfig = getExternalAdapterOptions(config);
@@ -235,8 +235,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               .update(root)
               .digest("hex")}`
           );
-        isBuild = env.command === "build";
-        isSSRBuild = isBuild && Boolean(config.build?.ssr);
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
