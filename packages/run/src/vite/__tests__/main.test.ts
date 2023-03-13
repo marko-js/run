@@ -71,7 +71,7 @@ for (const entry of fs.readdirSync(FIXTURES)) {
     
     const routerSnap = renderRouter(routes);
 
-    const typesSnap = renderRouteTypeInfo(routes);
+    const typesSnap = await renderRouteTypeInfo(routes);
     
     await Promise.all([
       snap(routesSnap, ".routes.md", dir),

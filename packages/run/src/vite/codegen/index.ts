@@ -275,17 +275,7 @@ export function renderRouter(
   }
 
   writer
-    .writeLines(
-      `
-const page404ResponseInit = {
-  status: 404,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};
-const page500ResponseInit = {
-  status: 404,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};`
-    )
+    .writeLines('')
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
       `if (!pathname) {
@@ -323,18 +313,27 @@ export async function invoke(route, request, platform, url) {
 					throw error;
 				}
 			}
-`).indent = 2;
+`);
 
   if (routes.special[RoutableFileTypes.NotFound]) {
+    writer.indent = 2;
+    imports
+    .writeLines(
+      `
+const page404ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};`);
+
     writer.write(
       `    } else {
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return new Response(page404.stream(buildInput()), page404ResponseInit);
     }
-`
-    );
+`);
   } else {
+    writer.indent = 3;
     writer.writeBlockEnd("}");
   }
 
@@ -342,6 +341,12 @@ export async function invoke(route, request, platform, url) {
   writer.writeBlockStart(`} catch (error) {`);
 
   if (routes.special[RoutableFileTypes.Error]) {
+    imports.writeLines(`
+const page500ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};`);
+
     writer
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`
@@ -571,7 +576,7 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
   for (const { name, index } of params) {
     if (index >= 0) {
       result += `${sep} ${wrapPropertyName(name)}: s${index + 1}`;
-      sep ||= ",";
+      sep = ",";
     } else if (pathIndex) {
       catchAll = name;
     }

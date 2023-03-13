@@ -220,7 +220,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         compiler ??= await import(opts.compiler || "@marko/compiler");
         compiler.taglib.register("@marko/run", {
           "<*>": {
-            template: path.resolve(
+            transform: path.resolve(
               __dirname,
               "../components/src-attributes-transformer.cjs"
             ),
