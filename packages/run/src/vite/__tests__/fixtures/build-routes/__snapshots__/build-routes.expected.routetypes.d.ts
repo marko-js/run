@@ -5,6 +5,9 @@
 
 import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ParamsObject, ValidatePath, ValidateHref } from "@marko/run";
 
+interface NoParams extends ParamsObject {}
+interface NoMeta {}
+
 type Get =
   | '/'
   | '/new'
@@ -17,10 +20,6 @@ type Post =
   | '/new'
   | '/notes/${id}'
   | '/notes/${id}/comments';
-
-
-interface NoParams extends ParamsObject {}
-interface NoMeta {}
 
 type Route1 = AnyRoute<NoParams, NoMeta, `/`>;
 type Route2 = AnyRoute<NoParams, typeof import('./_protected/_home/new/+meta.json'), `/new`>;
@@ -38,6 +37,7 @@ declare global {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
   }
 }
 
@@ -49,8 +49,9 @@ declare module './_protected/_home/new/+handler.post' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route2;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -67,8 +68,9 @@ declare module './_protected/_home/notes/$id/+handler.put_post_delete' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route3;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -85,8 +87,9 @@ declare module './_protected/_home/notes/$id/comments/+handler.put_post_delete' 
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route4;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -103,8 +106,9 @@ declare module './callback/oauth2/+handler.get' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route5;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -121,8 +125,9 @@ declare module './my/+handler.get' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route6;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -139,8 +144,9 @@ declare module './$$match/+handler.get' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route7;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -157,8 +163,9 @@ declare module './+middleware' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1 | Route2 | Route3 | Route4 | Route5 | Route6 | Route7;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -175,8 +182,9 @@ declare module './_protected/+middleware' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1 | Route2 | Route3 | Route4;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -193,8 +201,9 @@ declare module './_protected/_home/+middleware' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1 | Route2 | Route3 | Route4;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -211,8 +220,9 @@ declare module './_protected/_home/notes/$id/+middleware' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route3 | Route4;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route>;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -233,8 +243,9 @@ declare module './_protected/_home/+page.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -255,8 +266,9 @@ declare module './_protected/_home/new/+page.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route2;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -277,8 +289,9 @@ declare module './_protected/_home/notes/$id/+page.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route3;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -299,8 +312,9 @@ declare module './my/+page.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route6;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -321,8 +335,9 @@ declare module './+layout.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1 | Route2 | Route3 | Route6;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -343,8 +358,9 @@ declare module './_protected/_home/+layout.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = Route1 | Route2 | Route3;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -363,8 +379,9 @@ declare module './+404.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = AnyRoute;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
@@ -385,8 +402,9 @@ declare module './+500.marko' {
     type GetableHref<T extends string> = ValidateHref<Get, T>; 
     type PostablePath<T extends string> = ValidatePath<Post, T>;
     type PostableHref<T extends string> = ValidateHref<Post, T>;
+    type Platform = unknown;
     type Route = AnyRoute;
-    type Context = AnyContext<AnyContext['platform'], Route>;
+    type Context = AnyContext<Platform, Route> & Marko.Global;
     type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
     function route(handler: Handler): typeof handler;
     function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;

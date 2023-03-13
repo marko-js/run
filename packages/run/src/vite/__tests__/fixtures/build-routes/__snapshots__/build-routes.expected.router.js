@@ -1,5 +1,5 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createInput } from 'virtual:marko-run/internal';
+import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route__index.js';
 import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route__new.js';
 import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
@@ -9,6 +9,16 @@ import { get6 } from 'virtual:marko-run/__marko-run__route__my.js';
 import { get7 } from 'virtual:marko-run/__marko-run__route__$$.js';
 import page404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
 import page500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
+
+const page404ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};
+
+const page500ResponseInit = {
+  status: 404,
+  headers: { "content-type": "text/html;charset=UTF-8" },
+};
 
 export function match(method, pathname) {
 	if (!pathname) {
@@ -123,18 +133,10 @@ export function match(method, pathname) {
 	return null;
 }
 
-export async function invoke(route, request, platform, url = new URL(request.url)) {
-  const context = {
-    url,
-    request,
-    platform,
-		serializedGlobals: { params: true }
-  };
-  const buildInput = createInput(context);
+export async function invoke(route, request, platform, url) {
+  const [context, buildInput] = createContext(route, request, platform, url);
 	try {
 		if (route) {
-			context.params = route.params;
-			context.meta = route.meta;
       try {
 				const response = await route.handler(context, buildInput);
 				if (response) return response;
@@ -146,21 +148,13 @@ export async function invoke(route, request, platform, url = new URL(request.url
 				}
 			}
     } else {
-      context.params = {};
-      context.meta = {};
     }
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page404.stream(buildInput()), {
-        status: 404,
-        headers: { "content-type": "text/html;charset=UTF-8" },
-      });
+      return new Response(page404.stream(buildInput()), page404ResponseInit);
     }
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return new Response(page500.stream(buildInput({ error })), {
-				status: 500,
-				headers: { "content-type": "text/html;charset=UTF-8" },
-			});
+			return new Response(page500.stream(buildInput({ error })), page500ResponseInit);
 		}
 		throw error;
 	}

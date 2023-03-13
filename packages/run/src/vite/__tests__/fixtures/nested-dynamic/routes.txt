@@ -1,0 +1,8 @@
+/foo
+  /$fooId
+    /bar
+      /$bar Id
+        /baz
+          /$1bazId
+            /$qux-Id
+              +page.marko
