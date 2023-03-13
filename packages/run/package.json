@@ -103,7 +103,6 @@
     "compression": "^1.7.4",
     "dotenv": "^16.0.3",
     "glob": "^8.1.0",
-    "gzip-size": "^7.0.0",
     "human-format": "^1.0.0",
     "kleur": "^4.1.5",
     "sade": "^1.8.1",
