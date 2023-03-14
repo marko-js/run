@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "marko-run build src/index.ts",
+    "build": "marko-run build",
     "dev": "marko-run -- tsx src/index.ts",
-    "start": "marko-run preview src/index.ts"
+    "start": "marko-run preview"
   },
   "devDependencies": {
     "@marko/compiler": "^5.22.6",
