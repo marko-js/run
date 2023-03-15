@@ -1,4 +1,4 @@
-import { createServer, ViteDevServer } from "vite";
+import { createServer, InlineConfig, ViteDevServer } from "vite";
 import type { RuntimeModule } from "../runtime";
 import type { NodeMiddleware } from "./middleware";
 import stripAnsi from 'strip-ansi';
@@ -31,20 +31,23 @@ export function createViteDevMiddleware<T>(
   };
 }
 
-export async function createDevServer(configFile?: string) {
+export async function createDevServer(config?: InlineConfig): Promise<ViteDevServer> {
   const devServer = await createServer({
-    configFile,
+    ...config,
     appType: "custom",
     server: { middlewareMode: true }
   });
+
   const { createMiddleware } = await devServer.ssrLoadModule(
     "@marko/run/adapter/middleware"
   );
+
   const middleware = createViteDevMiddleware(
     devServer,
     async () =>
       (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
     (module) => createMiddleware(module.fetch, { devServer })
   );
-  return devServer.middlewares.use(middleware);
+  devServer.middlewares.use(middleware);
+  return devServer;
 }

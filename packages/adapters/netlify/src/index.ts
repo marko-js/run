@@ -23,10 +23,12 @@ export interface Options {
 
 export default function netlifyAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
+  let cwd: string | undefined;
   return {
     name: "netlify-adapter",
 
     viteConfig(config) {
+      cwd = config.root;
       if (config.build?.ssr) {
         return {
           resolve: {
@@ -54,19 +56,32 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       const args = ["--framework", "#static", "--dir", "netlify"];
       if (port !== undefined) {
         args.push("--port", "" + port);
+      } else {
+        port = 8888;
       }
-      const proc = spawn("netlify", ["dev", ...args]);
-      proc.stdout.pipe(process.stdout);
+      const proc = spawn("netlify", ["dev", ...args], { cwd });
+
+      if (process.env.NODE_ENV !== 'test') {
+        proc.stdout.pipe(process.stdout);
+      }
       proc.stderr.pipe(process.stderr);
+
+      return {
+        port,
+        close() {
+          proc.unref();
+          proc.kill();
+        }
+      }
     },
 
     async buildEnd(config, _routes, builtEntries, _sourceEntries) {
-      const distDir = config.build.outDir;
+      const entry = builtEntries[0];
+      const distDir = path.dirname(entry);
       const netlifyDir = await ensureDir(
         path.join(config.root, "netlify"),
         true
       );
-      const entry = builtEntries[0];
       const esbuildOptionsFn: NetlifyBundlerOptions["manipulateEsbuildOptions"] =
         (options) => {
           options.minify = false;

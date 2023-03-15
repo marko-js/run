@@ -3,7 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, resolvePackageData } from "vite";
+import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext } from "rollup";
 
@@ -514,7 +514,7 @@ export async function resolveAdapter(root: string, options: Options, log?: boole
   if (adapter !== undefined) {
     return adapter;
   }
-  
+  const { resolvePackageData } = await import('vite');
   const pkg = resolvePackageData('.', root);
   if (pkg) {
     const dependecies = { ...pkg.data.dependecies, ...pkg.data.devDependencies };

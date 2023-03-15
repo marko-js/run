@@ -58,7 +58,12 @@ export default function staticAdapter(options: Options = {}): Adapter {
           console.log(
             `Preview server started: http://localhost:${address.port}`
           );
-          resolve();
+          resolve({
+            port: address.port,
+            close() {
+              listener.close()
+            }
+          });
         });
       });
     },
@@ -88,7 +93,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
             const response = await fetch(request, {});
             return response || new Response(null, { status: 404 });
           },
-          {}
+          {
+            out: path.dirname(builtEntries[0])
+          }
         );
         await crawler.crawl(pathsToVisit);
       } else {
