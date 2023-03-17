@@ -22,6 +22,7 @@ export function loadEnv(envFile: string) {
 
 export async function spawnServer(
   cmd: string,
+  args: string[] = [],
   port: number = 0,
   env?: string | Record<string, string>,
   cwd: string = process.cwd(),
@@ -35,7 +36,7 @@ export async function spawnServer(
     env = await parseEnv(env);
   }
 
-  const proc = cp.spawn(cmd, {
+  const proc = cp.spawn(cmd, args, {
     cwd,
     shell: true,
     stdio: "inherit",

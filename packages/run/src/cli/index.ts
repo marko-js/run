@@ -25,8 +25,8 @@ prog
   .describe("Start a production-like server for already-built app files")
   .option(
     "-o, --output",
-    "Directory to serve files from, and write asset files to if `--build` (default: )"
-  ) // The awkwardness of this makes me wonder if instead the build command should have a `--serve` option?
+    "Directory to serve files from, and write asset files to if `--build` (default: 'build.outDir' in Vite config)"
+  )
   .option(
     "-p, --port",
     "Port the server should listen on (defaults: `$PORT` env variable or 3000)"
@@ -35,9 +35,18 @@ prog
   .action(async (entry, opts) => {
     process.env.NODE_ENV = "production";
     const cwd = process.cwd();
+    const args = process.argv.slice(entry ? 4 : 3);
     const config = await getViteConfig(cwd, opts.config);
-    await build(entry, cwd, config, opts.output, false, opts.env);
-    await preview(opts.file, cwd, config, opts.port, opts.output, opts.env);
+    await build(entry, cwd, config, opts.output, opts.env);
+    await preview(
+      opts.file,
+      cwd,
+      config,
+      opts.port,
+      opts.output,
+      opts.env,
+      args
+    );
   });
 
 prog
@@ -49,14 +58,10 @@ prog
   )
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
-    const cmd = opts._.length
-      ? `${entry} ${opts._.join(" ")}`
-      : entry
-      ? `node ${entry}`
-      : undefined;
     const cwd = process.cwd();
+    const args = process.argv.slice(entry ? 4 : 3);
     const config = await getViteConfig(cwd, opts.config);
-    await dev(cmd, cwd, config, opts.port, opts.env);
+    await dev(entry, cwd, config, opts.port, opts.env, args);
   });
 
 prog
@@ -66,13 +71,11 @@ prog
     "-o, --output",
     "Directory to write built files (default: 'build.outDir' in Vite config)"
   )
-  .option("--skip-client", "Skip the client-side build")
   .example("build --config vite.config.js")
   .action(async (entry, opts) => {
-    process.env.NODE_ENV = "production";
     const cwd = process.cwd();
     const config = await getViteConfig(cwd, opts.config);
-    await build(entry, cwd, config, opts.ouput, opts["skip-client"], opts.env);
+    await build(entry, cwd, config, opts.ouput, opts.env);
   });
 
 prog.parse(process.argv);

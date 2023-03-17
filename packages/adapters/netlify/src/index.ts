@@ -23,12 +23,10 @@ export interface Options {
 
 export default function netlifyAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
-  let cwd: string | undefined;
   return {
     name: "netlify-adapter",
 
     viteConfig(config) {
-      cwd = config.root;
       if (config.build?.ssr) {
         return {
           resolve: {
@@ -52,16 +50,24 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(_dir, _entry, port) {
-      const args = ["--framework", "#static", "--dir", "netlify"];
-      if (port !== undefined) {
-        args.push("--port", "" + port);
-      } else {
-        port = 8888;
-      }
-      const proc = spawn("netlify", ["dev", ...args], { cwd });
+    async startPreview(_entry, options) {
+      const { port = 8888, cwd } = options;
 
-      if (process.env.NODE_ENV !== 'test') {
+      debugger;
+
+      const args = [
+        "dev",
+        "--framework",
+        "#static",
+        "--dir",
+        "netlify",
+        "--port",
+        port.toString(),
+        ...parseNetlifyArgs(options.args),
+      ];
+
+      const proc = spawn("netlify", args, { cwd });
+      if (process.env.NODE_ENV !== "test") {
         proc.stdout.pipe(process.stdout);
       }
       proc.stderr.pipe(process.stderr);
@@ -71,8 +77,8 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         close() {
           proc.unref();
           proc.kill();
-        }
-      }
+        },
+      };
     },
 
     async buildEnd(config, _routes, builtEntries, _sourceEntries) {
@@ -169,4 +175,31 @@ async function writeFunctionRedirects(rootDir: string) {
     "/*  /.netlify/functions/index  200\n",
     "utf-8"
   );
+}
+
+const devFlags = new RegExp(
+  [
+    "context=.+",
+    "country=.+",
+    "edge-inspect-brk(=.+)?",
+    "edge-inspect(=.+)?",
+    "funciton=.+",
+    "functions-port=.+",
+    "geo=.+",
+    "live",
+    "offline",
+    "session-id(=.+)?",
+    "target-port=.+",
+    "debug",
+    "http-proxy(=.+)?",
+    "http-proxy-certificate-filename(=.+)?",
+  ]
+    .map((flag) => {
+      return `--${flag}`;
+    })
+    .join("|")
+);
+
+function parseNetlifyArgs(args: string[]) {
+  return args.filter((arg) => devFlags.test(arg));
 }

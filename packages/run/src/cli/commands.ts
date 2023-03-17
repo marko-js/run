@@ -20,17 +20,17 @@ const defaultPort = +process.env.PORT! || 3000;
 export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
-
 export async function preview(
   entry: string | undefined,
   cwd: string,
   configFile: string,
   port?: number,
   outDir?: string,
-  envFile?: string
+  envFile?: string,
+  args: string[] = []
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: 'silent', build: { outDir } },
+    { root: cwd, configFile, logLevel: "silent", build: { outDir } },
     "serve"
   );
 
@@ -54,7 +54,15 @@ export async function preview(
     envFile = path.resolve(cwd, envFile);
   }
 
-  return await adapter.startPreview(dir, entryFile, port, envFile);
+  const options = {
+    cwd,
+    dir,
+    args,
+    port,
+    envFile,
+  };
+
+  return await adapter.startPreview(entryFile, options);
 }
 
 export async function dev(
@@ -62,10 +70,11 @@ export async function dev(
   cwd: string,
   configFile: string,
   port?: number,
-  envFile?: string
+  envFile?: string,
+  args: string[] = []
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: 'silent' },
+    { root: cwd, configFile, logLevel: "silent" },
     "build"
   );
 
@@ -77,7 +86,7 @@ export async function dev(
   }
 
   if (cmd) {
-    return await spawnServer(cmd, port, envFile, cwd);
+    return await spawnServer(cmd, args, port, envFile, cwd);
   } else {
     const adapter = await resolveAdapter(resolvedConfig);
     if (!adapter) {
@@ -88,9 +97,15 @@ export async function dev(
       throw new Error(
         `Adapter '${adapter.name}' does not support 'serve' command`
       );
-    } else {
-      return await adapter.startDev({ root: cwd, configFile }, port!, envFile);
     }
+    const options = {
+      cwd,
+      args,
+      port,
+      envFile,
+    };
+
+    return await adapter.startDev({ root: cwd, configFile }, options);
   }
 }
 
@@ -99,11 +114,10 @@ export async function build(
   cwd: string,
   configFile: string,
   outDir?: string,
-  skipClient: boolean = false,
   envFile?: string
 ) {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: 'silent' },
+    { root: cwd, configFile, logLevel: "silent" },
     "build"
   );
   const adapter = await resolveAdapter(resolvedConfig);
@@ -159,15 +173,13 @@ export async function build(
   });
 
   // build client
-  if (!skipClient) {
-    await viteBuild({
-      ...buildConfig,
-      build: {
-        ...buildConfig.build,
-        sourcemap: true,
-      },
-    });
-  }
+  await viteBuild({
+    ...buildConfig,
+    build: {
+      ...buildConfig.build,
+      sourcemap: true,
+    },
+  });
 }
 
 function findFileWithExt(
@@ -203,7 +215,7 @@ export async function getViteConfig(
       return configFile;
     }
   }
-  
+
   return path.join(__dirname, "default.config.mjs");
 }
 
