@@ -111,9 +111,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       ))
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
+
       const data = await renderRouteTypeInfo(
         routes,
-        path.relative(typesDir, routesDir),
+        path.relative(typesDir, resolvedRoutesDir),
         adapter
       );
 
