@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-declare module '../../../../routes/+page.marko' {
+declare module '../src/routes/+page.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }
@@ -50,7 +50,7 @@ declare module '../../../../routes/+page.marko' {
   }
 }
 
-declare module '../../../../routes/+layout.marko' {
+declare module '../src/routes/+layout.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }
@@ -73,7 +73,7 @@ declare module '../../../../routes/+layout.marko' {
   }
 }
 
-declare module '../../../../routes/+404.marko' {
+declare module '../src/routes/+404.marko' {
   export interface Input {}
 
   namespace MarkoRun {

@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-declare module '../../../../routes/+page.marko' {
+declare module '../src/routes/+page.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }

@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-declare module '../../../../routes/+middleware' {
+declare module '../src/routes/+middleware' {
   namespace MarkoRun {
     type GetPaths = Get;
     type PostPaths = Post;
@@ -46,7 +46,7 @@ declare module '../../../../routes/+middleware' {
   }
 }
 
-declare module '../../../../routes/+page.marko' {
+declare module '../src/routes/+page.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }

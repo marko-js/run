@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-declare module '../../../../routes/+handler' {
+declare module '../src/routes/+handler' {
   namespace MarkoRun {
     type GetPaths = Get;
     type PostPaths = Post;
@@ -46,7 +46,7 @@ declare module '../../../../routes/+handler' {
   }
 }
 
-declare module '../../../../routes/+page.marko' {
+declare module '../src/routes/+page.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }
@@ -69,7 +69,7 @@ declare module '../../../../routes/+page.marko' {
   }
 }
 
-declare module '../../../../routes/+layout.marko' {
+declare module '../src/routes/+layout.marko' {
   export interface Input {
     renderBody: Marko.Body;
   }
@@ -92,7 +92,7 @@ declare module '../../../../routes/+layout.marko' {
   }
 }
 
-declare module '../../../../routes/+500.marko' {
+declare module '../src/routes/+500.marko' {
   export interface Input {
     error: unknown;
   }
