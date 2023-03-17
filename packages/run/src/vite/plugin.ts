@@ -248,6 +248,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 "process.env.NODE_ENV": "'production'",
               }
             : undefined,
+          ssr: {
+            noExternal: /@marko\/run/
+          },
           build: {
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
           },
