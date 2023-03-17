@@ -100,8 +100,11 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   const config = requireCwd(path.join(dir, "test.config.ts")) as {
     path?: string;
     entry?: string;
+    dev_cmd?: string;
     steps?: Step | Step[];
     options?: Options;
+    skip_dev?: boolean;
+    skip_preview?: boolean;
   };
 
   describe(fixture, () => {
@@ -114,23 +117,26 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
     suppressLogs();
 
-    it("dev", async () => {
-      const configFie = await cli.getViteConfig(dir);
-      const port = await getAvailablePort();
-      const cmd = config.entry ? `node ${config.entry}` : undefined;
-      const server = await cli.dev(cmd, dir, configFie, port);
-      await testPage(dir, path, steps, server);
-    });
+    if (!config.skip_dev) {
+      it("dev", async () => {
+        const configFile = await cli.getViteConfig(dir);
+        const port = await getAvailablePort();
+        const server = await cli.dev(config.dev_cmd, dir, configFile, port);
+        await testPage(dir, path, steps, server);
+      });
+    }
 
-    it("preview", async () => {
-      process.env.BROWSER = "none";
+    if (!config.skip_preview) {
+      it("preview", async () => {
+        process.env.BROWSER = "none";
 
-      const configFie = await cli.getViteConfig(dir);
-      const port = await getAvailablePort();
-      await cli.build(config.entry, dir, configFie);
-      const server = await cli.preview(config.entry, dir, configFie, port);
-      await testPage(dir, path, steps, server);
-    });
+        const configFile = await cli.getViteConfig(dir);
+        const port = await getAvailablePort();
+        await cli.build(config.entry, dir, configFile);
+        const server = await cli.preview(undefined, dir, configFile, port);
+        await testPage(dir, path, steps, server);
+      });
+    }
   });
 }
 
