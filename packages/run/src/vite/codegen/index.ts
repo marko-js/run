@@ -455,7 +455,7 @@ function writeRouterVerb(
       closeCount++;
       writer.writeBlockStart(`if (!${index} || ${index} === len) {`);
 
-      let value = `pathname.slice(${offset}, ${index} ? -1 : len)`;
+      let value = `decodeURIComponent(pathname.slice(${offset}, ${index} ? -1 : len))`;
       if (dynamic?.route) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = ${value};`);
@@ -502,7 +502,7 @@ function writeRouterVerb(
         closeCount++;
       }
 
-      let value = `pathname.slice(${offset}, ${index} - 1)`;
+      let value = `decodeURIComponent(pathname.slice(${offset}, ${index} - 1))`;
       if (dynamic?.static || dynamic?.dynamic) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = ${value};`);
@@ -517,11 +517,12 @@ function writeRouterVerb(
         }
 
         for (const child of children) {
+          const decodedKey = decodeURIComponent(child.key);
           if (useSwitch) {
-            writer.writeBlockStart(`case '${child.key}': {`);
+            writer.writeBlockStart(`case '${decodedKey}': {`);
           } else {
             writer.writeBlockStart(
-              `if (${value}.toLowerCase() === '${child.key}') {`
+              `if (${value}.toLowerCase() === '${decodedKey}') {`
             );
           }
 
@@ -561,6 +562,7 @@ function writeRouterVerb(
 }
 
 function wrapPropertyName(name: string) {
+  name = decodeURIComponent(name);
   return /^[^A-Za-z_$]|[^A-Za-z0-9$_]/.test(name) ? `'${name}'` : name;
 }
 
@@ -690,7 +692,10 @@ interface NoMeta {}
     const routeType = `Route${route.index}`;
     const pathType = `\`${route.path.replace(
       /\/\$(\$?)([^\/]*)/,
-      (_, catchAll, name) => (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
+      (_, catchAll, name) => {
+        name = decodeURIComponent(name);
+        return (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
+      }
     )}\``;
     const paramsType = params?.length
       ? renderParamsInfoType(params)
@@ -702,9 +707,10 @@ interface NoMeta {}
       const isPost = handler?.verbs?.includes("post");
 
       if (isGet || isPost) {
-        const path = route.path.replace(/\$(\$?)([^/]+)/g, (_, s, name) =>
-          s ? `\${...${name}}` : `\${${name}}`
-        );
+        const path = route.path.replace(/\$(\$?)([^/]+)/g, (_, catchAll, name) => {
+          name= decodeURIComponent(name);
+          return catchAll ? `\${...${name}}` : `\${${name}}`
+        });
         const splatIndex = path.indexOf("/${...");
         if (splatIndex >= 0) {
           const path2 = path.slice(0, splatIndex) || "/";
