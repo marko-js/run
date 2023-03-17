@@ -3,7 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
 
-import { mergeConfig, resolvePackageData } from "vite";
+import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext } from "rollup";
 
@@ -111,9 +111,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       ))
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
+
       const data = await renderRouteTypeInfo(
         routes,
-        path.relative(typesDir, routesDir),
+        path.relative(typesDir, resolvedRoutesDir),
         adapter
       );
 
@@ -247,6 +248,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 "process.env.NODE_ENV": "'production'",
               }
             : undefined,
+          ssr: {
+            noExternal: /@marko\/run/
+          },
           build: {
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
           },
@@ -514,7 +518,7 @@ export async function resolveAdapter(root: string, options: Options, log?: boole
   if (adapter !== undefined) {
     return adapter;
   }
-  
+  const { resolvePackageData } = await import('vite');
   const pkg = resolvePackageData('.', root);
   if (pkg) {
     const dependecies = { ...pkg.data.dependecies, ...pkg.data.devDependencies };

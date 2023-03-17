@@ -2,7 +2,7 @@ import type { TestFileTree } from "../../routes/walk";
 
 export function createDirectory(content: string): TestFileTree {
 
-  const matchLine = /(.*)\n?/g;
+  const matchLine = /(.*)\r?\n?/g;
 
   let current: TestFileTree = ['', []];
   const stack = [current];

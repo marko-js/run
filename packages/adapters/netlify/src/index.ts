@@ -50,23 +50,44 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(_dir, _entry, port) {
-      const args = ["--framework", "#static", "--dir", "netlify"];
-      if (port !== undefined) {
-        args.push("--port", "" + port);
+    async startPreview(_entry, options) {
+      const { port = 8888, cwd } = options;
+
+      debugger;
+
+      const args = [
+        "dev",
+        "--framework",
+        "#static",
+        "--dir",
+        "netlify",
+        "--port",
+        port.toString(),
+        ...parseNetlifyArgs(options.args),
+      ];
+
+      const proc = spawn("netlify", args, { cwd });
+      if (process.env.NODE_ENV !== "test") {
+        proc.stdout.pipe(process.stdout);
       }
-      const proc = spawn("netlify", ["dev", ...args]);
-      proc.stdout.pipe(process.stdout);
       proc.stderr.pipe(process.stderr);
+
+      return {
+        port,
+        close() {
+          proc.unref();
+          proc.kill();
+        },
+      };
     },
 
     async buildEnd(config, _routes, builtEntries, _sourceEntries) {
-      const distDir = config.build.outDir;
+      const entry = builtEntries[0];
+      const distDir = path.dirname(entry);
       const netlifyDir = await ensureDir(
         path.join(config.root, "netlify"),
         true
       );
-      const entry = builtEntries[0];
       const esbuildOptionsFn: NetlifyBundlerOptions["manipulateEsbuildOptions"] =
         (options) => {
           options.minify = false;
@@ -154,4 +175,31 @@ async function writeFunctionRedirects(rootDir: string) {
     "/*  /.netlify/functions/index  200\n",
     "utf-8"
   );
+}
+
+const devFlags = new RegExp(
+  [
+    "context=.+",
+    "country=.+",
+    "edge-inspect-brk(=.+)?",
+    "edge-inspect(=.+)?",
+    "funciton=.+",
+    "functions-port=.+",
+    "geo=.+",
+    "live",
+    "offline",
+    "session-id(=.+)?",
+    "target-port=.+",
+    "debug",
+    "http-proxy(=.+)?",
+    "http-proxy-certificate-filename(=.+)?",
+  ]
+    .map((flag) => {
+      return `--${flag}`;
+    })
+    .join("|")
+);
+
+function parseNetlifyArgs(args: string[]) {
+  return args.filter((arg) => devFlags.test(arg));
 }

@@ -1,6 +1,7 @@
 {
-  "extension": ["js", "ts"],
-  "enable-source-maps": true,
-  "watchFiles": ["src/**/*.ts"],
+  "exit": true,
+  "timeout": 30000,
+  "extension": ["js", "ts", "marko"],
+  "watchFiles": ["src/**/*.ts", "src/**/*.marko"],
   "require": ["tsx", "mocha-snap"]
 }

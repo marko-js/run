@@ -92,7 +92,7 @@ export const matchMiddleware = asyncMiddleware(async () => {
 export const routerMiddleware = asyncMiddleware(async () => {
   if (process.env.NODE_ENV !== "production") {
     const { createDevServer } = await import("@marko/run/adapter");
-    return await createDevServer();
+    return (await createDevServer()).middlewares;
   }
   return createMiddleware((await import("@marko/run/router")).fetch);
 });

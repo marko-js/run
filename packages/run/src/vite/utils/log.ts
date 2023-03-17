@@ -1,6 +1,6 @@
+import zlib from 'node:zlib';
 import Table, { HorizontalAlignment } from "cli-table3";
 import kleur from "kleur";
-import { gzipSizeSync } from "gzip-size";
 import type { OutputBundle, OutputChunk, OutputAsset } from "rollup";
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
@@ -109,8 +109,12 @@ function computeRouteSize(route: Route, bundle: OutputBundle): [number, number] 
   return [0,0];
 }
 
-function byteSize(str: string | Uint8Array): number {
-  return new Blob([str]).size;
+function gzipSize(source: string | Uint8Array): number {
+  return zlib.gzipSync(source, { level: 9 }).length;
+}
+
+function byteSize(source: string | Uint8Array): number {
+  return new Blob([source]).size;
 }
 
 function computeChunkSize(
@@ -121,11 +125,11 @@ function computeChunkSize(
   if (chunk.type === "asset") {
     return [
       byteSize(chunk.source),
-      gzipSizeSync(chunk.source as string | Buffer)
+      gzipSize(chunk.source)
     ];
   }
 
-  const size: [number, number] = [byteSize(chunk.code), gzipSizeSync(chunk.code)];
+  const size: [number, number] = [byteSize(chunk.code), gzipSize(chunk.code)];
   for (const id of chunk.imports) {
     if (!seen.has(id)) {
       const [bytes, compBytes] = computeChunkSize(bundle[id], bundle, seen);

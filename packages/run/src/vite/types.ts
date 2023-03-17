@@ -1,6 +1,7 @@
 import type { RoutableFileType, HttpVerb, RoutableFileTypes } from "./constants";
 import type { Options as MarkoViteOptions} from "@marko/vite";
-import type { ResolvedConfig, UserConfig } from "vite";
+import type { ResolvedConfig, UserConfig, InlineConfig } from "vite";
+import type { SpawnedServer } from "./utils/server";
 
 export type { RoutableFileType, HttpVerb };
 
@@ -10,14 +11,28 @@ export interface AdapterConfig {
   [name: PropertyKey]: any
 }
 
+export interface StartOptions {
+  cwd: string,
+  args: string[]
+  port?: number,
+  envFile?: string,
+}
+
+export interface StartDevOptions extends StartOptions {
+}
+
+export interface StartPreviewOptions extends StartOptions {
+  dir: string
+}
+
 export interface Adapter {
   readonly name: string;
   configure?(config: AdapterConfig): void;
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(configFile: string, port: number, envFile?: string): Promise<void> | void;
-  startPreview?(dir: string, entry?: string, port?: number, envFile?: string): Promise<void> | void;
+  startDev?(config: InlineConfig, options: StartDevOptions): Promise<SpawnedServer> | SpawnedServer;
+  startPreview?(entry: string | undefined, options: StartPreviewOptions): Promise<SpawnedServer> | SpawnedServer;
   buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string
 }

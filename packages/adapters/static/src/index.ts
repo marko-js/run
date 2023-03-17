@@ -42,7 +42,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
     startDev,
 
-    async startPreview(dir, _entry, port, envFile) {
+    async startPreview(_entry, options) {
+      const { dir, port, envFile } = options;
       envFile && (await loadEnv(envFile));
 
       const staticServe = createStaticServe(dir, {
@@ -58,7 +59,12 @@ export default function staticAdapter(options: Options = {}): Adapter {
           console.log(
             `Preview server started: http://localhost:${address.port}`
           );
-          resolve();
+          resolve({
+            port: address.port,
+            close() {
+              listener.close()
+            }
+          });
         });
       });
     },
@@ -88,7 +94,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
             const response = await fetch(request, {});
             return response || new Response(null, { status: 404 });
           },
-          {}
+          {
+            out: path.dirname(builtEntries[0])
+          }
         );
         await crawler.crawl(pathsToVisit);
       } else {
@@ -96,7 +104,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
         const origin = `http://localhost:${port}`;
         const client = new Pool(origin);
 
-        const server = await spawnServer(`node ${builtEntries[0]}`, port, envFile);
+        const server = await spawnServer(`node ${builtEntries[0]}`, [], port, envFile);
         const crawler = createCrawler(
           async (request) => {
             const url = new URL(request.url, origin);

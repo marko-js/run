@@ -5,7 +5,7 @@ import fs from "fs";
 
 export interface SpawnedServer {
   port: number,
-  close(): void
+  close(): Promise<void> | void
 }
 
 export async function parseEnv(envFile: string) {
@@ -22,6 +22,7 @@ export function loadEnv(envFile: string) {
 
 export async function spawnServer(
   cmd: string,
+  args: string[] = [],
   port: number = 0,
   env?: string | Record<string, string>,
   cwd: string = process.cwd(),
@@ -35,7 +36,7 @@ export async function spawnServer(
     env = await parseEnv(env);
   }
 
-  const proc = cp.spawn(cmd, {
+  const proc = cp.spawn(cmd, args, {
     cwd,
     shell: true,
     stdio: "inherit",
@@ -48,23 +49,31 @@ export async function spawnServer(
     proc.kill();
   };
 
-  let remaining = wait > 0 ? wait : Infinity;
-  while (!(await isPortInUse(port))) {
-    if (remaining >= 100) {
-      remaining -= 100;
-      await sleep(100);
-    } else {
-      close();
-      throw new Error(
-        `site-write: timeout while wating for server to start on port "${port}".`
-      );
-    }
+  try {
+    await waitForServer(port, wait);
+  } catch (err) {
+    close();
+    throw err;
   }
 
   return {
     port,
     close
   };
+}
+
+export async function waitForServer(port: number, wait: number = 0): Promise<void> {
+  let remaining = wait > 0 ? wait : Infinity;
+  while (!(await isPortInUse(port))) {
+    if (remaining >= 100) {
+      remaining -= 100;
+      await sleep(100);
+    } else {
+      throw new Error(
+        `site-write: timeout while wating for server to start on port "${port}".`
+      );
+    }
+  }
 }
 
 export async function isPortInUse(port: number): Promise<boolean> {

@@ -5,7 +5,7 @@ declare global {
     const NotMatched: unique symbol;
 
     interface Route extends AnyRoute {}
-    interface Context extends AnyContext<Route> {}
+    interface Context extends AnyContext {}
 
     type Handler<
       Params extends ParamsObject = {},
