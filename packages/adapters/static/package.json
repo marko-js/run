@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-static",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Preview and deploy @marko/run apps as static files",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/static",
@@ -40,7 +40,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/run": "^0.1.2"
+    "@marko/run": "^0.1.5"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
