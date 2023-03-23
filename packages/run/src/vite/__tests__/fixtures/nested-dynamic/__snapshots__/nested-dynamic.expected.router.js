@@ -2,6 +2,8 @@
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route__foo__$__bar__$__baz__$__$.js';
 
+globalThis.__marko_run__ = { match, fetch, invoke };
+    
 export function match(method, pathname) {
 	if (!pathname) {
     pathname = '/';
