@@ -65,9 +65,8 @@ export const matchMiddleware = asyncMiddleware(async () => {
   };
 
   if (process.env.NODE_ENV !== "production") {
-    const { createViteDevMiddleware } = await import("@marko/run/adapter");
-    const { createServer } = await import("vite");
-    const devServer = await createServer({
+    const { createViteDevMiddleware, createViteDevServer } = await import("@marko/run/adapter");
+    const devServer = await createViteDevServer({
       appType: "custom",
       server: { middlewareMode: true },
     });
@@ -99,8 +98,8 @@ export const routerMiddleware = asyncMiddleware(async () => {
 
 export const importRouterMiddleware = asyncMiddleware(async () => {
   if (process.env.NODE_ENV !== "production") {
-    const { createServer } = await import("vite");
-    const devServer = await createServer({
+    const { createViteDevServer } = await import("@marko/run/adapter");
+    const devServer = await createViteDevServer({
       appType: "custom",
       server: { middlewareMode: true },
     });

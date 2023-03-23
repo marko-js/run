@@ -20,6 +20,8 @@ const page500ResponseInit = {
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
 
+globalThis.__marko_run__ = { match, fetch, invoke };
+    
 export function match(method, pathname) {
 	if (!pathname) {
     pathname = '/';

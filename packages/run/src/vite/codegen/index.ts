@@ -275,7 +275,9 @@ export function renderRouter(
   }
 
   writer
-    .writeLines('')
+    .writeLines(`
+globalThis.__marko_run__ = { match, fetch, invoke };
+    `)
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
       `if (!pathname) {

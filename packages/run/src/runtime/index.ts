@@ -1,5 +1,7 @@
-import type { HandlerLike, ParamsObject, Route as AnyRoute, Context as AnyContext } from "./types";
+import type { HandlerLike, ParamsObject, Route as AnyRoute, Context as AnyContext, RuntimeModule } from "./types";
 declare global {
+  var __marko_run__: RuntimeModule;
+
   namespace MarkoRun {
     const NotHandled: unique symbol;
     const NotMatched: unique symbol;

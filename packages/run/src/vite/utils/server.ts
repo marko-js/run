@@ -1,7 +1,8 @@
-import net from "net";
+import net, { type Socket } from "net";
 import cp from "child_process";
 import { parse, config } from 'dotenv';
 import fs from "fs";
+import cluster, { type Worker } from "cluster";
 
 export interface SpawnedServer {
   port: number,
@@ -62,9 +63,46 @@ export async function spawnServer(
   };
 }
 
-export async function waitForServer(port: number, wait: number = 0): Promise<void> {
+export async function spawnServerWorker(
+  module: string,
+  args: string[] = [],
+  port: number = 0,
+  env?: string | Record<string, string>,
+): Promise<Worker> {
+  if (port <= 0) {
+    port = await getAvailablePort();
+  }
+  if (typeof env === 'string') {
+    env = await parseEnv(env);
+  }
+
+  const originalExec = cluster.settings.exec;
+  const originalArgs = cluster.settings.execArgv;
+
+  try {
+    cluster.settings.exec = module;
+    cluster.settings.execArgv = args;
+    const worker = cluster.fork({ ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` });
+    return new Promise<Worker>((resolve) => {
+      function ready(message: any) {
+        if (message === 'ready') {
+          worker.off('message', ready);
+          resolve(worker);
+        }
+      }
+      worker.on('message', ready);
+    });
+  } finally {
+    // Reset cluster settings.
+    cluster.settings.exec = originalExec;
+    cluster.settings.execArgv = originalArgs;
+  }
+}
+
+export async function waitForServer(port: number, wait: number = 0): Promise<Socket> {
   let remaining = wait > 0 ? wait : Infinity;
-  while (!(await isPortInUse(port))) {
+  let connection: Socket | null;
+  while (!(connection = await getConnection(port))) {
     if (remaining >= 100) {
       remaining -= 100;
       await sleep(100);
@@ -74,21 +112,27 @@ export async function waitForServer(port: number, wait: number = 0): Promise<voi
       );
     }
   }
+  return connection;
 }
 
-export async function isPortInUse(port: number): Promise<boolean> {
+export async function getConnection(port: number): Promise<Socket | null> {
   return new Promise((resolve) => {
     const connection = net
       .connect(port)
       .setNoDelay(true)
       .setKeepAlive(false)
-      .on("error", () => done(false))
-      .on("connect", () => done(true));
-    function done(connected: boolean) {
-      connection.end();
-      resolve(connected);
-    }
+      .on("error", () => {
+        connection.end();
+        resolve(null);
+      })
+      .on("connect", () => {
+        resolve(connection)
+      });
   });
+}
+
+export async function isPortInUse(port: number): Promise<boolean> {
+  return Boolean(await getConnection(port));
 }
 
 export async function getAvailablePort(): Promise<number> {
