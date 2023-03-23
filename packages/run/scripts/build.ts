@@ -52,7 +52,12 @@ await Promise.all([
     format: "esm",
     outExtension: { ".js": ".mjs" },
   }),
-  copy("cli/default.config.mjs", "adapter/default-entry.mjs", 'components'),
+  copy(
+    "cli/default.config.mjs",
+    "adapter/default-entry.mjs",
+    "adapter/load-dev-worker.mjs",
+    "components"
+  ),
 ]);
 
 async function copy(...items: ([string, string] | [string] | string)[]) {

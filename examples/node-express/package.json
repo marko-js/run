@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "marko-run build src/index.ts",
-    "dev": "marko-run -- tsx src/index.ts",
+    "dev": "marko-run src/index.ts",
     "start": "marko-run preview src/index.ts"
   },
   "devDependencies": {

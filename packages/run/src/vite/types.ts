@@ -31,7 +31,7 @@ export interface Adapter {
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(config: InlineConfig, options: StartDevOptions): Promise<SpawnedServer> | SpawnedServer;
+  startDev?(entry: string | undefined, config: InlineConfig, options: StartDevOptions): Promise<SpawnedServer> | SpawnedServer;
   startPreview?(entry: string | undefined, options: StartPreviewOptions): Promise<SpawnedServer> | SpawnedServer;
   buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string

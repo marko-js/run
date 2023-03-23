@@ -3,6 +3,7 @@
   "include": ["src/**/*", "vite.config.ts", ".marko-run/*"],
   "compilerOptions": {
     "rootDir": "./",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "noImplicitOverride": false
   }
 }

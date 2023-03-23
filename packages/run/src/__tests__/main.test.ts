@@ -6,14 +6,18 @@ import { createRequire } from "module";
 import * as playwright from "playwright";
 import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import type { Options } from "../vite";
-import { getAvailablePort, SpawnedServer, waitForServer } from "../vite/utils/server";
+import {
+  getAvailablePort,
+  SpawnedServer,
+  waitForServer,
+} from "../vite/utils/server";
 import * as cli from "../cli/commands";
 
 // https://github.com/esbuild-kit/tsx/issues/113
 const { toString } = Function.prototype;
 Function.prototype.toString = function () {
   return toString.call(this).replace(/\b__name\(([^,]+),[^)]+\)/g, "$1");
-}
+};
 
 declare global {
   const page: playwright.Page;
@@ -36,11 +40,10 @@ let browser: playwright.Browser;
 let context: playwright.BrowserContext;
 let changes: string[] = [];
 
-
 before(async () => {
   browser = await playwright.chromium.launch();
   context = await browser.newContext();
-  
+
   /**
    * We add a mutation observer to track all mutations (batched)
    * Then we report the list of mutations in a normalized way and snapshot it.
@@ -83,14 +86,14 @@ before(async () => {
 
 beforeEach(async () => {
   globalThis.page = await context.newPage();
-})
+});
 
 afterEach(async () => {
   await page.close();
-})
+});
 
 after(async () => {
-  await browser.close()
+  await browser.close();
 });
 
 const FIXTURES = path.join(__dirname, "fixtures");
@@ -100,7 +103,6 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   const config = requireCwd(path.join(dir, "test.config.ts")) as {
     path?: string;
     entry?: string;
-    dev_cmd?: string;
     steps?: Step | Step[];
     options?: Options;
     skip_dev?: boolean;
@@ -108,7 +110,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   };
 
   describe(fixture, () => {
-    const path = config.path || '/';
+    const path = config.path || "/";
     const steps = config.steps
       ? Array.isArray(config.steps)
         ? config.steps
@@ -116,12 +118,13 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
       : [];
 
     suppressLogs();
+    setCWD(dir);
 
     if (!config.skip_dev) {
       it("dev", async () => {
         const configFile = await cli.getViteConfig(dir);
         const port = await getAvailablePort();
-        const server = await cli.dev(config.dev_cmd, dir, configFile, port);
+        const server = await cli.dev(config.entry, dir, configFile, port);
         await testPage(dir, path, steps, server);
       });
     }
@@ -140,7 +143,12 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   });
 }
 
-async function testPage(dir: string, path: string, steps: Step[], server: SpawnedServer) {
+async function testPage(
+  dir: string,
+  path: string,
+  steps: Step[],
+  server: SpawnedServer
+) {
   try {
     const url = new URL(`http://localhost:${server.port}`);
     url.pathname = path;
@@ -152,7 +160,7 @@ async function testPage(dir: string, path: string, steps: Step[], server: Spawne
     for (const [i, step] of steps.entries()) {
       await waitForPendingRequests(page, step);
       await forEachChange((html, j) => {
-        snap(html, `.step-${i}.${j}.html`, dir)
+        snap(html, `.step-${i}.${j}.html`, dir);
       });
     }
   } finally {
@@ -212,8 +220,18 @@ const _log = console.log;
 function suppressLogs() {
   beforeEach(() => {
     console.log = noop;
-  })
+  });
   afterEach(() => {
     console.log = _log;
-  })
+  });
+}
+
+function setCWD(dir: string) {
+  const _cwd = process.cwd();
+  beforeEach(() => {
+    process.chdir(dir);
+  });
+  afterEach(() => {
+    process.chdir(_cwd);
+  });
 }

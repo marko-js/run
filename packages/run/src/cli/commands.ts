@@ -11,7 +11,7 @@ import {
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
-import { type SpawnedServer, spawnServer } from "../vite/utils/server";
+import type { SpawnedServer } from "../vite/utils/server";
 import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -66,7 +66,7 @@ export async function preview(
 }
 
 export async function dev(
-  cmd: string | undefined,
+  entry: string | undefined,
   cwd: string,
   configFile: string,
   port?: number,
@@ -85,28 +85,25 @@ export async function dev(
     envFile = path.resolve(cwd, envFile);
   }
 
-  if (cmd) {
-    return await spawnServer(cmd, args, port, envFile, cwd);
-  } else {
-    const adapter = await resolveAdapter(resolvedConfig);
-    if (!adapter) {
-      throw new Error(
-        "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
-      );
-    } else if (!adapter.startDev) {
-      throw new Error(
-        `Adapter '${adapter.name}' does not support 'serve' command`
-      );
-    }
-    const options = {
-      cwd,
-      args,
-      port,
-      envFile,
-    };
-
-    return await adapter.startDev({ root: cwd, configFile }, options);
+  const adapter = await resolveAdapter(resolvedConfig);
+  if (!adapter) {
+    throw new Error(
+      "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
+    );
+  } else if (!adapter.startDev) {
+    throw new Error(
+      `Adapter '${adapter.name}' does not support 'serve' command`
+    );
   }
+
+  const options = {
+    cwd,
+    args,
+    port,
+    envFile,
+  };
+
+  return await adapter.startDev(entry, { root: cwd, configFile }, options);
 }
 
 export async function build(
