@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-node",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Preview and deploy @marko/run apps on Connect-style servers",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/node",
