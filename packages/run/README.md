@@ -481,9 +481,9 @@ express()
 
 **`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
 
-**`MarkoRun.CurrentRoute`** - Type of the route's params and metadata
+**`MarkoRun.Route`** - Type of the route's params and metadata
 
-**`MarkoRun.CurrentContext`** - Type of the request context object in a handler and `out.global` in your Marko files
+**`MarkoRun.Context`** - Type of the request context object in a handler and `out.global` in your Marko files
 
 
 ### Generated Types
@@ -493,13 +493,13 @@ If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in t
 These types are replaced with more specific versions per routable file:
 
 **`MarkoRun.Handler`**
-- Overrides context with specific MarkoRun.CurrentContext
+- Overrides context with specific MarkoRun.Context
 
-**`MarkoRun.CurrentRoute`**
+**`MarkoRun.Route`**
 - Adds specific parameters and meta types 
 - In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see
 
-**`MarkoRun.CurrentContext`**
+**`MarkoRun.Context`**
 - In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see.
 - When an adapter is used, it can provide types for the platform
 
