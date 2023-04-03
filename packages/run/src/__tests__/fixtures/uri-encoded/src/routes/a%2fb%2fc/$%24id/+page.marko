@@ -5,6 +5,10 @@
     <title>@marko/run Test Fixture</title>
   </head>
   <body>
-    <div#app>$id=${$global.params.$id}</div>
+    <div#app>
+      route=${$global.route}
+      <br>
+      $id=${$global.params.$id}
+    </div>
   </body>
 </html>

@@ -1,6 +1,6 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route__a2fb2fc__$.js';
+import { get1 } from 'virtual:marko-run/__marko-run__route__a2Fb2Fc__$.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -20,7 +20,7 @@ export function match(method, pathname) {
 						const i2 = pathname.indexOf('/', 11) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(11, i2 ? -1 : len));
-							if (s2) return { handler: get1, params: { $id: s2 }, meta: {} }; // /a%2fb%2fc/$%24id
+							if (s2) return { handler: get1, params: { $id: s2 }, meta: {}, path: '/a%2Fb%2Fc/:$id' }; // /a%2Fb%2Fc/$%24id
 						}
 					}
 				}
