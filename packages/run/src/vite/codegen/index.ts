@@ -612,7 +612,8 @@ function renderMatch(verb: HttpVerb, route: Route, pathIndex?: string) {
     ? renderParamsInfo(route.params, pathIndex)
     : "{}";
   const meta = route.meta ? `meta${route.index}` : "{}";
-  return `{ handler: ${handler}, params: ${params}, meta: ${meta} }`;
+  const path = pathToURLPatternString(route.path);
+  return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${path}' }`;
 }
 
 export function renderMiddleware(middleware: RoutableFile[]): string {
@@ -692,13 +693,7 @@ interface NoMeta {}
   for (const route of routes.list) {
     const { meta, handler, params, middleware, page, layouts } = route;
     const routeType = `Route${route.index}`;
-    const pathType = `\`${route.path.replace(
-      /\/\$(\$?)([^\/]*)/,
-      (_, catchAll, name) => {
-        name = decodeURIComponent(name);
-        return (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
-      }
-    )}\``;
+    const pathType = `\`${pathToURLPatternString(route.path)}\``;
     const paramsType = params?.length
       ? renderParamsInfoType(params)
       : "NoParams";
@@ -907,4 +902,14 @@ function writeModuleDeclaration(
   writer.writeLines(`
   }
 }`);
+}
+
+function pathToURLPatternString(path: string): string {
+  return path.replace(
+    /\/\$(\$?)([^\/]*)/g,
+    (_, catchAll, name) => {
+      name = decodeURIComponent(name);
+      return (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
+    }
+  )
 }

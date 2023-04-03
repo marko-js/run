@@ -233,7 +233,7 @@ export async function buildRoutes(
             });
           }
         }
-        pathStack.push(name.toLowerCase());
+        pathStack.push(name);
       }
       dirStack.push(name);
 

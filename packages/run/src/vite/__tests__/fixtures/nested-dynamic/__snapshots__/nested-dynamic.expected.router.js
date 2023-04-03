@@ -38,7 +38,7 @@ export function match(method, pathname) {
 																const i7 = pathname.indexOf('/', i6) + 1;
 																if (!i7 || i7 === len) {
 																	const s7 = decodeURIComponent(pathname.slice(i6, i7 ? -1 : len));
-																	if (s7) return { handler: get1, params: { fooId: s2, 'bar Id': s4, '1bazId': s6, 'qux-Id': s7 }, meta: {} }; // /foo/$fooid/bar/$bar id/baz/$1bazid/$qux-id
+																	if (s7) return { handler: get1, params: { fooId: s2, 'bar Id': s4, '1bazId': s6, 'qux-Id': s7 }, meta: {}, path: '/foo/:fooId/bar/:bar Id/baz/:1bazId/:qux-Id' }; // /foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id
 																}
 															}
 														}

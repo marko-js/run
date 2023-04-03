@@ -1,4 +1,4 @@
-# Route `/foo/$fooid/bar/$bar id/baz/$1bazid/$qux-id`
+# Route `/foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id`
 ## Template
 ```marko
 // virtual:marko-run/__marko-run__route__foo__$__bar__$__baz__$__$.marko

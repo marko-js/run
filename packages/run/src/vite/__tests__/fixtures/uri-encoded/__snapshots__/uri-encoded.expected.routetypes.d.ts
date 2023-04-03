@@ -9,11 +9,11 @@ interface NoParams extends ParamsObject {}
 interface NoMeta {}
 
 type Get =
-  | '/a%2fb%2fc/${$id}';
+  | '/a%2Fb%2Fc/${$id}';
 
 type Post = never;
 
-type Route1 = AnyRoute<{ $id: string; }, NoMeta, `/a%2fb%2fc/:$id`>;
+type Route1 = AnyRoute<{ $id: string; }, NoMeta, `/a%2Fb%2Fc/:$id`>;
 
 declare global {
   namespace MarkoRun {
