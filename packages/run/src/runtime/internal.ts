@@ -3,7 +3,8 @@ import type {
   NextFunction,
   Route,
   Context,
-  RouteHandler
+  RouteHandler,
+  Platform
 } from "./types";
 
 const pageResponseInit = {
@@ -26,18 +27,18 @@ globalThis.MarkoRun ??= {
   NotMatched,
   route(handler) {
     return handler;
-  },
+  }
 };
 
 const serializedGlobals = { params: true, url: true };
 
-export function createContext<Platform, TRoute extends Route>(
+export function createContext<TRoute extends Route>(
   route: TRoute | undefined,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url)
 ): [Context, (data?: InputObject) => InputObject] {
-  const context: Context<Platform, TRoute> = route
+  const context: Context = route
     ? {
         request,
         url,
@@ -69,10 +70,10 @@ export function createContext<Platform, TRoute extends Route>(
   ];
 }
 
-export async function call(
-  handler: RouteHandler<Route>,
+export async function call<TRoute extends Route>(
+  handler: RouteHandler<TRoute>,
   next: NextFunction,
-  context: Context
+  context: Context<TRoute>
 ): Promise<Response> {
   let response: Response | null | void;
 
