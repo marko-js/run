@@ -32,6 +32,9 @@
       "import": "./dist/runtime/index.js",
       "require": "./dist/runtime/index.cjs"
     },
+    "./namespace": {
+      "types": "./dist/runtime/namespace.d.ts"
+    },
     "./router": {
       "types": "./dist/runtime/router.d.ts",
       "import": "./dist/runtime/router.js",
@@ -57,6 +60,9 @@
     "*": {
       "*": [
         "./dist/runtime/index.d.ts"
+      ],
+      "namespace": [
+        "./dist/runtime/namespace.d.ts"
       ],
       "router": [
         "./dist/runtime/router.d.ts"

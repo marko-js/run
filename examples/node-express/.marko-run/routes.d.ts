@@ -3,341 +3,191 @@
   Do NOT manually edit this file or your changes will be lost.
 */
 
-import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ParamsObject, ValidatePath, ValidateHref } from "@marko/run";
+import "@marko/run/namespace";
+import type Run from "@marko/run";
 import type { NodePlatformInfo } from '@marko/run-adapter-node'
 
-interface NoParams extends ParamsObject {}
-interface NoMeta {}
+declare module "@marko/run" {
+	interface Platform extends NodePlatformInfo {}
 
-type Get =
-  | '/'
-  | '/users'
-  | '/users/${id}'
-  | '/users/foo'
-  | '/other'
-  | '/other/${...rest}';
+	interface AppData extends Run.DefineApp<{
+		routes: {
+			"/": {
+				verb: "get" | "post";
+				meta: typeof import("../src/routes/+meta.json");
+			};
+			"/users": { verb: "get" };
+			"/users/:id": { verb: "get" };
+			"/users/foo": { verb: "get" };
+			"/other/:rest*": { verb: "get" };
+		}
+	}> {}
+}
 
-type Post =
-  | '/';
-
-type Route1 = AnyRoute<NoParams, typeof import('../src/routes/+meta.json'), `/`>;
-type Route2 = AnyRoute<NoParams, NoMeta, `/users`>;
-type Route3 = AnyRoute<{ id: string; }, NoMeta, `/users/:id`>;
-type Route4 = AnyRoute<NoParams, NoMeta, `/users/foo`>;
-type Route5 = AnyRoute<{ rest: string; }, NoMeta, `/other/:rest*`>;
-
-declare global {
+declare module "../src/routes/+handler.js" {
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route>;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/+handler.js' {
+declare module "../src/routes/other/$$rest/+handler" {
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route1;
-    type Context = AnyContext<Platform, Route>;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/other/:rest*"];
+    export type Context = Run.MultiRouteContext<Route>;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/other/$$rest/+handler' {
+declare module "../src/routes/+middleware.js" {
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route5;
-    type Context = AnyContext<Platform, Route>;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/" | "/users" | "/users/:id" | "/users/foo" | "/other/:rest*"];
+    export type Context = Run.MultiRouteContext<Route>;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/+middleware.js' {
+declare module "../src/routes/_one/users/$id/+middleware.js" {
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route1 | Route2 | Route3 | Route4 | Route5;
-    type Context = AnyContext<Platform, Route>;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users/:id"];
+    export type Context = Run.MultiRouteContext<Route>;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_one/users/$id/+middleware.js' {
-  namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route3;
-    type Context = AnyContext<Platform, Route>;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
-  }
-}
-
-declare module '../src/routes/+page.marko' {
+declare module "../src/routes/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route1;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_one/users/+page.marko' {
+declare module "../src/routes/_one/users/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route2;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_one/users/$id/+page.marko' {
+declare module "../src/routes/_one/users/$id/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route3;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users/:id"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_two/users/foo/+page.marko' {
+declare module "../src/routes/_two/users/foo/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route4;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users/foo"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/other/$$rest/+page.marko' {
+declare module "../src/routes/other/$$rest/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route5;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/other/:rest*"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/+layout.marko' {
+declare module "../src/routes/+layout.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route1 | Route2 | Route3 | Route4 | Route5;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/" | "/users" | "/users/:id" | "/users/foo" | "/other/:rest*"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_one/users/+layout.marko' {
+declare module "../src/routes/_one/users/+layout.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route2 | Route3;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users" | "/users/:id"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/_one/users/$id/+layout.marko' {
+declare module "../src/routes/_one/users/$id/+layout.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = Route3;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Routes["/users/:id"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/+404.marko' {
+declare module "../src/routes/+404.marko" {
   export interface Input {}
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = AnyRoute;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = Run.Route;
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }
 
-declare module '../src/routes/+500.marko' {
+declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = NodePlatformInfo;
-    type Route = AnyRoute;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export * from "@marko/run/namespace";
+    export type Route = globalThis.MarkoRun.Route;
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
   }
 }

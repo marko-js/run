@@ -275,9 +275,11 @@ export function renderRouter(
   }
 
   writer
-    .writeLines(`
+    .writeLines(
+      `
 globalThis.__marko_run__ = { match, fetch, invoke };
-    `)
+    `
+    )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
       `if (!pathname) {
@@ -319,13 +321,13 @@ export async function invoke(route, request, platform, url) {
 
   if (routes.special[RoutableFileTypes.NotFound]) {
     writer.indent = 2;
-    imports
-    .writeLines(
+    imports.writeLines(
       `
 const page404ResponseInit = {
   status: 404,
   headers: { "content-type": "text/html;charset=UTF-8" },
-};`);
+};`
+    );
 
     writer.write(
       `    } else {
@@ -333,7 +335,8 @@ const page404ResponseInit = {
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return new Response(page404.stream(buildInput()), page404ResponseInit);
     }
-`);
+`
+    );
   } else {
     writer.indent = 3;
     writer.writeBlockEnd("}");
@@ -595,17 +598,6 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
   return result ? result + " }" : "{}";
 }
 
-function renderParamsInfoType(params: ParamInfo[]): string {
-  if (!params.length) {
-    return "{}";
-  }
-  let result = "{";
-  for (const { name } of params) {
-    result += ` ${wrapPropertyName(name)}: string;`;
-  }
-  return result + " }";
-}
-
 function renderMatch(verb: HttpVerb, route: Route, pathIndex?: string) {
   const handler = `${verb}${route.index}`;
   const params = route.params?.length
@@ -660,23 +652,33 @@ export async function renderRouteTypeInfo(
   Do NOT manually edit this file or your changes will be lost.
 */
 `,
-    `import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ParamsObject, ValidatePath, ValidateHref } from "@marko/run";`
+    `import "@marko/run/namespace";`,
+    `import type Run from "@marko/run";`
   );
 
-  let platformType = "unknown";
+  const headWriter = writer.branch("head");
+
+  writer.writeLines("\n").writeBlockStart(`declare module "@marko/run" {`);
+
   if (adapter && adapter.typeInfo) {
-    platformType = await adapter.typeInfo((data) => writer.write(data));
-    writer.writeLines("");
+    const platformType = await adapter.typeInfo((data) =>
+      headWriter.write(data)
+    );
+    if (platformType) {
+      writer.writeLines(`interface Platform extends ${platformType} {}\n`);
+    }
   }
 
-  writer.writeLines(`
-interface NoParams extends ParamsObject {}
-interface NoMeta {}
-`);
+  writer
+    .writeBlockStart(`interface AppData extends Run.DefineApp<{`)
+    .writeBlockStart("routes: {");
 
-  const pathsWriter = writer.branch("paths");
-  const routesWriter = writer.branch("types");
-  const serverWriter = writer.branch("server");
+  const routesWriter = writer.branch("routes");
+
+  writer.writeBlockEnd("}").writeBlockEnd(`}> {}`).writeBlockEnd(`}`);
+
+  headWriter.join();
+  const moduleWriter = writer.branch("module");
 
   const middlewareRouteTypes = new Map<
     RoutableFile,
@@ -685,54 +687,42 @@ interface NoMeta {}
 
   const layoutRouteTypes = new Map<RoutableFile, { routeTypes: string[] }>();
 
-  const getPaths = new Set<string>();
-  const postPaths = new Set<string>();
-
-  writeModuleDeclaration(serverWriter, undefined, undefined, platformType);
-
   for (const route of routes.list) {
-    const { meta, handler, params, middleware, page, layouts } = route;
-    const routeType = `Route${route.index}`;
-    const pathType = `\`${pathToURLPatternString(route.path)}\``;
-    const paramsType = params?.length
-      ? renderParamsInfoType(params)
-      : "NoParams";
-    let metaType = "NoMeta";
+    const { meta, handler, middleware, page, layouts } = route;
+    const pathType = `${pathToURLPatternString(route.path)}`;
+    const routeType = `"${pathType}"`;
+    let verbType = "";
 
     if (page || handler) {
-      const isGet = page || handler?.verbs?.includes("get");
-      const isPost = handler?.verbs?.includes("post");
-
-      if (isGet || isPost) {
-        const path = route.path.replace(/\$(\$?)([^/]+)/g, (_, catchAll, name) => {
-          name= decodeURIComponent(name);
-          return catchAll ? `\${...${name}}` : `\${${name}}`
-        });
-        const splatIndex = path.indexOf("/${...");
-        if (splatIndex >= 0) {
-          const path2 = path.slice(0, splatIndex) || "/";
-          isGet && getPaths.add(path2);
-          isPost && postPaths.add(path2);
-        }
-        isGet && getPaths.add(path);
-        isPost && postPaths.add(path);
+      const verbs = [];
+      if (page || handler?.verbs?.includes("get")) {
+        verbs.push(`"get"`);
       }
+      if (handler?.verbs?.includes("post")) {
+        verbs.push(`"post"`);
+      }
+      verbType = verbs.join(" | ");
     }
 
     if (meta) {
       const path = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
-      metaType = `typeof import('${path}')`;
+      let metaType = `typeof import("${path}")`;
       if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
-        metaType += `['default']`;
+        metaType += `["default"]`;
       }
+      routesWriter
+        .writeBlockStart(`"${pathType}": {`)
+        .writeLines(`verb: ${verbType};`, `meta: ${metaType};`)
+        .writeBlockEnd("};");
+    } else {
+      routesWriter.writeLines(`"${pathType}": { verb: ${verbType} };`);
     }
 
     if (handler) {
       writeModuleDeclaration(
-        serverWriter,
+        moduleWriter,
         `${pathPrefix}/${handler.relativePath}`,
-        routeType,
-        platformType
+        `Run.Routes[${routeType}]`
       );
     }
 
@@ -740,8 +730,7 @@ interface NoMeta {}
       writeModuleDeclaration(
         writer,
         `${pathPrefix}/${page.relativePath}`,
-        routeType,
-        platformType,
+        `Run.Routes[${routeType}]`,
         `
   export interface Input {
     renderBody: Marko.Body;
@@ -777,39 +766,15 @@ interface NoMeta {}
         }
       }
     }
-
-    routesWriter.writeLines(
-      `type ${routeType} = AnyRoute<${paramsType}, ${metaType}, ${pathType}>;`
-    );
   }
 
-  pathsWriter.write(`type Get =`);
-  if (getPaths.size) {
-    for (const path of getPaths) {
-      pathsWriter.write(`\n  | '${path}'`);
-    }
-  } else {
-    pathsWriter.write(" never");
-  }
-  pathsWriter.writeLines(";", "");
-  pathsWriter.write("type Post =");
-  if (postPaths.size) {
-    for (const path of postPaths) {
-      pathsWriter.write(`\n  | '${path}'`);
-    }
-  } else {
-    pathsWriter.write(" never");
-  }
-  pathsWriter.writeLines(";", "");
-
-  pathsWriter.join();
+  routesWriter.join();
 
   for (const [file, { routeTypes }] of middlewareRouteTypes) {
     writeModuleDeclaration(
-      serverWriter,
+      moduleWriter,
       `${pathPrefix}/${file.relativePath}`,
-      routeTypes.join(" | "),
-      platformType
+      `Run.Routes[${routeTypes.join(" | ")}]`
     );
   }
 
@@ -817,8 +782,7 @@ interface NoMeta {}
     writeModuleDeclaration(
       writer,
       `${pathPrefix}/${file.relativePath}`,
-      routeTypes.join(" | "),
-      platformType,
+      `Run.Routes[${routeTypes.join(" | ")}]`,
       `
   export interface Input {
     renderBody: Marko.Body;
@@ -830,8 +794,7 @@ interface NoMeta {}
     writeModuleDeclaration(
       writer,
       `${pathPrefix}/${routes.special["404"].page.relativePath}`,
-      undefined,
-      platformType,
+      "Run.Route",
       `
   export interface Input {}`
     );
@@ -841,8 +804,7 @@ interface NoMeta {}
     writeModuleDeclaration(
       writer,
       `${pathPrefix}/${routes.special["500"].page.relativePath}`,
-      undefined,
-      platformType,
+      "globalThis.MarkoRun.Route",
       `
   export interface Input {
     error: unknown;
@@ -850,66 +812,44 @@ interface NoMeta {}
     );
   }
 
-  serverWriter.join();
+  moduleWriter.join();
 
   return writer.end();
 }
 
 function writeModuleDeclaration(
   writer: Writer,
-  path: string = "global",
-  routeType: string = "AnyRoute",
-  platformType: string = "unknown",
+  path: string,
+  routeType?: string,
   moduleTypes?: string
 ) {
-  writer.writeLines("");
-
-  if (path === "global") {
-    writer.write("declare global {");
-  } else {
-    writer.write(`declare module '${stripTsExtension(path)}' {`);
-  }
+  writer.writeLines("").write(`declare module "${stripTsExtension(path)}" {`);
 
   if (moduleTypes) {
-    writer.writeLines(moduleTypes);
+    writer.write(moduleTypes);
   }
 
-  const isMarko = path.endsWith(".marko");
-
-  writer.write(`
-  namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = ${platformType};`);
-
-  if (path !== "global") {
+  if (routeType) {
+    const isMarko = path.endsWith(".marko");
     writer.write(`
-    type Route = ${routeType};
-    type Context = AnyContext<Platform, Route>${
+  namespace MarkoRun {
+    export * from "@marko/run/namespace";
+    export type Route = ${routeType};
+    export type Context = Run.MultiRouteContext<Route>${
       isMarko ? " & Marko.Global" : ""
     };
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;`);
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Handler>;
+  }`);
   }
 
   writer.writeLines(`
-  }
 }`);
 }
 
 function pathToURLPatternString(path: string): string {
-  return path.replace(
-    /\/\$(\$?)([^\/]*)/g,
-    (_, catchAll, name) => {
-      name = decodeURIComponent(name);
-      return (catchAll ? `/:${name || "rest"}*` : `/:${name}`)
-    }
-  )
+  return path.replace(/\/\$(\$?)([^\/]*)/g, (_, catchAll, name) => {
+    name = decodeURIComponent(name);
+    return catchAll ? `/:${name || "rest"}*` : `/:${name}`;
+  });
 }

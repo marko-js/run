@@ -14,6 +14,8 @@ export interface MatchedRoute {
   };
 }
 
+export { createMiddleware }
+
 type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
 const passthrough: NodeMiddleware = (_req, _res, next) => {

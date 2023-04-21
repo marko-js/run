@@ -19,7 +19,6 @@
     "noImplicitOverride": true,
     "emitDeclarationOnly": true,
     "allowUnreachableCode": false,
-    "importsNotUsedAsValues": "error",
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,

@@ -1,40 +1,57 @@
-import type { HandlerLike, ParamsObject, Route as AnyRoute, Context as AnyContext, RuntimeModule } from "./types";
+import { NotHandled, NotMatched } from "./namespace";
+import {
+  GetPaths,
+  PostPaths,
+  GetablePath,
+  GetableHref,
+  PostablePath,
+  PostableHref,
+  Platform,
+  HandlerTypeFn,
+  RuntimeModule,
+  AnyRoute,
+  AnyContext,
+  AnyHandler,
+} from "./types";
+
 declare global {
   var __marko_run__: RuntimeModule;
-
   namespace MarkoRun {
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
-
-    interface Route extends AnyRoute {}
-    interface Context extends AnyContext {}
-
-    type Handler<
-      Params extends ParamsObject = {},
-      Meta = unknown
-    > = HandlerLike<AnyRoute<Params, Meta, string>>;
-
-    function route<Params extends ParamsObject = {}, Meta = unknown>(
-      handler: Handler<Params, Meta>
-    ): typeof handler;
+    export const route: HandlerTypeFn;
+    export {
+      GetPaths,
+      PostPaths,
+      GetablePath,
+      GetableHref,
+      PostablePath,
+      PostableHref,
+      Platform,
+      NotHandled,
+      NotMatched,
+      AnyRoute as Route,
+      AnyContext as Context,
+      AnyHandler as Handler,
+    }
   }
 }
 
 export type {
+  AppData,
   Context,
-  ContextExtensions,
+  DefineApp,
   Fetch,
+  HandlerTypeFn,
   HandlerLike,
   InputObject,
   Invoke,
   Match,
+  MultiRouteContext,
   NextFunction,
   ParamsObject,
-  PathTemplate,
+  Platform,
   Route,
+  Routes,
   RouteHandler,
   RouteWithHandler,
   RuntimeModule,
-  ValidateHref,
-  ValidatePath,
 } from "./types";

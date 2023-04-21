@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "build": "npm run build -w packages -w packages/adapters",
-    "test": "npm run test -w packages -w packages/adapters --if-present"
+    "test": "npm run test -w packages -w packages/adapters --if-present",
+    "build:examples": "npm run build -w examples"
   },
   "workspaces": [
     "./packages/*",

@@ -1,11 +1,10 @@
 type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
+type NoParams = {};
 
-export interface ContextExtensions {}
-export type Context<
-  Platform = unknown,
-  TRoute extends Route = Route
-> = ContextExtensions & {
+export interface Platform {}
+
+export interface Context<TRoute extends AnyRoute = AnyRoute> {
   readonly url: URL;
   readonly request: Request;
   readonly route: TRoute["path"];
@@ -13,42 +12,73 @@ export type Context<
   readonly meta: TRoute["meta"];
   readonly platform: Platform;
   readonly serializedGlobals: Record<string, boolean>;
-};
+}
+
+export type MultiRouteContext<TRoute extends AnyRoute> = TRoute extends any
+  ? Context<TRoute>
+  : never;
 
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
 export type NextFunction = () => Awaitable<Response>;
 
-export type HandlerLike<TRoute extends Route = Route> = Awaitable<
+export type HandlerLike<TRoute extends AnyRoute = AnyRoute> = Awaitable<
   OneOrMany<RouteHandler<TRoute>>
 >;
 
-export type RouteHandler<TRoute extends Route = Route> = (
-  context: Context<unknown, TRoute>,
+export type RouteHandler<TRoute extends AnyRoute = AnyRoute> = (
+  context: MultiRouteContext<TRoute>,
   next: NextFunction
 ) => Awaitable<Response | null | void>;
 
-export interface Route<
-  Params extends ParamsObject = {},
-  Meta = unknown,
-  Path extends string = string
-> {
+export interface Route<Params extends ParamsObject, Meta, Path extends string> {
   path: Path;
   params: Params;
   meta: Meta;
 }
 
+type DefineRoutes<T extends Record<string, { meta?: unknown }>> = {
+  [K in keyof T]: K extends string
+    ? T[K] extends { meta: infer Meta }
+      ? Route<PathParams<K>, Meta, K>
+      : Route<PathParams<K>, unknown, K>
+    : never;
+};
+
+type DefinePaths<
+  T extends Record<string, { verb: unknown }>,
+  Verb extends "get" | "post"
+> = {
+  [K in keyof T]: K extends string
+    ? T[K] extends { verb: infer V }
+      ? V extends Verb
+        ? ConvertPath<K>
+        : never
+      : never
+    : never;
+}[keyof T];
+
+export type DefineApp<
+  T extends {
+    routes: Record<string, { verb: "get" | "post"; meta?: unknown }>;
+  }
+> = {
+  routes: DefineRoutes<T["routes"]>;
+  getPaths: DefinePaths<T["routes"], "get">;
+  postPaths: DefinePaths<T["routes"], "post">;
+};
+
 export interface RouteWithHandler<
-  Params extends ParamsObject = {},
+  Params extends ParamsObject = ParamsObject,
   Meta = unknown,
   Path extends string = string
 > extends Route<Params, Meta, Path> {
   handler: RouteHandler<this>;
 }
 
-export type Fetch<Platform = unknown> = (
+export type Fetch<TPlatform extends Platform = Platform> = (
   request: Request,
-  platform: Platform
+  platform: TPlatform
 ) => Promise<Response | void>;
 
 export type Match = (
@@ -56,26 +86,37 @@ export type Match = (
   pathname: string
 ) => RouteWithHandler | null;
 
-export type Invoke = <Platform = unknown>(
+export type Invoke<TPlatform extends Platform = Platform> = (
   route: RouteWithHandler | null,
   request: Request,
-  platform: Platform
+  platform: TPlatform
 ) => Promise<Response | void>;
 
 export interface RuntimeModule {
-  fetch: <Platform = unknown>(
-    request: Request,
-    platform: Platform
-  ) => Promise<Response | void>;
-  match: (method: string, pathname: string) => RouteWithHandler | null;
-  invoke: <Platform = unknown>(
-    route: RouteWithHandler | null,
-    request: Request,
-    platform: Platform
-  ) => Promise<Response | void>;
+  fetch<TPlatform extends Platform = Platform>(
+    ...args: Parameters<Fetch<TPlatform>>
+  ): ReturnType<Fetch<TPlatform>>;
+  match: Match;
+  invoke<TPlatform extends Platform = Platform>(
+    ...args: Parameters<Invoke<TPlatform>>
+  ): ReturnType<Invoke<TPlatform>>;
 }
 
 type Member<T, U> = T extends T ? (U extends T ? T : never) : never;
+
+type PathParamKeys<Path extends string> =
+  Path extends `${infer _}:${infer Param}/${infer Rest}`
+    ? [Param, ...PathParamKeys<Rest>]
+    : Path extends `${infer _}:${infer Param}*`
+    ? [Param]
+    : Path extends `${infer _}:${infer Param}`
+    ? [Param]
+    : [];
+
+type PathParams<
+  Path extends string,
+  Keys extends string[] = PathParamKeys<Path>
+> = 0 extends Keys["length"] ? NoParams : { [K in Keys[number]]: string };
 
 type Segments<T extends string, Acc extends string[] = []> = T extends ""
   ? Acc
@@ -111,20 +152,22 @@ type PathPattern<T extends string> =
     ? PathPattern<`${Left}/${string}`>
     : T;
 
-export type PathTemplate<Path extends string> =
-  Path extends `${infer Left}/\${${string}}/${infer Rest}`
-    ? PathTemplate<`${Left}/${string}/${Rest}`>
-    : Path extends `${infer Left}/\${${string}}`
-    ? PathTemplate<`${Left}/${string}`>
+export type ConvertPath<Path extends string> =
+  Path extends `${infer Left}/:${infer Param}/${infer Rest}`
+    ? ConvertPath<`${Left}/\${${Param}}/${Rest}`>
+    : Path extends `${infer Left}/:${infer Param}*`
+    ? `${Left}/\${${Param}...}`
+    : Path extends `${infer Left}/:${infer Param}`
+    ? `${Left}/\${${Param}}`
     : Path;
 
-export type ValidatePath<Paths extends string, Path extends string> =
+type ValidatePath<Paths extends string, Path extends string> =
   | Paths
   | (Path extends `/${string}`
       ? MatchSegments<Member<PathPattern<Paths>, Path>, Path>
       : Path);
 
-export type ValidateHref<
+type ValidateHref<
   Paths extends string,
   Href extends string
 > = Href extends `${infer P}#${infer H}?${infer Q}`
@@ -134,3 +177,38 @@ export type ValidateHref<
   : Href extends `${infer P}#${infer H}`
   ? `${ValidatePath<Paths, P>}#${H}`
   : ValidatePath<Paths, Href>;
+
+export interface AppData {}
+
+type HasAppData = AppData extends { routes: any } ? 1 : 0;
+type AnyParams = 0 extends HasAppData ? ParamsObject : never;
+type AnyMeta = 0 extends HasAppData ? unknown : never;
+
+export type Routes = AppData extends { routes: infer T }
+  ? T
+  : Record<string, Route<ParamsObject, unknown, string>>;
+
+export type AnyRoute = Routes[keyof Routes];
+
+export type AnyContext = MultiRouteContext<AnyRoute>;
+
+export type AnyHandler<
+  Params extends AnyParams = AnyParams,
+  Meta extends AnyMeta = AnyMeta
+> = 0 extends HasAppData
+  ? HandlerLike<Route<Params, Meta, string>>
+  : HandlerLike<AnyRoute>;
+
+export type HandlerTypeFn<THandler extends HandlerLike = AnyHandler> =
+  0 extends HasAppData
+    ? <Params extends ParamsObject = ParamsObject, Meta = unknown>(
+        handler: HandlerLike<Route<Params, Meta, string>>
+      ) => HandlerLike<Route<Params, Meta, string>>
+    : (handler: THandler) => THandler;
+
+export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
+export type PostPaths = AppData extends { postPaths: infer T } ? T : string;
+export type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
+export type GetableHref<T extends string> = ValidateHref<GetPaths, T>;
+export type PostablePath<T extends string> = ValidatePath<PostPaths, T>;
+export type PostableHref<T extends string> = ValidateHref<PostPaths, T>;

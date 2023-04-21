@@ -1,9 +1,11 @@
 import type {
   InputObject,
   NextFunction,
-  Route,
+  AnyRoute,
   Context,
-  RouteHandler
+  MultiRouteContext,
+  RouteHandler,
+  Platform
 } from "./types";
 
 const pageResponseInit = {
@@ -26,18 +28,18 @@ globalThis.MarkoRun ??= {
   NotMatched,
   route(handler) {
     return handler;
-  },
+  }
 };
 
 const serializedGlobals = { params: true, url: true };
 
-export function createContext<Platform, TRoute extends Route>(
+export function createContext<TRoute extends AnyRoute>(
   route: TRoute | undefined,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url)
-): [Context, (data?: InputObject) => InputObject] {
-  const context: Context<Platform, TRoute> = route
+): [Context<TRoute>, (data?: InputObject) => InputObject] {
+  const context: Context<TRoute> = route
     ? {
         request,
         url,
@@ -69,10 +71,10 @@ export function createContext<Platform, TRoute extends Route>(
   ];
 }
 
-export async function call(
-  handler: RouteHandler<Route>,
+export async function call<TRoute extends AnyRoute>(
+  handler: RouteHandler<TRoute>,
   next: NextFunction,
-  context: Context
+  context: MultiRouteContext<TRoute>
 ): Promise<Response> {
   let response: Response | null | void;
 

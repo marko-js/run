@@ -183,7 +183,7 @@ const devFlags = new RegExp(
     "country=.+",
     "edge-inspect-brk(=.+)?",
     "edge-inspect(=.+)?",
-    "funciton=.+",
+    "functions=.+",
     "functions-port=.+",
     "geo=.+",
     "live",
