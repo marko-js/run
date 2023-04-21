@@ -1,8 +1,9 @@
 import type {
   InputObject,
   NextFunction,
-  Route,
+  AnyRoute,
   Context,
+  MultiRouteContext,
   RouteHandler,
   Platform
 } from "./types";
@@ -32,13 +33,13 @@ globalThis.MarkoRun ??= {
 
 const serializedGlobals = { params: true, url: true };
 
-export function createContext<TRoute extends Route>(
+export function createContext<TRoute extends AnyRoute>(
   route: TRoute | undefined,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url)
-): [Context, (data?: InputObject) => InputObject] {
-  const context: Context = route
+): [Context<TRoute>, (data?: InputObject) => InputObject] {
+  const context: Context<TRoute> = route
     ? {
         request,
         url,
@@ -70,10 +71,10 @@ export function createContext<TRoute extends Route>(
   ];
 }
 
-export async function call<TRoute extends Route>(
+export async function call<TRoute extends AnyRoute>(
   handler: RouteHandler<TRoute>,
   next: NextFunction,
-  context: Context<TRoute>
+  context: MultiRouteContext<TRoute>
 ): Promise<Response> {
   let response: Response | null | void;
 

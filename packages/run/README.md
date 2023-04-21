@@ -483,16 +483,16 @@ express()
 
 **`MarkoRun.Route`** - Type of the route's params and metadata
 
-**`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging on the `ContextExtensions` interface exported from the `@marko/run` package. Place this in your application code somwhere:
+**`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your applcation code
 ```ts
 declare module "@marko/run" {
-  interface ContextExtensions {
+  interface Context {
     customPropery: MyCustomThing // will be globally defined on MarkoRun.Context
   }
 }
 ```
 
-**`MarkoRun.Platform`** - Type of the platform object provided by the adapter in use. This interface can be directly extended by using TypeScript's module and interface merging: 
+**`MarkoRun.Platform`** - Type of the platform object provided by the adapter in use. This interface can be extended in that same way as `Context` (see above) by declaring a `Platform` interface: 
 ```ts
 declare module "@marko/run" {
   interface Platform {

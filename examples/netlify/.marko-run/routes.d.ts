@@ -7,23 +7,24 @@ import "@marko/run/namespace";
 import type Run from "@marko/run";
 import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';
 
-type Route1 = Run.Route<[], typeof import("../src/routes/+meta.json"), `/`>;
-
 declare module "@marko/run" {
 	interface Platform extends NetlifyEdgePlatformInfo {}
 
-	interface AppData {
-		routes: Route1;
-		get: "/";
-		post: "/";
-	}
+	interface AppData extends Run.DefineApp<{
+		routes: {
+			"/": {
+				verb: "get" | "post";
+				meta: typeof import("../src/routes/+meta.json");
+			};
+		}
+	}> {}
 }
 
 declare module "../src/routes/+handler" {
   namespace MarkoRun {
     export * from "@marko/run/namespace";
-    export type Route = Route1;
-    export type Context = Run.Context<Route>;
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
@@ -32,8 +33,8 @@ declare module "../src/routes/+handler" {
 declare module "../src/routes/+middleware" {
   namespace MarkoRun {
     export * from "@marko/run/namespace";
-    export type Route = Route1;
-    export type Context = Run.Context<Route>;
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
@@ -45,8 +46,8 @@ declare module "../src/routes/+page.marko" {
   }
   namespace MarkoRun {
     export * from "@marko/run/namespace";
-    export type Route = Route1;
-    export type Context = Run.Context<Route> & Marko.Global;
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
@@ -58,8 +59,8 @@ declare module "../src/routes/+layout.marko" {
   }
   namespace MarkoRun {
     export * from "@marko/run/namespace";
-    export type Route = Route1;
-    export type Context = Run.Context<Route> & Marko.Global;
+    export type Route = Run.Routes["/"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
@@ -70,7 +71,7 @@ declare module "../src/routes/+404.marko" {
   namespace MarkoRun {
     export * from "@marko/run/namespace";
     export type Route = Run.Route;
-    export type Context = Run.Context<Route> & Marko.Global;
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
@@ -83,7 +84,7 @@ declare module "../src/routes/+500.marko" {
   namespace MarkoRun {
     export * from "@marko/run/namespace";
     export type Route = globalThis.MarkoRun.Route;
-    export type Context = Run.Context<Route> & Marko.Global;
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Handler>;
   }
