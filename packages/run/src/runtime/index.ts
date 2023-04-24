@@ -1,5 +1,5 @@
 import { NotHandled, NotMatched } from "./namespace";
-import {
+import type {
   GetPaths,
   PostPaths,
   GetablePath,

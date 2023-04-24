@@ -4,7 +4,7 @@ type NoParams = {};
 
 export interface Platform {}
 
-export interface Context<TRoute extends AnyRoute = AnyRoute> {
+export interface Context<TRoute extends Route = AnyRoute> {
   readonly url: URL;
   readonly request: Request;
   readonly route: TRoute["path"];
@@ -14,7 +14,7 @@ export interface Context<TRoute extends AnyRoute = AnyRoute> {
   readonly serializedGlobals: Record<string, boolean>;
 }
 
-export type MultiRouteContext<TRoute extends AnyRoute> = TRoute extends any
+export type MultiRouteContext<TRoute extends Route> = TRoute extends any
   ? Context<TRoute>
   : never;
 
@@ -22,16 +22,20 @@ export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
 export type NextFunction = () => Awaitable<Response>;
 
-export type HandlerLike<TRoute extends AnyRoute = AnyRoute> = Awaitable<
+export type HandlerLike<TRoute extends Route = AnyRoute> = Awaitable<
   OneOrMany<RouteHandler<TRoute>>
 >;
 
-export type RouteHandler<TRoute extends AnyRoute = AnyRoute> = (
+export type RouteHandler<TRoute extends Route = AnyRoute> = (
   context: MultiRouteContext<TRoute>,
   next: NextFunction
 ) => Awaitable<Response | null | void>;
 
-export interface Route<Params extends ParamsObject, Meta, Path extends string> {
+export interface Route<
+  Params extends ParamsObject = ParamsObject,
+  Meta = unknown,
+  Path extends string = string
+> {
   path: Path;
   params: Params;
   meta: Meta;
@@ -186,7 +190,7 @@ type AnyMeta = 0 extends HasAppData ? unknown : never;
 
 export type Routes = AppData extends { routes: infer T }
   ? T
-  : Record<string, Route<ParamsObject, unknown, string>>;
+  : Record<string, Route>;
 
 export type AnyRoute = Routes[keyof Routes];
 
@@ -196,15 +200,15 @@ export type AnyHandler<
   Params extends AnyParams = AnyParams,
   Meta extends AnyMeta = AnyMeta
 > = 0 extends HasAppData
-  ? HandlerLike<Route<Params, Meta, string>>
+  ? HandlerLike<Route<Params, Meta>>
   : HandlerLike<AnyRoute>;
 
-export type HandlerTypeFn<THandler extends HandlerLike = AnyHandler> =
+export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
   0 extends HasAppData
     ? <Params extends ParamsObject = ParamsObject, Meta = unknown>(
-        handler: HandlerLike<Route<Params, Meta, string>>
-      ) => HandlerLike<Route<Params, Meta, string>>
-    : (handler: THandler) => THandler;
+        handler: HandlerLike<Route<Params, Meta>>
+      ) => HandlerLike<Route<Params, Meta>>
+    : (handler: HandlerLike<TRoute>) => HandlerLike<TRoute>;
 
 export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
 export type PostPaths = AppData extends { postPaths: infer T } ? T : string;
