@@ -3,7 +3,7 @@
   Do NOT manually edit this file or your changes will be lost.
 */
 
-import "@marko/run/namespace";
+import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
 import type Run from "@marko/run";
 
 
@@ -23,11 +23,11 @@ declare module "../src/routes/+page.marko" {
     renderBody: Marko.Body;
   }
   namespace MarkoRun {
-    export * from "@marko/run/namespace";
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Handler>;
+    export const route: Run.HandlerTypeFn<Route>;
   }
 }
 
@@ -36,11 +36,11 @@ declare module "../src/routes/users/+page.marko" {
     renderBody: Marko.Body;
   }
   namespace MarkoRun {
-    export * from "@marko/run/namespace";
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/users"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Handler>;
+    export const route: Run.HandlerTypeFn<Route>;
   }
 }
 
@@ -49,21 +49,21 @@ declare module "../src/routes/+layout.marko" {
     renderBody: Marko.Body;
   }
   namespace MarkoRun {
-    export * from "@marko/run/namespace";
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/" | "/users"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Handler>;
+    export const route: Run.HandlerTypeFn<Route>;
   }
 }
 
 declare module "../src/routes/+404.marko" {
   export interface Input {}
   namespace MarkoRun {
-    export * from "@marko/run/namespace";
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Route;
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Handler>;
+    export const route: Run.HandlerTypeFn<Route>;
   }
 }

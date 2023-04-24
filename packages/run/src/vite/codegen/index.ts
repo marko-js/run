@@ -652,7 +652,7 @@ export async function renderRouteTypeInfo(
   Do NOT manually edit this file or your changes will be lost.
 */
 `,
-    `import "@marko/run/namespace";`,
+    `import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";`,
     `import type Run from "@marko/run";`
   );
 
@@ -833,13 +833,13 @@ function writeModuleDeclaration(
     const isMarko = path.endsWith(".marko");
     writer.write(`
   namespace MarkoRun {
-    export * from "@marko/run/namespace";
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = ${routeType};
     export type Context = Run.MultiRouteContext<Route>${
       isMarko ? " & Marko.Global" : ""
     };
     export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Handler>;
+    export const route: Run.HandlerTypeFn<Route>;
   }`);
   }
 
