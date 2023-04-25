@@ -444,6 +444,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     {
       name: "marko-run-vite:post",
       enforce: "post",
+      generateBundle(options, bundle) {
+        if (options.sourcemap && options.sourcemap !== "inline") {
+          // Iterate through bundle and remove source maps that don't have a corresponding source file
+          for (const key of Object.keys(bundle)) {
+            if (key.endsWith(".map") && !bundle[key.slice(0, -4)]) {
+              delete bundle[key];
+            }
+          }
+        }
+      },
       async writeBundle(options, bundle) {
         if (isSSRBuild) {
           const builtEntries = Object.values(bundle).reduce<string[]>(
