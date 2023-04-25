@@ -105,7 +105,7 @@ export default function adapter(): Adapter {
     },
 
     async startPreview(entry, options) {
-      const { port, envFile } = options;
+      const { port = 3000, envFile } = options;
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
       const server = await spawnServer("node", args, port, envFile);
