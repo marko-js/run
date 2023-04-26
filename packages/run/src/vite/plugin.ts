@@ -5,7 +5,7 @@ import glob from "glob";
 
 import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
-import type { PluginContext } from "rollup";
+import type { PluginContext, OutputOptions } from "rollup";
 
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
@@ -205,7 +205,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         root = normalizePath(config.root || process.cwd());
         isBuild = env.command === "build";
         isSSRBuild = isBuild && Boolean(config.build?.ssr);
-        adapter = await resolveAdapter(root, opts, config.logLevel !== 'silent' && !isBuild || isSSRBuild);
+        adapter = await resolveAdapter(
+          root,
+          opts,
+          (config.logLevel !== "silent" && !isBuild) || isSSRBuild
+        );
 
         if (adapter) {
           const externalAdapterConfig = getExternalAdapterOptions(config);
@@ -227,7 +231,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             ),
           },
         });
-        
+
         store =
           opts.store ||
           new FileStore(
@@ -241,6 +245,49 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
 
+        const assetsDir = config.build?.assetsDir || "assets";
+        let rollupOutputOptions = config.build?.rollupOptions?.output;
+
+        if (isBuild && !isSSRBuild) {
+          const defaultRollupOutputOptions: OutputOptions = {
+            assetFileNames({ name }) {
+              if (name && name.indexOf("_marko-virtual_id_") < 0) {
+                return `${assetsDir}/${
+                  getEntryFileName(name) || "[name]"
+                }-[hash].[ext]`;
+              }
+              return `${assetsDir}/_[hash].[ext]`;
+            },
+            entryFileNames(info) {
+              let name = getEntryFileName(info.facadeModuleId);
+              if (!name) {
+                for (let id of info.moduleIds) {
+                  name = getEntryFileName(id);
+                  if (name) {
+                    break;
+                  }
+                }
+              }
+              return `${assetsDir}/${name || "[name]"}-[hash].js`;
+            },
+            chunkFileNames: `${assetsDir}/_[hash].js`,
+          };
+
+          if (!rollupOutputOptions) {
+            rollupOutputOptions = defaultRollupOutputOptions;
+          } else if (!Array.isArray(rollupOutputOptions)) {
+            rollupOutputOptions = {
+              ...defaultRollupOutputOptions,
+              ...rollupOutputOptions,
+            };
+          } else {
+            rollupOutputOptions = rollupOutputOptions.map((options) => ({
+              ...defaultRollupOutputOptions,
+              ...options,
+            }));
+          }
+        }
+
         let pluginConfig: UserConfig = {
           logLevel: isBuild ? "warn" : undefined,
           define: isBuild
@@ -249,10 +296,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
             : undefined,
           ssr: {
-            noExternal: /@marko\/run/
+            noExternal: /@marko\/run/,
           },
           build: {
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
+            rollupOptions: {
+              output: rollupOutputOptions,
+            },
           },
         };
 
@@ -394,6 +444,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     {
       name: "marko-run-vite:post",
       enforce: "post",
+      generateBundle(options, bundle) {
+        if (options.sourcemap && options.sourcemap !== "inline") {
+          // Iterate through bundle and remove source maps that don't have a corresponding source file
+          for (const key of Object.keys(bundle)) {
+            if (key.endsWith(".map") && !bundle[key.slice(0, -4)]) {
+              delete bundle[key];
+            }
+          }
+        }
+      },
       async writeBundle(options, bundle) {
         if (isSSRBuild) {
           const builtEntries = Object.values(bundle).reduce<string[]>(
@@ -513,21 +573,34 @@ async function ensureDir(dir: string) {
   }
 }
 
-export async function resolveAdapter(root: string, options: Options, log?: boolean): Promise<Adapter | null> {
+export async function resolveAdapter(
+  root: string,
+  options: Options,
+  log?: boolean
+): Promise<Adapter | null> {
   const { adapter } = options;
   if (adapter !== undefined) {
     return adapter;
   }
-  const { resolvePackageData } = await import('vite');
-  const pkg = resolvePackageData('.', root);
+  const { resolvePackageData } = await import("vite");
+  const pkg = resolvePackageData(".", root);
   if (pkg) {
-    const dependecies = { ...pkg.data.dependecies, ...pkg.data.devDependencies };
+    const dependecies = {
+      ...pkg.data.dependecies,
+      ...pkg.data.devDependencies,
+    };
     for (const name of Object.keys(dependecies)) {
-      if (name.startsWith('@marko/run-adapter') || name.indexOf('marko-run-adapter') !== -1) {
+      if (
+        name.startsWith("@marko/run-adapter") ||
+        name.indexOf("marko-run-adapter") !== -1
+      ) {
         try {
           const module = await import(name);
-          log && console.log(`Using adapter ${name} listed in your package.json dependecies`);
-          return  module.default();
+          log &&
+            console.log(
+              `Using adapter ${name} listed in your package.json dependecies`
+            );
+          return module.default();
         } catch (err) {
           log && console.warn(`Attempt to use package '${name}' failed`, err);
         }
@@ -535,8 +608,14 @@ export async function resolveAdapter(root: string, options: Options, log?: boole
     }
   }
 
-  const defaultAdapter = '@marko/run/adapter';
+  const defaultAdapter = "@marko/run/adapter";
   const module = await import(defaultAdapter);
-  log && console.log('Using default adapter')
+  log && console.log("Using default adapter");
   return module.default();
+}
+
+const markoEntryFileRegex = /__marko-run__([^_]+)__(.+)\.marko.([^.]+)$/;
+function getEntryFileName(file: string | undefined | null) {
+  const match = file && markoEntryFileRegex.exec(file);
+  return match ? `${match[2].replace(/__/g, "-")}` : undefined;
 }
