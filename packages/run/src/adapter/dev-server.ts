@@ -37,7 +37,7 @@ export async function createViteDevServer(config?: InlineConfig): Promise<ViteDe
   const devServer = await createServer({
     ...config,
     appType: "custom",
-    server: { middlewareMode: true }
+    server: { ...config?.server, middlewareMode: true }
   });
 
   const originalClose = devServer.close;
