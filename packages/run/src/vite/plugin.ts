@@ -114,7 +114,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
       const data = await renderRouteTypeInfo(
         routes,
-        path.relative(typesDir, resolvedRoutesDir),
+        normalizePath(path.relative(typesDir, resolvedRoutesDir)),
         adapter
       );
 
