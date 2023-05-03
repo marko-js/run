@@ -1,8 +1,8 @@
 import net, { type Socket } from "net";
-import cp from "child_process";
+import cp, { ChildProcess } from "child_process";
 import { parse, config } from 'dotenv';
 import fs from "fs";
-import cluster, { type Worker } from "cluster";
+import cluster, { type Address, type Worker } from "cluster";
 
 export interface SpawnedServer {
   port: number,
@@ -51,7 +51,10 @@ export async function spawnServer(
   };
 
   try {
-    await waitForServer(port, wait);
+    await Promise.race([
+      waitForError(proc, port),
+      waitForServer(port, wait)
+    ])
   } catch (err) {
     close();
     throw err;
@@ -99,6 +102,15 @@ export async function spawnServerWorker(
   }
 }
 
+export async function waitForError(proc: ChildProcess, port: number): Promise<void> {
+  return new Promise((_, reject) => {
+    proc.once("error", reject);
+    proc.once("exit", (code) => {
+      reject(new Error(`Process exited with code ${code} while waiting for server to start on port "${port}".`));
+    });
+  })
+}
+
 export async function waitForServer(port: number, wait: number = 0): Promise<Socket> {
   let remaining = wait > 0 ? wait : Infinity;
   let connection: Socket | null;
@@ -108,11 +120,32 @@ export async function waitForServer(port: number, wait: number = 0): Promise<Soc
       await sleep(100);
     } else {
       throw new Error(
-        `site-write: timeout while wating for server to start on port "${port}".`
+        `Timeout while wating for server to start on port "${port}".`
       );
     }
   }
   return connection;
+}
+
+export async function waitForWorker(worker: Worker, port: number) {
+  return new Promise<void>((resolve, reject) => {
+    function listening(address: Address) {
+      if (address.port === port) {
+        worker.off("listening", listening);
+        resolve();
+      }
+    }
+    worker
+      .on("listening", listening)
+      .once("error", reject)
+      .once("exit", (code) => {
+        reject(
+          new Error(
+            `Worker exited with code ${code} while waiting for dev server to start on port "${port}".`
+          )
+        );
+      });
+  });
 }
 
 export async function getConnection(port: number): Promise<Socket | null> {

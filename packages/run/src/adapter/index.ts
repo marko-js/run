@@ -1,14 +1,15 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Address, Worker } from "cluster";
+import type { Worker } from "cluster";
 import type { Adapter } from "../vite";
 import { createDevServer } from "./dev-server";
 import type { AddressInfo } from "net";
 import {
   loadEnv,
   spawnServer,
-  type SpawnedServer,
   spawnServerWorker,
+  waitForWorker,
+  type SpawnedServer,
 } from "../vite/utils/server";
 
 export {
@@ -115,14 +116,4 @@ export default function adapter(): Adapter {
   };
 }
 
-async function waitForWorker(worker: Worker, port: number) {
-  return new Promise<void>((resolve) => {
-    function listening(address: Address) {
-      if (address.port === port) {
-        worker.off("listening", listening);
-        resolve();
-      }
-    }
-    worker.on("listening", listening);
-  });
-}
+
