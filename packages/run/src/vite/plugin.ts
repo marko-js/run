@@ -248,7 +248,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         const assetsDir = config.build?.assetsDir || "assets";
         let rollupOutputOptions = config.build?.rollupOptions?.output;
 
-        if (isBuild && !isSSRBuild) {
+        if (isBuild) {
           const defaultRollupOutputOptions: OutputOptions = {
             assetFileNames({ name }) {
               if (name && name.indexOf("_marko-virtual_id_") < 0) {
@@ -270,7 +270,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
               return `${assetsDir}/${name || "[name]"}-[hash].js`;
             },
-            chunkFileNames: `${assetsDir}/_[hash].js`,
+            chunkFileNames: isSSRBuild ? `_[hash].js` : `${assetsDir}/_[hash].js`,
           };
 
           if (!rollupOutputOptions) {
