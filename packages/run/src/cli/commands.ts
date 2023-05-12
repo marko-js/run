@@ -14,7 +14,7 @@ import { MemoryStore } from "@marko/vite";
 import type { SpawnedServer } from "../vite/utils/server";
 import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultPort = +process.env.PORT! || 3000;
 
 export const defaultConfigFileBases = ["serve.config", "vite.config"];

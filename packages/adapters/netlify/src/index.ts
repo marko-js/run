@@ -15,7 +15,7 @@ export type {
   NetlifyEdgePlatformInfo,
 } from "./types";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = fileURLToPath(path.dirname(import.meta.url));
 
 export interface Options {
   edge?: boolean;

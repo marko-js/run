@@ -43,7 +43,7 @@ import {
 } from "./utils/config";
 import { fileURLToPath } from "url";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const markoExt = ".marko";
 
@@ -73,7 +73,7 @@ interface RouteData {
 }
 
 export default function markoRun(opts: Options = {}): Plugin[] {
-  let { routesDir = "src/routes", adapter, ...markoOptions } = opts;
+  let { routesDir, adapter, basePathVar, ...markoOptions } = opts;
 
   let compiler: typeof Compiler;
   let store: BuildStore;
@@ -232,6 +232,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           },
         });
 
+        routesDir = opts.routesDir || "src/routes";
         store =
           opts.store ||
           new FileStore(
@@ -240,6 +241,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               .update(root)
               .digest("hex")}`
           );
+        basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
@@ -440,6 +442,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       get store() {
         return store;
       },
+      get basePathVar() {
+        return basePathVar
+      }
     }) as any),
     {
       name: "marko-run-vite:post",
@@ -585,11 +590,7 @@ export async function resolveAdapter(
   const { resolvePackageData } = await import("vite");
   const pkg = resolvePackageData(".", root);
   if (pkg) {
-    const dependecies = {
-      ...pkg.data.dependecies,
-      ...pkg.data.devDependencies,
-    };
-    for (const name of Object.keys(dependecies)) {
+    for (const name of Object.keys(pkg.data.dependencies).concat(Object.keys(pkg.data.devDependencies))) {
       if (
         name.startsWith("@marko/run-adapter") ||
         name.indexOf("marko-run-adapter") !== -1

@@ -40,6 +40,10 @@ await Promise.all([
     ...opts,
     format: "cjs",
     outExtension: { ".js": ".cjs" },
+    define: {
+      "import.meta.url": '__importMetaURL'
+    },
+    inject: ['./scripts/importMetaURL.js']
   }),
   build({
     ...opts,
