@@ -5,9 +5,11 @@ import {
 } from "@marko/run/adapter/middleware";
 import type { RouteWithHandler } from "@marko/run";
 import "@marko/run/router";
+import type { InlineConfig } from "vite";
 
 declare global {
   var __marko_run_import__: Promise<void> | undefined;
+  var __marko_run_vite_config__: InlineConfig | undefined;
 }
 
 export interface MatchedRoute {
@@ -68,7 +70,7 @@ const loadRuntime: (middleware: NodeMiddleware) => () => NodeMiddleware =
 
         globalThis.__marko_run_import__ = (async () => {
           const { createViteDevServer } = await import("@marko/run/adapter");
-          const devServer = await createViteDevServer();
+          const devServer = await createViteDevServer(globalThis.__marko_run_vite_config__);
           wrapped = devServer.middlewares.use(async (req, res, next) => {
             await devServer!.ssrLoadModule("@marko/run/router");
             middleware(req, res, next);
