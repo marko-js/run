@@ -59,6 +59,7 @@ export interface Route {
   meta?: RoutableFile,
   handler?: RoutableFile;
   page?: RoutableFile;
+  entryName: string;
   score: number;
 }
 

@@ -95,13 +95,10 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
 
 function computeRouteSize(route: Route, bundle: OutputBundle): [number, number] {
   if (route.page) {
+    const entryName = `${route.entryName}.marko`;
     for (const chunk of Object.values(bundle)) {
-      if (chunk.type === "chunk") {
-        for (const key of Object.keys(chunk.modules)) {
-          if (key.startsWith(route.page.filePath)) {
-            return computeChunkSize(chunk, bundle); 
-          }
-        }
+      if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
+        return computeChunkSize(chunk, bundle);
       }
     }
   }

@@ -1,4 +1,4 @@
-import { RoutableFileTypes } from "../constants";
+import { RoutableFileTypes, markoRunFilePrefix } from "../constants";
 import type {
   BuiltRoutes,
   RoutableFile,
@@ -173,6 +173,7 @@ export async function buildRoutes(
             meta: files.get(RoutableFileTypes.Meta)?.[0],
             page,
             handler,
+            entryName: `${markoRunFilePrefix}route__${key}`,
             score: scorePath(path, index),
           });
 
@@ -192,6 +193,7 @@ export async function buildRoutes(
               middleware: [],
               layouts: [...layoutsStack],
               page: entries[0],
+              entryName: `${markoRunFilePrefix}special__${type}`,
               score: 0,
             };
           }
