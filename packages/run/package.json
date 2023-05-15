@@ -112,7 +112,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@marko/vite": "^2.3.13",
+    "@marko/vite": "^2.4.4",
     "cli-table3": "^0.6.3",
     "compression": "^1.7.4",
     "dotenv": "^16.0.3",

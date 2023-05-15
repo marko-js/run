@@ -1,4 +1,4 @@
-export { default } from "./plugin";
+export { default, getPackageData } from "./plugin";
 
 export {
   getAvailablePort,
@@ -16,6 +16,7 @@ export type {
   Options,
   BuiltRoutes,
   HttpVerb,
+  PackageData,
   ParamInfo,
   Route,
   RoutableFile,

@@ -2,6 +2,7 @@ import { installPolyfills } from "./polyfill";
 import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
 import type { ViteDevServer } from "vite";
+import { OutgoingMessage } from "http";
 
 installPolyfills();
 
@@ -99,6 +100,32 @@ export function getOrigin(
   return `${protocol}://${host}`;
 }
 
+const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i
+export function setResponseHeaders(response: Response, res: OutgoingMessage) {
+  for (const [key, value] of response.headers) {
+    if (key === "set-cookie") {
+      let sepIndex = value.indexOf(",") + 1;
+      if (!sepIndex) {
+        res.setHeader(key, value);
+      } else {
+        let index = 0;
+        do {
+          const valuePart = value.slice(index, sepIndex - 1);
+          if (!inExpiresDateRgs.test(valuePart)) {
+            res.appendHeader(key, valuePart);
+            index = sepIndex;
+          }
+          sepIndex = value.indexOf(",", sepIndex) + 1;
+        } while (sepIndex);
+
+        res.appendHeader(key, value.slice(index));
+      }
+    } else {
+      res.setHeader(key, value);
+    }
+  }
+}
+
 /**
  * Creates a request handler to be passed to http.createServer() or used as a
  * middleware in Connect-style frameworks like Express.
@@ -180,25 +207,7 @@ export function createMiddleware(
     }
 
     res.statusCode = response.status;
-    for (const [key, value] of response.headers) {
-      if (key === "set-cookie") {
-        let sepIndex = value.indexOf(",") + 1;
-        if (!sepIndex) {
-          res.setHeader(key, value);
-        } else {
-          let index = 0;
-          do {
-            res.appendHeader(key, value.slice(index, sepIndex - 1));
-            index = sepIndex;
-            sepIndex = value.indexOf(",", sepIndex) + 1;
-          } while (sepIndex);
-
-          res.appendHeader(key, value.slice(index));
-        }
-      } else {
-        res.setHeader(key, value);
-      }
-    }
+    setResponseHeaders(response, res);
 
     if (!response.body) {
       if (!response.headers.has("content-length")) {

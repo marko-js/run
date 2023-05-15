@@ -10,6 +10,20 @@ const opts: BuildOptions = {
   outbase: srcdir,
   platform: "node",
   target: ["node14"],
+  plugins: [
+    {
+      name: "external-modules",
+      setup(build) {
+        build.onResolve(
+          { filter: /^[^./]|^\.[^./]|^\.\.[^/]/ },
+          ({ path }) => ({
+            path,
+            external: true,
+          })
+        );
+      },
+    },
+  ],
 };
 
 await Promise.all([
@@ -18,39 +32,15 @@ await Promise.all([
     format: "cjs",
     bundle: true,
     outExtension: { ".js": ".cjs" },
-    plugins: [
-      {
-        name: "external-modules",
-        setup(build) {
-          build.onResolve(
-            { filter: /^[^./]|^\.[^./]|^\.\.[^/]/ },
-            ({ path }) => ({
-              path,
-              external: true,
-            })
-          );
-        },
-      },
-    ],
+    define: {
+      "import.meta.url": "__importMetaURL",
+    },
+    inject: ["./scripts/importMetaURL.js"],
   }),
   build({
     ...opts,
     format: "esm",
     bundle: true,
     splitting: true,
-    plugins: [
-      {
-        name: "external-modules",
-        setup(build) {
-          build.onResolve(
-            { filter: /^[^./]|^\.[^./]|^\.\.[^/]/ },
-            ({ path }) => ({
-              path,
-              external: true,
-            })
-          );
-        },
-      },
-    ],
   }),
 ]);

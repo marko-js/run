@@ -14,9 +14,10 @@ process
   .send("ready");
 
 async function start(entry, config) {
+  globalThis.__marko_run_vite_config__ = config;
   let changed = false;
-  const loader = await createServer(config);
-  ({ activeDevServers } = await loader.ssrLoadModule("@marko/run/adapter"));
+  const loader = await createServer({ ...config, ssr: { external: ['@marko/run/router'] }});
+  ({ activeDevServers } = await import("@marko/run/adapter"));
   await loader.ssrLoadModule(entry);
 
   loader.watcher.on("change", (path) => {

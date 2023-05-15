@@ -4,9 +4,12 @@ import {
   type NodeMiddleware,
 } from "@marko/run/adapter/middleware";
 import type { RouteWithHandler } from "@marko/run";
+import "@marko/run/router";
+import type { InlineConfig } from "vite";
 
 declare global {
   var __marko_run_import__: Promise<void> | undefined;
+  var __marko_run_vite_config__: InlineConfig | undefined;
 }
 
 export interface MatchedRoute {
@@ -26,9 +29,13 @@ const passthrough: NodeMiddleware = (_req, _res, next) => {
   next?.();
 };
 
-const fetch = createMiddleware((request, platform) => {
-  return globalThis.__marko_run__.fetch(request, platform);
-});
+const fetch = createMiddleware(
+  globalThis.__marko_run__
+    ? globalThis.__marko_run__.fetch
+    : (request, platform) => {
+        return globalThis.__marko_run__.fetch(request, platform);
+      }
+);
 
 const invoke = createMiddleware((request, platform) => {
   return globalThis.__marko_run__.invoke(
@@ -53,41 +60,31 @@ const match: NodeMiddleware = (req, _res, next) => {
   next?.();
 };
 
-function loadRuntime(nextMiddleware: NodeMiddleware): NodeMiddleware {
-  if (globalThis.__marko_run__ || globalThis.__marko_run_import__) {
-    return nextMiddleware;
-  }
+const loadRuntime: (middleware: NodeMiddleware) => () => NodeMiddleware =
+  process.env.NODE_ENV === "production" || globalThis.__marko_run__
+    ? (middleware) => () => middleware
+    : (middleware) => () => {
+        if (globalThis.__marko_run_import__) {
+          return middleware;
+        }
 
-  const promise = (globalThis.__marko_run_import__ ??= (async () => {
-    if (process.env.NODE_ENV !== "production") {
-      const { createViteDevServer } = await import("@marko/run/adapter");
-      const devServer = await createViteDevServer();
-      middleware = devServer.middlewares.use(async (req, res, next) => {
-        await devServer!.ssrLoadModule("@marko/run/router");
-        nextMiddleware(req, res, next);
-      });
-    } else {
-      await import("@marko/run/router");
-      middleware = nextMiddleware;
-    }
-  })());
+        globalThis.__marko_run_import__ = (async () => {
+          const { createViteDevServer } = await import("@marko/run/adapter");
+          const devServer = await createViteDevServer(globalThis.__marko_run_vite_config__);
+          wrapped = devServer.middlewares.use(async (req, res, next) => {
+            await devServer!.ssrLoadModule("@marko/run/router");
+            middleware(req, res, next);
+          });
+        })();
 
-  let middleware: NodeMiddleware = async (req, res, next) => {
-    await promise;
-    middleware(req, res, next);
-  };
+        let wrapped: NodeMiddleware = async (req, res, next) => {
+          await globalThis.__marko_run_import__;
+          wrapped(req, res, next);
+        };
 
-  return (req, res, next) => middleware(req, res, next);
-}
+        return (req, res, next) => wrapped(req, res, next);
+      };
 
-export function matchMiddleware() {
-  return loadRuntime(match);
-}
-
-export function routerMiddleware() {
-  return loadRuntime(fetch);
-}
-
-export function importRouterMiddleware() {
-  return loadRuntime(passthrough);
-}
+export const matchMiddleware = loadRuntime(match);
+export const routerMiddleware = loadRuntime(fetch);
+export const importRouterMiddleware = loadRuntime(passthrough);

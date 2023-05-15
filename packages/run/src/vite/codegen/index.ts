@@ -28,7 +28,7 @@ export function renderRouteTemplate(route: Route): string {
 
   const writer = createStringWriter();
   writer.writeLines(
-    `// ${virtualFilePrefix}/${markoRunFilePrefix}route__${route.key}.marko`
+    `// ${virtualFilePrefix}/${route.entryName}.marko`
   );
   writer.branch("imports");
   writer.writeLines("");
@@ -61,7 +61,7 @@ function writeRouteTemplateTag(
 }
 
 export function renderRouteEntry(route: Route): string {
-  const { key, index, handler, page, middleware, meta } = route;
+  const { key, index, handler, page, middleware, meta, entryName } = route;
   const verbs = getVerbs(route);
 
   if (!verbs) {
@@ -73,7 +73,7 @@ export function renderRouteEntry(route: Route): string {
   const writer = createStringWriter();
 
   writer.writeLines(
-    `// ${virtualFilePrefix}/${markoRunFilePrefix}route__${key}.js`
+    `// ${virtualFilePrefix}/${entryName}.js`
   );
 
   const imports = writer.branch("imports");
@@ -123,7 +123,7 @@ export function renderRouteEntry(route: Route): string {
   }
   if (page) {
     imports.writeLines(
-      `import page from '${virtualFilePrefix}/${markoRunFilePrefix}route__${key}.marko${serverEntryQuery}';`
+      `import page from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`
     );
   }
   if (meta) {
@@ -263,14 +263,12 @@ export function renderRouter(
     imports.writeLines(
       `import { ${names.join(
         ", "
-      )} } from '${virtualFilePrefix}/${markoRunFilePrefix}route__${
-        route.key
-      }.js';`
+      )} } from '${virtualFilePrefix}/${route.entryName}.js';`
     );
   }
-  for (const { key } of Object.values(routes.special)) {
+  for (const { key, entryName } of Object.values(routes.special)) {
     imports.writeLines(
-      `import page${key} from '${virtualFilePrefix}/${markoRunFilePrefix}special__${key}.marko${serverEntryQuery}';`
+      `import page${key} from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`
     );
   }
 

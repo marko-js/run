@@ -24,8 +24,7 @@ export type { NodePlatformInfo } from "./middleware";
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
 const loadDevWorker = path.join(__dirname, "load-dev-worker.mjs");
 

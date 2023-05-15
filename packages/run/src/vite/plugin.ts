@@ -17,7 +17,7 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, Adapter, BuiltRoutes, HttpVerb } from "./types";
+import type { Options, Adapter, BuiltRoutes, HttpVerb, PackageData } from "./types";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -43,7 +43,7 @@ import {
 } from "./utils/config";
 import { fileURLToPath } from "url";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const markoExt = ".marko";
 
@@ -73,7 +73,7 @@ interface RouteData {
 }
 
 export default function markoRun(opts: Options = {}): Plugin[] {
-  let { routesDir = "src/routes", adapter, ...markoOptions } = opts;
+  let { routesDir, adapter, ...markoVitePluginOptions } = opts;
 
   let compiler: typeof Compiler;
   let store: BuildStore;
@@ -212,10 +212,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         );
 
         if (adapter) {
-          const externalAdapterConfig = getExternalAdapterOptions(config);
-          if (externalAdapterConfig && adapter.configure) {
-            adapter.configure(externalAdapterConfig);
-          }
+          adapter.configure?.({
+            ...getExternalAdapterOptions(config),
+            root
+          });
           const adapterOptions = await adapter.pluginOptions?.(opts);
           if (adapterOptions) {
             opts = mergeConfig(opts, adapterOptions);
@@ -232,7 +232,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           },
         });
 
-        store =
+        routesDir = opts.routesDir || "src/routes";
+        markoVitePluginOptions.store = store =
           opts.store ||
           new FileStore(
             `marko-serve-vite-${crypto
@@ -240,6 +241,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               .update(root)
               .digest("hex")}`
           );
+        markoVitePluginOptions.runtimeId = opts.runtimeId;
+        markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
@@ -248,7 +251,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         const assetsDir = config.build?.assetsDir || "assets";
         let rollupOutputOptions = config.build?.rollupOptions?.output;
 
-        if (isBuild && !isSSRBuild) {
+        if (isBuild) {
           const defaultRollupOutputOptions: OutputOptions = {
             assetFileNames({ name }) {
               if (name && name.indexOf("_marko-virtual_id_") < 0) {
@@ -270,7 +273,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
               return `${assetsDir}/${name || "[name]"}-[hash].js`;
             },
-            chunkFileNames: `${assetsDir}/_[hash].js`,
+            chunkFileNames: isSSRBuild ? `_[hash].js` : `${assetsDir}/_[hash].js`,
           };
 
           if (!rollupOutputOptions) {
@@ -435,12 +438,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
     },
-    ...(markoVitePlugin({
-      ...markoOptions,
-      get store() {
-        return store;
-      },
-    }) as any),
+    ...markoVitePlugin(markoVitePluginOptions),
     {
       name: "marko-run-vite:post",
       enforce: "post",
@@ -573,6 +571,16 @@ async function ensureDir(dir: string) {
   }
 }
 
+export async function getPackageData(dir: string): Promise<PackageData | null> {
+  do {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      return JSON.parse(await fs.promises.readFile(pkgPath, "utf-8"));
+    }
+  } while (dir !== (dir = path.dirname(dir)));
+  return null;
+}
+
 export async function resolveAdapter(
   root: string,
   options: Options,
@@ -582,14 +590,14 @@ export async function resolveAdapter(
   if (adapter !== undefined) {
     return adapter;
   }
-  const { resolvePackageData } = await import("vite");
-  const pkg = resolvePackageData(".", root);
+  const pkg = await getPackageData(root);
   if (pkg) {
-    const dependecies = {
-      ...pkg.data.dependecies,
-      ...pkg.data.devDependencies,
-    };
-    for (const name of Object.keys(dependecies)) {
+    let dependecies = pkg.dependencies ? Object.keys(pkg.dependencies) : [];
+    if (pkg.devDependencies) {
+      dependecies = dependecies.concat(Object.keys(pkg.devDependencies));
+    }
+
+    for (const name of dependecies) {
       if (
         name.startsWith("@marko/run-adapter") ||
         name.indexOf("marko-run-adapter") !== -1

@@ -250,7 +250,7 @@ export async function get7(context) {
 # Special `404`
 ## Template
 ```marko
-// virtual:marko-run/__marko-run__route__404.marko
+// virtual:marko-run/__marko-run__special__404.marko
 import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+404.marko';
 
@@ -263,7 +263,7 @@ import page from './src/routes/+404.marko';
 # Special `500`
 ## Template
 ```marko
-// virtual:marko-run/__marko-run__route__500.marko
+// virtual:marko-run/__marko-run__special__500.marko
 import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+500.marko';
 

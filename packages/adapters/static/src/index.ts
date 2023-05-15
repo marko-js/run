@@ -12,7 +12,7 @@ import { createServer } from "http";
 import type { AddressInfo } from "net";
 import type { Fetch } from "@marko/run/*";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = fileURLToPath(path.dirname(import.meta.url));
 
 export interface Options {
   urls?: string[] | ((routes: Route[]) => string[] | Promise<string[]>);

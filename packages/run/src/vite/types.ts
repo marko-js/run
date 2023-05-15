@@ -59,6 +59,7 @@ export interface Route {
   meta?: RoutableFile,
   handler?: RoutableFile;
   page?: RoutableFile;
+  entryName: string;
   score: number;
 }
 
@@ -94,4 +95,11 @@ export interface BuiltRoutes {
   list: Route[];
   special: SpecialRoutes;
   middleware: RoutableFile[];
+}
+
+export interface PackageData {
+  name?: string;
+  version?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
