@@ -73,7 +73,7 @@ interface RouteData {
 }
 
 export default function markoRun(opts: Options = {}): Plugin[] {
-  let { routesDir, adapter, basePathVar, ...markoOptions } = opts;
+  let { routesDir, adapter, ...markoVitePluginOptions } = opts;
 
   let compiler: typeof Compiler;
   let store: BuildStore;
@@ -212,10 +212,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         );
 
         if (adapter) {
-          const externalAdapterConfig = getExternalAdapterOptions(config);
-          if (externalAdapterConfig && adapter.configure) {
-            adapter.configure(externalAdapterConfig);
-          }
+          adapter.configure?.({
+            ...getExternalAdapterOptions(config),
+            root
+          });
           const adapterOptions = await adapter.pluginOptions?.(opts);
           if (adapterOptions) {
             opts = mergeConfig(opts, adapterOptions);
@@ -233,7 +233,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         });
 
         routesDir = opts.routesDir || "src/routes";
-        store =
+        markoVitePluginOptions.store = store =
           opts.store ||
           new FileStore(
             `marko-serve-vite-${crypto
@@ -241,7 +241,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               .update(root)
               .digest("hex")}`
           );
-        basePathVar = opts.basePathVar;
+        markoVitePluginOptions.runtimeId = opts.runtimeId;
+        markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
@@ -437,15 +438,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
     },
-    ...(markoVitePlugin({
-      ...markoOptions,
-      get store() {
-        return store;
-      },
-      get basePathVar() {
-        return basePathVar
-      }
-    }) as any),
+    ...markoVitePlugin(markoVitePluginOptions),
     {
       name: "marko-run-vite:post",
       enforce: "post",
