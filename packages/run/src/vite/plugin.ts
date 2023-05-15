@@ -17,7 +17,7 @@ import {
   matchRoutableFile,
 } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, Adapter, BuiltRoutes, HttpVerb } from "./types";
+import type { Options, Adapter, BuiltRoutes, HttpVerb, PackageData } from "./types";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -571,6 +571,16 @@ async function ensureDir(dir: string) {
   }
 }
 
+export async function getPackageData(dir: string): Promise<PackageData | null> {
+  do {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      return JSON.parse(await fs.promises.readFile(pkgPath, "utf-8"));
+    }
+  } while (dir !== (dir = path.dirname(dir)));
+  return null;
+}
+
 export async function resolveAdapter(
   root: string,
   options: Options,
@@ -580,10 +590,14 @@ export async function resolveAdapter(
   if (adapter !== undefined) {
     return adapter;
   }
-  const { resolvePackageData } = await import("vite");
-  const pkg = resolvePackageData(".", root);
+  const pkg = await getPackageData(root);
   if (pkg) {
-    for (const name of Object.keys(pkg.data.dependencies).concat(Object.keys(pkg.data.devDependencies))) {
+    let dependecies = pkg.dependencies ? Object.keys(pkg.dependencies) : [];
+    if (pkg.devDependencies) {
+      dependecies = dependecies.concat(Object.keys(pkg.devDependencies));
+    }
+
+    for (const name of dependecies) {
       if (
         name.startsWith("@marko/run-adapter") ||
         name.indexOf("marko-run-adapter") !== -1

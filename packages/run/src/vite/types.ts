@@ -96,3 +96,10 @@ export interface BuiltRoutes {
   special: SpecialRoutes;
   middleware: RoutableFile[];
 }
+
+export interface PackageData {
+  name?: string;
+  version?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
