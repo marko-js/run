@@ -1,5 +1,5 @@
 import net, { type Socket } from "net";
-import cp, { ChildProcess } from "child_process";
+import cp, { type ChildProcess, type StdioOptions } from "child_process";
 import { parse, config } from 'dotenv';
 import fs from "fs";
 import cluster, { type Address, type Worker } from "cluster";
@@ -20,14 +20,14 @@ export function loadEnv(envFile: string) {
   config({ path: envFile });
 }
 
-
 export async function spawnServer(
   cmd: string,
   args: string[] = [],
   port: number = 0,
   env?: string | Record<string, string>,
   cwd: string = process.cwd(),
-  wait: number = 30_000
+  wait: number = 30_000,
+  stdio: StdioOptions = ['ignore', 'inherit', 'inherit']
 ): Promise<SpawnedServer> {
   if (port <= 0) {
     port = await getAvailablePort();
@@ -40,7 +40,7 @@ export async function spawnServer(
   const proc = cp.spawn(cmd, args, {
     cwd,
     shell: true,
-    stdio: "inherit",
+    stdio,
     windowsHide: true,
     env: { ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` },
   });
