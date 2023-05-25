@@ -419,7 +419,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(importee)) {
           resolved = importee;
-          if (isBuild && !ssr && isMarkoFile(resolved)) {
+          if (!ssr && isMarkoFile(resolved)) {
             resolved += browserEntryQuery;
           }
         }
@@ -427,6 +427,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         return resolved || null;
       },
       async load(id) {
+        if (id.endsWith(browserEntryQuery)) {
+          id = id.slice(0, -browserEntryQuery.length);
+        }
         if (virtualFiles.has(id)) {
           if (!isRendered) {
             await renderVirtualFiles();
