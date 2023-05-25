@@ -5,6 +5,7 @@ import type { OutputBundle, OutputChunk, OutputAsset } from "rollup";
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
 import format from 'human-format';
+import { Blob } from 'buffer';
 
 const HttpVerbColors = {
   get: kleur.green,
