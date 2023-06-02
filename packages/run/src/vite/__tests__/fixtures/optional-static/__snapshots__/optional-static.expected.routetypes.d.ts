@@ -10,18 +10,25 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/foo/:fooId/bar/:bar Id/baz/:1bazId/:qux-Id": Routes["/foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id"]
+			"/": Routes["/foo,_/_,bar/,baz,"]
+			"/foo": Routes["/foo,_/_,bar/,baz,"]
+			"/bar": Routes["/foo,_/_,bar/,baz,"]
+			"/foo/bar": Routes["/foo,_/_,bar/,baz,"]
+			"/baz": Routes["/foo,_/_,bar/,baz,"]
+			"/foo/baz": Routes["/foo,_/_,bar/,baz,"]
+			"/bar/baz": Routes["/foo,_/_,bar/,baz,"]
+			"/foo/bar/baz": Routes["/foo,_/_,bar/,baz,"]
 		}
 	}> {}
 }
 
-declare module "./foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id/+page.marko" {
+declare module "./foo,_/_,bar/,baz,/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/foo/:fooId/bar/:bar Id/baz/:1bazId/:qux-Id"];
+    export type Route = Run.Routes["/" | "/foo" | "/bar" | "/foo/bar" | "/baz" | "/foo/baz" | "/bar/baz" | "/foo/bar/baz"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Route>;
@@ -29,5 +36,5 @@ declare module "./foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id/+page.marko" {
 }
 
 type Routes = {
-	"/foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id": { verb: "get"; };
+	"/foo,_/_,bar/,baz,": { verb: "get"; };
 }

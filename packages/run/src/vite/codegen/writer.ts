@@ -116,6 +116,10 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
                 branches[i] = null;
                 firstOpenIndex++;
               }
+              if (!openWriters.size) {
+                sink(buffer);
+                buffer = '';
+              }
             },
           }
         )

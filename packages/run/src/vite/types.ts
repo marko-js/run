@@ -1,5 +1,9 @@
-import type { RoutableFileType, HttpVerb, RoutableFileTypes } from "./constants";
-import type { Options as MarkoViteOptions} from "@marko/vite";
+import type {
+  RoutableFileType,
+  HttpVerb,
+  RoutableFileTypes,
+} from "./constants";
+import type { Options as MarkoViteOptions } from "@marko/vite";
 import type { ResolvedConfig, UserConfig, InlineConfig } from "vite";
 import type { SpawnedServer } from "./utils/server";
 
@@ -8,21 +12,20 @@ export type { RoutableFileType, HttpVerb };
 export type StartServer = (port?: number) => Promise<void>;
 
 export interface AdapterConfig {
-  [name: PropertyKey]: any
+  [name: PropertyKey]: any;
 }
 
 export interface StartOptions {
-  cwd: string,
-  args: string[]
-  port?: number,
-  envFile?: string,
+  cwd: string;
+  args: string[];
+  port?: number;
+  envFile?: string;
 }
 
-export interface StartDevOptions extends StartOptions {
-}
+export interface StartDevOptions extends StartOptions {}
 
 export interface StartPreviewOptions extends StartOptions {
-  dir: string
+  dir: string;
 }
 
 export interface Adapter {
@@ -31,14 +34,31 @@ export interface Adapter {
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(entry: string | undefined, config: InlineConfig, options: StartDevOptions): Promise<SpawnedServer> | SpawnedServer;
-  startPreview?(entry: string | undefined, options: StartPreviewOptions): Promise<SpawnedServer> | SpawnedServer;
-  buildEnd?(config: ResolvedConfig, routes: Route[], builtEntries: string[], sourceEntries: string[]): Promise<void> | void;
-  typeInfo?(writer: (data: string) => void): Promise<string> | string
+  startDev?(
+    entry: string | undefined,
+    config: InlineConfig,
+    options: StartDevOptions
+  ): Promise<SpawnedServer> | SpawnedServer;
+  startPreview?(
+    entry: string | undefined,
+    options: StartPreviewOptions
+  ): Promise<SpawnedServer> | SpawnedServer;
+  buildEnd?(
+    config: ResolvedConfig,
+    routes: Route[],
+    builtEntries: string[],
+    sourceEntries: string[]
+  ): Promise<void> | void;
+  typeInfo?(writer: (data: string) => void): Promise<string> | string;
 }
 
 export interface RouterOptions {
-  trailingSlashes: 'Ignore' | 'RedirectWithout' | 'RedirectWith' | 'RewriteWithout' | 'RewriteWith'
+  trailingSlashes:
+    | "Ignore"
+    | "RedirectWithout"
+    | "RedirectWith"
+    | "RewriteWithout"
+    | "RewriteWith";
 }
 
 export interface MarkoServeOptions extends Partial<RouterOptions> {
@@ -47,30 +67,31 @@ export interface MarkoServeOptions extends Partial<RouterOptions> {
   adapter?: Adapter | null;
 }
 
-export type Options = MarkoServeOptions & MarkoViteOptions
+export type Options = MarkoServeOptions & MarkoViteOptions;
 
 export interface Route {
   key: string;
   index: number;
-  path: string;
-  params?: ParamInfo[],
+  paths: PathInfo[];
   layouts: RoutableFile[];
   middleware: RoutableFile[];
-  meta?: RoutableFile,
+  meta?: RoutableFile;
   handler?: RoutableFile;
   page?: RoutableFile;
   entryName: string;
-  score: number;
 }
 
-export interface ParamInfo {
-  name: string,
-  index: number
+export interface PathInfo {
+  id: string;
+  path: string;
+  segments: string[];
+  params?: Record<string, number | null>;
+  isEnd?: boolean;
 }
 
 export interface SpecialRoutes {
-  [RoutableFileTypes.NotFound]?: Route,
-  [RoutableFileTypes.Error]?: Route
+  [RoutableFileTypes.NotFound]?: Route;
+  [RoutableFileTypes.Error]?: Route;
 }
 
 export interface RoutableFile {
@@ -81,14 +102,6 @@ export interface RoutableFile {
   relativePath: string;
   importPath: string;
   verbs?: HttpVerb[];
-}
-
-export interface RouteTrie {
-  key: string;
-  route?: Route;
-  catchAll?: Route
-  static?: Map<string, RouteTrie>;
-  dynamic?: RouteTrie,
 }
 
 export interface BuiltRoutes {

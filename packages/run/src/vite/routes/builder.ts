@@ -3,17 +3,20 @@ import type {
   BuiltRoutes,
   RoutableFile,
   Route,
-  ParamInfo,
   RoutableFileType,
   SpecialRoutes,
+  PathInfo,
 } from "../types";
 import type { Walker } from "./walk";
 
 interface RouteDirectoryInfo {
-  originalPath: string;
-  path: string;
-  children: RouteDirectoryInfo[];
+  parent: RouteDirectoryInfo | null;
+  name: string;
+  dirPath: string;
+  paths: PathInfo[];
   files: Map<RoutableFileType, RoutableFile[]>;
+  middlewares: RoutableFile[];
+  layouts: RoutableFile[];
 }
 
 const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
@@ -32,19 +35,6 @@ export function matchRoutableFile(filename: string) {
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
 }
 
-export function scorePath(path: string, index: number): number {
-  const [pattern, splat] = path.split("/$$", 2);
-  const segments = pattern.split("/").filter(Boolean);
-  return (
-    segments.reduce(
-      (score, segment) => score + (segment.startsWith("$") ? 3 : 4),
-      segments.length + (splat === undefined ? 1 : 2)
-    ) *
-      10000 -
-    index
-  );
-}
-
 export function isSpecialType(
   type: RoutableFileType
 ): type is keyof SpecialRoutes {
@@ -61,204 +51,246 @@ export async function buildRoutes(
     basePath = basePath.replace(/^\/+|\/+$/g, "");
   }
 
-  const dirStack: string[] = []; //basePath ? basePath.split("/") : [];
-  const pathStack: string[] = [];
-  const paramStack: ParamInfo[] = [];
-  const layoutsStack: RoutableFile[] = [];
-  const middlewareStack: RoutableFile[] = [];
-
-  const routes = new Map<string, Route>();
+  const uniquePaths = new Map<string, Route>();
+  const routes: Route[] = [];
   const special: SpecialRoutes = {};
-  const middleware = new Set<RoutableFile>();
+  const allMiddlewares: RoutableFile[] = [];
 
-  let isRoot = true;
   let nextFileId = 1;
   let nextRouteIndex = 1;
-  let current: RouteDirectoryInfo | undefined;
-  let children: RouteDirectoryInfo[] = [];
+  let currentDir: RouteDirectoryInfo;
 
   await walk({
-    onFile(entry) {
-      const type = matchRoutableFile(entry.name);
+    onEnter({ name }) {
+      if (currentDir) {
+        currentDir = {
+          parent: currentDir,
+          name,
+          dirPath: currentDir.dirPath ? `${currentDir.dirPath}/${name}` : name,
+          files: new Map(),
+          middlewares: [...currentDir.middlewares],
+          layouts: [...currentDir.layouts],
+          get paths() {
+            const value = evaluatePaths(this.name, this.parent!.paths);
+            Object.defineProperty(this, "paths", { value });
+            return value;
+          },
+        };
+      } else {
+        currentDir = {
+          parent: null,
+          name,
+          dirPath: "",
+          files: new Map(),
+          middlewares: [],
+          layouts: [],
+          paths: [
+            {
+              id: "",
+              path: `/`,
+              segments: [],
+            },
+          ],
+        };
+      }
+
+      return () => {
+        currentDir = currentDir.parent!;
+      };
+    },
+    onFile({ name, path }) {
+      const type = matchRoutableFile(name);
       if (!type) {
         return;
       }
-      if (!isRoot && isSpecialType(type)) {
+      if (currentDir.parent && isSpecialType(type)) {
         console.warn(
-          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${entry.path}`
+          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${path}`
         );
         return;
       }
 
-      if (!current) {
-        current = {
-          path: "/" + pathStack.join("/"),
-          originalPath: dirStack.join("/"),
-          children: [],
-          files: new Map(),
-        };
-        children.push(current);
-      }
-
-      let entries = current.files.get(type);
+      let entries = currentDir.files.get(type);
       if (!entries) {
-        current.files.set(type, (entries = []));
+        currentDir.files.set(type, (entries = []));
       }
 
-      const relativePath = current.originalPath
-        ? `${current.originalPath}/${entry.name}`
-        : entry.name;
+      const relativePath = currentDir.dirPath
+        ? `${currentDir.dirPath}/${name}`
+        : name;
 
       entries.push({
         id: String(nextFileId++),
+        name,
         type,
-        filePath: entry.path,
+        filePath: path,
         relativePath,
         importPath: `${basePath}/${relativePath}`,
-        name: entry.name,
         verbs: type === RoutableFileTypes.Page ? ["get"] : undefined,
       });
     },
-    onDir(dir) {
-      if (!current) {
-        return;
+    onDir() {
+      let shouldContinue = true;
+
+      const middleware = currentDir.files.get(
+        RoutableFileTypes.Middleware
+      )?.[0];
+      const layout = currentDir.files.get(RoutableFileTypes.Layout)?.[0];
+      const handler = currentDir.files.get(RoutableFileTypes.Handler)?.[0];
+      const page = currentDir.files.get(RoutableFileTypes.Page)?.[0];
+
+      if (middleware) {
+        currentDir.middlewares.push(middleware);
+        allMiddlewares.push(middleware);
       }
-
-      const { path, files } = current;
-      const localMiddleware = files.get(RoutableFileTypes.Middleware)?.[0];
-      const localLayout = files.get(RoutableFileTypes.Layout)?.[0];
-      const handler = files.get(RoutableFileTypes.Handler)?.[0];
-      const page = files.get(RoutableFileTypes.Page)?.[0];
-
-      const middlewareStackLength = middlewareStack.length;
-      const layoutsStackLength = layoutsStack.length;
-
-      if (localMiddleware) {
-        middlewareStack.push(localMiddleware);
-      }
-      if (localLayout) {
-        layoutsStack.push(localLayout);
+      if (layout) {
+        currentDir.layouts.push(layout);
       }
 
       if (handler || page) {
-        const key =
-          path
-            .replace(/(\$\$?)[^\/]*/g, "$1")
-            .replace(/^\/+/, "")
-            .replace(/[^a-z0-9_$\/]+/gi, "")
-            .replace(/\//g, "__") || "index";
+        shouldContinue = false;
+        for (const { id, path, isEnd } of currentDir.paths) {
+          shouldContinue ||= !isEnd;
 
-        if (routes.has(key)) {
-          const existing = routes.get(key)!;
-          const existingFiles = [existing.handler, existing.page]
-            .filter(Boolean)
-            .map((f) => f!.filePath);
-          const currentFiles = [handler, page]
-            .filter(Boolean)
-            .map((f) => f!.filePath);
-          throw new Error(`Duplicate routes for path ${path} were defined. A route established by:
-  ${existingFiles}
-    collides with
-  ${currentFiles.join(" and ")}
-  `);
-        } else {
-          const index = nextRouteIndex++;
-          routes.set(key, {
-            index,
-            key,
-            path,
-            params: [...paramStack],
-            middleware: [...middlewareStack],
-            layouts: page ? [...layoutsStack] : [],
-            meta: files.get(RoutableFileTypes.Meta)?.[0],
-            page,
-            handler,
-            entryName: `${markoRunFilePrefix}route__${key}`,
-            score: scorePath(path, index),
-          });
-
-          for (const mw of middlewareStack) {
-            middleware.add(mw);
+          if (uniquePaths.has(id)) {
+            const existing = uniquePaths.get(id)!;
+            const existingFiles = [existing.handler, existing.page]
+              .filter(Boolean)
+              .map((f) => f!.filePath);
+            const currentFiles = [handler, page]
+              .filter(Boolean)
+              .map((f) => f!.filePath);
+            throw new Error(`Duplicate routes for path ${path} were defined. A route established by:
+${existingFiles}
+  collides with
+${currentFiles.join(" and ")}
+`);
           }
         }
+
+        routes.push({
+          index: nextRouteIndex++,
+          key: "/" + currentDir.dirPath,
+          paths: currentDir.paths,
+          middleware: [...currentDir.middlewares],
+          layouts: page ? [...currentDir.layouts] : [],
+          meta: currentDir.files.get(RoutableFileTypes.Meta)?.[0],
+          page,
+          handler,
+          entryName:
+            `${markoRunFilePrefix}route` +
+            (currentDir.dirPath
+              ? "." + currentDir.dirPath.replace(/\//g, ".")
+              : ""),
+        });
       }
 
-      if (isRoot) {
-        for (const [type, entries] of files) {
+      if (!currentDir.parent) {
+        for (const [type, entries] of currentDir.files) {
           if (isSpecialType(type)) {
             special[type] = {
               index: 0,
               key: type,
-              path,
+              paths: [],
               middleware: [],
-              layouts: [...layoutsStack],
+              layouts: [...currentDir.layouts],
               page: entries[0],
-              entryName: `${markoRunFilePrefix}special__${type}`,
-              score: 0,
+              entryName: `${markoRunFilePrefix}special.${type}`,
             };
           }
         }
-      } else if (dir.startsWith("$$")) {
-        // returing false prevents us from walking any deeper which is not necessary in $$ catch-all directories
-        return false;
       }
 
-      return () => {
-        middlewareStack.length = middlewareStackLength;
-        layoutsStack.length = layoutsStackLength;
-      };
-    },
-    onEnter({ name }) {
-      const pathStackLength = pathStack.length;
-      const paramStackLength = paramStack.length;
-      const prevChildren = children;
-      const prevCurrent = current;
-      const prevIsRoot = isRoot;
-
-      if (name.charCodeAt(0) === 95) {
-        // Is empty segment -- name starts with '_'
-      } else {
-        if (name.charCodeAt(0) === 36) {
-          // Is dynamic segment -- name starts with '$'
-          if (name.charCodeAt(1) === 36) {
-            // Is catch-all segment -- name starts with '$$'
-            if (name.length > 2) {
-              paramStack.push({
-                name: name.slice(2),
-                index: -1,
-              });
-            }
-          } else if (name.length > 1) {
-            paramStack.push({
-              name: name.slice(1),
-              index: pathStackLength,
-            });
-          }
-        }
-        pathStack.push(name);
-      }
-      dirStack.push(name);
-
-      isRoot = false;
-      if (current) {
-        children = current.children;
-        current = undefined;
-      }
-
-      return () => {
-        dirStack.pop();
-        pathStack.length = pathStackLength;
-        paramStack.length = paramStackLength;
-        children = prevChildren;
-        current = prevCurrent;
-        isRoot = prevIsRoot;
-      };
+      // Return false if only path was a catch-all to prevent walking any deeper
+      return shouldContinue;
     },
   });
 
   return {
     list: [...routes.values()],
     special,
-    middleware: [...middleware],
+    middleware: [...allMiddlewares],
   };
+}
+
+export function evaluatePaths(
+  dirName: string,
+  basePaths: PathInfo[]
+): PathInfo[] {
+  if (!basePaths.length) {
+    throw new Error("Argument `basePaths` cannot be empty");
+  }
+
+  const paths = new Map<string, PathInfo>();
+  const segments = new Map<string, string | undefined>(); // key is segment type ('$' | '$$' | string), value is parameter nane
+  let hasPathless = false;
+  let prevSplitIndex = 0;
+
+  // split on ','
+  do {
+    const splitIndex = dirName.indexOf(",", prevSplitIndex) + 1;
+    const name = dirName.slice(
+      prevSplitIndex,
+      splitIndex ? splitIndex - 1 : undefined
+    );
+    prevSplitIndex = splitIndex;
+
+    if (!name || name.charCodeAt(0) === 95) {
+      // Pathless segment -- name is empty or starts with '_'
+      if (!hasPathless) {
+        hasPathless = true;
+        for (const basePath of basePaths) {
+          paths.set(basePath.id, basePath);
+        }
+      }
+    } else if (name.charCodeAt(0) === 36) {
+      let type: string;
+      let param: string;
+      if (name.charCodeAt(1) === 36) {
+        // Catch-all dynamic segment -- name starts with '$$'
+        type = name.slice(0, 2);
+        param = name.slice(2);
+      } else {
+        // Simple dynamic segment -- name starts with '$'
+        type = name.charAt(0);
+        param = name.slice(1);
+      }
+      if (!segments.has(type) || (!segments.get(type) && param)) {
+        // Prefer segment with named param
+        segments.set(type, param);
+      }
+    } else if (!segments.has(name)) {
+      // Static segment
+      segments.set(name, undefined);
+    }
+  } while (prevSplitIndex);
+
+  for (const basePath of basePaths) {
+    if (basePath.isEnd) {
+      continue;
+    }
+
+    for (const [type, param] of segments) {
+      const id = basePath.id ? `${basePath.id}/${type}` : type;
+      if (!paths.has(id)) {
+        const name = param ? type + param : type;
+        const isEnd = type === "$$";
+        paths.set(id, {
+          ...basePath,
+          id,
+          path: basePath.path !== "/" ? `${basePath.path}/${name}` : `/${name}`,
+          segments: [...basePath.segments, type],
+          isEnd,
+          params: param
+            ? {
+                ...basePath.params,
+                [param]: isEnd ? null : basePath.segments.length,
+              }
+            : basePath.params,
+        });
+      }
+    }
+  }
+
+  return [...paths.values()];
 }

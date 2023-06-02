@@ -133,24 +133,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       }
       if (route.page) {
         virtualFiles.set(
-          path.posix.join(
-            root,
-            `${markoRunFilePrefix}route__${route.key}.marko`
-          ),
+          path.posix.join(root, `${route.entryName}.marko`),
           render ? renderRouteTemplate(route) : ""
         );
       }
       virtualFiles.set(
-        path.posix.join(root, `${markoRunFilePrefix}route__${route.key}.js`),
+        path.posix.join(root, `${route.entryName}.js`),
         render ? renderRouteEntry(route) : ""
       );
     }
     for (const route of Object.values(routes.special)) {
       virtualFiles.set(
-        path.posix.join(
-          root,
-          `${markoRunFilePrefix}special__${route.key}.marko`
-        ),
+        path.posix.join(root, `${route.entryName}.marko`),
         render ? renderRouteTemplate(route) : ""
       );
     }

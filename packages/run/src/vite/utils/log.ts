@@ -48,36 +48,38 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     style: { compact: true },
   });
 
-  for (const route of routes.list.sort((a, b) => b.score - a.score)) {
-    const verbs = getVerbs(route).sort(
-      (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]
-    );
-    let firstRow = true;
+  for (const route of routes.list) {
+    for (const path of route.paths) {
+      const verbs = getVerbs(route).sort(
+        (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]
+      );
+      let firstRow = true;
 
-    for (const verb of verbs) {
-      let size = "";
-      const entryType: string[] = [];
-      if (route.handler) {
-        entryType.push(kleur.blue("handler"));
+      for (const verb of verbs) {
+        let size = "";
+        const entryType: string[] = [];
+        if (route.handler) {
+          entryType.push(kleur.blue("handler"));
+        }
+        if (verb === "get" && route.page) {
+          entryType.push(kleur.yellow("page"));
+          size = prettySize(computeRouteSize(route, bundle));
+        }
+
+        const row: any[] = [kleur.bold(HttpVerbColors[verb](verb.toUpperCase()))];
+
+        if (verbs.length === 1 || firstRow) {
+          row.push({ rowSpan: verbs.length, content: prettyPath(path.path) });
+          firstRow = false;
+        }
+
+        row.push(entryType.join(" -> "));
+        hasMiddleware && row.push(route.middleware.length || "");
+        hasMeta && row.push(route.meta ? "✓" : "");
+        row.push(size || '');
+
+        table.push(row);
       }
-      if (verb === "get" && route.page) {
-        entryType.push(kleur.yellow("page"));
-        size = prettySize(computeRouteSize(route, bundle));
-      }
-
-      const row: any[] = [kleur.bold(HttpVerbColors[verb](verb.toUpperCase()))];
-
-      if (verbs.length === 1 || firstRow) {
-        row.push({ rowSpan: verbs.length, content: prettyPath(route.path) });
-        firstRow = false;
-      }
-
-      row.push(entryType.join(" -> "));
-      hasMiddleware && row.push(route.middleware.length || "");
-      hasMeta && row.push(route.meta ? "✓" : "");
-      row.push(size || '');
-
-      table.push(row);
     }
   }
 

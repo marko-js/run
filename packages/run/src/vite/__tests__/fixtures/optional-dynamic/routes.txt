@@ -1,0 +1,4 @@
+/$foo,_,$$rest
+  /_,$bar
+    /,$baz,
+      +page.marko
