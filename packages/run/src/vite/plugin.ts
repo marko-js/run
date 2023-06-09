@@ -11,13 +11,15 @@ import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
 
-import {
-  buildRoutes,
-  isRoutableFile,
-  matchRoutableFile,
-} from "./routes/builder";
+import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
-import type { Options, Adapter, BuiltRoutes, HttpVerb, PackageData } from "./types";
+import type {
+  Options,
+  Adapter,
+  BuiltRoutes,
+  HttpVerb,
+  PackageData,
+} from "./types";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -28,7 +30,7 @@ import {
 import {
   virtualFilePrefix,
   httpVerbs,
-  browserEntryQuery,
+  serverEntryQuery,
   RoutableFileTypes,
   markoRunFilePrefix,
   virtualRuntimePrefix,
@@ -45,8 +47,6 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const markoExt = ".marko";
-
 const POSIX_SEP = "/";
 const WINDOWS_SEP = "\\";
 
@@ -54,10 +54,6 @@ const normalizePath =
   path.sep === WINDOWS_SEP
     ? (id: string) => id.replace(/\\/g, POSIX_SEP)
     : (id: string) => id;
-
-function isMarkoFile(id: string) {
-  return id.endsWith(markoExt);
-}
 
 interface TimeMetrics {
   routesBuild: number;
@@ -214,7 +210,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (adapter) {
           adapter.configure?.({
             ...getExternalAdapterOptions(config),
-            root
+            root,
           });
           const adapterOptions = await adapter.pluginOptions?.(opts);
           if (adapterOptions) {
@@ -273,7 +269,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
               return `${assetsDir}/${name || "[name]"}-[hash].js`;
             },
-            chunkFileNames: isSSRBuild ? `_[hash].js` : `${assetsDir}/_[hash].js`,
+            chunkFileNames: isSSRBuild
+              ? `_[hash].js`
+              : `${assetsDir}/_[hash].js`,
           };
 
           if (!rollupOutputOptions) {
@@ -337,18 +335,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       configureServer(_server) {
         devServer = _server;
         devServer.watcher.on("all", async (type, filename) => {
-          const file = path.parse(filename);
-          if (
-            filename.startsWith(resolvedRoutesDir) &&
-            isRoutableFile(file.base)
-          ) {
+          const routableFileType = matchRoutableFile(path.parse(filename).base);
+          if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
             if (type === "add") {
               isStale = true;
             } else if (type === "unlink") {
               isStale = true;
             } else if (type === "change") {
-              const match = matchRoutableFile(file.base);
-              if (match === RoutableFileTypes.Handler) {
+              if (routableFileType === RoutableFileTypes.Handler) {
                 isStale = true;
               }
             }
@@ -389,7 +383,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             : getVerbsFromFileDev.bind(null, devServer);
         }
       },
-      async resolveId(importee, importer, { ssr }) {
+      async resolveId(importee, importer) {
         let resolved: string | undefined;
         if (importee.startsWith(virtualRuntimePrefix)) {
           return this.resolve(
@@ -419,16 +413,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(importee)) {
           resolved = importee;
-          if (!ssr && isMarkoFile(resolved)) {
-            resolved += browserEntryQuery;
-          }
         }
 
         return resolved || null;
       },
       async load(id) {
-        if (id.endsWith(browserEntryQuery)) {
-          id = id.slice(0, -browserEntryQuery.length);
+        if (id.endsWith(serverEntryQuery)) {
+          id = id.slice(0, -serverEntryQuery.length);
         }
         if (virtualFiles.has(id)) {
           if (!isRendered) {
