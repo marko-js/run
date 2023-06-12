@@ -23,7 +23,7 @@ interface RouteTrie {
   key: string;
   path?: PathInfo;
   route?: Route;
-  catchAll?: Route;
+  catchAll?: { route: Route, path: PathInfo };
   static?: Map<string, RouteTrie>;
   dynamic?: RouteTrie;
 }
@@ -566,8 +566,8 @@ function writeRouterVerb(
 
   if (catchAll) {
     writer.writeLines(
-      `return ${renderMatch(verb, catchAll, trie.path!, String(offset))}; // ${
-        trie.path
+      `return ${renderMatch(verb, catchAll.route, catchAll.path, String(offset))}; // ${
+        catchAll.path.path
       }`
     );
   } else if (level === 0) {
@@ -885,8 +885,7 @@ function createRouteTrie(routes: Route[]): RouteTrie {
     let node = root;
     for (const segment of path.segments) {
       if (segment === "$$") {
-        node.path ??= path;
-        node.catchAll ??= route;
+        node.catchAll ??= { route, path };
         return;
       } else if (segment === "$") {
         node = node.dynamic ??= {

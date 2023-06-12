@@ -37,7 +37,7 @@ export function match(method, pathname) {
 					}
 				}
 			}
-			return { handler: get1, params: {}, meta: {}, path: '/' }; // [object Object]
+			return { handler: get1, params: { rest: pathname.slice(1) }, meta: {}, path: '/:rest*' }; // /$$rest
 		}
 	}
 	return null;

@@ -55,7 +55,7 @@ export function match(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: get7, params: {}, meta: {}, path: '/' }; // [object Object]
+			return { handler: get7, params: { match: pathname.slice(1) }, meta: {}, path: '/:match*' }; // /$$match
 		}
 		case 'post': {
 			const len = pathname.length;
