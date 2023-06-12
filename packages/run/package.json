@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "The Marko application framework.",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/run",
