@@ -75,19 +75,14 @@ function getForwardedHeader(req: IncomingMessage, name: string) {
   }
 }
 
-export function getOrigin(
-  req: IncomingMessage,
-  protocol?: string,
-  host?: string,
-  trustProxy?: boolean
-): string {
-  protocol ??=
+export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
+  const protocol =
     req.protocol ||
     (trustProxy && getForwardedHeader(req, "proto")) ||
-    ((req.socket as TLSSocket).encrypted && "https") ||
-    "http";
+    ((req.socket as TLSSocket).encrypted ? "https" : "http");
 
-  host ??= (trustProxy && getForwardedHeader(req, "host")) || req.headers.host;
+  let host =
+    req.headers.host || (trustProxy && getForwardedHeader(req, "host"));
 
   if (!host) {
     if (process.env.NODE_ENV !== "production") {
@@ -139,30 +134,21 @@ export function createMiddleware(
   fetch: Fetch<NodePlatformInfo>,
   options: NodeAdapterOptions = {}
 ): NodeMiddleware {
-  const { trustProxy = process.env.TRUST_PROXY === "1", devServer } = options;
-
-  let { origin = process.env.ORIGIN } = options;
-  let protocol: string | undefined;
-  let host: string | undefined;
-  if (origin) {
-    ({ protocol, host } = new URL(origin));
-    protocol = protocol.slice(0, -1);
-  }
+  const {
+    origin = process.env.ORIGIN,
+    trustProxy = process.env.TRUST_PROXY === "1",
+    devServer,
+  } = options;
 
   return async (req, res, next) => {
-    origin ??= getOrigin(req, protocol, host, trustProxy);
-
     const controller = new AbortController();
     const { signal } = controller;
-
-    const url = new URL(req.url!, origin);
-
+    const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
     const ip =
       req.ip ||
       (trustProxy && getForwardedHeader(req, "for")) ||
       req.socket.remoteAddress ||
       "";
-
     const headers = req.headers as HeadersInit;
     // TODO: Do we need to remove http2 psuedo headers?
     // if (headers[":method"]) {
