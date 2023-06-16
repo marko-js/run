@@ -3,12 +3,13 @@ import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
 import type { ViteDevServer } from "vite";
 import { OutgoingMessage } from "http";
+import { TLSSocket } from "tls";
 
 installPolyfills();
 
 declare module "net" {
   interface Socket {
-    encrypted?: boolean;
+    destroySoon(): void;
   }
 }
 
@@ -16,6 +17,10 @@ declare module "http" {
   interface IncomingMessage {
     ip?: string;
     protocol?: string;
+  }
+
+  interface ServerResponse {
+    flush?: () => void;
   }
 }
 
@@ -29,7 +34,7 @@ export interface NodePlatformInfo {
 /** Connect/Express style request listener/middleware */
 export type NodeMiddleware = (
   req: IncomingMessage,
-  res: ServerResponse & { flush?: () => void },
+  res: ServerResponse,
   next?: () => void
 ) => void;
 
@@ -79,7 +84,7 @@ export function getOrigin(
   protocol ??=
     req.protocol ||
     (trustProxy && getForwardedHeader(req, "proto")) ||
-    (req.socket?.encrypted && "https") ||
+    ((req.socket as TLSSocket).encrypted && "https") ||
     "http";
 
   host ??= (trustProxy && getForwardedHeader(req, "host")) || req.headers.host;
@@ -100,7 +105,7 @@ export function getOrigin(
   return `${protocol}://${host}`;
 }
 
-const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i
+const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i;
 export function setResponseHeaders(response: Response, res: OutgoingMessage) {
   for (const [key, value] of response.headers) {
     if (key === "set-cookie") {
@@ -132,7 +137,7 @@ export function setResponseHeaders(response: Response, res: OutgoingMessage) {
  */
 export function createMiddleware(
   fetch: Fetch<NodePlatformInfo>,
-  options: NodeAdapterOptions = {},
+  options: NodeAdapterOptions = {}
 ): NodeMiddleware {
   const { trustProxy = process.env.TRUST_PROXY === "1", devServer } = options;
 
@@ -146,6 +151,9 @@ export function createMiddleware(
 
   return async (req, res, next) => {
     origin ??= getOrigin(req, protocol, host, trustProxy);
+
+    const controller = new AbortController();
+    const { signal } = controller;
 
     const url = new URL(req.url!, origin);
 
@@ -163,26 +171,54 @@ export function createMiddleware(
     //   );
     // }
 
-    const body =
-      req.method === "GET" || req.method === "HEAD"
-        ? undefined
-        : req.socket // Deno has no req.socket and can't convert req to ReadableStream
-        ? (req as unknown as ReadableStream)
-        : // Convert to a ReadableStream for Deno
-          new ReadableStream({
-            start(controller) {
-              req.on("data", (chunk) => controller.enqueue(chunk));
-              req.on("end", () => controller.close());
-              req.on("error", (err) => controller.error(err));
-            },
-          });
+    req.on("error", onError);
+    res.on("error", onError);
+    req.socket.on("error", onError);
+
+    function onError(err: Error) {
+      req.off("error", onError);
+      res.off("error", onError);
+      req.socket.off("error", onError);
+      controller.abort(err);
+    }
+
+    if (process.env.NODE_ENV !== "production" && devServer) {
+      devServer.ws.on("connection", function onConnection(ws: WebSocket) {
+        devServer!.ws.off("connection", onConnection);
+        if (signal.aborted) {
+          sendError();
+        } else {
+          signal.addEventListener("abort", sendError);
+        }
+
+        function sendError() {
+          const { message, stack = "" } = signal.reason;
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              err: { message, stack },
+            })
+          );
+        }
+      });
+    } else {
+      signal.addEventListener("abort", () => {
+        if (!res.destroyed && res.socket) {
+          res.socket.destroySoon();
+        }
+      });
+    }
 
     const request = new Request(url, {
       method: req.method,
       headers,
-      body,
+      body:
+        req.method === "GET" || req.method === "HEAD"
+          ? undefined
+          : (req as any as ReadableStream),
       // @ts-expect-error: Node requires this for streams
       duplex: "half",
+      signal,
     });
 
     const response = await fetch(request, {
@@ -197,11 +233,6 @@ export function createMiddleware(
     if (!response) {
       if (next) {
         next();
-      } else {
-        res.statusCode = 404;
-        res.setHeader("content-length", "0");
-        res.end();
-        return;
       }
       return;
     }
@@ -215,59 +246,34 @@ export function createMiddleware(
       }
       res.end();
       return;
-    }
-
-    const reader = response.body.getReader();
-    if (res.destroyed) {
-      reader.cancel();
+    } else if (res.destroyed) {
+      controller.abort(new Error("Response stream destroyed"));
       return;
     }
-    res.on("close", cancel);
-    res.on("error", cancel);
-    write();
 
-    function cancel(error?: Error) {
-      res.off("close", cancel);
-      res.off("error", cancel);
-      reader.cancel(error).catch(() => {});
-      if (error) {
-        if (process.env.NODE_ENV !== "production" && devServer) {
-          // If a Vite dev server is being used, and a mid-stream error occurs,
-          // end the response gracefully and send an error message via the web socket.
-          res.end();
-          devServer.ws.send({
-            type: "error",
-            err: { message: error.message, stack: error.stack || "" },
-          });
-        } else {
-          res.destroy(error);
-        }
-      }
-    }
-
-    async function write() {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            res.end();
-            return;
-          } else if (!res.write(value)) {
-            res.once("drain", write);
-            return;
-          } else if (res.flush) {
-            res.flush();
-          }
-        }
-      } catch (err) {
-        const error =
-          err instanceof Error
-            ? err
-            : new Error("Error while writing to node response", {
-                cause: err,
-              });
-        cancel(error);
-      }
-    }
+    writeResponse(response.body.getReader(), res, controller);
   };
+}
+
+async function writeResponse(
+  reader: ReadableStreamDefaultReader,
+  res: ServerResponse,
+  controller: AbortController
+) {
+  try {
+    while (!controller.signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) {
+        res.end();
+        return;
+      } else if (!res.write(value)) {
+        res.once("drain", () => writeResponse(reader, res, controller));
+        return;
+      } else if (res.flush) {
+        res.flush();
+      }
+    }
+  } catch (err) {
+    controller.abort(err);
+  }
 }
