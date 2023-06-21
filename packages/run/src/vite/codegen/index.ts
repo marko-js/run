@@ -346,7 +346,7 @@ const page404ResponseInit = {
   if (routes.special[RoutableFileTypes.Error]) {
     imports.writeLines(`
 const page500ResponseInit = {
-  status: 404,
+  status: 500,
   headers: { "content-type": "text/html;charset=UTF-8" },
 };`);
 
