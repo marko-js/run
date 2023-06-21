@@ -94,7 +94,7 @@
     "@types/human-format": "^1.0.0",
     "@types/jsdom": "^21.1.0",
     "@types/mocha": "^9.1.1",
-    "@types/node": "^18.11.18",
+    "@types/node": "^20.3.1",
     "acorn": "^8.8.0",
     "cross-env": "^7.0.3",
     "esbuild": "^0.15.7",

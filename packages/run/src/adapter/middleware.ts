@@ -1,34 +1,13 @@
-import { installPolyfills } from "./polyfill";
+import "./polyfill";
 import type { Fetch } from "../runtime";
-import type { IncomingMessage, ServerResponse } from "http";
+import type { IncomingMessage, ServerResponse, OutgoingMessage } from "http";
 import type { ViteDevServer } from "vite";
-import { OutgoingMessage } from "http";
-import { TLSSocket } from "tls";
-
-installPolyfills();
-
-declare module "net" {
-  interface Socket {
-    destroySoon(): void;
-  }
-}
-
-declare module "http" {
-  interface IncomingMessage {
-    ip?: string;
-    protocol?: string;
-  }
-
-  interface ServerResponse {
-    flush?: () => void;
-  }
-}
+import type { TLSSocket } from "tls";
 
 export interface NodePlatformInfo {
   ip: string;
   request: IncomingMessage;
   response: ServerResponse;
-  setCookie(cookie: string): void;
 }
 
 /** Connect/Express style request listener/middleware */
@@ -77,7 +56,7 @@ function getForwardedHeader(req: IncomingMessage, name: string) {
 
 export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
   const protocol =
-    req.protocol ||
+    (req as any).protocol ||
     (trustProxy && getForwardedHeader(req, "proto")) ||
     ((req.socket as TLSSocket).encrypted ? "https" : "http");
 
@@ -103,27 +82,61 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
 const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i;
 export function setResponseHeaders(response: Response, res: OutgoingMessage) {
   for (const [key, value] of response.headers) {
-    if (key === "set-cookie") {
-      let sepIndex = value.indexOf(",") + 1;
-      if (!sepIndex) {
-        res.setHeader(key, value);
-      } else {
-        let index = 0;
-        do {
-          const valuePart = value.slice(index, sepIndex - 1);
-          if (!inExpiresDateRgs.test(valuePart)) {
-            res.appendHeader(key, valuePart);
-            index = sepIndex;
-          }
-          sepIndex = value.indexOf(",", sepIndex) + 1;
-        } while (sepIndex);
-
-        res.appendHeader(key, value.slice(index));
-      }
-    } else {
+    if (key !== "set-cookie") {
       res.setHeader(key, value);
     }
   }
+
+  const setCookies = getSetCookie(response.headers);
+  if (setCookies?.length) {
+    res.setHeader("set-cookie", setCookies);
+  }
+}
+
+const getSetCookie = (Headers.prototype.getSetCookie as any)
+  ? getSetCookie_platform
+  : getSetCookie_fallback;
+
+function getSetCookie_platform(headers: Headers) {
+  return headers.getSetCookie();
+}
+
+export function getSetCookie_fallback(headers: Headers) {
+  const value = headers.get("set-cookie");
+  if (!value) return undefined;
+
+  let sepIndex = value.indexOf(",") + 1;
+  if (!sepIndex) return value;
+
+  let index = 0;
+  let setCookie = undefined;
+  let setCookies = undefined;
+  do {
+    const valuePart = value.slice(index, sepIndex - 1)
+    if (!inExpiresDateRgs.test(valuePart)) {
+      if (setCookies) {
+        setCookies.push(valuePart);
+      } else if (setCookie) {
+        setCookies = [setCookie, valuePart];
+      } else {
+        setCookie = valuePart;
+      }
+      index = sepIndex;
+      while (value.charCodeAt(index) === 32) index++;
+    }
+    sepIndex = value.indexOf(",", sepIndex) + 1;
+  } while (sepIndex);
+
+  if (index) {
+    const valuePart = value.slice(index)
+    if (setCookies) {
+      setCookies.push(valuePart);
+      return setCookies;
+    }
+    return [setCookie!, valuePart];
+  }
+
+  return value;
 }
 
 /**
@@ -145,7 +158,7 @@ export function createMiddleware(
     const { signal } = controller;
     const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
     const ip =
-      req.ip ||
+      (req as any).ip ||
       (trustProxy && getForwardedHeader(req, "for")) ||
       req.socket.remoteAddress ||
       "";
@@ -190,7 +203,7 @@ export function createMiddleware(
     } else {
       signal.addEventListener("abort", () => {
         if (!res.destroyed && res.socket) {
-          res.socket.destroySoon();
+          (res.socket as any).destroySoon();
         }
       });
     }
@@ -211,9 +224,6 @@ export function createMiddleware(
       ip,
       request: req,
       response: res,
-      setCookie(cookie) {
-        res.appendHeader("set-cookie", cookie);
-      },
     });
 
     if (!response) {
@@ -255,8 +265,8 @@ async function writeResponse(
       } else if (!res.write(value)) {
         res.once("drain", () => writeResponse(reader, res, controller));
         return;
-      } else if (res.flush) {
-        res.flush();
+      } else if ((res as any).flush) {
+        (res as any).flush();
       }
     }
   } catch (err) {

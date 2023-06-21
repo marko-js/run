@@ -16,7 +16,7 @@ const page404ResponseInit = {
 };
 
 const page500ResponseInit = {
-  status: 404,
+  status: 500,
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
 

@@ -21,6 +21,7 @@ Function.prototype.toString = function () {
 
 declare global {
   const page: playwright.Page;
+  const response: playwright.Response;
   namespace NodeJS {
     interface Global {
       page: playwright.Page;
@@ -30,6 +31,7 @@ declare global {
 
 declare namespace globalThis {
   let page: playwright.Page;
+  let response: playwright.Response | null;
 }
 
 declare const __track__: (html: string) => void;
@@ -90,6 +92,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await page.close();
+  globalThis.response = null;
 });
 
 after(async () => {
@@ -154,7 +157,10 @@ async function testPage(
     url.pathname = path;
 
     await waitForServer(server.port);
-    await waitForPendingRequests(page, () => page.goto(url.href));
+    await waitForPendingRequests(page, async () => {
+      globalThis.response = await page.goto(url.href);
+    });
+
     await page.waitForSelector("#app");
     await forEachChange((html, i) => snap(html, `.loading.${i}.html`, dir));
     for (const [i, step] of steps.entries()) {

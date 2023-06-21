@@ -1,64 +1,20 @@
-import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
-import { webcrypto as crypto } from 'crypto';
-import { fetch, Response, Request, Headers, FormData, File } from 'undici';
-import { OutgoingMessage } from 'http';
+import * as webStream from 'stream/web';
+import { webcrypto } from 'crypto';
+import * as undici from 'undici';
 
-const globals: Record<string, unknown> = {
-	crypto,
-	fetch,
-	Response,
-	Request,
-	Headers,
-	ReadableStream,
-	TransformStream,
-	WritableStream,
-	FormData,
-	File
-};
+(globalThis as any).crypto ??= webcrypto;
+(globalThis as any).fetch ??= undici.fetch;
+(globalThis as any).Response ??= undici.Response;
+(globalThis as any).Request ??= undici.Request;
+(globalThis as any).Headers ??= undici.Headers;
+(globalThis as any).ReadableStream ??= webStream.ReadableStream;
+(globalThis as any).TransformStream ??= webStream.TransformStream;
+(globalThis as any).WritableStream ??= webStream.WritableStream;
+(globalThis as any).FormData ??= undici.FormData;
+(globalThis as any).File ??= undici.File;
 
-declare module 'http' {
-	interface OutgoingMessage {
-		appendHeader(this: OutgoingMessage, name: string, value: string): this;
-	}
-}
-
-if (typeof OutgoingMessage.prototype.appendHeader !== 'function') {
-	const messageHeaders = new WeakMap<OutgoingMessage, Map<string, string | string[]>>();
-	OutgoingMessage.prototype.appendHeader = function(name, value) {
-		let headers = messageHeaders.get(this);
-		if (!headers) {
-			headers = new Map();
-			messageHeaders.set(this, headers);
-		}
-
-		const key = name.toLowerCase();
-		let existing = headers.get(key);
-		if (existing) {
-			if (Array.isArray(existing)) {
-				existing.push(value);
-			} else {
-				existing = [existing, value];
-			}
-			this.setHeader(name, existing);
-			headers.set(key, existing);
-		} else {
-			this.setHeader(name, value);
-			headers.set(key, value);
-		}
-
-		return this;
-	}
-}
-
-export function installPolyfills() {
-	for (const name in globals) {
-		if (!(name in globalThis)) {
-			Object.defineProperty(globalThis, name, {
-				enumerable: true,
-				configurable: true,
-				writable: true,
-				value: globals[name]
-			});
-		}
+declare global {
+	interface Headers {
+		getSetCookie: () => string[]
 	}
 }
