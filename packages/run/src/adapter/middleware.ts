@@ -1,12 +1,9 @@
-import { installPolyfills } from "./polyfill";
+import "./polyfill";
 import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse } from "http";
 import type { ViteDevServer } from "vite";
 import { OutgoingMessage } from "http";
 import { TLSSocket } from "tls";
-
-installPolyfills();
-
 declare module "net" {
   interface Socket {
     destroySoon(): void;
@@ -28,7 +25,6 @@ export interface NodePlatformInfo {
   ip: string;
   request: IncomingMessage;
   response: ServerResponse;
-  setCookie(cookie: string): void;
 }
 
 /** Connect/Express style request listener/middleware */
@@ -102,28 +98,67 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
 
 const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i;
 export function setResponseHeaders(response: Response, res: OutgoingMessage) {
+  let hasSetCookieHeader = false;
   for (const [key, value] of response.headers) {
     if (key === "set-cookie") {
-      let sepIndex = value.indexOf(",") + 1;
-      if (!sepIndex) {
-        res.setHeader(key, value);
-      } else {
-        let index = 0;
-        do {
-          const valuePart = value.slice(index, sepIndex - 1);
-          if (!inExpiresDateRgs.test(valuePart)) {
-            res.appendHeader(key, valuePart);
-            index = sepIndex;
-          }
-          sepIndex = value.indexOf(",", sepIndex) + 1;
-        } while (sepIndex);
-
-        res.appendHeader(key, value.slice(index));
-      }
+      hasSetCookieHeader = true;
     } else {
       res.setHeader(key, value);
     }
   }
+
+  if (hasSetCookieHeader || res.hasHeader('set-cookie')) {
+    const setCookies = getSetCookie(response.headers);
+    if (setCookies) {
+      res.setHeader("set-cookie", setCookies);
+    }
+  }
+}
+
+const getSetCookie = Headers.prototype.getSetCookie
+  ? getSetCookie_platform
+  : getSetCookie_fallback;
+
+function getSetCookie_platform(headers: Headers) {
+  return headers.getSetCookie!();
+}
+
+export function getSetCookie_fallback(headers: Headers) {
+  const value = headers.get("set-cookie");
+  if (!value) return undefined;
+
+  let sepIndex = value.indexOf(",") + 1;
+  if (!sepIndex) return value;
+
+  let index = 0;
+  let setCookie = undefined;
+  let setCookies = undefined;
+  do {
+    const valuePart = value.slice(index, sepIndex - 1)
+    if (!inExpiresDateRgs.test(valuePart)) {
+      if (setCookies) {
+        setCookies.push(valuePart);
+      } else if (setCookie) {
+        setCookies = [setCookie, valuePart];
+      } else {
+        setCookie = valuePart;
+      }
+      index = sepIndex;
+      while (value.charCodeAt(index) === 32) index++;
+    }
+    sepIndex = value.indexOf(",", sepIndex) + 1;
+  } while (sepIndex);
+
+  if (index) {
+    const valuePart = value.slice(index)
+    if (setCookies) {
+      setCookies.push(valuePart);
+      return setCookies;
+    }
+    return [setCookie!, valuePart];
+  }
+
+  return value;
 }
 
 /**
@@ -211,9 +246,6 @@ export function createMiddleware(
       ip,
       request: req,
       response: res,
-      setCookie(cookie) {
-        res.appendHeader("set-cookie", cookie);
-      },
     });
 
     if (!response) {
