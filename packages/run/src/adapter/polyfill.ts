@@ -13,14 +13,8 @@ import * as undici from 'undici';
 (globalThis as any).FormData ??= undici.FormData;
 (globalThis as any).File ??= undici.File;
 
-declare module 'http' {
-	interface OutgoingMessage {
-		appendHeader(this: OutgoingMessage, name: string, value: string): this;
-	}
-}
-
 declare global {
 	interface Headers {
-		getSetCookie?: () => string[]
+		getSetCookie: () => string[]
 	}
 }
