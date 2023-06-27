@@ -53,7 +53,8 @@ describe("router codegen", () => {
           routesSnap += "---\n";
         }
         if (route.handler) {
-          const meta = route.handler.name.split(".", 2)[1];
+          const match = route.handler.name.match(/\+handler(?:\.(.+))?\.[^.]+/);
+          const meta = match ? match[1] : "";
           const verbs = (meta.toLowerCase().split("_") as HttpVerb[]).filter(
             (v) => httpVerbs.includes(v)
           );

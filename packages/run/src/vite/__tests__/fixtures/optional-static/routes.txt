@@ -1,4 +1,4 @@
-/foo,_
-  /_,bar
-    /,baz,
+/foo,
+  /bar,
+    /,baz
       +page.marko

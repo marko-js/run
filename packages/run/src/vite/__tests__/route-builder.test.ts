@@ -1,8 +1,8 @@
-import { buildRoutes, evaluatePaths } from "../routes/builder";
+import { buildRoutes } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
 import { createDirectory } from "./utils/fakeFS";
 import assert from "assert";
-import type { PathInfo, Route } from "../types";
+import type { PathInfo } from "../types";
 
 type PathParams = Pick<PathInfo, "path" | "params">;
 
@@ -11,253 +11,168 @@ function createWalker(dir: string) {
 }
 
 describe("route-builder", () => {
-  describe("evaluatePaths", () => {
-    function fixture(dirs: string[], expected: string[]) {
-      let paths: PathInfo[] = [{ id: "", path: "/", segments: [] }];
-      for (const dir of dirs) {
-        paths = evaluatePaths(dir, paths);
-      }
-      const actual = paths.map((path) => path.path);
-      assert.deepEqual(actual, expected);
-    }
-
-    it("should traverse paths breadth-first, pathless then left to right", () => {
-      fixture(
-        ["a,$foo,_", "_,$bar", "$baz,_"],
-        [
-          "/",
-          "/a",
-          "/$foo",
-          "/a/$bar",
-          "/$foo/$bar",
-          "/a/$bar/$baz",
-          "/$foo/$bar/$baz",
-        ]
+  async function fixture(dir: string, ...expected: PathParams[]) {
+    const routes = await buildRoutes(createWalker(dir));
+    const actual = routes.list.reduce<PathParams[]>((acc, route) => {
+      acc.push(
+        ...route.paths.map((path) => {
+          const result: {
+            path: string;
+            params?: Record<string, number | null>;
+          } = {
+            path: path.path,
+          };
+          if (path.params) {
+            result.params = path.params;
+          }
+          return result;
+        })
       );
-    });
-  });
+      return acc;
+    }, []);
+    assert.deepEqual(actual, expected);
+  }
 
-  describe("buildRoutes", () => {
-    async function fixture(
-      dir: string,
-      ...expected: PathParams[]
-    ) {
-      const routes = await buildRoutes(createWalker(dir));
-      const actual = routes.list.reduce<PathParams[]>((acc, route) => {
-        acc.push(...route.paths.map((path) => ({ path: path.path, params: path.params })));
-        return acc;
-      }, []);
-      assert.deepEqual(actual, expected);
-    }
-
-    it("should work for a basic static case", async () => {
-      await fixture(
-        `
+  it("should work for a basic static case", async () => {
+    await fixture(
+      `
         /a
           /b
             +page.marko
         `,
-        { path: "/a/b", params: undefined }
-      );
-    });
+      { path: "/a/b" }
+    );
+  });
 
-    it("should work for a basic dynamic case", async () => {
-      await fixture(
-        `
+  it("should work for a basic dynamic case", async () => {
+    await fixture(
+      `
         /a
           /$id
             +page.marko
         `,
-        { path: "/a/$id", params: { id: 1 } }
-      );
-    });
+      { path: "/a/$id", params: { id: 1 } }
+    );
+  });
 
-    it("should work for a catch-all dynamic case", async () => {
-      await fixture(
-        `
+  it("should work for a catch-all dynamic case", async () => {
+    await fixture(
+      `
         /a
           /$$rest
             +page.marko
         `,
-        { path: "/a/$$rest", params: { rest: null } }
-      );
-    });
+      { path: "/a/$$rest", params: { rest: null } }
+    );
+  });
 
-    it("should exclude unnamed params from the param list", async () => {
-      await fixture(
-        `
+  it("should exclude unnamed params from the param list", async () => {
+    await fixture(
+      `
         /a
           /$
             /$$
               +page.marko
         `,
-        { path: "/a/$/$$", params: undefined }
-      );
-    });
+      { path: "/a/$/$$" }
+    );
+  });
 
-    it("should work for a basic pathless case", async () => {
-      await fixture(
-        `
+  it("should work for a basic pathless case", async () => {
+    await fixture(
+      `
         /a
           /_
             /$id
               +page.marko
         `,
-        { path: "/a/$id", params: { id: 1 } }
-      );
-    });
+      { path: "/a/$id", params: { id: 1 } }
+    );
+  });
 
-    it("should work for multi-dimensional case", async () => {
-      await fixture(
-        `
+  it("should work for multi-dimensional case", async () => {
+    await fixture(
+      `
         /a,b
           /c,d
             /$id
               +page.marko
         `,
-        { path: "/a/c/$id", params: { id: 2 } },
-        { path: "/a/d/$id", params: { id: 2 } },
-        { path: "/b/c/$id", params: { id: 2 } },
-        { path: "/b/d/$id", params: { id: 2 } }
-      );
-    });
+      { path: "/a/c/$id", params: { id: 2 } },
+      { path: "/a/d/$id", params: { id: 2 } },
+      { path: "/b/c/$id", params: { id: 2 } },
+      { path: "/b/d/$id", params: { id: 2 } }
+    );
+  });
 
-    it("should work for optional segements", async () => {
-      await fixture(
-        `
+  it("should work for optional segements", async () => {
+    await fixture(
+      `
         /a,b
           /c,_
             /$id
               +page.marko
       `,
-        { path: "/a/$id", params: { id: 1 } },
-        { path: "/b/$id", params: { id: 1 } },
-        { path: "/a/c/$id", params: { id: 2 } },
-        { path: "/b/c/$id", params: { id: 2 } },
-      );
-    });
+      { path: "/a/$id", params: { id: 1 } },
+      { path: "/a/c/$id", params: { id: 2 } },
+      { path: "/b/$id", params: { id: 1 } },
+      { path: "/b/c/$id", params: { id: 2 } }
+    );
+  });
 
-    it("should dedupe at each level", async () => {
-      await fixture(
-        `
+  it("should throw on ambiguous hoisting", async () => {
+    await assert.rejects(
+      () =>
+        buildRoutes(
+          createWalker(`
+        /a,
+          /a,
+            +page.marko
+      `)
+        ),
+      (err: Error) => {
+        return err.message.startsWith("Ambiguous directory structure");
+      }
+    );
+  });
+
+  it("should throw on duplication at one level", async () => {
+    await assert.rejects(
+      () =>
+        buildRoutes(
+          createWalker(`
         /a,a,b
-          /c,c,d
-            /$id,$name
-              +page.marko
-      `,
-        { path: "/a/c/$id", params: { id: 2 } },
-        { path: "/a/d/$id", params: { id: 2 } },
-        { path: "/b/c/$id", params: { id: 2 } },
-        { path: "/b/d/$id", params: { id: 2 } }
-      );
-    });
-
-    it("should prefer named dynamic segments", async () => {
-      await fixture(
-        `
-        /$,$id
           +page.marko
-      `,
-        { path: "/$id", params: { id: 0 } }
-      );
-    });
+      `)
+        ),
+      (err: Error) => {
+        return err.message.startsWith("Invalid route pattern");
+      }
+    );
+  });
 
-    it("should dedupe duplicate dynamic combinations", async () => {
-      await fixture(
-        `
-        /_,a,$foo
-          /_,b,$bar
-            /_,$id,c
+  it("should throw ambiguous optional parameters", async () => {
+    await assert.rejects(
+      () =>
+        buildRoutes(
+          createWalker(`
+        /$a,_
+          /$b,_
+            /$c,_
               +page.marko
-        `,
+      `)
+        ),
+      (err: Error) => {
+        return err.message.startsWith("Duplicate routes for path");
+      }
+    );
+  });
 
-        { path: "/", params: undefined },
-        { path: "/a", params: undefined },
-        {
-          path: "/$foo",
-          params: {
-            foo: 0,
-          },
-        },
-        { path: "/b", params: undefined },
-        { path: "/a/b", params: undefined },
-        {
-          path: "/a/$bar",
-          params: {
-            bar: 1,
-          },
-        },
-        {
-          path: "/$foo/b",
-          params: {
-            foo: 0,
-          },
-        },
-        {
-          path: "/$foo/$bar",
-          params: {
-            foo: 0,
-            bar: 1,
-          },
-        },
-        { path: "/c", params: undefined },
-        { path: "/a/c", params: undefined },
-        {
-          path: "/$foo/c",
-          params: {
-            foo: 0,
-          },
-        },
-        { path: "/b/$id", params: { id: 1 } },
-        { path: "/b/c", params: undefined },
-        { path: "/a/b/$id", params: { id: 2 } },
-        { path: "/a/b/c", params: undefined },
-        {
-          path: "/a/$bar/$id",
-          params: {
-            bar: 1,
-            id: 2,
-          },
-        },
-        {
-          path: "/a/$bar/c",
-          params: {
-            bar: 1,
-          },
-        },
-        {
-          path: "/$foo/b/$id",
-          params: {
-            foo: 0,
-            id: 2,
-          },
-        },
-        {
-          path: "/$foo/b/c",
-          params: {
-            foo: 0,
-          },
-        },
-        {
-          path: "/$foo/$bar/$id",
-          params: {
-            foo: 0,
-            bar: 1,
-            id: 2,
-          },
-        },
-        {
-          path: "/$foo/$bar/c",
-          params: {
-            foo: 0,
-            bar: 1,
-          },
-        },
-      );
-    });
-
-    it("should throw on duplicate paths", async () => {
-      const walker = createWalker(`
+  it("should throw on duplicate paths", async () => {
+    await assert.rejects(
+      () =>
+        buildRoutes(
+          createWalker(`
         /foo
           /bar
             +page.marko
@@ -265,12 +180,65 @@ describe("route-builder", () => {
           /foo
             /bar
               +page.marko
-      `);
+      `)
+        ),
+      (err: Error) => err.message.startsWith("Duplicate routes for path")
+    );
+  });
 
-      assert.rejects(
-        () => buildRoutes(walker),
-        /Duplicate routes for path \/foo\/bar/
-      );
-    });
+  it("should find 404 and 500 pages in the root", async () => {
+    const routes = await buildRoutes(
+      createWalker(`
+          +404.marko
+          +500.marko
+      `)
+    );
+    assert.deepEqual(Object.keys(routes.special), ["404", "500"]);
+  });
+
+  it("should ignore nested 404 and 500 pages", async () => {
+    const routes = await buildRoutes(
+      createWalker(`
+        /foo
+          +404.marko
+          +500.marko
+      `)
+    );
+    assert.deepEqual(Object.keys(routes.special), []);
+  });
+
+  it("should work with flat route files", async () => {
+    const routes = await buildRoutes(
+      createWalker(`
+        +layout.marko
+        a.b.(c,)+page.marko
+        a.b.c+middleware.marko
+        a.b+handler.marko
+      `)
+    );
+    const actual = routes.list.map((route) => ({
+      path: route.paths[0].path,
+      page: !!route.page,
+      handler: !!route.handler,
+      middleware: route.middleware.length,
+      layouts: route.layouts.length,
+    }));
+
+    assert.deepEqual(actual, [
+      {
+        path: "/a/b",
+        page: true,
+        handler: true,
+        middleware: 0,
+        layouts: 1,
+      },
+      {
+        path: "/a/b/c",
+        page: true,
+        handler: false,
+        middleware: 1,
+        layouts: 1,
+      },
+    ]);
   });
 });

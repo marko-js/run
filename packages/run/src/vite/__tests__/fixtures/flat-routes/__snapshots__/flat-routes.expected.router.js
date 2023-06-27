@@ -2,12 +2,12 @@
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route.js';
 import { get2 } from 'virtual:marko-run/__marko-run__route.foo.js';
-import { get3 } from 'virtual:marko-run/__marko-run__route.foo.bar.js';
-import { get4 } from 'virtual:marko-run/__marko-run__route.foo.bar.baz.js';
-import { get5 } from 'virtual:marko-run/__marko-run__route.foo.baz.js';
-import { get6 } from 'virtual:marko-run/__marko-run__route.bar.js';
-import { get7 } from 'virtual:marko-run/__marko-run__route.bar.baz.js';
-import { get8 } from 'virtual:marko-run/__marko-run__route.baz.js';
+import { get3 } from 'virtual:marko-run/__marko-run__route.$id.js';
+import { get4 } from 'virtual:marko-run/__marko-run__route.$$rest.js';
+import { get5 } from 'virtual:marko-run/__marko-run__route.a.c.js';
+import { get6 } from 'virtual:marko-run/__marko-run__route.a.d.js';
+import { get7 } from 'virtual:marko-run/__marko-run__route.b.c.js';
+import { get8 } from 'virtual:marko-run/__marko-run__route.b.d.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -23,38 +23,32 @@ export function match(method, pathname) {
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)).toLowerCase()) {
-					case 'foo': return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
-					case 'bar': return { handler: get6, params: {}, meta: {}, path: '/bar' }; // /bar
-					case 'baz': return { handler: get8, params: {}, meta: {}, path: '/baz' }; // /baz
-				}
+				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+				if (s1.toLowerCase() === 'foo') return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
+				if (s1) return { handler: get3, params: { id: s1 }, meta: {}, path: '/:id' }; // /$id
 			} else {
 				switch (decodeURIComponent(pathname.slice(1, i1 - 1)).toLowerCase()) {
-					case 'foo': {
-						const i2 = pathname.indexOf('/', 5) + 1;
+					case 'a': {
+						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)).toLowerCase()) {
-								case 'bar': return { handler: get3, params: {}, meta: {}, path: '/foo/bar' }; // /foo/bar
-								case 'baz': return { handler: get5, params: {}, meta: {}, path: '/foo/baz' }; // /foo/baz
-							}
-						} else {
-							if (decodeURIComponent(pathname.slice(5, i2 - 1)).toLowerCase() === 'bar') {
-								const i3 = pathname.indexOf('/', 9) + 1;
-								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(9, i3 ? -1 : len)).toLowerCase() === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
-								}
+							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len)).toLowerCase()) {
+								case 'c': return { handler: get5, params: {}, meta: {}, path: '/a/c' }; // /a/c
+								case 'd': return { handler: get6, params: {}, meta: {}, path: '/a/d' }; // /a/d
 							}
 						}
 					} break;
-					case 'bar': {
-						const i2 = pathname.indexOf('/', 5) + 1;
+					case 'b': {
+						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							if (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)).toLowerCase() === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
+							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len)).toLowerCase()) {
+								case 'c': return { handler: get7, params: {}, meta: {}, path: '/b/c' }; // /b/c
+								case 'd': return { handler: get8, params: {}, meta: {}, path: '/b/d' }; // /b/d
+							}
 						}
 					} break;
 				}
 			}
-			return null;
+			return { handler: get4, params: { rest: pathname.slice(1) }, meta: {}, path: '/:rest*' }; // /$$rest
 		}
 	}
 	return null;
