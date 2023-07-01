@@ -390,7 +390,7 @@ import * as Run from "@marko/run/router";
 
 express()
   .use(async (req, res, next) => {
-    const request = // ...code to create a WHATWG Request from `req`
+    const request = ...; // code to create a WHATWG Request from `req`
 
     const response = await Run.fetch(request, {
       req,
@@ -456,7 +456,7 @@ express()
       return;
     }
 
-    const request = // ...code to create a WHATWG Request from `req`
+    const request = ...; // code to create a WHATWG Request from `req`
     const response = await Run.invoke(req.match, request, {
       req,
       res
