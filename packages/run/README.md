@@ -308,6 +308,104 @@ Within the [routes directory](#routes-directory), the directory structure determ
     /$$
     ```
 
+### Flat Routes
+
+Flat routes let you define paths without needing additional folders. Instead the folder structure can be defined either in the file or folder name. This allows you to decouple your routes from your folder structure or co-locate them as needed. To define a flat route, use periods (`.`) to deliniate each path segment. This behaves exacly like creating a new folder and each segment will be parsed using the rules described above for static, dynamic and pathless routes.
+
+Flat routes syntax can be used for both directories and routable files (eg. pages, handlers, middleware, etc.). For these files, anything preceeding the plus (`+`) will be treated as the flat route.
+
+For example to define a page at `/projects/$projectId/members` with a root layout and a project layout:
+
+Without flat routes you would have a file structure like:
+
+```
+routes/
+  projects/
+    $projectId/
+      $members/
+        +page.marko
+      +layout.marko
+  +layout.marko
+```
+
+With flat routes move the path defined by the folders into the files and separate with a period
+
+```
+routes/
+  +layout.marko
+  projects+layout.marko
+  projects.$projectId.members+page.marko
+```
+
+Additionally, you can continue to organize files under folders to decrease duplication and use flat route syntax in the folder name
+
+```
+routes/
+  projects.$projectId/
+    +layout.marko
+    members+page.marko
+  +layout.marko
+```
+
+Finally, flat routes and routes defined with directories are all treated equally and merged together. For example this page will have layout
+
+```
+routes/
+  projects/
+    $projectId/
+      +layout.marko
+  projects.$projectId+page.marko
+```
+
+
+
+### Multiple Paths, Groups and Optional Segments
+
+Along with descibing multiple segements, flat route syntax supports defining routes that match more than one path and segments that are optional. To describe a route that matches multiple paths, use a comma (`,`) and define each route.
+
+For example the following page matches `/projects/$projectId/members` and `/projects/$projectId/people`
+
+```
+routes/
+  projects.$projectId.members,projects.$projectId.people+page.marko
+```
+
+This file name is a bit long so you might do something like this
+
+```
+routes/
+  projects.$projectId
+    members,people+page.marko
+```
+
+We can simplify this by introducing another concept: **grouping**. Groups allows you to define segments within a flat route that match multiple sub-paths by surrounding them with parentheses (`(` and `)`). For the example, this means you can do the following:
+
+```
+routes/
+  projects.$projectId.(members,people)+page.marko
+```
+
+This is a simple example of grouping but you can nest groups and make them as complicated as you want.
+
+The last concept is **optionallity**. By introducing an empty segment or pathless segment along with another value you can make that segment optional. For example, If we want a page that matches `/projects` and `/projects/home`, you can create a flat route that optionally matches `home`
+
+```
+routes/
+  projects.(home,)+page.marko
+```
+or
+```
+routes/
+  projects.(home,_pathless)+page.marko
+```
+
+While both of these create a route which matches the paths, they have slightly different semantics. Using a pathless segment is the same as creating a pathless folder which allows you to isolate middleware and loayouts. Using an empty segement is the same as defining a file at the current location.
+
+
+
+
+
+
 <!-- ### Match Ranking
 
 *TODO: Write some things* -->
