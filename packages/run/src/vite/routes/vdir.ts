@@ -106,10 +106,12 @@ export default class VDir {
         file.type === RoutableFileTypes.Handler
       ) {
         throw new Error(
-          `Ambiguous path definitionroute '${this.path}' is defined multiple times by ${file.filePath}`
+          `Ambiguous path definition: route '${this.path}' is defined multiple times by ${file.filePath}`
         );
       }
-      throw new Error(`What to say, '${this.path}'.`);
+      throw new Error(
+        `Ambiguous path definition: file '${this.path}' is included multiple times by ${file.filePath}`
+      );
     }
   }
 
