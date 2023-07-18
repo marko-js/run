@@ -3,49 +3,31 @@
   Do NOT manually edit this file or your changes will be lost.
 */
 
-import type { HandlerLike, Route as AnyRoute, Context as AnyContext, ParamsObject, ValidatePath, ValidateHref } from "@marko/run";
+import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
+import type Run from "@marko/run";
 
-interface NoParams extends ParamsObject {}
-interface NoMeta {}
 
-type Get =
-  | '/a%2fb%2fc/${$id}';
-
-type Post = never;
-
-type Route1 = AnyRoute<{ $id: string; }, NoMeta, `/a%2fb%2fc/:$id`>;
-
-declare global {
-  namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = unknown;
-  }
+declare module "@marko/run" {
+	interface AppData extends Run.DefineApp<{
+		routes: {
+			"/a%2fb%2fc/:$id": Routes["/a%2fb%2fc/$%24id"]
+		}
+	}> {}
 }
 
-declare module '../src/routes/a%2fb%2fc/$%24id/+page.marko' {
+declare module "../src/routes/a%2fb%2fc/$%24id/+page.marko" {
   export interface Input {
     renderBody: Marko.Body;
   }
-
   namespace MarkoRun {
-    type GetPaths = Get;
-    type PostPaths = Post;
-    type GetablePath<T extends string> = ValidatePath<Get, T>;
-    type GetableHref<T extends string> = ValidateHref<Get, T>; 
-    type PostablePath<T extends string> = ValidatePath<Post, T>;
-    type PostableHref<T extends string> = ValidateHref<Post, T>;
-    type Platform = unknown;
-    type Route = Route1;
-    type Context = AnyContext<Platform, Route> & Marko.Global;
-    type Handler<_Params = Route['params'], _Meta = Route['meta']> = HandlerLike<Route>;
-    function route(handler: Handler): typeof handler;
-    function route<_Params = Route['params'], _Meta = Route['meta']>(handler: Handler): typeof handler;
-    const NotHandled: unique symbol;
-    const NotMatched: unique symbol;
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    export type Route = Run.Routes["/a%2fb%2fc/:$id"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    export const route: Run.HandlerTypeFn<Route>;
   }
+}
+
+type Routes = {
+	"/a%2fb%2fc/$%24id": { verb: "get"; };
 }

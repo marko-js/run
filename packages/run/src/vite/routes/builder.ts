@@ -57,10 +57,14 @@ export async function buildRoutes(
   let activeDirs: VDir[] = [root];
   let nextFileId = 1;
   let nextRouteIndex = 1;
+  let isBaseDir = true;
 
   await walk({
     onEnter({ name }) {
-      if (!name) return;
+      if (!name || isBaseDir) {
+        isBaseDir = false;
+        return;
+      }
 
       dirStack.push(name);
       const previousDirs = activeDirs;
@@ -181,7 +185,7 @@ export async function buildRoutes(
           handler,
           entryName:
             `${markoRunFilePrefix}route` +
-            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".") : ""),
+            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".").replace(/(%[A-Fa-f0-9]{2})+/g, '_') : ""),
         });
       }
 
