@@ -53,8 +53,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     async startPreview(_entry, options) {
       const { port = 8888, cwd } = options;
 
-      debugger;
-
       const args = [
         "dev",
         "--framework",
@@ -66,7 +64,10 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         ...parseNetlifyArgs(options.args),
       ];
 
-      const proc = spawn("netlify", args, { cwd });
+      const proc = spawn("netlify", args, {
+        cwd,
+        env: { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" },
+      });
       if (process.env.NODE_ENV !== "test") {
         proc.stdout.pipe(process.stdout);
       }
