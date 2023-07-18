@@ -610,8 +610,8 @@ export async function resolveAdapter(
   return module.default();
 }
 
-const markoEntryFileRegex = /__marko-run__([^_]+)__(.+)\.marko.([^.]+)$/;
+const markoEntryFileRegex = /__marko-run__([^.]+)\.(.+)\.marko\.([^.]+)$/;
 function getEntryFileName(file: string | undefined | null) {
   const match = file && markoEntryFileRegex.exec(file);
-  return match ? `${match[2].replace(/__/g, "-")}` : undefined;
+  return match ? match[2] : undefined;
 }

@@ -185,7 +185,7 @@ export async function buildRoutes(
           handler,
           entryName:
             `${markoRunFilePrefix}route` +
-            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".") : ""),
+            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".").replace(/(%[A-Fa-f0-9]{2})+/g, '_') : ""),
         });
       }
 
