@@ -17,7 +17,6 @@ export type {
   BuiltRoutes,
   HttpVerb,
   PackageData,
-  ParamInfo,
   Route,
   RoutableFile,
   RoutableFileType,

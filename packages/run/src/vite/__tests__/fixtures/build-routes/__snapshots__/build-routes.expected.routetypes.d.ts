@@ -10,19 +10,13 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": { verb: "get" };
-			"/new": {
-				verb: "get" | "post";
-				meta: typeof import("./_protected/_home/new/+meta.json");
-			};
-			"/notes/:id": { verb: "get" | "post" };
-			"/notes/:id/comments": {
-				verb: "post";
-				meta: typeof import("./_protected/_home/notes/$id/comments/+meta")["default"];
-			};
-			"/callback/oauth2": { verb: "get" };
-			"/my": { verb: "get" };
-			"/:match*": { verb: "get" };
+			"/": Routes["/_protected/_home"]
+			"/new": Routes["/_protected/_home/new"]
+			"/notes/:id": Routes["/_protected/_home/notes/$id"]
+			"/notes/:id/comments": Routes["/_protected/_home/notes/$id/comments"]
+			"/callback/oauth2": Routes["/callback/oauth2"]
+			"/my": Routes["/my"]
+			"/:match*": Routes["/$$match"]
 		}
 	}> {}
 }
@@ -227,4 +221,14 @@ declare module "./+500.marko" {
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Route>;
   }
+}
+
+type Routes = {
+	"/_protected/_home": { verb: "get"; };
+	"/_protected/_home/new": { verb: "get" | "post"; meta: typeof import("./_protected/_home/new/+meta.json"); };
+	"/_protected/_home/notes/$id": { verb: "get" | "post"; };
+	"/_protected/_home/notes/$id/comments": { verb: "post"; meta: typeof import("./_protected/_home/notes/$id/comments/+meta")["default"]; };
+	"/callback/oauth2": { verb: "get"; };
+	"/my": { verb: "get"; };
+	"/$$match": { verb: "get"; };
 }

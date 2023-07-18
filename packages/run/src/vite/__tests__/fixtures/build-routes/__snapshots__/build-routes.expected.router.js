@@ -1,14 +1,14 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route__index.js';
-import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route__new.js';
-import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route__notes__$.js';
-import { put4, post4, delete4, meta4 } from 'virtual:marko-run/__marko-run__route__notes__$__comments.js';
-import { get5 } from 'virtual:marko-run/__marko-run__route__callback__oauth2.js';
-import { get6 } from 'virtual:marko-run/__marko-run__route__my.js';
-import { get7 } from 'virtual:marko-run/__marko-run__route__$$.js';
-import page404 from 'virtual:marko-run/__marko-run__special__404.marko?marko-server-entry';
-import page500 from 'virtual:marko-run/__marko-run__special__500.marko?marko-server-entry';
+import { get1 } from 'virtual:marko-run/__marko-run__route._protected._home.js';
+import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route._protected._home.new.js';
+import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.js';
+import { put4, post4, delete4, meta4 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.comments.js';
+import { get5 } from 'virtual:marko-run/__marko-run__route.callback.oauth2.js';
+import { get6 } from 'virtual:marko-run/__marko-run__route.my.js';
+import { get7 } from 'virtual:marko-run/__marko-run__route.$$match.js';
+import page404 from 'virtual:marko-run/__marko-run__special.404.marko?marko-server-entry';
+import page500 from 'virtual:marko-run/__marko-run__special.500.marko?marko-server-entry';
 
 const page404ResponseInit = {
   status: 404,
@@ -46,13 +46,13 @@ export function match(method, pathname) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: get3, params: { id: s2 }, meta: {}, path: '/notes/:id' }; // /notes/$id
 						}
-					}
+					} break;
 					case 'callback': {
 						const i2 = pathname.indexOf('/', 10) + 1;
 						if (!i2 || i2 === len) {
 							if (decodeURIComponent(pathname.slice(10, i2 ? -1 : len)).toLowerCase() === 'oauth2') return { handler: get5, params: {}, meta: {}, path: '/callback/oauth2' }; // /callback/oauth2
 						}
-					}
+					} break;
 				}
 			}
 			return { handler: get7, params: { match: pathname.slice(1) }, meta: {}, path: '/:match*' }; // /$$match

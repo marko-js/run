@@ -9,19 +9,23 @@ export function createDirectory(content: string): TestFileTree {
 
   let match = matchLine.exec(content);
   let lineNo = 1;
+  let indent: number | undefined;
+
   while (match && match.index < content.length) {
-    const line = match[1].replace(/\t/, '  ').match(/^(\s*)([/]?)(.+)\s*/)
+    const line = match[1].replace(/\t/, '  ').match(/^(\s*)([/]?)([^\s/].*)\s*/)
     if (line) {
-      const depth = Math.ceil(line[1].length / 2) + 1; 
+      indent ??= line[1].length;
+
+      const depth = Math.ceil((line[1].length - indent) / 2) + 1; 
       const isDir = line[2] === '/';
       const name = line[3];
 
-      if (depth < stack.length) {
+      if (depth > stack.length || depth < 0) {
+        throw new Error(`Line ${lineNo} '${match[1]}': ${isDir ? 'dir' : 'file'} is at incorrect depth - expected ${stack.length} but found ${depth} -- ${stack.map(d => d[0]).join('/')}`);
+      } else if (depth < stack.length) {
         stack.length = depth;
         current = stack[depth - 1];
-      } else if (depth > stack.length) {
-        throw new Error(`Error at line ${lineNo}: ${isDir ? 'dir' : 'file'} is at incorrect depth - expected ${stack.length} but found ${depth} -- ${stack.map(d => d[0]).join('/')}`);
-      }
+      } 
 
       if (isDir) {
         const dir: TestFileTree = [name, []];

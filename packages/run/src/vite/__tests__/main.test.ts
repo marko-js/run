@@ -38,33 +38,40 @@ describe("router codegen", () => {
         "src/routes"
       );
 
-      let routesSnap = "";
+      let routesSnap = "# Routes\n\n";
 
       if (routes.middleware.length) {
-        routesSnap += `# Middleware\n`;
+        routesSnap += `## Middleware\n`;
         routesSnap += "```js\n";
         routesSnap += renderMiddleware(routes.middleware);
-        routesSnap += "```\n\n\n";
+        routesSnap += "```\n---\n\n";
       }
 
       let i = 0;
       for (const route of routes.list) {
+        if (i > 0) {
+          routesSnap += "---\n";
+        }
         if (route.handler) {
-          const meta = route.handler.name.split(".", 2)[1];
+          const match = route.handler.name.match(/\+handler(?:\.(.+))?\.[^.]+/);
+          const meta = match ? match[1] : "";
           const verbs = (meta.toLowerCase().split("_") as HttpVerb[]).filter(
             (v) => httpVerbs.includes(v)
           );
           route.handler.verbs = verbs.length ? verbs : (httpVerbs as any);
         }
-        if (i > 0) routesSnap += `\n\n`;
-        routesSnap += `# Route \`${route.path}\`\n`;
+        routesSnap += `## Route \`${route.key}\`\n`;
+        routesSnap += `### Paths\n`
+        for (const path of route.paths) {
+          routesSnap += `  - \`${path.path}\`\n`;
+        }
         if (route.page) {
-          routesSnap += "## Template\n";
+          routesSnap += "### Template\n";
           routesSnap += "```marko\n";
           routesSnap += renderRouteTemplate(route);
           routesSnap += "```\n";
         }
-        routesSnap += "## Handler\n";
+        routesSnap += "### Handler\n";
         routesSnap += "```js\n";
         routesSnap += renderRouteEntry(route);
         routesSnap += "```\n";
@@ -72,8 +79,8 @@ describe("router codegen", () => {
       }
 
       for (const route of Object.values(routes.special)) {
-        routesSnap += `\n\n# Special \`${route.key}\`\n`;
-        routesSnap += "## Template\n";
+        routesSnap += `\n\n## Special \`${route.key}\`\n`;
+        routesSnap += "### Template\n";
         routesSnap += "```marko\n";
         routesSnap += renderRouteTemplate(route);
         routesSnap += "```\n";

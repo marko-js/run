@@ -7,19 +7,26 @@ import {
   virtualRuntimePrefix,
 } from "../constants";
 import { createStringWriter } from "./writer";
-import { createRouteTrie } from "../routes/routeTrie";
 import type {
   Adapter,
   HttpVerb,
   Route,
   BuiltRoutes,
-  RouteTrie,
-  ParamInfo,
   RoutableFile,
   RouterOptions,
+  PathInfo,
 } from "../types";
 import type { Writer } from "./writer";
 import { getVerbs, hasVerb } from "../utils/route";
+
+interface RouteTrie {
+  key: string;
+  path?: PathInfo;
+  route?: Route;
+  catchAll?: { route: Route, path: PathInfo };
+  static?: Map<string, RouteTrie>;
+  dynamic?: RouteTrie;
+}
 
 export function renderRouteTemplate(route: Route): string {
   if (!route.page) {
@@ -27,9 +34,7 @@ export function renderRouteTemplate(route: Route): string {
   }
 
   const writer = createStringWriter();
-  writer.writeLines(
-    `// ${virtualFilePrefix}/${route.entryName}.marko`
-  );
+  writer.writeLines(`// ${virtualFilePrefix}/${route.entryName}.marko`);
   writer.branch("imports");
   writer.writeLines("");
   writeRouteTemplateTag(writer, [...route.layouts, route.page]);
@@ -72,9 +77,7 @@ export function renderRouteEntry(route: Route): string {
 
   const writer = createStringWriter();
 
-  writer.writeLines(
-    `// ${virtualFilePrefix}/${entryName}.js`
-  );
+  writer.writeLines(`// ${virtualFilePrefix}/${entryName}.js`);
 
   const imports = writer.branch("imports");
 
@@ -261,9 +264,9 @@ export function renderRouter(
     route.meta && names.push(`meta${route.index}`);
 
     imports.writeLines(
-      `import { ${names.join(
-        ", "
-      )} } from '${virtualFilePrefix}/${route.entryName}.js';`
+      `import { ${names.join(", ")} } from '${virtualFilePrefix}/${
+        route.entryName
+      }.js';`
     );
   }
   for (const { key, entryName } of Object.values(routes.special)) {
@@ -427,7 +430,9 @@ function writeRouterVerb(
     writer.writeLines(`const len = pathname.length;`);
     if (route) {
       writer.writeLines(
-        `if (len === 1) return ${renderMatch(verb, route)}; // ${route.path}`
+        `if (len === 1) return ${renderMatch(verb, route, trie.path!)}; // ${
+          trie.path!.path
+        }`
       );
     } else if (trie.static || dynamic) {
       writer.writeBlockStart(`if (len > 1) {`);
@@ -472,14 +477,14 @@ function writeRouterVerb(
           writer.writeBlockStart(`switch (${value}.toLowerCase()) {`);
         }
 
-        for (const { key, route } of terminal) {
+        for (const { key, path, route } of terminal) {
           if (useSwitch) {
             writer.write(`case '${key}': `, true);
           } else {
             writer.write(`if (${value}.toLowerCase() === '${key}') `, true);
           }
           writer.write(
-            `return ${renderMatch(verb, route!)}; // ${route!.path}\n`
+            `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`
           );
         }
 
@@ -490,9 +495,11 @@ function writeRouterVerb(
 
       if (dynamic?.route) {
         writer.writeLines(
-          `if (${value}) return ${renderMatch(verb, dynamic.route)}; // ${
-            dynamic.route.path
-          }`
+          `if (${value}) return ${renderMatch(
+            verb,
+            dynamic.route,
+            dynamic.path!
+          )}; // ${dynamic.path!.path}`
         );
       }
     }
@@ -533,7 +540,11 @@ function writeRouterVerb(
             typeof offset === "string" ? index : offset + child.key.length + 1;
           writeRouterVerb(writer, child, verb, next, nextOffset);
 
-          writer.writeBlockEnd("}");
+          if (useSwitch) {
+            writer.writeBlockEnd("} break;");
+          } else {
+            writer.writeBlockEnd("}");
+          }
         }
 
         if (useSwitch) {
@@ -555,8 +566,8 @@ function writeRouterVerb(
 
   if (catchAll) {
     writer.writeLines(
-      `return ${renderMatch(verb, catchAll, String(offset))}; // ${
-        catchAll.path
+      `return ${renderMatch(verb, catchAll.route, catchAll.path, String(offset))}; // ${
+        catchAll.path.path
       }`
     );
   } else if (level === 0) {
@@ -569,17 +580,16 @@ function wrapPropertyName(name: string) {
   return /^[^A-Za-z_$]|[^A-Za-z0-9$_]/.test(name) ? `'${name}'` : name;
 }
 
-function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
-  if (!params.length) {
-    return "{}";
-  }
-
+function renderParams(
+  params: Record<string, number | null>,
+  pathIndex?: string
+): string {
   let result = "";
   let catchAll = "";
   let sep = "{";
 
-  for (const { name, index } of params) {
-    if (index >= 0) {
+  for (const [name, index] of Object.entries(params)) {
+    if (typeof index === "number") {
       result += `${sep} ${wrapPropertyName(name)}: s${index + 1}`;
       sep = ",";
     } else if (pathIndex) {
@@ -596,14 +606,17 @@ function renderParamsInfo(params: ParamInfo[], pathIndex?: string): string {
   return result ? result + " }" : "{}";
 }
 
-function renderMatch(verb: HttpVerb, route: Route, pathIndex?: string) {
+function renderMatch(
+  verb: HttpVerb,
+  route: Route,
+  path: PathInfo,
+  pathIndex?: string
+) {
   const handler = `${verb}${route.index}`;
-  const params = route.params?.length
-    ? renderParamsInfo(route.params, pathIndex)
-    : "{}";
+  const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `meta${route.index}` : "{}";
-  const path = pathToURLPatternString(route.path);
-  return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${path}' }`;
+  const pathPattern = pathToURLPatternString(path.path);
+  return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${pathPattern}' }`;
 }
 
 export function renderMiddleware(middleware: RoutableFile[]): string {
@@ -667,6 +680,8 @@ export async function renderRouteTypeInfo(
     }
   }
 
+  headWriter.join();
+
   writer
     .writeBlockStart(`interface AppData extends Run.DefineApp<{`)
     .writeBlockStart("routes: {");
@@ -675,7 +690,6 @@ export async function renderRouteTypeInfo(
 
   writer.writeBlockEnd("}").writeBlockEnd(`}> {}`).writeBlockEnd(`}`);
 
-  headWriter.join();
   const moduleWriter = writer.branch("module");
 
   const middlewareRouteTypes = new Map<
@@ -686,34 +700,13 @@ export async function renderRouteTypeInfo(
   const layoutRouteTypes = new Map<RoutableFile, { routeTypes: string[] }>();
 
   for (const route of routes.list) {
-    const { meta, handler, middleware, page, layouts } = route;
-    const pathType = `${pathToURLPatternString(route.path)}`;
-    const routeType = `"${pathType}"`;
-    let verbType = "";
+    const { handler, middleware, page, layouts } = route;
+    let routeType = "";
 
-    if (page || handler) {
-      const verbs = [];
-      if (page || handler?.verbs?.includes("get")) {
-        verbs.push(`"get"`);
-      }
-      if (handler?.verbs?.includes("post")) {
-        verbs.push(`"post"`);
-      }
-      verbType = verbs.join(" | ");
-    }
-
-    if (meta) {
-      const path = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
-      let metaType = `typeof import("${path}")`;
-      if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
-        metaType += `["default"]`;
-      }
-      routesWriter
-        .writeBlockStart(`"${pathType}": {`)
-        .writeLines(`verb: ${verbType};`, `meta: ${metaType};`)
-        .writeBlockEnd("};");
-    } else {
-      routesWriter.writeLines(`"${pathType}": { verb: ${verbType} };`);
+    for (const path of route.paths) {
+      const pathType = `"${pathToURLPatternString(path.path)}"`;
+      routeType += routeType ? " | " + pathType : pathType;
+      routesWriter.writeLines(`${pathType}: Routes["${route.key}"]`);
     }
 
     if (handler) {
@@ -812,6 +805,37 @@ export async function renderRouteTypeInfo(
 
   moduleWriter.join();
 
+  writer.writeBlockStart(`\ntype Routes = {`);
+
+  for (const route of routes.list) {
+    const { meta, handler, page } = route;
+
+    if (page || handler) {
+      const verbs = [];
+      if (page || handler?.verbs?.includes("get")) {
+        verbs.push(`"get"`);
+      }
+      if (handler?.verbs?.includes("post")) {
+        verbs.push(`"post"`);
+      }
+
+      let routeType = `{ verb: ${verbs.join(" | ")};`;
+
+      if (meta) {
+        const metaPath = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
+        let metaType = `typeof import("${metaPath}")`;
+        if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
+          metaType += `["default"]`;
+        }
+        routeType += ` meta: ${metaType};`;
+      }
+
+      writer.writeLines(`"${route.key}": ${routeType} };`);
+    }
+  }
+
+  writer.writeBlockEnd("}");
+
   return writer.end();
 }
 
@@ -850,4 +874,44 @@ function pathToURLPatternString(path: string): string {
     name = decodeURIComponent(name);
     return catchAll ? `/:${name || "rest"}*` : `/:${name}`;
   });
+}
+
+function createRouteTrie(routes: Route[]): RouteTrie {
+  const root: RouteTrie = {
+    key: "",
+  };
+
+  function insert(path: PathInfo, route: Route) {
+    let node = root;
+    for (const segment of path.segments) {
+      if (segment === "$$") {
+        node.catchAll ??= { route, path };
+        return;
+      } else if (segment === "$") {
+        node = node.dynamic ??= {
+          key: "",
+        };
+      } else {
+        node.static ??= new Map();
+        let next = node.static.get(segment);
+        if (!next) {
+          next = {
+            key: segment,
+          };
+          node.static.set(segment, next);
+        }
+        node = next;
+      }
+    }
+    node.path ??= path;
+    node.route ??= route;
+  }
+
+  for (const route of routes) {
+    for (const path of route.paths) {
+      insert(path, route);
+    }
+  }
+
+  return root;
 }

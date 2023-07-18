@@ -1,25 +1,19 @@
 import { RoutableFileTypes, markoRunFilePrefix } from "../constants";
+import VDir from "./vdir";
 import type {
   BuiltRoutes,
   RoutableFile,
   Route,
-  ParamInfo,
   RoutableFileType,
   SpecialRoutes,
 } from "../types";
 import type { Walker } from "./walk";
-
-interface RouteDirectoryInfo {
-  originalPath: string;
-  path: string;
-  children: RouteDirectoryInfo[];
-  files: Map<RoutableFileType, RoutableFile[]>;
-}
+import { parseFlatRoute } from "./parse";
 
 const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
 const nonMarkoFiles = `(${RoutableFileTypes.Middleware}|${RoutableFileTypes.Handler}|${RoutableFileTypes.Meta})\\.(?:.*\\.)?(.+)`;
 const routeableFileRegex = new RegExp(
-  `^[+](?:${markoFiles}|${nonMarkoFiles})$`,
+  `[+](?:${markoFiles}|${nonMarkoFiles})$`,
   "i"
 );
 
@@ -32,19 +26,6 @@ export function matchRoutableFile(filename: string) {
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
 }
 
-export function scorePath(path: string, index: number): number {
-  const [pattern, splat] = path.split("/$$", 2);
-  const segments = pattern.split("/").filter(Boolean);
-  return (
-    segments.reduce(
-      (score, segment) => score + (segment.startsWith("$") ? 3 : 4),
-      segments.length + (splat === undefined ? 1 : 2)
-    ) *
-      10000 -
-    index
-  );
-}
-
 export function isSpecialType(
   type: RoutableFileType
 ): type is keyof SpecialRoutes {
@@ -55,210 +36,197 @@ export function isSpecialType(
 
 export async function buildRoutes(
   walk: Walker,
-  basePath?: string
+  basePath: string = ""
 ): Promise<BuiltRoutes> {
   if (basePath) {
     basePath = basePath.replace(/^\/+|\/+$/g, "");
   }
 
-  const dirStack: string[] = []; //basePath ? basePath.split("/") : [];
-  const pathStack: string[] = [];
-  const paramStack: ParamInfo[] = [];
-  const layoutsStack: RoutableFile[] = [];
-  const middlewareStack: RoutableFile[] = [];
-
-  const routes = new Map<string, Route>();
+  const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
+  const routes: Route[] = [];
   const special: SpecialRoutes = {};
-  const middleware = new Set<RoutableFile>();
 
-  let isRoot = true;
+  const middlewares = new Set<RoutableFile>();
+  const unusedFiles = new Set<RoutableFile>();
+
+  const currentLayouts = new Set<RoutableFile>();
+  const currentMiddleware = new Set<RoutableFile>();
+
+  const root = new VDir();
+  const dirStack: string[] = [];
+  let activeDirs: VDir[] = [root];
   let nextFileId = 1;
   let nextRouteIndex = 1;
-  let current: RouteDirectoryInfo | undefined;
-  let children: RouteDirectoryInfo[] = [];
 
   await walk({
-    onFile(entry) {
-      const type = matchRoutableFile(entry.name);
-      if (!type) {
+    onEnter({ name }) {
+      if (!name) return;
+
+      dirStack.push(name);
+      const previousDirs = activeDirs;
+
+      const paths = parseFlatRoute(name); // get paths for name
+      activeDirs = VDir.addPaths(previousDirs, paths);
+
+      return () => {
+        activeDirs = previousDirs;
+        dirStack.pop();
+      };
+    },
+    onFile({ name, path }) {
+      const match = name.match(routeableFileRegex);
+      if (!match) {
         return;
       }
-      if (!isRoot && isSpecialType(type)) {
+
+      const type = (match[1] || match[3]).toLowerCase() as RoutableFileType;
+
+      if (dirStack.length && isSpecialType(type)) {
         console.warn(
-          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${entry.path}`
+          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${path}`
         );
         return;
       }
 
-      if (!current) {
-        current = {
-          path: "/" + pathStack.join("/"),
-          originalPath: dirStack.join("/"),
-          children: [],
-          files: new Map(),
-        };
-        children.push(current);
+      let dirs = activeDirs;
+      if (match.index) {
+        const paths = parseFlatRoute(name.slice(0, match.index));
+        dirs = VDir.addPaths(activeDirs, paths);
       }
 
-      let entries = current.files.get(type);
-      if (!entries) {
-        current.files.set(type, (entries = []));
-      }
-
-      const relativePath = current.originalPath
-        ? `${current.originalPath}/${entry.name}`
-        : entry.name;
-
-      entries.push({
+      const dirPath = dirStack.join("/");
+      const relativePath = dirPath ? `${dirPath}/${name}` : name;
+      const file: RoutableFile = {
         id: String(nextFileId++),
+        name,
         type,
-        filePath: entry.path,
+        filePath: path,
         relativePath,
         importPath: `${basePath}/${relativePath}`,
-        name: entry.name,
         verbs: type === RoutableFileTypes.Page ? ["get"] : undefined,
-      });
+      };
+
+      for (const dir of dirs) {
+        dir.addFile(file);
+      }
     },
-    onDir(dir) {
-      if (!current) {
-        return;
+  });
+
+  traverse(root);
+
+  return {
+    list: routes,
+    middleware: [...middlewares],
+    special,
+  };
+
+  function traverse(dir: VDir) {
+    let middleware: RoutableFile | undefined;
+    let layout: RoutableFile | undefined;
+
+    if (dir.files) {
+      middleware = dir.files.get(RoutableFileTypes.Middleware);
+      layout = dir.files.get(RoutableFileTypes.Layout);
+      const handler = dir.files.get(RoutableFileTypes.Handler);
+      const page = dir.files.get(RoutableFileTypes.Page);
+      let hasSpecial = false;
+
+      if (middleware) {
+        if (currentMiddleware.has(middleware)) {
+          middleware = undefined;
+        } else {
+          currentMiddleware.add(middleware);
+          unusedFiles.add(middleware);
+        }
       }
-
-      const { path, files } = current;
-      const localMiddleware = files.get(RoutableFileTypes.Middleware)?.[0];
-      const localLayout = files.get(RoutableFileTypes.Layout)?.[0];
-      const handler = files.get(RoutableFileTypes.Handler)?.[0];
-      const page = files.get(RoutableFileTypes.Page)?.[0];
-
-      const middlewareStackLength = middlewareStack.length;
-      const layoutsStackLength = layoutsStack.length;
-
-      if (localMiddleware) {
-        middlewareStack.push(localMiddleware);
+      if (layout) {
+        if (currentLayouts.has(layout)) {
+          layout = undefined;
+        } else {
+          currentLayouts.add(layout);
+          unusedFiles.add(layout);
+        }
       }
-      if (localLayout) {
-        layoutsStack.push(localLayout);
-      }
+      if (page || handler) {
+        const path = dir.pathInfo;
 
-      if (handler || page) {
-        const key =
-          path
-            .replace(/(\$\$?)[^\/]*/g, "$1")
-            .replace(/^\/+/, "")
-            .replace(/[^a-z0-9_$\/]+/gi, "")
-            .replace(/\//g, "__") || "index";
+        if (uniqueRoutes.has(path.id)) {
+          const existing = uniqueRoutes.get(path.id)!;
+          const route = routes[existing.index];
 
-        if (routes.has(key)) {
-          const existing = routes.get(key)!;
-          const existingFiles = [existing.handler, existing.page]
+          const existingFiles = [route.handler, route.page]
             .filter(Boolean)
             .map((f) => f!.filePath);
           const currentFiles = [handler, page]
             .filter(Boolean)
             .map((f) => f!.filePath);
-          throw new Error(`Duplicate routes for path ${path} were defined. A route established by:
-  ${existingFiles}
-    collides with
-  ${currentFiles.join(" and ")}
-  `);
-        } else {
-          const index = nextRouteIndex++;
-          routes.set(key, {
-            index,
-            key,
-            path,
-            params: [...paramStack],
-            middleware: [...middlewareStack],
-            layouts: page ? [...layoutsStack] : [],
-            meta: files.get(RoutableFileTypes.Meta)?.[0],
-            page,
-            handler,
-            entryName: `${markoRunFilePrefix}route__${key}`,
-            score: scorePath(path, index),
-          });
-
-          for (const mw of middlewareStack) {
-            middleware.add(mw);
-          }
+          throw new Error(`Duplicate routes for path '${
+            path.path
+          }' were defined. A route established by:
+      ${existingFiles.join(" and ")} via '${existing.dir.path}'
+        collides with
+      ${currentFiles.join(" and ")} via '${dir.path}'
+      `);
         }
+
+        uniqueRoutes.set(path.id, { dir, index: routes.length });
+        routes.push({
+          index: nextRouteIndex++,
+          key: dir.fullPath,
+          paths: [path],
+          middleware: [...currentMiddleware],
+          layouts: page ? [...currentLayouts] : [],
+          meta: dir.files.get(RoutableFileTypes.Meta),
+          page,
+          handler,
+          entryName:
+            `${markoRunFilePrefix}route` +
+            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".") : ""),
+        });
       }
 
-      if (isRoot) {
-        for (const [type, entries] of files) {
+      if (dir === root) {
+        for (const [type, file] of dir.files) {
           if (isSpecialType(type)) {
+            hasSpecial = true;
             special[type] = {
               index: 0,
               key: type,
-              path,
+              paths: [],
               middleware: [],
-              layouts: [...layoutsStack],
-              page: entries[0],
-              entryName: `${markoRunFilePrefix}special__${type}`,
-              score: 0,
+              layouts: [...currentLayouts],
+              page: file,
+              entryName: `${markoRunFilePrefix}special.${type}`,
             };
           }
         }
-      } else if (dir.startsWith("$$")) {
-        // returing false prevents us from walking any deeper which is not necessary in $$ catch-all directories
-        return false;
       }
 
-      return () => {
-        middlewareStack.length = middlewareStackLength;
-        layoutsStack.length = layoutsStackLength;
-      };
-    },
-    onEnter({ name }) {
-      const pathStackLength = pathStack.length;
-      const paramStackLength = paramStack.length;
-      const prevChildren = children;
-      const prevCurrent = current;
-      const prevIsRoot = isRoot;
-
-      if (name.charCodeAt(0) === 95) {
-        // Is empty segment -- name starts with '_'
-      } else {
-        if (name.charCodeAt(0) === 36) {
-          // Is dynamic segment -- name starts with '$'
-          if (name.charCodeAt(1) === 36) {
-            // Is catch-all segment -- name starts with '$$'
-            if (name.length > 2) {
-              paramStack.push({
-                name: name.slice(2),
-                index: -1,
-              });
-            }
-          } else if (name.length > 1) {
-            paramStack.push({
-              name: name.slice(1),
-              index: pathStackLength,
-            });
-          }
+      if (handler || page) {
+        for (const middleware of currentMiddleware) {
+          middlewares.add(middleware);
+          unusedFiles.delete(middleware);
         }
-        pathStack.push(name);
-      }
-      dirStack.push(name);
-
-      isRoot = false;
-      if (current) {
-        children = current.children;
-        current = undefined;
       }
 
-      return () => {
-        dirStack.pop();
-        pathStack.length = pathStackLength;
-        paramStack.length = paramStackLength;
-        children = prevChildren;
-        current = prevCurrent;
-        isRoot = prevIsRoot;
-      };
-    },
-  });
+      if (page || hasSpecial) {
+        for (const layout of currentLayouts) {
+          unusedFiles.delete(layout);
+        }
+      }
+    }
 
-  return {
-    list: [...routes.values()],
-    special,
-    middleware: [...middleware],
-  };
+    if (dir.dirs) {
+      for (const child of dir.dirs()) {
+        traverse(child);
+      }
+    }
+
+    if (middleware) {
+      currentMiddleware.delete(middleware);
+    }
+    if (layout) {
+      currentLayouts.delete(layout);
+    }
+  }
 }
