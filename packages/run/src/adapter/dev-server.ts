@@ -1,7 +1,9 @@
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
-import type { RuntimeModule } from "../runtime";
-import type { NodeMiddleware } from "./middleware";
-import stripAnsi from 'strip-ansi';
+import type { Fetch, RuntimeModule } from "../runtime";
+import type { NodeMiddleware, NodePlatformInfo } from "./middleware";
+import stripAnsi from "strip-ansi";
+
+type Middleware = typeof import("./middleware");
 
 export const activeDevServers = new Set<ViteDevServer>();
 
@@ -33,36 +35,48 @@ export function createViteDevMiddleware<T>(
   };
 }
 
-export async function createViteDevServer(config?: InlineConfig): Promise<ViteDevServer> {
+export async function createViteDevServer(
+  config?: InlineConfig
+): Promise<ViteDevServer> {
   const devServer = await createServer({
     ...config,
     appType: "custom",
-    server: { ...config?.server, middlewareMode: true }
+    server: { ...config?.server, middlewareMode: true },
   });
 
   const originalClose = devServer.close;
   devServer.close = () => {
     activeDevServers.delete(devServer);
     return originalClose.call(devServer);
-  }
+  };
 
   activeDevServers.add(devServer);
   return devServer;
 }
 
-
-export async function createDevServer(config?: InlineConfig): Promise<ViteDevServer> {
+export async function createDevServer(
+  config?: InlineConfig
+): Promise<ViteDevServer> {
   const devServer = await createViteDevServer(config);
 
-  const { createMiddleware } = await devServer.ssrLoadModule(
+  const { createMiddleware } = (await devServer.ssrLoadModule(
     "@marko/run/adapter/middleware"
+  )) as Middleware;
+
+  let fetch: Fetch<NodePlatformInfo>;
+  const nodeMiddleware = createMiddleware(
+    (request, platform) => fetch(request, platform),
+    { devServer }
   );
 
   const middleware = createViteDevMiddleware(
     devServer,
     async () =>
       (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
-    (module) => createMiddleware(module.fetch, { devServer })
+    (module) => {
+      fetch = module.fetch;
+      return nodeMiddleware;
+    }
   );
   devServer.middlewares.use(middleware);
   return devServer;
