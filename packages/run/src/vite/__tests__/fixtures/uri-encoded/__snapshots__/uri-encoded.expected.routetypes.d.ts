@@ -16,9 +16,6 @@ declare module "@marko/run" {
 }
 
 declare module "./a%2Fb%2Fc/$%24id/+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/a%2Fb%2Fc/:$id"];

@@ -83,9 +83,6 @@ declare module "./$id,a.d+middleware.marko" {
 }
 
 declare module "./foo,$id,$$rest,+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
@@ -96,9 +93,6 @@ declare module "./foo,$id,$$rest,+page.marko" {
 }
 
 declare module "./foo,$id,$$rest,+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/foo"];
@@ -109,9 +103,6 @@ declare module "./foo,$id,$$rest,+page.marko" {
 }
 
 declare module "./foo,$id,$$rest,+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/:id"];
@@ -122,9 +113,6 @@ declare module "./foo,$id,$$rest,+page.marko" {
 }
 
 declare module "./foo,$id,$$rest,+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/:rest*"];

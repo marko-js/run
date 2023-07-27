@@ -722,10 +722,6 @@ export async function renderRouteTypeInfo(
         writer,
         `${pathPrefix}/${page.relativePath}`,
         `Run.Routes[${routeType}]`,
-        `
-  export interface Input {
-    renderBody: Marko.Body;
-  }`
       );
     }
 
@@ -786,8 +782,6 @@ export async function renderRouteTypeInfo(
       writer,
       `${pathPrefix}/${routes.special["404"].page.relativePath}`,
       "Run.Route",
-      `
-  export interface Input {}`
     );
   }
 

@@ -112,7 +112,7 @@ export function getSetCookie_fallback(headers: Headers) {
   let setCookie = undefined;
   let setCookies = undefined;
   do {
-    const valuePart = value.slice(index, sepIndex - 1)
+    const valuePart = value.slice(index, sepIndex - 1);
     if (!inExpiresDateRgs.test(valuePart)) {
       if (setCookies) {
         setCookies.push(valuePart);
@@ -128,7 +128,7 @@ export function getSetCookie_fallback(headers: Headers) {
   } while (sepIndex);
 
   if (index) {
-    const valuePart = value.slice(index)
+    const valuePart = value.slice(index);
     if (setCookies) {
       setCookies.push(valuePart);
       return setCookies;
@@ -137,6 +137,24 @@ export function getSetCookie_fallback(headers: Headers) {
   }
 
   return value;
+}
+
+interface HMRCallbackEntry {
+  id: string;
+  expires: number;
+  callback: (ws: WebSocket) => void;
+}
+
+const HRMClientIdCookieName = "hmr-client-id";
+function getHMRClientId(req: IncomingMessage) {
+  if (req.headers.cookie) {
+    const cookie = req.headers.cookie
+      .split(/;\s+/)
+      .find((c) => c.startsWith(HRMClientIdCookieName));
+    if (cookie) {
+      return cookie.slice(HRMClientIdCookieName.length + 1);
+    }
+  }
 }
 
 /**
@@ -152,6 +170,26 @@ export function createMiddleware(
     trustProxy = process.env.TRUST_PROXY === "1",
     devServer,
   } = options;
+
+  let hmrCallbacks: HMRCallbackEntry[] | undefined;
+  if (process.env.NODE_ENV !== "production" && devServer) {
+    hmrCallbacks = [];
+    devServer.ws.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+      if (hmrCallbacks?.length) {
+        const id = getHMRClientId(req);
+        const now = Date.now();
+        const nextHMRCallbacks: HMRCallbackEntry[] = [];
+        for (const entry of hmrCallbacks) {
+          if (entry.id === id) {
+            entry.callback(ws);
+          } else if (entry.expires > now) {
+            nextHMRCallbacks.push(entry);
+          }
+        }
+        hmrCallbacks = nextHMRCallbacks;
+      }
+    });
+  }
 
   return async (req, res, next) => {
     const controller = new AbortController();
@@ -170,35 +208,49 @@ export function createMiddleware(
     //   );
     // }
 
-    req.on("error", onError);
-    res.on("error", onError);
-    req.socket.on("error", onError);
+    req.on("error", onErrorOrClose);
+    req.socket.on("error", onErrorOrClose);
+    res.on("error", onErrorOrClose);
+    res.on("close", onErrorOrClose);
 
-    function onError(err: Error) {
-      req.off("error", onError);
-      res.off("error", onError);
-      req.socket.off("error", onError);
-      controller.abort(err);
+    function onErrorOrClose(err?: Error) {
+      req.off("error", onErrorOrClose);
+      req.socket.off("error", onErrorOrClose);
+      res.off("error", onErrorOrClose);
+      res.off("close", onErrorOrClose);
+      if (err) {
+        controller.abort(err);
+      }
     }
 
-    if (process.env.NODE_ENV !== "production" && devServer) {
-      devServer.ws.on("connection", function onConnection(ws: WebSocket) {
-        devServer!.ws.off("connection", onConnection);
-        if (signal.aborted) {
-          sendError();
-        } else {
-          signal.addEventListener("abort", sendError);
-        }
+    let hmrId!: string;
+    if (
+      process.env.NODE_ENV !== "production" &&
+      hmrCallbacks &&
+      req.headers.accept?.includes("text/html")
+    ) {
+      const expires = Date.now() + 1000;
+      hmrId = Math.floor(Math.random() * expires).toString(36);
+      hmrCallbacks.push({
+        id: hmrId,
+        expires,
+        callback(ws) {
+          if (signal.aborted) {
+            sendError();
+          } else {
+            signal.addEventListener("abort", sendError);
+          }
 
-        function sendError() {
-          const { message, stack = "" } = signal.reason;
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              err: { message, stack },
-            })
-          );
-        }
+          function sendError() {
+            const { message, stack = "" } = signal.reason;
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                err: { message, stack },
+              })
+            );
+          }
+        },
       });
     } else {
       signal.addEventListener("abort", () => {
@@ -231,6 +283,13 @@ export function createMiddleware(
         next();
       }
       return;
+    }
+
+    if (process.env.NODE_ENV !== "production" && hmrId) {
+      response.headers.append(
+        "set-cookie",
+        `${HRMClientIdCookieName}=${hmrId}; Path=/; Max-Age=100; HttpOnly`
+      );
     }
 
     res.statusCode = response.status;
