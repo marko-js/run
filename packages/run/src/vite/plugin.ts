@@ -299,6 +299,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               output: rollupOutputOptions,
             },
           },
+          resolve: isBuild
+            ? {
+                browserField: isSSRBuild ? false : undefined,
+                conditions: [
+                  isSSRBuild ? "node" : "browser",
+                  "import",
+                  "require",
+                  "production",
+                  "default",
+                ],
+              }
+            : undefined,
         };
 
         const adapterConfig = await adapter?.viteConfig?.(config);
