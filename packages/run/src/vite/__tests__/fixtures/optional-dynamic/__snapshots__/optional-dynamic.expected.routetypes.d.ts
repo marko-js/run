@@ -10,10 +10,10 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/:foo": Routes["/$foo"]
-			"/:foo/:bar": Routes["/$foo/$bar"]
-			"/:foo/:rest*": Routes["/$foo/$$rest"]
-			"/:rest*": Routes["/$$rest"]
+			"/:foo": Routes["/$foo"];
+			"/:foo/:bar": Routes["/$foo/$bar"];
+			"/:foo/:rest*": Routes["/$foo/$$rest"];
+			"/:rest*": Routes["/$$rest"];
 		}
 	}> {}
 }
@@ -21,37 +21,7 @@ declare module "@marko/run" {
 declare module "./$foo,/$bar,$$rest/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:foo"];
-    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
-    export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Route>;
-  }
-}
-
-declare module "./$foo,/$bar,$$rest/+page.marko" {
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:foo/:bar"];
-    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
-    export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Route>;
-  }
-}
-
-declare module "./$foo,/$bar,$$rest/+page.marko" {
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:foo/:rest*"];
-    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
-    export type Handler = Run.HandlerLike<Route>;
-    export const route: Run.HandlerTypeFn<Route>;
-  }
-}
-
-declare module "./$foo,/$bar,$$rest/+page.marko" {
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:rest*"];
+    export type Route = Run.Routes["/:foo" | "/:foo/:bar" | "/:foo/:rest*" | "/:rest*"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Route>;

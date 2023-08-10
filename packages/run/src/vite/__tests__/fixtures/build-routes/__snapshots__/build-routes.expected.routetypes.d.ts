@@ -10,13 +10,13 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/_protected/_home"]
-			"/new": Routes["/_protected/_home/new"]
-			"/notes/:id": Routes["/_protected/_home/notes/$id"]
-			"/notes/:id/comments": Routes["/_protected/_home/notes/$id/comments"]
-			"/callback/oauth2": Routes["/callback/oauth2"]
-			"/my": Routes["/my"]
-			"/:match*": Routes["/$$match"]
+			"/": Routes["/_protected/_home"];
+			"/new": Routes["/_protected/_home/new"];
+			"/notes/:id": Routes["/_protected/_home/notes/$id"];
+			"/notes/:id/comments": Routes["/_protected/_home/notes/$id/comments"];
+			"/callback/oauth2": Routes["/callback/oauth2"];
+			"/my": Routes["/my"];
+			"/:match*": Routes["/$$match"];
 		}
 	}> {}
 }

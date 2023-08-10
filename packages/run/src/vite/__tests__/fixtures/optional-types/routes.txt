@@ -1,0 +1,5 @@
+/aaa.$aId.(,bbb.$bId).(,ccc.$cId)
+  +page.marko
+  +handler.get.ts
++layout.marko
++middleware.ts

@@ -690,114 +690,99 @@ export async function renderRouteTypeInfo(
 
   writer.writeBlockEnd("}").writeBlockEnd(`}> {}`).writeBlockEnd(`}`);
 
-  const moduleWriter = writer.branch("module");
-
-  const middlewareRouteTypes = new Map<
-    RoutableFile,
-    { routeTypes: string[]; middleware: RoutableFile[] }
-  >();
-
-  const layoutRouteTypes = new Map<RoutableFile, { routeTypes: string[] }>();
+  const routeTypes = new Map<RoutableFile, string[]>();
 
   for (const route of routes.list) {
-    const { handler, middleware, page, layouts } = route;
     let routeType = "";
 
     for (const path of route.paths) {
       const pathType = `"${pathToURLPatternString(path.path)}"`;
       routeType += routeType ? " | " + pathType : pathType;
-      routesWriter.writeLines(`${pathType}: Routes["${route.key}"]`);
+      routesWriter.writeLines(`${pathType}: Routes["${route.key}"];`);
     }
 
-    if (handler) {
-      writeModuleDeclaration(
-        moduleWriter,
-        `${pathPrefix}/${handler.relativePath}`,
-        `Run.Routes[${routeType}]`
-      );
-    }
-
-    if (page) {
-      writeModuleDeclaration(
-        writer,
-        `${pathPrefix}/${page.relativePath}`,
-        `Run.Routes[${routeType}]`,
-      );
-    }
-
-    if (middleware) {
-      let i = 0;
-      for (const mw of middleware) {
-        const existing = middlewareRouteTypes.get(mw);
+    for (const file of [route.handler, route.page]) {
+      if (file) {
+        const existing = routeTypes.get(file);
         if (!existing) {
-          middlewareRouteTypes.set(mw, {
-            routeTypes: [routeType],
-            middleware: middleware.slice(0, i),
-          });
+          routeTypes.set(file, [routeType]);
         } else {
-          existing.routeTypes.push(routeType);
-        }
-        i++;
-      }
-    }
-
-    if (layouts) {
-      for (const layout of layouts) {
-        const existing = layoutRouteTypes.get(layout);
-        if (!existing) {
-          layoutRouteTypes.set(layout, {
-            routeTypes: [routeType],
-          });
-        } else {
-          existing.routeTypes.push(routeType);
+          existing.push(routeType);
         }
       }
     }
+
+    for (const files of [route.middleware, route.layouts]) {
+      if (files) {
+        for (const file of files) {
+          const existing = routeTypes.get(file);
+          if (!existing) {
+            routeTypes.set(file, [routeType]);
+          } else {
+            existing.push(routeType);
+          }
+        }
+      }
+    }
+  }
+
+  for (const special of Object.values(routes.special)) {
+    routeTypes.set(special.page, []);
   }
 
   routesWriter.join();
 
-  for (const [file, { routeTypes }] of middlewareRouteTypes) {
-    writeModuleDeclaration(
-      moduleWriter,
-      `${pathPrefix}/${file.relativePath}`,
-      `Run.Routes[${routeTypes.join(" | ")}]`
-    );
-  }
+  const handlerWriter = writer.branch("handler");
+  const middlewareWriter = writer.branch("middleware");
+  const pageWriter = writer.branch("page");
+  const layoutWriter = writer.branch("layout");
 
-  for (const [file, { routeTypes }] of layoutRouteTypes) {
-    writeModuleDeclaration(
-      writer,
-      `${pathPrefix}/${file.relativePath}`,
-      `Run.Routes[${routeTypes.join(" | ")}]`,
-      `
+  for (const [file, types] of routeTypes) {
+    const path = `${pathPrefix}/${file.relativePath}`;
+    const routeType = `Run.Routes[${types.join(" | ")}]`;
+
+    switch (file.type) {
+      case RoutableFileTypes.Handler:
+        writeModuleDeclaration(handlerWriter, path, routeType);
+        break;
+      case RoutableFileTypes.Middleware:
+        writeModuleDeclaration(middlewareWriter, path, routeType);
+        break;
+      case RoutableFileTypes.Page:
+        writeModuleDeclaration(pageWriter, path, routeType);
+        break;
+      case RoutableFileTypes.Layout:
+        writeModuleDeclaration(
+          layoutWriter,
+          path,
+          routeType,
+          `
   export interface Input {
     renderBody: Marko.Body;
   }`
-    );
-  }
-
-  if (routes.special["404"]?.page) {
-    writeModuleDeclaration(
-      writer,
-      `${pathPrefix}/${routes.special["404"].page.relativePath}`,
-      "Run.Route",
-    );
-  }
-
-  if (routes.special["500"]?.page) {
-    writeModuleDeclaration(
-      writer,
-      `${pathPrefix}/${routes.special["500"].page.relativePath}`,
-      "globalThis.MarkoRun.Route",
-      `
+        );
+        break;
+      case RoutableFileTypes.Error:
+        writeModuleDeclaration(
+          writer,
+          path,
+          "globalThis.MarkoRun.Route",
+          `
   export interface Input {
     error: unknown;
   }`
-    );
+        );
+        break;
+      case RoutableFileTypes.NotFound:
+        writeModuleDeclaration(writer, path, "Run.Route");
+        break;
+    }
   }
 
-  moduleWriter.join();
+  handlerWriter.join();
+  middlewareWriter.join();
+  pageWriter.join();
+  layoutWriter.join();
 
   writer.writeBlockStart(`\ntype Routes = {`);
 
