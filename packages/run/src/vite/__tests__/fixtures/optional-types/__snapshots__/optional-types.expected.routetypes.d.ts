@@ -10,10 +10,10 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/aaa/:aId": Routes["/aaa/$aId"]
-			"/aaa/:aId/bbb/:bId": Routes["/aaa/$aId/bbb/$bId"]
-			"/aaa/:aId/bbb/:bId/ccc/:cId": Routes["/aaa/$aId/bbb/$bId/ccc/$cId"]
-			"/aaa/:aId/ccc/:cId": Routes["/aaa/$aId/ccc/$cId"]
+			"/aaa/:aId": Routes["/aaa/$aId"];
+			"/aaa/:aId/bbb/:bId": Routes["/aaa/$aId/bbb/$bId"];
+			"/aaa/:aId/bbb/:bId/ccc/:cId": Routes["/aaa/$aId/bbb/$bId/ccc/$cId"];
+			"/aaa/:aId/ccc/:cId": Routes["/aaa/$aId/ccc/$cId"];
 		}
 	}> {}
 }

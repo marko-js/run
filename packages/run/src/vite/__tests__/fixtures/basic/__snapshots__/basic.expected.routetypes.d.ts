@@ -10,7 +10,7 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"]
+			"/": Routes["/"];
 		}
 	}> {}
 }

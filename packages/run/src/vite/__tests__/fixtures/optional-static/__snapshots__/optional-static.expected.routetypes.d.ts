@@ -10,14 +10,14 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"]
-			"/foo": Routes["/foo"]
-			"/foo/bar": Routes["/foo/bar"]
-			"/foo/bar/baz": Routes["/foo/bar/baz"]
-			"/foo/baz": Routes["/foo/baz"]
-			"/bar": Routes["/bar"]
-			"/bar/baz": Routes["/bar/baz"]
-			"/baz": Routes["/baz"]
+			"/": Routes["/"];
+			"/foo": Routes["/foo"];
+			"/foo/bar": Routes["/foo/bar"];
+			"/foo/bar/baz": Routes["/foo/bar/baz"];
+			"/foo/baz": Routes["/foo/baz"];
+			"/bar": Routes["/bar"];
+			"/bar/baz": Routes["/bar/baz"];
+			"/baz": Routes["/baz"];
 		}
 	}> {}
 }

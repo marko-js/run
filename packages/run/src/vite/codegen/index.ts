@@ -698,7 +698,7 @@ export async function renderRouteTypeInfo(
     for (const path of route.paths) {
       const pathType = `"${pathToURLPatternString(path.path)}"`;
       routeType += routeType ? " | " + pathType : pathType;
-      routesWriter.writeLines(`${pathType}: Routes["${route.key}"]`);
+      routesWriter.writeLines(`${pathType}: Routes["${route.key}"];`);
     }
 
     for (const file of [route.handler, route.page]) {
