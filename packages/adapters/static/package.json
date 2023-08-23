@@ -40,7 +40,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@marko/run": "^0.1.12"
+    "@marko/run": "^0"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",

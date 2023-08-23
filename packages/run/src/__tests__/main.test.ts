@@ -153,8 +153,7 @@ async function testPage(
   server: SpawnedServer
 ) {
   try {
-    const url = new URL(`http://localhost:${server.port}`);
-    url.pathname = path;
+    const url = new URL(path, `http://localhost:${server.port}`);
 
     await waitForServer(server.port);
     await waitForPendingRequests(page, async () => {
