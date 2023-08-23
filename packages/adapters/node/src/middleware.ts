@@ -46,7 +46,10 @@ const invoke = createMiddleware((request, platform) => {
 });
 
 const match: NodeMiddleware = (req, _res, next) => {
-  const match = globalThis.__marko_run__.match(req.method!, req.url!);
+  const { url, method } = req as { url: string; method: string };
+  const queryIndex = url.indexOf('?');
+  const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex);
+  const match = globalThis.__marko_run__.match(method, pathname);
   if (match) {
     (req as MatchedRequest).route = {
       invoke,
