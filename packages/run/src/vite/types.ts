@@ -12,6 +12,8 @@ export type { RoutableFileType, HttpVerb };
 export type StartServer = (port?: number) => Promise<void>;
 
 export interface AdapterConfig {
+  root: string;
+  isBuild: boolean;
   [name: PropertyKey]: any;
 }
 

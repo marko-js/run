@@ -1,7 +1,7 @@
 import zlib from 'node:zlib';
 import Table, { HorizontalAlignment } from "cli-table3";
 import kleur from "kleur";
-import type { OutputBundle, OutputChunk, OutputAsset } from "rollup";
+import type { OutputBundle, OutputChunk, OutputAsset, NormalizedOutputOptions } from "rollup";
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
 import format from 'human-format';
@@ -22,7 +22,11 @@ const HttpVerbOrder = {
   delete: 3,
 };
 
-export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
+export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle, options: NormalizedOutputOptions) {
+  function getRouteChunkName(route: Route) {
+    return options.sanitizeFileName(`${route.entryName}.marko`);
+  }
+
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
 
@@ -63,7 +67,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
         }
         if (verb === "get" && route.page) {
           entryType.push(kleur.yellow("page"));
-          size = prettySize(computeRouteSize(route, bundle));
+          size = prettySize(computeRouteSize(getRouteChunkName(route), bundle));
         }
 
         const row: any[] = [kleur.bold(HttpVerbColors[verb](verb.toUpperCase()))];
@@ -83,12 +87,12 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     }
   }
 
-  for (const [key, route] of Object.entries(routes.special).sort()) {
+  for (const [key, route] of Object.entries(routes.special).sort() as [string, Route][]) {
     const row = [kleur.bold(kleur.white("*")), key, kleur.yellow("page")];
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    row.push(prettySize(computeRouteSize(route, bundle)));
+    row.push(prettySize(computeRouteSize(getRouteChunkName(route), bundle)));
 
     table.push(row);
   }
@@ -96,13 +100,10 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
   console.log(table.toString());
 }
 
-function computeRouteSize(route: Route, bundle: OutputBundle): [number, number] {
-  if (route.page) {
-    const entryName = `${route.entryName}.marko`;
-    for (const chunk of Object.values(bundle)) {
-      if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
-        return computeChunkSize(chunk, bundle);
-      }
+function computeRouteSize(entryName: string, bundle: OutputBundle): [number, number] {
+  for (const chunk of Object.values(bundle)) {
+    if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
+      return computeChunkSize(chunk, bundle);
     }
   }
 
@@ -157,7 +158,7 @@ function prettySize([bytes, compBytes]: [number, number]): string {
   // yellow for 20-50kb
   else if (compBytes < 50 * 1000) str +=  kleur.yellow(compSize);
   // red for >= 50kb
-  else kleur.bold(kleur.red(compSize));
+  else str += kleur.bold(kleur.red(compSize));
   return str
 }
 
