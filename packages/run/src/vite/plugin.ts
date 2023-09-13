@@ -205,6 +205,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           adapter.configure?.({
             ...getExternalAdapterOptions(config),
             root,
+            isBuild,
           });
           const adapterOptions = await adapter.pluginOptions?.(opts);
           if (adapterOptions) {
@@ -313,9 +314,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             : undefined,
         };
 
-        const adapterConfig = await adapter?.viteConfig?.(config);
-        if (adapterConfig) {
-          pluginConfig = mergeConfig(pluginConfig, adapterConfig);
+        if (adapter?.viteConfig) {
+          const adapterConfig = await adapter.viteConfig(config);
+          if (adapterConfig) {
+            pluginConfig = mergeConfig(pluginConfig, adapterConfig);
+          }
         }
 
         return setExternalPluginOptions(pluginConfig, opts);
@@ -479,7 +482,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else if (isBuild) {
-          logRoutesTable(routes, bundle);
+          logRoutesTable(routes, bundle, options);
         }
       },
       async closeBundle() {
