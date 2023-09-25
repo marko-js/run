@@ -113,8 +113,9 @@ export async function build(
   outDir?: string,
   envFile?: string
 ) {
+  const root = cwd;
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: "silent" },
+    { root, configFile, logLevel: "silent" },
     "build"
   );
   const adapter = await resolveAdapter(resolvedConfig);
@@ -138,7 +139,7 @@ export async function build(
   }
 
   let buildConfig = {
-    root: cwd,
+    root,
     configFile,
     build: {
       ssr: false,
@@ -151,6 +152,8 @@ export async function build(
   });
 
   buildConfig = setExternalAdapterOptions(buildConfig, {
+    root,
+    isBuild: true,
     envFile,
   });
 
