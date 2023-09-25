@@ -168,7 +168,11 @@ export async function isPortInUse(port: number): Promise<boolean> {
   return Boolean(await getConnection(port));
 }
 
-export async function getAvailablePort(): Promise<number> {
+export async function getAvailablePort(port?: number): Promise<number> {
+  if (port && !(await isPortInUse(port))) {
+    return port;
+  }
+
   return new Promise((resolve) => {
     const server = net.createServer().listen(0, () => {
       const { port } = server.address() as net.AddressInfo;

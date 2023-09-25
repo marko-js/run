@@ -11,11 +11,11 @@ import {
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
-import type { SpawnedServer } from "../vite/utils/server";
+import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
 import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultPort = +process.env.PORT! || 3000;
+const defaultPort = Number(process.env.PORT || 3000);
 
 export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
@@ -34,11 +34,10 @@ export async function preview(
     "serve"
   );
 
-  if (port === undefined) {
-    port = resolvedConfig.preview.port ?? defaultPort;
-  }
-
-  const adapter = await resolveAdapter(resolvedConfig);
+  const [availablePort, adapter] = await Promise.all([
+    getAvailablePort(port ?? resolvedConfig.preview.port ?? resolvedConfig.server.port ?? defaultPort),
+    resolveAdapter(resolvedConfig)
+  ]);
 
   if (!adapter) {
     throw new Error("No adapter specified for 'serve' command");
@@ -58,7 +57,7 @@ export async function preview(
     cwd,
     dir,
     args,
-    port,
+    port: availablePort,
     envFile,
   };
 
@@ -78,14 +77,15 @@ export async function dev(
     "build"
   );
 
-  if (port === undefined) {
-    port = resolvedConfig.preview.port ?? defaultPort;
-  }
   if (envFile) {
     envFile = path.resolve(cwd, envFile);
   }
 
-  const adapter = await resolveAdapter(resolvedConfig);
+  const [availablePort, adapter] = await Promise.all([
+    getAvailablePort(port ?? resolvedConfig.server.port ?? resolvedConfig.preview.port ?? defaultPort),
+    resolveAdapter(resolvedConfig)
+  ]);
+
   if (!adapter) {
     throw new Error(
       "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
@@ -99,7 +99,7 @@ export async function dev(
   const options = {
     cwd,
     args,
-    port,
+    port: availablePort,
     envFile,
   };
 
