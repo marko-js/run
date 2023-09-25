@@ -3,7 +3,7 @@
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { build as viteBuild, resolveConfig, type ResolvedConfig } from "vite";
+import { build as viteBuild, resolveConfig, type ResolvedConfig, InlineConfig } from "vite";
 import {
   getExternalPluginOptions,
   setExternalAdapterOptions,
@@ -11,11 +11,11 @@ import {
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
-import type { SpawnedServer } from "../vite/utils/server";
-import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
+import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
+import { default as plugin, resolveAdapter as pluginResolveAdapter, isPluginIncluded } from "../vite/plugin";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultPort = +process.env.PORT! || 3000;
+const defaultPort = Number(process.env.PORT || 3000);
 
 export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
@@ -34,11 +34,10 @@ export async function preview(
     "serve"
   );
 
-  if (port === undefined) {
-    port = resolvedConfig.preview.port ?? defaultPort;
-  }
-
-  const adapter = await resolveAdapter(resolvedConfig);
+  const [availablePort, adapter] = await Promise.all([
+    getAvailablePort(port ?? resolvedConfig.preview.port ?? resolvedConfig.server.port ?? defaultPort),
+    resolveAdapter(resolvedConfig)
+  ]);
 
   if (!adapter) {
     throw new Error("No adapter specified for 'serve' command");
@@ -58,7 +57,7 @@ export async function preview(
     cwd,
     dir,
     args,
-    port,
+    port: availablePort,
     envFile,
   };
 
@@ -78,14 +77,15 @@ export async function dev(
     "build"
   );
 
-  if (port === undefined) {
-    port = resolvedConfig.preview.port ?? defaultPort;
-  }
   if (envFile) {
     envFile = path.resolve(cwd, envFile);
   }
 
-  const adapter = await resolveAdapter(resolvedConfig);
+  const [availablePort, adapter] = await Promise.all([
+    getAvailablePort(port ?? resolvedConfig.server.port ?? resolvedConfig.preview.port ?? defaultPort),
+    resolveAdapter(resolvedConfig)
+  ]);
+
   if (!adapter) {
     throw new Error(
       "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
@@ -96,14 +96,20 @@ export async function dev(
     );
   }
 
+  const config = {
+    root: cwd,
+    configFile,
+    plugins: isPluginIncluded(resolvedConfig) ? undefined : [plugin()],
+  }
+
   const options = {
     cwd,
     args,
-    port,
+    port: availablePort,
     envFile,
   };
 
-  return await adapter.startDev(entry, { root: cwd, configFile }, options);
+  return await adapter.startDev(entry, config, options);
 }
 
 export async function build(
@@ -113,8 +119,9 @@ export async function build(
   outDir?: string,
   envFile?: string
 ) {
+  const root = cwd;
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: "silent" },
+    { root, configFile, logLevel: "silent" },
     "build"
   );
   const adapter = await resolveAdapter(resolvedConfig);
@@ -137,8 +144,8 @@ export async function build(
     envFile = path.resolve(cwd, envFile);
   }
 
-  let buildConfig = {
-    root: cwd,
+  let buildConfig: InlineConfig = {
+    root,
     configFile,
     build: {
       ssr: false,
@@ -151,12 +158,17 @@ export async function build(
   });
 
   buildConfig = setExternalAdapterOptions(buildConfig, {
+    root,
+    isBuild: true,
     envFile,
   });
+
+  const hasPlugin = isPluginIncluded(resolvedConfig);
 
   // build SSR
   await viteBuild({
     ...buildConfig,
+    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       target: "esnext",
       ...buildConfig.build,
@@ -172,6 +184,7 @@ export async function build(
   // build client
   await viteBuild({
     ...buildConfig,
+    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       ...buildConfig.build,
       sourcemap: true,
@@ -218,8 +231,5 @@ export async function getViteConfig(
 
 async function resolveAdapter(config: ResolvedConfig): Promise<Adapter | null> {
   const options = getExternalPluginOptions(config);
-  if (!options) {
-    throw new Error("Unable to resolve @marko/run options");
-  }
   return pluginResolveAdapter(config.root, options);
 }
