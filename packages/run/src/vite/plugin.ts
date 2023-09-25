@@ -47,6 +47,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const PLUGIN_NAME_PREFIX = "marko-run-vite";
 const POSIX_SEP = "/";
 const WINDOWS_SEP = "\\";
 
@@ -184,7 +185,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
   return [
     {
-      name: "marko-run-vite:pre",
+      name: `${PLUGIN_NAME_PREFIX}:pre`,
       enforce: "pre",
       async config(config, env) {
         const externalPluginOptions = getExternalPluginOptions(config);
@@ -443,7 +444,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     },
     ...markoVitePlugin(markoVitePluginOptions),
     {
-      name: "marko-run-vite:post",
+      name: `${PLUGIN_NAME_PREFIX}:post`,
       enforce: "post",
       generateBundle(options, bundle) {
         if (options.sourcemap && options.sourcemap !== "inline") {
@@ -586,12 +587,11 @@ export async function getPackageData(dir: string): Promise<PackageData | null> {
 
 export async function resolveAdapter(
   root: string,
-  options: Options,
+  options?: Options,
   log?: boolean
 ): Promise<Adapter | null> {
-  const { adapter } = options;
-  if (adapter !== undefined) {
-    return adapter;
+  if (options && options.adapter !== undefined) {
+    return options.adapter;
   }
   const pkg = await getPackageData(root);
   if (pkg) {
@@ -629,4 +629,10 @@ const markoEntryFileRegex = /__marko-run__([^.]+)\.(.+)\.marko\.([^.]+)$/;
 function getEntryFileName(file: string | undefined | null) {
   const match = file && markoEntryFileRegex.exec(file);
   return match ? match[2] : undefined;
+}
+
+export function isPluginIncluded(config: ResolvedConfig) {
+  return config.plugins.some(plugin => {
+    return plugin.name.startsWith(PLUGIN_NAME_PREFIX)
+  })
 }

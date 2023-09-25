@@ -7,7 +7,6 @@ import * as playwright from "playwright";
 import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import type { Options } from "../vite";
 import {
-  getAvailablePort,
   SpawnedServer,
   waitForServer,
 } from "../vite/utils/server";
@@ -126,8 +125,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     if (!config.skip_dev) {
       it("dev", async () => {
         const configFile = await cli.getViteConfig(dir);
-        const port = await getAvailablePort();
-        const server = await cli.dev(config.entry, dir, configFile, port);
+        //const port = await getAvailablePort();
+        const server = await cli.dev(config.entry, dir, configFile);
         await testPage(dir, path, steps, server);
       });
     }
@@ -137,9 +136,9 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
         process.env.BROWSER = "none";
 
         const configFile = await cli.getViteConfig(dir);
-        const port = await getAvailablePort();
+        //const port = await getAvailablePort();
         await cli.build(config.entry, dir, configFile);
-        const server = await cli.preview(undefined, dir, configFile, port);
+        const server = await cli.preview(undefined, dir, configFile);
         await testPage(dir, path, steps, server);
       });
     }

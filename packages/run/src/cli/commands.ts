@@ -3,7 +3,7 @@
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { build as viteBuild, resolveConfig, type ResolvedConfig } from "vite";
+import { build as viteBuild, resolveConfig, type ResolvedConfig, InlineConfig } from "vite";
 import {
   getExternalPluginOptions,
   setExternalAdapterOptions,
@@ -12,7 +12,7 @@ import {
 import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
 import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
-import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
+import { default as plugin, resolveAdapter as pluginResolveAdapter, isPluginIncluded } from "../vite/plugin";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultPort = Number(process.env.PORT || 3000);
@@ -96,6 +96,12 @@ export async function dev(
     );
   }
 
+  const config = {
+    root: cwd,
+    configFile,
+    plugins: isPluginIncluded(resolvedConfig) ? undefined : [plugin()],
+  }
+
   const options = {
     cwd,
     args,
@@ -103,7 +109,7 @@ export async function dev(
     envFile,
   };
 
-  return await adapter.startDev(entry, { root: cwd, configFile }, options);
+  return await adapter.startDev(entry, config, options);
 }
 
 export async function build(
@@ -138,7 +144,7 @@ export async function build(
     envFile = path.resolve(cwd, envFile);
   }
 
-  let buildConfig = {
+  let buildConfig: InlineConfig = {
     root,
     configFile,
     build: {
@@ -157,9 +163,12 @@ export async function build(
     envFile,
   });
 
+  const hasPlugin = isPluginIncluded(resolvedConfig);
+
   // build SSR
   await viteBuild({
     ...buildConfig,
+    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       target: "esnext",
       ...buildConfig.build,
@@ -175,6 +184,7 @@ export async function build(
   // build client
   await viteBuild({
     ...buildConfig,
+    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       ...buildConfig.build,
       sourcemap: true,
@@ -221,8 +231,5 @@ export async function getViteConfig(
 
 async function resolveAdapter(config: ResolvedConfig): Promise<Adapter | null> {
   const options = getExternalPluginOptions(config);
-  if (!options) {
-    throw new Error("Unable to resolve @marko/run options");
-  }
   return pluginResolveAdapter(config.root, options);
 }
