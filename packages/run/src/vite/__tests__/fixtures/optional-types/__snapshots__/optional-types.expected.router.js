@@ -1,5 +1,5 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
+import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route.aaa.$aId.js';
 import { get2 } from 'virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.js';
 import { get3 } from 'virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.js';
@@ -72,22 +72,15 @@ export function match(method, pathname) {
 }
 
 export async function invoke(route, request, platform, url) {
-  const [context, buildInput] = createContext(route, request, platform, url);
-	try {
-		if (route) {
-      try {
-				const response = await route.handler(context, buildInput);
-				if (response) return response;
-			} catch (error) {
-				if (error === NotHandled) {
-					return;
-				} else if (error !== NotMatched) {
-					throw error;
-				}
-			}
+	const [context, buildInput] = createContext(route, request, platform, url);
+	if (route) {
+		try {
+			const response = await route.handler(context, buildInput);
+			if (response) return response;
+		} catch (error) {
+			if (error === NotHandled) return;
+			if (error !== NotMatched) throw error;
 		}
-	} catch (error) {
-		throw error;
 	}
 }
 

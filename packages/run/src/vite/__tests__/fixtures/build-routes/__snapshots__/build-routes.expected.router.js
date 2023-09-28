@@ -1,5 +1,5 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';
+import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route._protected._home.js';
 import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route._protected._home.new.js';
 import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.js';
@@ -136,21 +136,18 @@ export function match(method, pathname) {
 }
 
 export async function invoke(route, request, platform, url) {
-  const [context, buildInput] = createContext(route, request, platform, url);
+	const [context, buildInput] = createContext(route, request, platform, url);
 	try {
 		if (route) {
-      try {
+			try {
 				const response = await route.handler(context, buildInput);
 				if (response) return response;
 			} catch (error) {
-				if (error === NotHandled) {
-					return;
-				} else if (error !== NotMatched) {
-					throw error;
-				}
+				if (error === NotHandled) return;
+				if (error !== NotMatched) throw error;
 			}
-    } else {
-    }
+		}
+    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return new Response(page404.stream(buildInput()), page404ResponseInit);
     }

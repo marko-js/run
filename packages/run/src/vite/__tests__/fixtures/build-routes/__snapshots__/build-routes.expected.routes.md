@@ -3,7 +3,7 @@
 ## Middleware
 ```js
 // virtual:marko-run/__marko-run__middleware.js
-import { normalize } from 'virtual:marko-run/internal';
+import { normalize } from 'virtual:marko-run/runtime/internal';
 import middleware4 from './src/routes/+middleware.ts';
 import middleware5 from './src/routes/_protected/+middleware.ts';
 import middleware7 from './src/routes/_protected/_home/+middleware.ts';
@@ -28,14 +28,14 @@ import page from './src/routes/_protected/_home/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
-		<page ...input />
+		<page ...input/>
 	</>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.js
-import { call, pageResponse } from 'virtual:marko-run/internal';
+import { call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import page from 'virtual:marko-run/__marko-run__route._protected._home.marko?marko-server-entry';
 
@@ -59,14 +59,14 @@ import page from './src/routes/_protected/_home/new/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
-		<page ...input />
+		<page ...input/>
 	</>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.new.js
-import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { POST } from './src/routes/_protected/_home/new/+handler.post.ts';
 import page from 'virtual:marko-run/__marko-run__route._protected._home.new.marko?marko-server-entry';
@@ -101,14 +101,14 @@ import page from './src/routes/_protected/_home/notes/$id/+page.marko';
 
 <layout1 ...input>
 	<layout2 ...input>
-		<page ...input />
+		<page ...input/>
 	</>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.notes.$id.js
-import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7, mware13 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { PUT, POST, DELETE } from './src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts';
 import page from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.marko?marko-server-entry';
@@ -156,7 +156,7 @@ export async function delete3(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.notes.$id.comments.js
-import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { normalize, call, noContent } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7, mware13 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { PUT, POST, DELETE } from './src/routes/_protected/_home/notes/$id/comments/+handler.put_post_delete.ts';
 export { default as meta4 } from './src/routes/_protected/_home/notes/$id/comments/+meta.ts';
@@ -196,7 +196,7 @@ export async function delete4(context) {
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.callback.oauth2.js
-import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { normalize, call, noContent } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/callback/oauth2/+handler.get.ts';
 
@@ -218,13 +218,13 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/my/+page.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.my.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/my/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route.my.marko?marko-server-entry';
@@ -244,7 +244,7 @@ export async function get6(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.$$match.js
-import { normalize, call, noContent } from 'virtual:marko-run/internal';
+import { normalize, call, noContent } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/$$match/+handler.get.ts';
 
@@ -265,7 +265,7 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+404.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 
@@ -278,6 +278,6 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/+500.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```

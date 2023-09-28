@@ -8,12 +8,12 @@
 // virtual:marko-run/__marko-run__route.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.marko?marko-server-entry';
 
 export async function get1(context, buildInput) {
@@ -29,12 +29,12 @@ export async function get1(context, buildInput) {
 // virtual:marko-run/__marko-run__route.foo.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.foo.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.foo.marko?marko-server-entry';
 
 export async function get2(context, buildInput) {
@@ -50,12 +50,12 @@ export async function get2(context, buildInput) {
 // virtual:marko-run/__marko-run__route.foo.bar.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.foo.bar.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.foo.bar.marko?marko-server-entry';
 
 export async function get3(context, buildInput) {
@@ -71,12 +71,12 @@ export async function get3(context, buildInput) {
 // virtual:marko-run/__marko-run__route.foo.bar.baz.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.foo.bar.baz.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.foo.bar.baz.marko?marko-server-entry';
 
 export async function get4(context, buildInput) {
@@ -92,12 +92,12 @@ export async function get4(context, buildInput) {
 // virtual:marko-run/__marko-run__route.foo.baz.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.foo.baz.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.foo.baz.marko?marko-server-entry';
 
 export async function get5(context, buildInput) {
@@ -113,12 +113,12 @@ export async function get5(context, buildInput) {
 // virtual:marko-run/__marko-run__route.bar.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.bar.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.bar.marko?marko-server-entry';
 
 export async function get6(context, buildInput) {
@@ -134,12 +134,12 @@ export async function get6(context, buildInput) {
 // virtual:marko-run/__marko-run__route.bar.baz.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.bar.baz.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.bar.baz.marko?marko-server-entry';
 
 export async function get7(context, buildInput) {
@@ -155,12 +155,12 @@ export async function get7(context, buildInput) {
 // virtual:marko-run/__marko-run__route.baz.marko
 import page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input />
+<page ...input/>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.baz.js
-import { pageResponse } from 'virtual:marko-run/internal';
+import { pageResponse } from 'virtual:marko-run/runtime/internal';
 import page from 'virtual:marko-run/__marko-run__route.baz.marko?marko-server-entry';
 
 export async function get8(context, buildInput) {

@@ -54,7 +54,8 @@
       "types": "./dist/adapter/index.d.ts",
       "import": "./dist/adapter/index.js",
       "require": "./dist/adapter/index.cjs"
-    }
+    },
+    "./dist/components/dev-error-page.marko": "./dist/components/dev-error-page.marko"
   },
   "typesVersions": {
     "*": {
