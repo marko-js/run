@@ -343,6 +343,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               output: rollupOutputOptions,
             },
           },
+          optimizeDeps: {
+            entries: config.optimizeDeps?.entries ? undefined : [
+              "src/pages/**/*+{page,layout}.marko",
+              "!**/__snapshots__/**",
+              `!**/__tests__/**`,
+              `!**/coverage/**`
+            ]
+          },
           resolve: isBuild
             ? {
                 browserField: isSSRBuild ? false : undefined,
