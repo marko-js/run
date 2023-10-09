@@ -17,9 +17,12 @@ express()
   .use("/assets", express.static("assets"))
   .use(async (req, res, next) => {
     if (!router) {
-      const { routerMiddleware } = await import('@marko/run-adapter-node/middleware');
+      // This router middleware is imported dynamically to test that the `importRouterMiddleware` middleware
+      // causes the router to be pulled in during the build insead of this middleware.
+      const path = '@marko/run-adapter-node/middleware';
+      const { routerMiddleware } = await import(/* @vite-ignore */path);
       router = routerMiddleware();
     }
-    router(req, res, next)
+    router!(req, res, next)
   })
   .listen(process.env.PORT);

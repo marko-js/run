@@ -23,7 +23,7 @@ export async function invoke(route, request, platform, url) {
   const [context, buildInput] = createContext(route, request, platform, url);
   if (context.request.headers.get('Accept')?.includes('text/html')) {
     return new Response(errorPage.stream(buildInput({ error })), {
-      status: 200,
+      status: 500,
       headers: { "content-type": "text/html;charset=UTF-8" },
     });
   }
