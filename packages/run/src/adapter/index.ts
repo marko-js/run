@@ -2,7 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import type { Worker } from "cluster";
 import type { Adapter } from "../vite";
-import { createDevServer } from "./dev-server";
+import { createDevServer, type MarkoRunDev } from "./dev-server";
 import type { AddressInfo } from "net";
 import {
   loadEnv,
@@ -13,13 +13,16 @@ import {
 } from "../vite/utils/server";
 
 export {
-  activeDevServers,
+  getDevGlobal,
   createDevServer,
   createViteDevServer,
   createViteDevMiddleware,
+  type MarkoRunDev
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
 export type { NodePlatformInfo } from "./middleware";
+
+export type MarkoRunDevAccessor = () => MarkoRunDev
 
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
