@@ -341,7 +341,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ? resolveToEsbuildTarget(
                     browserslist(undefined, {
                       path: root,
-                    })
+                    }),
+                    { printUnknownTargets: false }
                   )
                 : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
