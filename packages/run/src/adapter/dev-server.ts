@@ -58,7 +58,6 @@ export async function createViteDevServer(
   });
 
   getDevGlobal().addDevServer(devServer);
-
   return devServer;
 }
 
