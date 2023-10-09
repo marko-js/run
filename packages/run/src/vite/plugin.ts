@@ -2,15 +2,15 @@ import path from "path";
 import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
-
+import { fileURLToPath } from "url";
+import browserslist from "browserslist";
+import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
-
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
-
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
@@ -39,13 +39,11 @@ import {
 } from "./constants";
 import { getExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
-
 import {
   getExternalAdapterOptions,
   getExternalPluginOptions,
   setExternalPluginOptions,
 } from "./utils/config";
-import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -338,18 +336,28 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             noExternal: /@marko\/run/,
           },
           build: {
+            target:
+              isBuild && !config.build?.target
+                ? resolveToEsbuildTarget(
+                    browserslist(undefined, {
+                      path: root,
+                    })
+                  )
+                : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
             rollupOptions: {
               output: rollupOutputOptions,
             },
           },
           optimizeDeps: {
-            entries: config.optimizeDeps?.entries ? undefined : [
-              "src/pages/**/*+{page,layout}.marko",
-              "!**/__snapshots__/**",
-              `!**/__tests__/**`,
-              `!**/coverage/**`
-            ]
+            entries: !config.optimizeDeps?.entries
+              ? [
+                  "src/pages/**/*+{page,layout}.marko",
+                  "!**/__snapshots__/**",
+                  `!**/__tests__/**`,
+                  `!**/coverage/**`,
+                ]
+              : undefined,
           },
           resolve: isBuild
             ? {
