@@ -1,6 +1,6 @@
 import { createServer } from "vite";
 
-let activeDevServers;
+let getDevGlobal;
 
 process
   .on("message", (message) => {
@@ -17,7 +17,7 @@ async function start(entry, config) {
   globalThis.__marko_run_vite_config__ = config;
   let changed = false;
   const loader = await createServer({ ...config, ssr: { external: ['@marko/run/router'] }});
-  ({ activeDevServers } = await import("@marko/run/adapter"));
+  ({ getDevGlobal } = await import("@marko/run/adapter"));
   await loader.ssrLoadModule(entry);
 
   loader.watcher.on("change", (path) => {
@@ -29,10 +29,11 @@ async function start(entry, config) {
 }
 
 function shutdown() {
-  if (activeDevServers) {
-    for (const devServer of activeDevServers) {
+  if (getDevGlobal) {
+    const devGlobal = getDevGlobal();
+    for (const devServer of devGlobal.devServers) {
       devServer.ws.send({ type: "full-reload" });
     }
-    activeDevServers.clear();
+    devGlobal.clear();
   }
 }

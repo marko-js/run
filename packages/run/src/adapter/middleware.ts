@@ -1,8 +1,8 @@
 import "./polyfill";
 import type { Fetch } from "../runtime";
 import type { IncomingMessage, ServerResponse, OutgoingMessage } from "http";
-import type { ViteDevServer } from "vite";
 import type { TLSSocket } from "tls";
+
 
 export interface NodePlatformInfo {
   ip: string;
@@ -14,7 +14,7 @@ export interface NodePlatformInfo {
 export type NodeMiddleware = (
   req: IncomingMessage,
   res: ServerResponse,
-  next?: () => void
+  next?: (error?: Error) => void
 ) => void;
 
 /** Adapter options */
@@ -39,7 +39,6 @@ export interface NodeAdapterOptions {
    * is set to `1`, otherwise false.
    */
   trustProxy?: boolean;
-  devServer?: ViteDevServer;
 }
 
 // TODO: Support the newer `Forwarded` standard header
@@ -139,24 +138,6 @@ export function getSetCookie_fallback(headers: Headers) {
   return value;
 }
 
-interface HMRCallbackEntry {
-  id: string;
-  expires: number;
-  callback: (ws: WebSocket) => void;
-}
-
-const HRMClientIdCookieName = "hmr-client-id";
-function getHMRClientId(req: IncomingMessage) {
-  if (req.headers.cookie) {
-    const cookie = req.headers.cookie
-      .split(/;\s+/)
-      .find((c) => c.startsWith(HRMClientIdCookieName));
-    if (cookie) {
-      return cookie.slice(HRMClientIdCookieName.length + 1);
-    }
-  }
-}
-
 /**
  * Creates a request handler to be passed to http.createServer() or used as a
  * middleware in Connect-style frameworks like Express.
@@ -168,28 +149,7 @@ export function createMiddleware(
   const {
     origin = process.env.ORIGIN,
     trustProxy = process.env.TRUST_PROXY === "1",
-    devServer,
   } = options;
-
-  let hmrCallbacks: HMRCallbackEntry[] | undefined;
-  if (process.env.NODE_ENV !== "production" && devServer) {
-    hmrCallbacks = [];
-    devServer.ws.on("connection", (ws: WebSocket, req: IncomingMessage) => {
-      if (hmrCallbacks?.length) {
-        const id = getHMRClientId(req);
-        const now = Date.now();
-        const nextHMRCallbacks: HMRCallbackEntry[] = [];
-        for (const entry of hmrCallbacks) {
-          if (entry.id === id) {
-            entry.callback(ws);
-          } else if (entry.expires > now) {
-            nextHMRCallbacks.push(entry);
-          }
-        }
-        hmrCallbacks = nextHMRCallbacks;
-      }
-    });
-  }
 
   return async (req, res, next) => {
     const controller = new AbortController();
@@ -212,6 +172,7 @@ export function createMiddleware(
     req.socket.on("error", onErrorOrClose);
     res.on("error", onErrorOrClose);
     res.on("close", onErrorOrClose);
+    signal.addEventListener("abort", onSignalAborted);
 
     function onErrorOrClose(err?: Error) {
       req.off("error", onErrorOrClose);
@@ -219,43 +180,43 @@ export function createMiddleware(
       res.off("error", onErrorOrClose);
       res.off("close", onErrorOrClose);
       if (err) {
+        signal.removeEventListener("abort", onSignalAborted);
         controller.abort(err);
       }
     }
 
-    let hmrId!: string;
-    if (
-      process.env.NODE_ENV !== "production" &&
-      hmrCallbacks &&
-      req.headers.accept?.includes("text/html")
-    ) {
-      const expires = Date.now() + 1000;
-      hmrId = Math.floor(Math.random() * expires).toString(36);
-      hmrCallbacks.push({
-        id: hmrId,
-        expires,
-        callback(ws) {
-          if (signal.aborted) {
-            sendError();
-          } else {
-            signal.addEventListener("abort", sendError);
-          }
-
-          function sendError() {
-            const { message, stack = "" } = signal.reason;
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                err: { message, stack },
-              })
-            );
-          }
-        },
-      });
-    } else {
-      signal.addEventListener("abort", () => {
+    function onSignalAborted() {
+      if (next) {
+        next(signal.reason);
+      } else {
         if (!res.destroyed && res.socket) {
           (res.socket as any).destroySoon();
+        }
+        console.error(signal.reason);
+      }
+    }
+
+    let setDevClientId: ((response: Response) => void) | undefined;
+    if (
+      process.env.NODE_ENV !== "production" &&
+      globalThis.__marko_run_dev__ &&
+      req.headers.accept?.includes("text/html")
+    ) {
+      setDevClientId = globalThis.__marko_run_dev__.onClient((ws) => {
+        if (signal.aborted) {
+          sendError();
+        } else {
+          signal.addEventListener("abort", sendError);
+        }
+
+        function sendError() {
+          const { message, stack = "" } = signal.reason;
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              err: { message, stack },
+            })
+          );
         }
       });
     }
@@ -285,11 +246,8 @@ export function createMiddleware(
       return;
     }
 
-    if (process.env.NODE_ENV !== "production" && hmrId) {
-      response.headers.append(
-        "set-cookie",
-        `${HRMClientIdCookieName}=${hmrId}; Path=/; Max-Age=100; HttpOnly`
-      );
+    if (process.env.NODE_ENV !== "production" && setDevClientId) {
+      setDevClientId(response);
     }
 
     res.statusCode = response.status;

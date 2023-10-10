@@ -3,7 +3,7 @@
 ## Middleware
 ```js
 // virtual:marko-run/__marko-run__middleware.js
-import { normalize } from 'virtual:marko-run/internal';
+import { normalize } from 'virtual:marko-run/runtime/internal';
 import middleware2 from './src/routes/+middleware.ts';
 
 export const mware2 = normalize(middleware2);
@@ -20,13 +20,13 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route.aaa.$aId.marko?marko-server-entry';
@@ -50,13 +50,13 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.marko?marko-server-entry';
@@ -80,13 +80,13 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.marko?marko-server-entry';
@@ -110,13 +110,13 @@ import layout1 from './src/routes/+layout.marko';
 import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <layout1 ...input>
-	<page ...input />
+	<page ...input/>
 </>
 ```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.ccc.$cId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/internal';
+import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from 'virtual:marko-run/__marko-run__route.aaa.$aId.ccc.$cId.marko?marko-server-entry';

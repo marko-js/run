@@ -2,15 +2,15 @@ import path from "path";
 import crypto from "crypto";
 import fs from "fs";
 import glob from "glob";
-
+import { fileURLToPath } from "url";
+import browserslist from "browserslist";
+import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
-
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
-
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
@@ -19,8 +19,11 @@ import type {
   BuiltRoutes,
   HttpVerb,
   PackageData,
+  RouterOptions,
 } from "./types";
 import {
+  renderEntryTemplate,
+  renderErrorRouter,
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
@@ -33,17 +36,14 @@ import {
   serverEntryQuery,
   RoutableFileTypes,
   markoRunFilePrefix,
-  virtualRuntimePrefix,
 } from "./constants";
 import { getExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
-
 import {
   getExternalAdapterOptions,
   getExternalPluginOptions,
   setExternalPluginOptions,
 } from "./utils/config";
-import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -100,8 +100,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesRender: 0,
   };
 
-  async function writeTypesFile() {
+  async function writeTypesFile(routes: BuiltRoutes) {
     if (
+      routes &&
       (tsConfigExists ??= await globFileExists(
         root,
         "{.tsconfig*,tsconfig*.json}"
@@ -122,65 +123,99 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }
   }
 
-  async function setVirtualFiles(render: boolean = false) {
-    for (const route of routes.list) {
-      if (render && route.handler) {
-        route.handler.verbs = await extractVerbs(route.handler.filePath);
-        if (!route.handler.verbs.length) {
-          console.warn(
-            `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`
-          );
+  const buildVirtualFiles = single(async (render: boolean) => {
+    const routerOptions: RouterOptions = {
+      trailingSlashes: opts.trailingSlashes || "RedirectWithout",
+    };
+
+    if (!render) {
+      virtualFiles.clear();
+      isRendered = false;
+    }
+
+    try {
+      if (isStale) {
+        const buildStartTime = performance.now();
+        routes = await buildRoutes(
+          createFSWalker(resolvedRoutesDir),
+          routesDir
+        );
+        times.routesBuild = performance.now() - buildStartTime;
+
+        if (!routes.list.length) {
+          throw new Error("No routes generated");
         }
       }
-      if (route.page) {
+
+      const renderStartTime = performance.now();
+      for (const route of routes.list) {
+        if (render && route.handler) {
+          route.handler.verbs = await extractVerbs(route.handler.filePath);
+          if (!route.handler.verbs.length) {
+            throw new Error(
+              `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`
+            );
+          }
+        }
+        if (route.page) {
+          virtualFiles.set(
+            path.posix.join(root, `${route.entryName}.marko`),
+            render ? renderRouteTemplate(route) : ""
+          );
+        }
+        virtualFiles.set(
+          path.posix.join(root, `${route.entryName}.js`),
+          render ? renderRouteEntry(route) : ""
+        );
+      }
+      for (const route of Object.values(routes.special)) {
         virtualFiles.set(
           path.posix.join(root, `${route.entryName}.marko`),
           render ? renderRouteTemplate(route) : ""
         );
       }
+      if (routes.middleware.length) {
+        virtualFiles.set(
+          path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
+          render ? renderMiddleware(routes.middleware) : ""
+        );
+      }
       virtualFiles.set(
-        path.posix.join(root, `${route.entryName}.js`),
-        render ? renderRouteEntry(route) : ""
+        "@marko/run/router",
+        render ? renderRouter(routes, routerOptions) : ""
       );
-    }
-    for (const route of Object.values(routes.special)) {
+
+      times.routesRender = performance.now() - renderStartTime;
+
+      if (render) {
+        await writeTypesFile(routes);
+        if (!isBuild) {
+          await opts?.emitRoutes?.(routes.list);
+        }
+        isRendered = true;
+      }
+    } catch (err) {
+      if (isBuild) {
+        throw err;
+      }
+
+      // In dev mode, errors are captured and ultimately produce a router which responds with the error for any request
+      console.error(err);
+
       virtualFiles.set(
-        path.posix.join(root, `${route.entryName}.marko`),
-        render ? renderRouteTemplate(route) : ""
+        path.posix.join(root, `${markoRunFilePrefix}error.marko`),
+        renderEntryTemplate(`${markoRunFilePrefix}error`, ["<dev-error-page>"])
       );
+
+      virtualFiles.set(
+        "@marko/run/router",
+        renderErrorRouter(err as Error, routerOptions)
+      );
+
+      isRendered = true;
     }
-    virtualFiles.set(
-      "@marko/run/router",
-      render
-        ? renderRouter(routes, {
-            trailingSlashes: opts.trailingSlashes || "RedirectWithout",
-          })
-        : ""
-    );
-
-    virtualFiles.set(
-      path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
-      render ? renderMiddleware(routes.middleware) : ""
-    );
-  }
-
-  const buildVirtualFiles = single(async () => {
-    const startTime = performance.now();
-    routes = await buildRoutes(createFSWalker(resolvedRoutesDir), routesDir);
-    times.routesBuild = performance.now() - startTime;
-
-    await setVirtualFiles(false);
 
     isStale = false;
-    isRendered = false;
-  });
-
-  const renderVirtualFiles = single(async () => {
-    const startTime = performance.now();
-    await setVirtualFiles(true);
-    await writeTypesFile();
-    times.routesRender = performance.now() - startTime;
-    isRendered = true;
   });
 
   return [
@@ -216,6 +251,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         compiler ??= await import(opts.compiler || "@marko/compiler");
         compiler.taglib.register("@marko/run", {
+          "<dev-error-page>": {
+            template: normalizePath(
+              path.resolve(__dirname, "../components/dev-error-page.marko")
+            ),
+          },
           "<*>": {
             transform: path.resolve(
               __dirname,
@@ -296,10 +336,29 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             noExternal: /@marko\/run/,
           },
           build: {
+            target:
+              isBuild && !config.build?.target
+                ? resolveToEsbuildTarget(
+                    browserslist(undefined, {
+                      path: root,
+                    }),
+                    { printUnknownTargets: false }
+                  )
+                : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
             rollupOptions: {
               output: rollupOutputOptions,
             },
+          },
+          optimizeDeps: {
+            entries: !config.optimizeDeps?.entries
+              ? [
+                  "src/pages/**/*+{page,layout}.marko",
+                  "!**/__snapshots__/**",
+                  `!**/__tests__/**`,
+                  `!**/coverage/**`,
+                ]
+              : undefined,
           },
           resolve: isBuild
             ? {
@@ -395,17 +454,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         let resolved: string | undefined;
-        if (importee.startsWith(virtualRuntimePrefix)) {
-          return this.resolve(
-            path.resolve(__dirname, "../runtime/internal"),
-            importer,
-            { skipSelf: true }
-          );
-        } else if (importee.startsWith(virtualFilePrefix)) {
-          importee = path.resolve(
-            root,
-            importee.slice(virtualFilePrefix.length + 1)
-          );
+        let virtualFilePath: string | undefined;
+        if (importee.startsWith(virtualFilePrefix)) {
+          virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
+          importee = path.resolve(root, virtualFilePath);
         } else if (
           !isBuild &&
           importer &&
@@ -419,10 +471,19 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         importee = normalizePath(importee);
 
         if (isStale) {
-          await buildVirtualFiles();
+          await buildVirtualFiles(false);
         }
         if (virtualFiles.has(importee)) {
           resolved = importee;
+        } else if (virtualFilePath) {
+          const resolution = await this.resolve(
+            path.resolve(__dirname, "..", virtualFilePath),
+            importer,
+            {
+              skipSelf: true,
+            }
+          );
+          return resolution;
         }
 
         return resolved || null;
@@ -433,12 +494,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(id)) {
           if (!isRendered) {
-            await renderVirtualFiles();
-            if (!isBuild) {
-              await opts?.emitRoutes?.(routes.list);
-            }
+            await buildVirtualFiles(true);
           }
-          return virtualFiles.get(id);
+          return virtualFiles.get(id)!;
         }
       },
     },
@@ -482,12 +540,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           await store.set(routeDataFilename, JSON.stringify(routeData));
 
           await opts?.emitRoutes?.(routes.list);
-        } else if (isBuild) {
+        } else {
           logRoutesTable(routes, bundle, options);
         }
       },
       async closeBundle() {
-        if (isBuild && !isSSRBuild && adapter?.buildEnd) {
+        if (isBuild && !isSSRBuild && adapter?.buildEnd && routes) {
           await adapter.buildEnd(
             resolvedConfig,
             routes.list,
@@ -632,7 +690,7 @@ function getEntryFileName(file: string | undefined | null) {
 }
 
 export function isPluginIncluded(config: ResolvedConfig) {
-  return config.plugins.some(plugin => {
-    return plugin.name.startsWith(PLUGIN_NAME_PREFIX)
-  })
+  return config.plugins.some((plugin) => {
+    return plugin.name.startsWith(PLUGIN_NAME_PREFIX);
+  });
 }

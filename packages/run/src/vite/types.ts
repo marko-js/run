@@ -106,7 +106,7 @@ export interface RoutableFile {
   verbs?: HttpVerb[];
 }
 
-export interface BuiltRoutes {
+export type BuiltRoutes = {
   list: Route[];
   special: SpecialRoutes;
   middleware: RoutableFile[];

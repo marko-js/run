@@ -4,7 +4,6 @@ import {
   serverEntryQuery,
   virtualFilePrefix,
   markoRunFilePrefix,
-  virtualRuntimePrefix,
 } from "../constants";
 import { createStringWriter } from "./writer";
 import type {
@@ -23,7 +22,7 @@ interface RouteTrie {
   key: string;
   path?: PathInfo;
   route?: Route;
-  catchAll?: { route: Route, path: PathInfo };
+  catchAll?: { route: Route; path: PathInfo };
   static?: Map<string, RouteTrie>;
   dynamic?: RouteTrie;
 }
@@ -32,34 +31,45 @@ export function renderRouteTemplate(route: Route): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
+  return renderEntryTemplate(
+    route.entryName,
+    [...route.layouts, route.page].map((file) => `./${file.importPath}`)
+  );
+}
+
+export function renderEntryTemplate(name: string, files: string[]): string {
+  if (!name) {
+    throw new Error(`Invalid argument - 'name' cannot be empty`);
+  }
+  if (!files.length) {
+    throw new Error(`Invalid argument - 'files' cannot be empty`);
+  }
 
   const writer = createStringWriter();
-  writer.writeLines(`// ${virtualFilePrefix}/${route.entryName}.marko`);
+  writer.writeLines(`// ${virtualFilePrefix}/${name}.marko`);
   writer.branch("imports");
   writer.writeLines("");
-  writeRouteTemplateTag(writer, [...route.layouts, route.page]);
+  writeEntryTemplateTag(writer, files);
 
   return writer.end();
 }
 
-function writeRouteTemplateTag(
+function writeEntryTemplateTag(
   writer: Writer,
-  [file, ...rest]: RoutableFile[],
+  [file, ...rest]: string[],
   index: number = 1
 ): void {
   if (file) {
     const isLast = !rest.length;
     const tag = isLast ? "page" : `layout${index}`;
 
-    writer
-      .branch("imports")
-      .writeLines(`import ${tag} from './${file.importPath}';`);
+    writer.branch("imports").writeLines(`import ${tag} from '${file}';`);
 
     if (isLast) {
-      writer.writeLines(`<${tag} ...input />`);
+      writer.writeLines(`<${tag} ...input/>`);
     } else {
       writer.writeBlockStart(`<${tag} ...input>`);
-      writeRouteTemplateTag(writer, rest, index + 1);
+      writeEntryTemplateTag(writer, rest, index + 1);
       writer.writeBlockEnd(`</>`);
     }
   }
@@ -98,7 +108,9 @@ export function renderRouteEntry(route: Route): string {
 
   if (runtimeImports.length) {
     imports.writeLines(
-      `import { ${runtimeImports.join(", ")} } from '${virtualRuntimePrefix}';`
+      `import { ${runtimeImports.join(
+        ", "
+      )} } from '${virtualFilePrefix}/runtime/internal';`
     );
   }
 
@@ -242,6 +254,54 @@ function writeRouteEntryHandler(
   writer.writeBlockEnd("}");
 }
 
+export function renderErrorRouter(
+  error: Error,
+  options: RouterOptions = {
+    trailingSlashes: "RedirectWithout",
+  }
+): string {
+  const writer = createStringWriter();
+
+  writer.write(`
+// @marko/run/router
+import { createContext } from '${virtualFilePrefix}/runtime/internal';
+import errorPage from '${virtualFilePrefix}/${markoRunFilePrefix}error.marko${serverEntryQuery}';
+
+const error = new Error(\`${error.message}\`);
+error.name = '${error.name}';`);
+
+  if (error.stack) {
+    writer.write(`
+error.stack = \`${error.stack}\`;`);
+  }
+
+  writer.write(`
+
+globalThis.__marko_run__ = { match, fetch, invoke };
+
+export function match() {
+  return { handler: errorPage, params: {}, meta: {}, path: '/*' }; // /$$
+}
+
+export async function invoke(route, request, platform, url) {
+  const [context, buildInput] = createContext(route, request, platform, url);
+  if (context.request.headers.get('Accept')?.includes('text/html')) {
+    return new Response(errorPage.stream(buildInput({ error })), {
+      status: 500,
+      headers: { "content-type": "text/html;charset=UTF-8" },
+    });
+  }
+  return new Response(error, {
+    status: 500,
+  });
+}
+`);
+
+  renderFetch(writer, options);
+
+  return writer.end();
+}
+
 export function renderRouter(
   routes: BuiltRoutes,
   options: RouterOptions = {
@@ -255,7 +315,7 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/internal';`
+    `import { NotHandled, NotMatched, createContext } from '${virtualFilePrefix}/runtime/internal';`
   );
 
   for (const route of routes.list) {
@@ -303,25 +363,38 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 
   writer.writeBlockEnd("}").writeLines("return null;").writeBlockEnd("}");
 
-  writer.write(`
-export async function invoke(route, request, platform, url) {
-  const [context, buildInput] = createContext(route, request, platform, url);
-	try {
-		if (route) {
-      try {
-				const response = await route.handler(context, buildInput);
-				if (response) return response;
-			} catch (error) {
-				if (error === NotHandled) {
-					return;
-				} else if (error !== NotMatched) {
-					throw error;
-				}
-			}
-`);
+  writer
+    .writeLines("")
+    .writeBlockStart(
+      "export async function invoke(route, request, platform, url) {"
+    )
+    .writeLines(
+      "const [context, buildInput] = createContext(route, request, platform, url);"
+    );
+
+  const hasErrorPage = Boolean(routes.special[RoutableFileTypes.Error]);
+
+  if (hasErrorPage) {
+    writer.writeBlockStart("try {");
+  }
+
+  writer
+    .writeBlockStart("if (route) {")
+    .writeBlockStart("try {")
+    .writeLines(
+      "const response = await route.handler(context, buildInput);",
+      "if (response) return response;"
+    ).indent--;
+  writer
+    .writeBlockStart("} catch (error) {")
+    .writeLines(
+      "if (error === NotHandled) return;",
+      "if (error !== NotMatched) throw error;"
+    )
+    .writeBlockEnd("}")
+    .writeBlockEnd("}");
 
   if (routes.special[RoutableFileTypes.NotFound]) {
-    writer.indent = 2;
     imports.writeLines(
       `
 const page404ResponseInit = {
@@ -330,23 +403,16 @@ const page404ResponseInit = {
 };`
     );
 
-    writer.write(
-      `    } else {
-    }
+    writer.write(`    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return new Response(page404.stream(buildInput()), page404ResponseInit);
     }
-`
-    );
-  } else {
-    writer.indent = 3;
-    writer.writeBlockEnd("}");
+`);
   }
 
   writer.indent--;
-  writer.writeBlockStart(`} catch (error) {`);
 
-  if (routes.special[RoutableFileTypes.Error]) {
+  if (hasErrorPage) {
     imports.writeLines(`
 const page500ResponseInit = {
   status: 500,
@@ -354,17 +420,27 @@ const page500ResponseInit = {
 };`);
 
     writer
+      .writeBlockStart(`} catch (error) {`)
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`
       )
       .writeLines(
         `return new Response(page500.stream(buildInput({ error })), page500ResponseInit);`
       )
+      .writeBlockEnd("}")
+      .writeLines("throw error;")
       .writeBlockEnd("}");
   }
 
-  writer.writeLines(`throw error;`).writeBlockEnd("}").writeBlockEnd("}")
-    .write(`
+  writer.writeBlockEnd("}");
+
+  renderFetch(writer, options);
+
+  return writer.end();
+}
+
+function renderFetch(writer: Writer, options: RouterOptions) {
+  writer.write(`
 export async function fetch(request, platform) {
   try {
     const url = new URL(request.url);
@@ -412,8 +488,6 @@ export async function fetch(request, platform) {
     });
   }
 }`);
-
-  return writer.end();
 }
 
 function writeRouterVerb(
@@ -566,9 +640,12 @@ function writeRouterVerb(
 
   if (catchAll) {
     writer.writeLines(
-      `return ${renderMatch(verb, catchAll.route, catchAll.path, String(offset))}; // ${
-        catchAll.path.path
-      }`
+      `return ${renderMatch(
+        verb,
+        catchAll.route,
+        catchAll.path,
+        String(offset)
+      )}; // ${catchAll.path.path}`
     );
   } else if (level === 0) {
     writer.writeLines("return null;");
@@ -626,7 +703,9 @@ export function renderMiddleware(middleware: RoutableFile[]): string {
   );
 
   const imports = writer.branch("imports");
-  imports.writeLines(`import { normalize } from 'virtual:marko-run/internal';`);
+  imports.writeLines(
+    `import { normalize } from '${virtualFilePrefix}/runtime/internal';`
+  );
 
   writer.writeLines("");
 

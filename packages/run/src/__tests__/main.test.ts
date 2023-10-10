@@ -34,7 +34,9 @@ declare namespace globalThis {
 }
 
 declare const __track__: (html: string) => void;
-type Step = () => Promise<unknown> | unknown;
+
+export type Step = () => Promise<unknown> | unknown;
+export type Assert = (fn: () => Promise<void>) => Promise<void>
 
 const requireCwd = createRequire(process.cwd());
 let browser: playwright.Browser;
@@ -53,17 +55,16 @@ before(async () => {
     context.exposeFunction("__track__", (html: string) => {
       const formatted = defaultSerializer(
         defaultNormalizer(JSDOM.fragment(html))
-      );
+      ).replace(/(\.[a-z]+):\d+:\d+/gi, "$1:0:0")
 
       if (changes.at(-1) !== formatted) {
         changes.push(formatted);
       }
     }),
     context.addInitScript(function foo() {
-      debugger;
-      const getRoot = () => document.getElementById("app");
+      const getRoot = () => document.getElementById("app")
       const observer = new MutationObserver(() => {
-        const html = getRoot()?.innerHTML;
+        const html = (getRoot() || document.body).innerHTML;
         if (html) {
           __track__(html);
           observer.disconnect();
@@ -73,7 +74,6 @@ before(async () => {
 
       observe();
       function observe() {
-        debugger;
         observer.observe(getRoot() || document, {
           subtree: true,
           childList: true,
@@ -109,6 +109,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     options?: Options;
     skip_dev?: boolean;
     skip_preview?: boolean;
+    assert_dev?: Assert;
+    assert_preview?: Assert;
   };
 
   describe(fixture, () => {
@@ -125,21 +127,36 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     if (!config.skip_dev) {
       it("dev", async () => {
         const configFile = await cli.getViteConfig(dir);
-        //const port = await getAvailablePort();
-        const server = await cli.dev(config.entry, dir, configFile);
-        await testPage(dir, path, steps, server);
+
+        async function testBlock() {
+          const server = await cli.dev(config.entry, dir, configFile);
+          await testPage(dir, path, steps, server);
+        }
+
+        if (config.assert_dev) {
+          await config.assert_dev(testBlock)
+        } else {
+          await testBlock();
+        }
       });
     }
 
     if (!config.skip_preview) {
       it("preview", async () => {
-        process.env.BROWSER = "none";
-
         const configFile = await cli.getViteConfig(dir);
-        //const port = await getAvailablePort();
+        
+        async function testBlock() {
+          process.env.BROWSER = "none";
         await cli.build(config.entry, dir, configFile);
         const server = await cli.preview(undefined, dir, configFile);
         await testPage(dir, path, steps, server);
+        }
+
+        if (config.assert_preview) {
+          await config.assert_preview(testBlock)
+        } else {
+          await testBlock();
+        }
       });
     }
   });
@@ -159,8 +176,11 @@ async function testPage(
       globalThis.response = await page.goto(url.href);
     });
 
-    await page.waitForSelector("#app");
-    await forEachChange((html, i) => snap(html, `.loading.${i}.html`, dir));
+    await page.waitForSelector("body");
+
+    await forEachChange((html, i) => {
+      snap(html, `.loading.${i}.html`, dir)
+    });
     for (const [i, step] of steps.entries()) {
       await waitForPendingRequests(page, step);
       await forEachChange((html, j) => {

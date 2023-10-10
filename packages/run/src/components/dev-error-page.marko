@@ -1,0 +1,14 @@
+export interface Input {
+  error: Error
+}
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>${input.error.message}</title>
+  </head>
+  <body>
+    <pre>${input.error.stack || (input.error.name + ': ' + input.error.message)}</pre>
+  </body>
+</html>

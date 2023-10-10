@@ -1,0 +1,2 @@
+$foo+page.marko
+$bar+page.marko
