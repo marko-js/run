@@ -42,6 +42,8 @@ export default function adapter(): Adapter {
     async startDev(entry, config, options) {
       const { port = 3000, envFile } = options;
 
+      globalThis.__marko_run_vite_config__ = config;
+
       if (entry) {
         const { nodeArgs } = parseNodeArgs(options.args);
         let worker: Worker;
@@ -112,7 +114,6 @@ export default function adapter(): Adapter {
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
       const server = await spawnServer("node", args, port, envFile);
-      console.log(`Preview server started: http://localhost:${server.port}`);
       return server;
     },
   };

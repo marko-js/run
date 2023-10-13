@@ -1,3 +1,4 @@
+import { InlineConfig } from "vite";
 import { NotHandled, NotMatched } from "./namespace";
 import type {
   GetPaths,
@@ -14,8 +15,11 @@ import type {
   AnyHandler,
 } from "./types";
 
+
 declare global {
   var __marko_run__: RuntimeModule;
+  var __marko_run_vite_config__: InlineConfig | undefined;
+  
   namespace MarkoRun {
     export const route: HandlerTypeFn;
     export {

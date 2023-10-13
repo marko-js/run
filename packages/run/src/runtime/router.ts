@@ -1,6 +1,6 @@
 import type { RuntimeModule } from "./types";
 
-function fromRuntime<T extends 'fetch' | 'match' | 'invoke'>(name: T): RuntimeModule[T] {
+function fromRuntime<T extends keyof RuntimeModule>(name: T): RuntimeModule[T] {
   return (...args: any[]) => {
     const runtime = globalThis.__marko_run__;
     if (!runtime) {

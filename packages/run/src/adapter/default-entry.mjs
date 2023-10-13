@@ -22,8 +22,11 @@ const staticServe = createStaticServe(__dirname, {
   maxAge: "365 days",
 });
 
-createServer((req, res) =>
+const server = createServer((req, res) =>
   compress(req, res, () => 
   staticServe(req, res, () => middleware(req, res))
   )
-).listen(PORT);
+).listen(PORT, () => {
+  const { port } = server.address();
+  console.log(`Server started: http://localhost:${port}`);
+});
