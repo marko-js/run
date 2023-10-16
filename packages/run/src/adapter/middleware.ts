@@ -227,7 +227,9 @@ export function createMiddleware(
       body:
         req.method === "GET" || req.method === "HEAD"
           ? undefined
-          : (req as any as ReadableStream),
+          : typeof (req as any).body == "object"
+            ? JSON.stringify((req as any).body)
+            : (req as any as ReadableStream),
       // @ts-expect-error: Node requires this for streams
       duplex: "half",
       signal,
