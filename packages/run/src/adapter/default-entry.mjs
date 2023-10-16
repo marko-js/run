@@ -6,7 +6,6 @@ import { fetch } from "@marko/run/router";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import zlib from 'zlib';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const { PORT = 3456 } = process.env;
@@ -26,7 +25,5 @@ const server = createServer((req, res) =>
   compress(req, res, () => 
   staticServe(req, res, () => middleware(req, res))
   )
-).listen(PORT, () => {
-  const { port } = server.address();
-  console.log(`Server started: http://localhost:${port}`);
-});
+).listen(PORT);
+

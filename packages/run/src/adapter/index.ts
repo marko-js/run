@@ -26,6 +26,7 @@ export type MarkoRunDevAccessor = () => MarkoRunDev
 
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
+import { renderMarkoBox } from "../vite/utils/log";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
@@ -114,6 +115,10 @@ export default function adapter(): Adapter {
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
       const server = await spawnServer("node", args, port, envFile);
+      if (!options.sourceEntry) {
+        const markoBox = renderMarkoBox(`http://localhost:${port}`, '0.2.7');
+        console.log(markoBox)
+      }
       return server;
     },
   };

@@ -21,6 +21,7 @@ export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
 export async function preview(
+  sourceEntry: string | undefined,
   entry: string | undefined,
   cwd: string,
   configFile: string,
@@ -59,6 +60,7 @@ export async function preview(
     args,
     port: availablePort,
     envFile,
+    sourceEntry
   };
 
   return await adapter.startPreview(entryFile, options);

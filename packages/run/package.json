@@ -107,6 +107,7 @@
     "mocha-snap": "^4.3.0",
     "playwright": "^1.29.1",
     "prettier": "^2.7.1",
+    "trucolor": "^4.0.4",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.9.1",
     "tslib": "^2.5.0",
@@ -115,7 +116,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@marko/vite": "^3",
+    "@marko/vite": "^3.1.3",
     "browserslist": "^4.22.1",
     "cli-table3": "^0.6.3",
     "compression": "^1.7.4",
