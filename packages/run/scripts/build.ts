@@ -19,6 +19,12 @@ const opts: BuildOptions = {
   platform: "node",
   target: ["node14"],
   bundle: true,
+  treeShaking: true,
+  define: {
+    "process.env.npm_package_version": JSON.stringify(
+      process.env.npm_package_version || ""
+    ),
+  },
   plugins: [
     {
       name: "external-modules",
@@ -41,9 +47,10 @@ await Promise.all([
     format: "cjs",
     outExtension: { ".js": ".cjs" },
     define: {
-      "import.meta.url": '__importMetaURL'
+      ...opts.define,
+      "import.meta.url": "__importMetaURL",
     },
-    inject: ['./scripts/importMetaURL.js']
+    inject: ["./scripts/importMetaURL.js"],
   }),
   build({
     ...opts,
