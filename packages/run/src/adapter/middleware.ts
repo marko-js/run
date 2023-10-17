@@ -160,13 +160,6 @@ export function createMiddleware(
       (trustProxy && getForwardedHeader(req, "for")) ||
       req.socket.remoteAddress ||
       "";
-    const headers = req.headers as HeadersInit;
-    // TODO: Do we need to remove http2 psuedo headers?
-    // if (headers[":method"]) {
-    //   headers = Object.fromEntries(
-    //     Object.entries(headers).filter(([key]) => !key.startsWith(":"))
-    //   );
-    // }
 
     req.on("error", onErrorOrClose);
     req.socket.on("error", onErrorOrClose);
@@ -221,13 +214,19 @@ export function createMiddleware(
       });
     }
 
+    let body: BodyInit | undefined;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      if (req.readableDidRead) {
+        body = bodyConsumedErrorStream;
+      } else {
+        body = req as unknown as ReadableStream;
+      }
+    }
+
     const request = new Request(url, {
       method: req.method,
-      headers,
-      body:
-        req.method === "GET" || req.method === "HEAD"
-          ? undefined
-          : (req as any as ReadableStream),
+      headers: req.headers as Record<string, string>,
+      body,
       // @ts-expect-error: Node requires this for streams
       duplex: "half",
       signal,
@@ -290,3 +289,9 @@ async function writeResponse(
     controller.abort(err);
   }
 }
+
+const bodyConsumedErrorStream = new ReadableStream({
+  start(controller) {
+    controller.error(new Error("The request body stream was already consumed by something before Marko Run."))
+  }
+})
