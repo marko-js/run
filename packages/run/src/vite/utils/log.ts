@@ -1,11 +1,16 @@
-import zlib from 'node:zlib';
+import zlib from "node:zlib";
 import Table, { HorizontalAlignment } from "cli-table3";
 import kleur from "kleur";
-import type { OutputBundle, OutputChunk, OutputAsset, NormalizedOutputOptions } from "rollup";
+import type {
+  OutputBundle,
+  OutputChunk,
+  OutputAsset,
+  NormalizedOutputOptions,
+} from "rollup";
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
-import format from 'human-format';
-import { Blob } from 'buffer';
+import format from "human-format";
+import { Blob } from "buffer";
 
 const HttpVerbColors = {
   get: kleur.green,
@@ -22,7 +27,11 @@ const HttpVerbOrder = {
   delete: 3,
 };
 
-export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle, options: NormalizedOutputOptions) {
+export function logRoutesTable(
+  routes: BuiltRoutes,
+  bundle: OutputBundle,
+  options: NormalizedOutputOptions
+) {
   function getRouteChunkName(route: Route) {
     return options.sanitizeFileName(`${route.entryName}.marko`);
   }
@@ -70,7 +79,9 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle, option
           size = prettySize(computeRouteSize(getRouteChunkName(route), bundle));
         }
 
-        const row: any[] = [kleur.bold(HttpVerbColors[verb](verb.toUpperCase()))];
+        const row: any[] = [
+          kleur.bold(HttpVerbColors[verb](verb.toUpperCase())),
+        ];
 
         if (verbs.length === 1 || firstRow) {
           row.push({ rowSpan: verbs.length, content: prettyPath(path.path) });
@@ -80,14 +91,17 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle, option
         row.push(entryType.join(" -> "));
         hasMiddleware && row.push(route.middleware.length || "");
         hasMeta && row.push(route.meta ? "✓" : "");
-        row.push(size || '');
+        row.push(size || "");
 
         table.push(row);
       }
     }
   }
 
-  for (const [key, route] of Object.entries(routes.special).sort() as [string, Route][]) {
+  for (const [key, route] of Object.entries(routes.special).sort() as [
+    string,
+    Route
+  ][]) {
     const row = [kleur.bold(kleur.white("*")), key, kleur.yellow("page")];
     hasMiddleware && row.push("");
     hasMeta && row.push("");
@@ -100,14 +114,17 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle, option
   console.log(table.toString());
 }
 
-function computeRouteSize(entryName: string, bundle: OutputBundle): [number, number] {
+function computeRouteSize(
+  entryName: string,
+  bundle: OutputBundle
+): [number, number] {
   for (const chunk of Object.values(bundle)) {
     if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
       return computeChunkSize(chunk, bundle);
     }
   }
 
-  return [0,0];
+  return [0, 0];
 }
 
 function gzipSize(source: string | Uint8Array): number {
@@ -124,10 +141,7 @@ function computeChunkSize(
   seen: Set<string> = new Set()
 ): [number, number] {
   if (chunk.type === "asset") {
-    return [
-      byteSize(chunk.source),
-      gzipSize(chunk.source)
-    ];
+    return [byteSize(chunk.source), gzipSize(chunk.source)];
   }
 
   const size: [number, number] = [byteSize(chunk.code), gzipSize(chunk.code)];
@@ -139,27 +153,27 @@ function computeChunkSize(
       seen.add(id);
     }
   }
-  return size
+  return size;
 }
 
 // Taken from Next.js
 function prettySize([bytes, compBytes]: [number, number]): string {
   if (bytes <= 0) {
-    return kleur.gray('0.0 kB');
+    return kleur.gray("0.0 kB");
   }
 
   const [size, prefix] = format(bytes, { decimals: 1 }).split(/\s+/);
-  const compSize = format(compBytes, { decimals: 1, prefix, unit: 'B'});
+  const compSize = format(compBytes, { decimals: 1, prefix, unit: "B" });
 
-  let str = kleur.white(size) + kleur.gray('/');
+  let str = kleur.white(size) + kleur.gray("/");
 
   // green for 0-20kb
   if (compBytes < 20 * 1000) str += kleur.green(compSize);
   // yellow for 20-50kb
-  else if (compBytes < 50 * 1000) str +=  kleur.yellow(compSize);
+  else if (compBytes < 50 * 1000) str += kleur.yellow(compSize);
   // red for >= 50kb
   else str += kleur.bold(kleur.red(compSize));
-  return str
+  return str;
 }
 
 function prettyPath(path: string) {

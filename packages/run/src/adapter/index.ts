@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import type { Worker } from "cluster";
 import type { Adapter } from "../vite";
 import { createDevServer, type MarkoRunDev } from "./dev-server";
+import { logInfoBox } from "./utils";
 import type { AddressInfo } from "net";
 import {
   loadEnv,
@@ -17,12 +18,12 @@ export {
   createDevServer,
   createViteDevServer,
   createViteDevMiddleware,
-  type MarkoRunDev
+  type MarkoRunDev,
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
 export type { NodePlatformInfo } from "./middleware";
 
-export type MarkoRunDevAccessor = () => MarkoRunDev
+export type MarkoRunDevAccessor = () => MarkoRunDev;
 
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
@@ -41,6 +42,8 @@ export default function adapter(): Adapter {
 
     async startDev(entry, config, options) {
       const { port = 3000, envFile } = options;
+
+      globalThis.__marko_run_vite_config__ = config;
 
       if (entry) {
         const { nodeArgs } = parseNodeArgs(options.args);
@@ -96,7 +99,7 @@ export default function adapter(): Adapter {
       return new Promise<SpawnedServer>((resolve) => {
         const listener = devServer.middlewares.listen(port, () => {
           const address = listener.address() as AddressInfo;
-          console.log(`Dev server started: http://localhost:${address.port}`);
+          logInfoBox(`http://localhost:${address.port}`);
           resolve({
             port,
             async close() {
@@ -112,10 +115,10 @@ export default function adapter(): Adapter {
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
       const server = await spawnServer("node", args, port, envFile);
-      console.log(`Preview server started: http://localhost:${server.port}`);
+      if (!options.sourceEntry) {
+        logInfoBox(`http://localhost:${port}`);
+      }
       return server;
     },
   };
 }
-
-

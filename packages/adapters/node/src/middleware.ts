@@ -1,16 +1,14 @@
-import type { IncomingMessage } from "http";
+import "@marko/run/router";
+import ensureRuntime from "./ensure-runtime";
+
 import {
   createMiddleware,
   type NodeMiddleware,
 } from "@marko/run/adapter/middleware";
+import type { IncomingMessage } from "http";
 import type { RouteWithHandler } from "@marko/run";
-import "@marko/run/router";
-import type { InlineConfig } from "vite";
 
-declare global {
-  var __marko_run_import__: Promise<void> | undefined;
-  var __marko_run_vite_config__: InlineConfig | undefined;
-}
+export { createMiddleware, type NodeMiddleware };
 
 export interface MatchedRoute {
   invoke: NodeMiddleware;
@@ -21,73 +19,53 @@ export interface MatchedRoute {
   };
 }
 
-export { createMiddleware, NodeMiddleware };
-
 type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
-const passthrough: NodeMiddleware = (_req, _res, next) => {
-  next?.();
-};
-
-const fetch = createMiddleware(
-  globalThis.__marko_run__
-    ? globalThis.__marko_run__.fetch
-    : (request, platform) => {
-        return globalThis.__marko_run__.fetch(request, platform);
-      }
-);
-
-const invoke = createMiddleware((request, platform) => {
-  return globalThis.__marko_run__.invoke(
-    (platform.request as MatchedRequest).route.match,
-    request,
-    platform
-  );
+let _routerMiddleware: NodeMiddleware | undefined;
+export const routerMiddleware = ensureRuntime(() => {
+  return (_routerMiddleware ??= createMiddleware((request, platform) =>
+    globalThis.__marko_run__.fetch(request, platform)
+  ));
 });
 
-const match: NodeMiddleware = (req, _res, next) => {
-  const { url, method } = req as { url: string; method: string };
-  const queryIndex = url.indexOf('?');
-  const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex);
-  const match = globalThis.__marko_run__.match(method, pathname);
-  if (match) {
-    (req as MatchedRequest).route = {
-      invoke,
-      match,
-      config: {
-        ...(match.meta as any),
-        _handler: invoke,
-      },
+let _invokeMiddlware: NodeMiddleware | undefined;
+export const invokeMiddleware = ensureRuntime(() => {
+  return (_invokeMiddlware ??= createMiddleware((request, platform) =>
+    globalThis.__marko_run__.invoke(
+      (platform.request as MatchedRequest).route.match,
+      request,
+      platform
+    )
+  ));
+});
+
+let _matchMiddleware: NodeMiddleware | undefined;
+export const matchMiddleware = ensureRuntime(() => {
+  if (!_matchMiddleware) {
+    const invoke = invokeMiddleware();
+    _matchMiddleware = (req, _res, next) => {
+      const { url, method } = req as { url: string; method: string };
+      const queryIndex = url.indexOf("?");
+      const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex);
+      const match = globalThis.__marko_run__.match(method, pathname);
+      if (match) {
+        (req as MatchedRequest).route = {
+          invoke,
+          match,
+          config: {
+            ...(match.meta as any),
+            _handler: invoke,
+          },
+        };
+      }
+      next?.();
     };
   }
-  next?.();
-};
+  return _matchMiddleware;
+});
 
-const loadRuntime: (middleware: NodeMiddleware) => () => NodeMiddleware =
-  process.env.NODE_ENV === "production" || globalThis.__marko_run__
-    ? (middleware) => () => middleware
-    : (middleware) => () => {
-        if (globalThis.__marko_run_import__) {
-          return middleware;
-        }
-
-        globalThis.__marko_run_import__ = (async () => {
-          const { createViteDevServer } = await import("@marko/run/adapter");
-          const devServer = await createViteDevServer(globalThis.__marko_run_vite_config__);
-          wrapped = devServer.middlewares.use(async (req, res, next) => {
-            await devServer!.ssrLoadModule("@marko/run/router");
-            middleware(req, res, next);
-          });
-        })();
-
-        let wrapped: NodeMiddleware = async (req, res, next) => {
-          await globalThis.__marko_run_import__;
-          wrapped(req, res, next);
-        };
-
-        return (req, res, next) => wrapped(req, res, next);
-      };
-
-export const matchMiddleware = loadRuntime(match);
-export const routerMiddleware = loadRuntime(fetch);
-export const importRouterMiddleware = loadRuntime(passthrough);
+export function importRouterMiddleware(): NodeMiddleware {
+  return (_req, _res, next) => {
+    next?.();
+  };
+}

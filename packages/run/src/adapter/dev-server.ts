@@ -1,10 +1,7 @@
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
-import type { Fetch, RuntimeModule } from "../runtime";
-import type { NodeMiddleware, NodePlatformInfo } from "./middleware";
+import { createMiddleware, type NodeMiddleware } from "./middleware";
 import stripAnsi from "strip-ansi";
 import type { IncomingMessage } from "http";
-
-type Middleware = typeof import("./middleware");
 
 interface DevErrorCallback {
   id: string;
@@ -20,7 +17,7 @@ export interface MarkoRunDev {
 }
 
 declare global {
-  var __marko_run_dev__: MarkoRunDev | undefined
+  var __marko_run_dev__: MarkoRunDev | undefined;
 }
 
 export function createViteDevMiddleware<T>(
@@ -61,7 +58,7 @@ export async function createViteDevServer(
   });
 
   getDevGlobal().addDevServer(devServer);
-  
+
   return devServer;
 }
 
@@ -69,29 +66,27 @@ export async function createDevServer(
   config?: InlineConfig
 ): Promise<ViteDevServer> {
   const devServer = await createViteDevServer(config);
-  
-  const { createMiddleware } = (await devServer.ssrLoadModule(
-    "@marko/run/adapter/middleware"
-  )) as Middleware;
-
-  let fetch: Fetch<NodePlatformInfo>;
-  const nodeMiddleware = createMiddleware((request, platform) =>
-    fetch(request, platform)
+  const routerMiddleware = createMiddleware((request, platform) =>
+    globalThis.__marko_run__.fetch(request, platform)
   );
-
-  const middleware = createViteDevMiddleware(
-    devServer,
-    async () =>
-      (await devServer.ssrLoadModule("@marko/run/router")) as RuntimeModule,
-    (module) => {
-      fetch = module.fetch;
-      return nodeMiddleware;
-    }
-  );
-  devServer.middlewares.use(middleware);
+  devServer.middlewares.use(async (req, res, next) => {
+    await devServer.ssrLoadModule("@marko/run/router");
+    routerMiddleware(req, res, (err) => {
+      if (err) {
+        res.statusCode = 500;
+        if (err instanceof Error) {
+          devServer.ssrFixStacktrace(err);
+          res.end(err.stack && stripAnsi(err.stack));
+        } else {
+          res.end();
+        }
+      } else {
+        next?.();
+      }
+    });
+  });
   return devServer;
 }
-
 
 const ClientIdCookieName = "marko-run-client-id";
 
@@ -147,7 +142,9 @@ export function getDevGlobal(): MarkoRunDev {
           devServer.close();
         }
       },
-      onClient(callback: (ws: WebSocket) => void): (response: Response) => void {
+      onClient(
+        callback: (ws: WebSocket) => void
+      ): (response: Response) => void {
         const expires = Date.now() + 1000;
         const id = Math.floor(Math.random() * expires).toString(36);
         callbacks.push({

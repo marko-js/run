@@ -476,13 +476,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (virtualFiles.has(importee)) {
           resolved = importee;
         } else if (virtualFilePath) {
-          const resolution = await this.resolve(
-            path.resolve(__dirname, "..", virtualFilePath),
-            importer,
-            {
-              skipSelf: true,
-            }
-          );
+          const filePath = path.resolve(__dirname, "..", virtualFilePath)
+          const resolution = await this.resolve(filePath, importer, {
+            skipSelf: true,
+          });
           return resolution;
         }
 

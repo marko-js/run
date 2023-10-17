@@ -39,6 +39,7 @@ prog
     const config = await getViteConfig(cwd, opts.config);
     await build(entry, cwd, config, opts.output, opts.env);
     await preview(
+      entry,
       opts.file,
       cwd,
       config,

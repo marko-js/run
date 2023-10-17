@@ -121,7 +121,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
         : [config.steps]
       : [];
 
-    suppressLogs();
+    //suppressLogs();
     setCWD(dir);
 
     if (!config.skip_dev) {
@@ -148,7 +148,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
         async function testBlock() {
           process.env.BROWSER = "none";
         await cli.build(config.entry, dir, configFile);
-        const server = await cli.preview(undefined, dir, configFile);
+        const server = await cli.preview(config.entry, undefined, dir, configFile);
         await testPage(dir, path, steps, server);
         }
 
