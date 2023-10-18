@@ -128,13 +128,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       trailingSlashes: opts.trailingSlashes || "RedirectWithout",
     };
 
-    if (!render) {
-      virtualFiles.clear();
-      isRendered = false;
-    }
-
     try {
       if (isStale) {
+        virtualFiles.clear();
+        isRendered = false;
+
         const buildStartTime = performance.now();
         routes = await buildRoutes(
           createFSWalker(resolvedRoutesDir),
@@ -490,7 +488,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           id = id.slice(0, -serverEntryQuery.length);
         }
         if (virtualFiles.has(id)) {
-          if (!isRendered) {
+          if (isStale || !isRendered) {
             await buildVirtualFiles(true);
           }
           return virtualFiles.get(id)!;
