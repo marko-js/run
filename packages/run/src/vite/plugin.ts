@@ -11,7 +11,7 @@ import type { PluginContext, OutputOptions } from "rollup";
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
-import { buildRoutes, matchRoutableFile } from "./routes/builder";
+import { buildRoutes, matchRoutableFile, type RouteSource } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
   Options,
@@ -133,11 +133,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         isRendered = false;
 
+        const sources: RouteSource[] = [{
+          walker: createFSWalker(resolvedRoutesDir),
+          importPrefix: routesDir
+        }];
+
+
         const buildStartTime = performance.now();
-        routes = await buildRoutes(
-          createFSWalker(resolvedRoutesDir),
-          routesDir
-        );
+        routes = await buildRoutes(sources);
         times.routesBuild = performance.now() - buildStartTime;
 
         if (!routes.list.length) {

@@ -12,7 +12,7 @@ function createWalker(dir: string) {
 
 describe("route-builder", () => {
   async function fixture(dir: string, ...expected: PathParams[]) {
-    const routes = await buildRoutes(createWalker(dir));
+    const routes = await buildRoutes({ walker: createWalker(dir) });
     const actual = routes.list.reduce<PathParams[]>((acc, route) => {
       acc.push(
         ...route.paths.map((path) => {
@@ -123,13 +123,13 @@ describe("route-builder", () => {
   it("should throw on ambiguous hoisting", async () => {
     await assert.rejects(
       () =>
-        buildRoutes(
-          createWalker(`
+        buildRoutes({
+          walker: createWalker(`
         /a,
           /a,
             +page.marko
-      `)
-        ),
+      `),
+        }),
       (err: Error) => {
         return err.message.startsWith("Ambiguous directory structure");
       }
@@ -139,12 +139,12 @@ describe("route-builder", () => {
   it("should throw on duplication at one level", async () => {
     await assert.rejects(
       () =>
-        buildRoutes(
-          createWalker(`
+        buildRoutes({
+          walker: createWalker(`
         /a,a,b
           +page.marko
-      `)
-        ),
+      `),
+        }),
       (err: Error) => {
         return err.message.startsWith("Invalid route pattern");
       }
@@ -154,14 +154,14 @@ describe("route-builder", () => {
   it("should throw ambiguous optional parameters", async () => {
     await assert.rejects(
       () =>
-        buildRoutes(
-          createWalker(`
+        buildRoutes({
+          walker: createWalker(`
         /$a,_
           /$b,_
             /$c,_
               +page.marko
-      `)
-        ),
+      `),
+        }),
       (err: Error) => {
         return err.message.startsWith("Duplicate routes for path");
       }
@@ -171,8 +171,8 @@ describe("route-builder", () => {
   it("should throw on duplicate paths", async () => {
     await assert.rejects(
       () =>
-        buildRoutes(
-          createWalker(`
+        buildRoutes({
+          walker: createWalker(`
         /foo
           /bar
             +page.marko
@@ -180,42 +180,42 @@ describe("route-builder", () => {
           /foo
             /bar
               +page.marko
-      `)
-        ),
+      `),
+        }),
       (err: Error) => err.message.startsWith("Duplicate routes for path")
     );
   });
 
   it("should find 404 and 500 pages in the root", async () => {
-    const routes = await buildRoutes(
-      createWalker(`
+    const routes = await buildRoutes({
+      walker: createWalker(`
           +404.marko
           +500.marko
-      `)
-    );
+      `),
+    });
     assert.deepEqual(Object.keys(routes.special), ["404", "500"]);
   });
 
   it("should ignore nested 404 and 500 pages", async () => {
-    const routes = await buildRoutes(
-      createWalker(`
+    const routes = await buildRoutes({
+      walker: createWalker(`
         /foo
           +404.marko
           +500.marko
-      `)
-    );
+      `),
+    });
     assert.deepEqual(Object.keys(routes.special), []);
   });
 
   it("should work with flat route files", async () => {
-    const routes = await buildRoutes(
-      createWalker(`
+    const routes = await buildRoutes({
+      walker: createWalker(`
         +layout.marko
         a.b.(c,)+page.marko
         a.b.c+middleware.marko
         a.b+handler.marko
-      `)
-    );
+      `),
+    });
     const actual = routes.list.map((route) => ({
       path: route.paths[0].path,
       page: !!route.page,

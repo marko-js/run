@@ -560,10 +560,11 @@ function writeRouterVerb(
         }
 
         for (const { key, path, route } of terminal) {
+          const decodedKey = decodeURIComponent(key);
           if (useSwitch) {
-            writer.write(`case '${key}': `, true);
+            writer.write(`case '${decodedKey}': `, true);
           } else {
-            writer.write(`if (${value}.toLowerCase() === '${key}') `, true);
+            writer.write(`if (${value}.toLowerCase() === '${decodedKey}') `, true);
           }
           writer.write(
             `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`

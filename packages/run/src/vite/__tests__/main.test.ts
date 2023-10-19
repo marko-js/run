@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import snap from "mocha-snap";
-import { createTestWalker } from "../routes/walk";
-import { buildRoutes } from "../routes/builder";
+import { Walker, createTestWalker } from "../routes/walk";
+import { RouteSource, buildRoutes } from "../routes/builder";
 import { createDirectory } from "./utils/fakeFS";
 import {
   renderMiddleware,
@@ -27,28 +27,42 @@ describe("router codegen", () => {
 
     it(fixture, async () => {
       const dir = path.join(FIXTURES, fixture);
-      const filename = path.join(dir, "routes.txt");
-      const src = await fs.promises.readFile(filename, "utf-8");
-      // Use this if you want to psuedo test on windows locally.
-      // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
 
-      const fakeDirectory = createDirectory(src);
+      const sources: RouteSource[] = [];
 
-      let routesSnap = "# Routes\n\n";
-      let routerSnap = "";
-      let typesSnap = "";
+      for (const file of  await fs.promises.readdir(dir, { recursive: false, withFileTypes: true })) {
+        if (file.isFile()) {
+          const match = /^routes(?:-(.+))?\.txt$/.exec(file.name);
+          if (match) {
+            const filename = path.join(dir, file.name);
+            const src = await fs.promises.readFile(filename, "utf-8");
+            // Use this if you want to psuedo test on windows locally.
+            // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
+            sources.push({
+              walker: createTestWalker(createDirectory(src)),
+              importPrefix: 'src/routes',
+              basePath: match[1]
+            });
+          }
+        }
+      }
+
+      if (!sources.length) {
+        throw new Error('Missing routes.txt')
+      }
 
       let routes: BuiltRoutes | undefined;
       let error: Error | undefined;
 
       try {
-        routes = await buildRoutes(
-          createTestWalker(fakeDirectory),
-          "src/routes"
-        );
+        routes = await buildRoutes(sources)
       } catch (err) {
         error = err as Error;
       }
+
+      let routesSnap = "# Routes\n\n";
+      let routerSnap = "";
+      let typesSnap = "";
 
       if (error || !routes) {
         routesSnap += `## Error\n`;
