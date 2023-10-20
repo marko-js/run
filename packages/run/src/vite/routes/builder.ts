@@ -7,7 +7,7 @@ import type {
   RoutableFileType,
   SpecialRoutes,
 } from "../types";
-import type { Walker } from "./walk";
+import type { WalkOptions, Walker } from "./walk";
 import { parseFlatRoute } from "./parse";
 
 const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
@@ -34,13 +34,13 @@ export function isSpecialType(
   );
 }
 
-export async function buildRoutes(
-  walk: Walker,
-  basePath: string = ""
-): Promise<BuiltRoutes> {
-  if (basePath) {
-    basePath = basePath.replace(/^\/+|\/+$/g, "");
-  }
+export interface RouteSource {
+  walker: Walker,
+  importPrefix?: string,
+  basePath?: string
+}
+
+export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise<BuiltRoutes> {
 
   const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
   const routes: Route[] = [];
@@ -54,27 +54,36 @@ export async function buildRoutes(
 
   const root = new VDir();
   const dirStack: string[] = [];
-  let activeDirs: VDir[] = [root];
+
+  let basePath: string;
+  let importPrefix: string;
+  let activeDirs: VDir[];
+  let isBaseDir: boolean;
+  
   let nextFileId = 1;
   let nextRouteIndex = 1;
-  let isBaseDir = true;
 
-  await walk({
+  const walkOptions: WalkOptions = {
     onEnter({ name }) {
-      if (!name || isBaseDir) {
+      const prevDirStackLength = dirStack.length;
+
+      if (isBaseDir) {
         isBaseDir = false;
-        return;
+        if (!basePath) {
+          return;
+        }
+        name = basePath;
+      } else {
+        dirStack.push(name);
       }
 
-      dirStack.push(name);
       const previousDirs = activeDirs;
-
       const paths = parseFlatRoute(name); // get paths for name
       activeDirs = VDir.addPaths(previousDirs, paths);
 
       return () => {
         activeDirs = previousDirs;
-        dirStack.pop();
+        dirStack.length = prevDirStackLength;
       };
     },
     onFile({ name, path }) {
@@ -106,7 +115,7 @@ export async function buildRoutes(
         type,
         filePath: path,
         relativePath,
-        importPath: `${basePath}/${relativePath}`,
+        importPath: `${importPrefix}/${relativePath}`,
         verbs: type === RoutableFileTypes.Page ? ["get"] : undefined,
       };
 
@@ -114,7 +123,19 @@ export async function buildRoutes(
         dir.addFile(file);
       }
     },
-  });
+  };
+
+  if (!Array.isArray(sources)) {
+    sources = [sources];
+  }
+
+  for (const source of sources) {
+    importPrefix = source.importPrefix ? source.importPrefix.replace(/^\/+|\/+$/g, "") : '';
+    basePath = source.basePath || ''
+    activeDirs = [root];
+    isBaseDir = true;
+    await source.walker(walkOptions);
+  }
 
   traverse(root);
 

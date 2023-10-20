@@ -1,7 +1,8 @@
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import type { Worker } from "cluster";
-import type { Adapter } from "../vite";
+import type { Adapter, ExplorerData } from "../vite";
 import { createDevServer, type MarkoRunDev } from "./dev-server";
 import { logInfoBox } from "./utils";
 import type { AddressInfo } from "net";
@@ -12,6 +13,7 @@ import {
   waitForWorker,
   type SpawnedServer,
 } from "../vite/utils/server";
+import { createRequire } from "module";
 
 export {
   getDevGlobal,
@@ -27,6 +29,7 @@ export type MarkoRunDevAccessor = () => MarkoRunDev;
 
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
+import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
@@ -44,6 +47,8 @@ export default function adapter(): Adapter {
       const { port = 3000, envFile } = options;
 
       globalThis.__marko_run_vite_config__ = config;
+
+      const explorerPromise = startExplorer();
 
       if (entry) {
         const { nodeArgs } = parseNodeArgs(options.args);
@@ -83,12 +88,12 @@ export default function adapter(): Adapter {
           worker = nextWorker;
         }
 
-        await start();
+        const [explorer] = await Promise.all([explorerPromise, start()]);
 
         return {
           port,
-          close() {
-            worker.kill();
+          async close() {
+            await Promise.all([worker.kill(), explorer?.close()]);
           },
         };
       }
@@ -96,18 +101,25 @@ export default function adapter(): Adapter {
       const devServer = await createDevServer(config);
       envFile && (await loadEnv(envFile));
 
-      return new Promise<SpawnedServer>((resolve) => {
+      const listen = new Promise<AddressInfo>((resolve) => {
         const listener = devServer.middlewares.listen(port, () => {
-          const address = listener.address() as AddressInfo;
-          logInfoBox(`http://localhost:${address.port}`);
-          resolve({
-            port,
-            async close() {
-              await devServer.close();
-            },
-          });
+          resolve(listener.address() as AddressInfo);
         });
       });
+
+      const [explorer, address] = await Promise.all([explorerPromise, listen]);
+
+      logInfoBox(
+        `http://localhost:${address.port}`,
+        explorer && `http://localhost:${explorer.port}`
+      );
+
+      return {
+        port: address.port,
+        async close() {
+          await Promise.all([devServer.close(), explorer?.close()]);
+        },
+      };
     },
 
     async startPreview(entry, options) {
@@ -120,5 +132,70 @@ export default function adapter(): Adapter {
       }
       return server;
     },
+
+    async routesGenerated(routes, virtualFiles, meta) {
+      if (process.env.MR_EXPLORER !== "true") {
+        return;
+      }
+
+      const promises: Promise<any>[] = [];
+      const cacheDir = path.resolve(__dirname, "../../.cache/explorer");
+      const codeDir = path.join(cacheDir, "code");
+
+      if (fs.existsSync(codeDir)) {
+        await fs.promises.rm(codeDir, { recursive: true });
+      }
+      await fs.promises.mkdir(codeDir, { recursive: true });
+
+      const data: ExplorerData = {
+        meta,
+        routes: {},
+        files: {}
+      };
+
+      for (const [name, code] of virtualFiles) {
+        let fileName = "";
+        let index = name.indexOf(markoRunFilePrefix);
+        if (index >= 0) {
+          fileName = name.slice(index);
+          data.files[fileName] = `${virtualFilePrefix}/${fileName}`;
+        } else if (name.startsWith("@marko/run")) {
+          fileName = name.slice(11);
+          data.files[fileName] = name;
+        }
+        if (fileName) {
+          promises.push(
+            fs.promises.writeFile(path.join(codeDir, fileName), code, {})
+          );
+        }
+        
+      }
+
+      for (const route of routes.list) {
+        data.routes[route.index] = route;
+      }
+
+      for (const [id, route] of Object.entries(routes.special)) {
+        data.routes['s' + id] = route;
+      }
+
+      promises.push(
+        fs.promises.writeFile(
+          path.join(cacheDir, "data.json"),
+          JSON.stringify(data),
+          {}
+        )
+      );
+
+      await Promise.all(promises);
+    },
   };
+}
+
+const require = createRequire(import.meta.url);
+async function startExplorer() {
+  if (process.env.MR_EXPLORER === "true") {
+    const entry = require.resolve("@marko/run-explorer");
+    return await spawnServer("node", [entry], 1234);
+  }
 }

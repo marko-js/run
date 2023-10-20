@@ -15,9 +15,12 @@ export type {
   AdapterConfig,
   Options,
   BuiltRoutes,
+  ExplorerData,
   HttpVerb,
   PackageData,
-  Route,
+  PathInfo,
   RoutableFile,
   RoutableFileType,
+  Route,
+  RouteGenerationData
 } from "./types";
