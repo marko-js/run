@@ -35,7 +35,7 @@ export function match(method, pathname) {
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
+				switch (pathname.slice(1, i1 ? -1 : len)) {
 					case 'new': return { handler: get2, params: {}, meta: meta2, path: '/new' }; // /new
 					case 'my': return { handler: get6, params: {}, meta: {}, path: '/my' }; // /my
 				}
@@ -51,7 +51,7 @@ export function match(method, pathname) {
 					case 'callback': {
 						const i2 = pathname.indexOf('/', 10) + 1;
 						if (!i2 || i2 === len) {
-							if (decodeURIComponent(pathname.slice(10, i2 ? -1 : len)) === 'oauth2') return { handler: get5, params: {}, meta: {}, path: '/callback/oauth2' }; // /callback/oauth2
+							if (pathname.slice(10, i2 ? -1 : len) === 'oauth2') return { handler: get5, params: {}, meta: {}, path: '/callback/oauth2' }; // /callback/oauth2
 						}
 					} break;
 				}
@@ -64,7 +64,7 @@ export function match(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === 'new') return { handler: post2, params: {}, meta: meta2, path: '/new' }; // /new
+					if (pathname.slice(1, i1 ? -1 : len) === 'new') return { handler: post2, params: {}, meta: meta2, path: '/new' }; // /new
 				} else {
 					if (pathname.slice(1, i1 - 1) === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
@@ -76,7 +76,7 @@ export function match(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(i2, i3 ? -1 : len)) === 'comments') return { handler: post4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: post4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
 								}
 							}
 						}
@@ -101,7 +101,7 @@ export function match(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(i2, i3 ? -1 : len)) === 'comments') return { handler: put4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: put4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
 								}
 							}
 						}
@@ -126,7 +126,7 @@ export function match(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(i2, i3 ? -1 : len)) === 'comments') return { handler: delete4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: delete4, params: { id: s2 }, meta: meta4, path: '/notes/:id/comments' }; // /notes/$id/comments
 								}
 							}
 						}

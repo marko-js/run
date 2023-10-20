@@ -18,7 +18,7 @@ export function match(method, pathname) {
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === 'fOoBaR') return { handler: get2, params: {}, meta: {}, path: '/fOoBaR' }; // /fOoBaR
+				if (pathname.slice(1, i1 ? -1 : len) === 'fOoBaR') return { handler: get2, params: {}, meta: {}, path: '/fOoBaR' }; // /fOoBaR
 			}
 			return null;
 		}

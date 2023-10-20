@@ -546,11 +546,13 @@ function writeRouterVerb(
       closeCount++;
       writer.writeBlockStart(`if (!${index} || ${index} === len) {`);
 
-      let value = `decodeURIComponent(pathname.slice(${offset}, ${index} ? -1 : len))`;
+      let value = `pathname.slice(${offset}, ${index} ? -1 : len)`;
       if (dynamic?.route) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = ${value};`);
+        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
+      } else if (terminal?.some(terminal => decodeURIComponent(terminal.key) !== terminal.key)) {
+        value = `decodeURIComponent(${value})`;
       }
 
       if (terminal) {
@@ -597,14 +599,12 @@ function writeRouterVerb(
       }
 
       let value = `pathname.slice(${offset}, ${index} - 1)`;
-      const needsDecoding = dynamic?.static || dynamic?.dynamic || children?.some(child => decodeURIComponent(child.key) !== child.key);
-      if (needsDecoding) {
-        value = `decodeURIComponent(${value})`;
-      }
       if (dynamic?.static || dynamic?.dynamic) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = ${value};`);
+        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
+      } else if (children?.some(child => decodeURIComponent(child.key) !== child.key)) {
+        value = `decodeURIComponent(${value})`;
       }
 
       if (children) {

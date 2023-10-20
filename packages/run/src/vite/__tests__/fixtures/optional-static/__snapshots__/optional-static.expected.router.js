@@ -24,7 +24,7 @@ export function match(method, pathname) {
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
+				switch (pathname.slice(1, i1 ? -1 : len)) {
 					case 'foo': return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
 					case 'bar': return { handler: get6, params: {}, meta: {}, path: '/bar' }; // /bar
 					case 'baz': return { handler: get8, params: {}, meta: {}, path: '/baz' }; // /baz
@@ -34,7 +34,7 @@ export function match(method, pathname) {
 					case 'foo': {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(5, i2 ? -1 : len))) {
+							switch (pathname.slice(5, i2 ? -1 : len)) {
 								case 'bar': return { handler: get3, params: {}, meta: {}, path: '/foo/bar' }; // /foo/bar
 								case 'baz': return { handler: get5, params: {}, meta: {}, path: '/foo/baz' }; // /foo/baz
 							}
@@ -42,7 +42,7 @@ export function match(method, pathname) {
 							if (pathname.slice(5, i2 - 1) === 'bar') {
 								const i3 = pathname.indexOf('/', 9) + 1;
 								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(9, i3 ? -1 : len)) === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
+									if (pathname.slice(9, i3 ? -1 : len) === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
 								}
 							}
 						}
@@ -50,7 +50,7 @@ export function match(method, pathname) {
 					case 'bar': {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)) === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
+							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
 						}
 					} break;
 				}

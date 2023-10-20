@@ -32,7 +32,7 @@ export function match(method, pathname) {
 					case 'a': {
 						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len))) {
+							switch (pathname.slice(3, i2 ? -1 : len)) {
 								case 'c': return { handler: get5, params: {}, meta: {}, path: '/a/c' }; // /a/c
 								case 'd': return { handler: get6, params: {}, meta: {}, path: '/a/d' }; // /a/d
 							}
@@ -41,7 +41,7 @@ export function match(method, pathname) {
 					case 'b': {
 						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len))) {
+							switch (pathname.slice(3, i2 ? -1 : len)) {
 								case 'c': return { handler: get7, params: {}, meta: {}, path: '/b/c' }; // /b/c
 								case 'd': return { handler: get8, params: {}, meta: {}, path: '/b/d' }; // /b/d
 							}
