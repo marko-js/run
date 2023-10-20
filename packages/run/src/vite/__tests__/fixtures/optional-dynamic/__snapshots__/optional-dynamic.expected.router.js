@@ -13,7 +13,8 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len > 1) {

@@ -17,31 +17,32 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)).toLowerCase()) {
+				switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
 					case 'foo': return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
 					case 'bar': return { handler: get6, params: {}, meta: {}, path: '/bar' }; // /bar
 					case 'baz': return { handler: get8, params: {}, meta: {}, path: '/baz' }; // /baz
 				}
 			} else {
-				switch (decodeURIComponent(pathname.slice(1, i1 - 1)).toLowerCase()) {
+				switch (decodeURIComponent(pathname.slice(1, i1 - 1))) {
 					case 'foo': {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)).toLowerCase()) {
+							switch (decodeURIComponent(pathname.slice(5, i2 ? -1 : len))) {
 								case 'bar': return { handler: get3, params: {}, meta: {}, path: '/foo/bar' }; // /foo/bar
 								case 'baz': return { handler: get5, params: {}, meta: {}, path: '/foo/baz' }; // /foo/baz
 							}
 						} else {
-							if (decodeURIComponent(pathname.slice(5, i2 - 1)).toLowerCase() === 'bar') {
+							if (decodeURIComponent(pathname.slice(5, i2 - 1)) === 'bar') {
 								const i3 = pathname.indexOf('/', 9) + 1;
 								if (!i3 || i3 === len) {
-									if (decodeURIComponent(pathname.slice(9, i3 ? -1 : len)).toLowerCase() === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
+									if (decodeURIComponent(pathname.slice(9, i3 ? -1 : len)) === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
 								}
 							}
 						}
@@ -49,7 +50,7 @@ export function match(method, pathname) {
 					case 'bar': {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)).toLowerCase() === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
+							if (decodeURIComponent(pathname.slice(5, i2 ? -1 : len)) === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
 						}
 					} break;
 				}

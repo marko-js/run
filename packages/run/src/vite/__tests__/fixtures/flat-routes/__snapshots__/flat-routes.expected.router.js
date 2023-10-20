@@ -17,21 +17,22 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-				if (s1.toLowerCase() === 'foo') return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
+				if (s1 === 'foo') return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
 				if (s1) return { handler: get3, params: { id: s1 }, meta: {}, path: '/:id' }; // /$id
 			} else {
-				switch (decodeURIComponent(pathname.slice(1, i1 - 1)).toLowerCase()) {
+				switch (decodeURIComponent(pathname.slice(1, i1 - 1))) {
 					case 'a': {
 						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len)).toLowerCase()) {
+							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len))) {
 								case 'c': return { handler: get5, params: {}, meta: {}, path: '/a/c' }; // /a/c
 								case 'd': return { handler: get6, params: {}, meta: {}, path: '/a/d' }; // /a/d
 							}
@@ -40,7 +41,7 @@ export function match(method, pathname) {
 					case 'b': {
 						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {
-							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len)).toLowerCase()) {
+							switch (decodeURIComponent(pathname.slice(3, i2 ? -1 : len))) {
 								case 'c': return { handler: get7, params: {}, meta: {}, path: '/b/c' }; // /b/c
 								case 'd': return { handler: get8, params: {}, meta: {}, path: '/b/d' }; // /b/d
 							}

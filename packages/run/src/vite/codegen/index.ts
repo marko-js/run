@@ -349,13 +349,14 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     pathname = '/' + pathname;
   }`
     )
-    .writeBlockStart(`switch (method.toLowerCase()) {`);
+    .writeBlockStart(`switch (method) {`);
 
   for (const verb of httpVerbs) {
     const filteredRoutes = routes.list.filter((route) => hasVerb(route, verb));
     if (filteredRoutes.length) {
       const trie = createRouteTrie(filteredRoutes);
-      writer.writeBlockStart(`case '${verb}': {`);
+      writer.writeLines(`case '${verb.toUpperCase()}':`);
+      writer.writeBlockStart(`case '${verb.toLowerCase()}': {`);
       writeRouterVerb(writer, trie, verb);
       writer.writeBlockEnd("}");
     }
@@ -556,7 +557,7 @@ function writeRouterVerb(
         const useSwitch = terminal.length > 1;
 
         if (useSwitch) {
-          writer.writeBlockStart(`switch (${value}.toLowerCase()) {`);
+          writer.writeBlockStart(`switch (${value}) {`);
         }
 
         for (const { key, path, route } of terminal) {
@@ -564,7 +565,7 @@ function writeRouterVerb(
           if (useSwitch) {
             writer.write(`case '${decodedKey}': `, true);
           } else {
-            writer.write(`if (${value}.toLowerCase() === '${decodedKey}') `, true);
+            writer.write(`if (${value} === '${decodedKey}') `, true);
           }
           writer.write(
             `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`
@@ -606,7 +607,7 @@ function writeRouterVerb(
         const useSwitch = children.length > 1;
 
         if (useSwitch) {
-          writer.writeBlockStart(`switch (${value}.toLowerCase()) {`);
+          writer.writeBlockStart(`switch (${value}) {`);
         }
 
         for (const child of children) {
@@ -615,7 +616,7 @@ function writeRouterVerb(
             writer.writeBlockStart(`case '${decodedKey}': {`);
           } else {
             writer.writeBlockStart(
-              `if (${value}.toLowerCase() === '${decodedKey}') {`
+              `if (${value} === '${decodedKey}') {`
             );
           }
 

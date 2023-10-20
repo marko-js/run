@@ -1,1 +1,3 @@
 +page.marko
+/fOoBaR
+  +page.marko

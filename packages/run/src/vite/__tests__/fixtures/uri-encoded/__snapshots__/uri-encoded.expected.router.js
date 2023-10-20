@@ -10,13 +10,14 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)).toLowerCase() === 'a/b/c') {
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'a/b/c') {
 						const i2 = pathname.indexOf('/', 11) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(11, i2 ? -1 : len));

@@ -13,13 +13,14 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)).toLowerCase() === 'aaa') {
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'aaa') {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
@@ -29,7 +30,7 @@ export function match(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (i3 && i3 !== len) {
-									switch (decodeURIComponent(pathname.slice(i2, i3 - 1)).toLowerCase()) {
+									switch (decodeURIComponent(pathname.slice(i2, i3 - 1))) {
 										case 'bbb': {
 											const i4 = pathname.indexOf('/', i3) + 1;
 											if (!i4 || i4 === len) {
@@ -40,7 +41,7 @@ export function match(method, pathname) {
 												if (s4) {
 													const i5 = pathname.indexOf('/', i4) + 1;
 													if (i5 && i5 !== len) {
-														if (decodeURIComponent(pathname.slice(i4, i5 - 1)).toLowerCase() === 'ccc') {
+														if (decodeURIComponent(pathname.slice(i4, i5 - 1)) === 'ccc') {
 															const i6 = pathname.indexOf('/', i5) + 1;
 															if (!i6 || i6 === len) {
 																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));

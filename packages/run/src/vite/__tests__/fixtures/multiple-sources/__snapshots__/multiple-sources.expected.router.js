@@ -11,13 +11,14 @@ export function match(method, pathname) {
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
   }
-	switch (method.toLowerCase()) {
+	switch (method) {
+		case 'GET':
 		case 'get': {
 			const len = pathname.length;
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)).toLowerCase() === '+routes') return { handler: get2, params: {}, meta: {}, path: '/%2Broutes' }; // /%2Broutes
+				if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === '+routes') return { handler: get2, params: {}, meta: {}, path: '/%2Broutes' }; // /%2Broutes
 			}
 			return null;
 		}
