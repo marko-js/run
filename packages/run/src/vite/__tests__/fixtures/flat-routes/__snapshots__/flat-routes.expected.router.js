@@ -28,7 +28,7 @@ export function match(method, pathname) {
 				if (s1 === 'foo') return { handler: get2, params: {}, meta: {}, path: '/foo' }; // /foo
 				if (s1) return { handler: get3, params: { id: s1 }, meta: {}, path: '/:id' }; // /$id
 			} else {
-				switch (decodeURIComponent(pathname.slice(1, i1 - 1))) {
+				switch (pathname.slice(1, i1 - 1)) {
 					case 'a': {
 						const i2 = pathname.indexOf('/', 3) + 1;
 						if (!i2 || i2 === len) {

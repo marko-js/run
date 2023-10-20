@@ -30,7 +30,7 @@ export function match(method, pathname) {
 					case 'baz': return { handler: get8, params: {}, meta: {}, path: '/baz' }; // /baz
 				}
 			} else {
-				switch (decodeURIComponent(pathname.slice(1, i1 - 1))) {
+				switch (pathname.slice(1, i1 - 1)) {
 					case 'foo': {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
@@ -39,7 +39,7 @@ export function match(method, pathname) {
 								case 'baz': return { handler: get5, params: {}, meta: {}, path: '/foo/baz' }; // /foo/baz
 							}
 						} else {
-							if (decodeURIComponent(pathname.slice(5, i2 - 1)) === 'bar') {
+							if (pathname.slice(5, i2 - 1) === 'bar') {
 								const i3 = pathname.indexOf('/', 9) + 1;
 								if (!i3 || i3 === len) {
 									if (decodeURIComponent(pathname.slice(9, i3 ? -1 : len)) === 'baz') return { handler: get4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz

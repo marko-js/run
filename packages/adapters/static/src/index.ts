@@ -22,7 +22,7 @@ function noop() {}
 
 export default function staticAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
-  let adapterConfig: AdapterConfig = {};
+  let adapterConfig!: AdapterConfig;
   return {
     name: "static-adapter",
     

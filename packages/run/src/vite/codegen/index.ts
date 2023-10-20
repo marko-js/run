@@ -596,7 +596,11 @@ function writeRouterVerb(
         closeCount++;
       }
 
-      let value = `decodeURIComponent(pathname.slice(${offset}, ${index} - 1))`;
+      let value = `pathname.slice(${offset}, ${index} - 1)`;
+      const needsDecoding = dynamic?.static || dynamic?.dynamic || children?.some(child => decodeURIComponent(child.key) !== child.key);
+      if (needsDecoding) {
+        value = `decodeURIComponent(${value})`;
+      }
       if (dynamic?.static || dynamic?.dynamic) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = ${value};`);

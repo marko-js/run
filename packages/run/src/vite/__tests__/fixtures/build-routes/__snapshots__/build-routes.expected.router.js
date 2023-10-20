@@ -40,7 +40,7 @@ export function match(method, pathname) {
 					case 'my': return { handler: get6, params: {}, meta: {}, path: '/my' }; // /my
 				}
 			} else {
-				switch (decodeURIComponent(pathname.slice(1, i1 - 1))) {
+				switch (pathname.slice(1, i1 - 1)) {
 					case 'notes': {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
@@ -66,7 +66,7 @@ export function match(method, pathname) {
 				if (!i1 || i1 === len) {
 					if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === 'new') return { handler: post2, params: {}, meta: meta2, path: '/new' }; // /new
 				} else {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
@@ -91,7 +91,7 @@ export function match(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
@@ -116,7 +116,7 @@ export function match(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
