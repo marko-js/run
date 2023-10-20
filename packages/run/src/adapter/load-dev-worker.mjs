@@ -18,10 +18,25 @@ async function start(entry, config) {
   const loader = await createServer({
     ...config,
     ssr: { external: ["@marko/run/router"] },
-  })
+  });
 
   await loader.listen(0);
-  await loader.ssrLoadModule(entry);
+  loader.ssrLoadModule(entry).catch((err) => {
+    loader.ssrFixStacktrace(err);
+
+    console.error(err);
+
+    const devGlobal = getDevGlobal();
+    for (const devServer of devGlobal.devServers) {
+      const { message, stack = "" } = err;
+      devServer.ws.send(
+        JSON.stringify({
+          type: "error",
+          err: { message, stack },
+        })
+      );
+    }
+  });
 
   loader.watcher.on("change", (path) => {
     if (!changed && loader.moduleGraph.getModulesByFile(path)) {

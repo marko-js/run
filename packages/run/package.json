@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.2.8",
+  "version": "0.2.10",
   "description": "The Marko application framework.",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/run",
@@ -114,6 +114,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "@marko/compiler": "^5.33.3",
     "@marko/run-explorer": "^0.1.0",
     "@marko/vite": "^3.1.4",
     "browserslist": "^4.22.1",

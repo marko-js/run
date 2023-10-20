@@ -71,6 +71,7 @@ export async function spawnServerWorker(
   args: string[] = [],
   port: number = 0,
   env?: string | Record<string, string>,
+  wait: boolean = true
 ): Promise<Worker> {
   if (port <= 0) {
     port = await getAvailablePort();
@@ -86,15 +87,18 @@ export async function spawnServerWorker(
     cluster.settings.exec = module;
     cluster.settings.execArgv = args;
     const worker = cluster.fork({ ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` });
-    return new Promise<Worker>((resolve) => {
-      function ready(message: any) {
-        if (message === 'ready') {
-          worker.off('message', ready);
-          resolve(worker);
+    if (wait) {
+      return new Promise<Worker>((resolve) => {
+        function ready(message: any) {
+          if (message === 'ready') {
+            worker.off('message', ready);
+            resolve(worker);
+          }
         }
-      }
-      worker.on('message', ready);
-    });
+        worker.on('message', ready);
+      });
+    }
+    return worker;
   } finally {
     // Reset cluster settings.
     cluster.settings.exec = originalExec;

@@ -210,6 +210,12 @@ const require = createRequire(import.meta.url);
 async function startExplorer() {
   if (process.env.MR_EXPLORER === "true") {
     const entry = require.resolve("@marko/run-explorer");
-    return await spawnServer("node", [entry], 1234);
+    const worker = await spawnServerWorker(entry, [], 1234, undefined, false);
+    return {
+      port: 1234,
+      async close (){
+        worker.kill();
+      }
+    }
   }
 }

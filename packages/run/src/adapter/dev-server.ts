@@ -69,8 +69,7 @@ export async function createDevServer(
     globalThis.__marko_run__.fetch(request, platform)
   );
   devServer.middlewares.use(async (req, res, next) => {
-    await devServer.ssrLoadModule("@marko/run/router");
-    routerMiddleware(req, res, (err) => {
+    function handleError(err: unknown) {
       if (err) {
         res.statusCode = 500;
         if (err instanceof Error) {
@@ -82,7 +81,14 @@ export async function createDevServer(
       } else {
         next?.();
       }
-    });
+    }
+
+    try {
+      await devServer.ssrLoadModule("@marko/run/router");
+    } catch (err) {
+      return handleError(err);
+    }
+    routerMiddleware(req, res, handleError);
   });
   return devServer;
 }
