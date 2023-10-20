@@ -126,11 +126,26 @@ export default function adapter(): Adapter {
       const { port = 3000, envFile } = options;
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
-      const server = await spawnServer("node", args, port, envFile);
+
+      const [explorer, server] = await Promise.all([
+        startExplorer(),
+        spawnServer("node", args, port, envFile),
+      ]);
+
       if (!options.sourceEntry) {
-        logInfoBox(`http://localhost:${port}`);
+        logInfoBox(
+          `http://localhost:${port}`,
+          explorer && `http://localhost:${explorer.port}`
+        );
       }
-      return server;
+      return explorer
+        ? {
+            port: server.port,
+            async close() {
+              await Promise.all([server.close(), explorer.close()]);
+            },
+          }
+        : server;
     },
 
     async routesGenerated(routes, virtualFiles, meta) {
@@ -150,7 +165,7 @@ export default function adapter(): Adapter {
       const data: ExplorerData = {
         meta,
         routes: {},
-        files: {}
+        files: {},
       };
 
       for (const [name, code] of virtualFiles) {
@@ -168,7 +183,6 @@ export default function adapter(): Adapter {
             fs.promises.writeFile(path.join(codeDir, fileName), code, {})
           );
         }
-        
       }
 
       for (const route of routes.list) {
@@ -176,7 +190,7 @@ export default function adapter(): Adapter {
       }
 
       for (const [id, route] of Object.entries(routes.special)) {
-        data.routes['s' + id] = route;
+        data.routes["s" + id] = route;
       }
 
       promises.push(

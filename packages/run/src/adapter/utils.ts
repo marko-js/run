@@ -15,7 +15,7 @@ export function logInfoBox(address: string, explorer?: string) {
 
   if (explorer) {
     message += "\n\n";
-    message += kleur.dim("Explore your routes at");
+    message += kleur.dim("Explore your routes");
     message += "\n";
     message += kleur.dim(kleur.green(kleur.underline(explorer)));
   }
