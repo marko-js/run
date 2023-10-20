@@ -44,7 +44,7 @@ describe("adapter-utils", () => {
 
   describe("info-box", () => {
     it("should log", () => {
-      logInfoBox("https://localhost:3000");
+      logInfoBox("https://localhost:3000", "https://localhost:1234");
     });
   });
 });

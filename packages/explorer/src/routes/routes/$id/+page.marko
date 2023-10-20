@@ -1,0 +1,96 @@
+import { getRouteById } from "../../../data";
+
+<p><a href="/">&larr; Back</a></p>
+
+<await(getRouteById($global.params.id))>
+  <@then|route|>
+    <section>
+      <h1>Route ${route.key}</h1>
+      <if(route.path)>
+        <dl>
+          <div>
+            <dt>Path pattern</dt>
+            <dd>${route.path}</dd>
+          </div>
+          <if(route.params)>
+            <div>
+              <dt>Parameters</dt>
+              <dd>
+                  <ol>
+                    <for|param| of=route.params>
+                      <li>${param}</li>
+                    </for>
+                  </ol>
+              </dd>
+            </div>
+          </if>
+          <if(route.verbs.length)>
+            <div>
+              <dt>Verbs</dt>
+              <dd>
+                <ul>
+                  <for|verb| of=route.verbs>
+                    <li>${verb.toUpperCase()}</li>
+                  </for>
+                </ul>
+              </dd>
+            </div>
+          </if>
+        </dl>
+      </if>
+    </section>
+
+    <section>
+      <a#files><h2>Generated Files</h2></a>
+      <ul>
+        <for|file| of=route.files>
+          <li><a href=`/files/${file.path}`>${file.name}</a></li>
+        </for>
+      </ul>
+
+    </section>
+
+    <if(route.middleware.length)>
+      <section>
+        <a#middleware><h2>Middleware</h2></a>
+          <ol>
+            <for|middleware| of=route.middleware>
+              <li>${middleware.filePath}</li>
+            </for>
+          </ol>
+      </section>
+    </if>
+
+    <if(route.handler)>
+      <section>
+        <a#handler><h2>Handler</h2></a>
+          <span>${route.handler.filePath}</span>
+      </section>
+    </if>
+
+    <if(route.layouts.length)>
+      <section>
+        <a#layouts><h2>Layouts</h2></a>
+          <ol>
+            <for|layout| of=route.layouts>
+              <li>${layout.filePath}</li>
+            </for>
+          </ol>
+      </section>
+    </if>
+
+    <if(route.page)>
+      <section>
+        <a#page><h2>Page</h2></a>
+          <span>${route.page.filePath}</span>
+      </section>
+    </if>
+
+    <if(route.meta)>
+      <section>
+        <a#meta><h2>Meta Data</h2></a>
+        <span>${route.meta.filePath}</span>
+      </section>
+    </if>
+  </@then>
+</await>

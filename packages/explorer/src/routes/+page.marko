@@ -1,0 +1,163 @@
+import { getRoutes } from '../data';
+
+<await(getRoutes())>
+  <@then|data|>
+    <section>
+      <h1>Overview</h1>
+      <dl>
+        <div>
+          <dt>Build time:</dt>
+          <dd>${data.generation.buildTime.toFixed(2)}ms</dd>
+        </div>
+        <div>
+          <dt>Render time:</dt>
+          <dd>${data.generation.renderTime.toFixed(2)}ms</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Routes</h2>
+
+      <table>
+        <colgroup>
+          <col class="col-path" />
+          <col class="col-method" />
+          <col class="col-entry" />
+          <col class=["col-middleware", data.hasMiddleware ? undefined : 'hidden'] />
+          <col class=["col-layouts", data.hasLayouts ? undefined : 'hidden'] />
+          <col class=["col-meta", data.hasMeta ? undefined : 'hidden'] />
+          <col class=["col-size", data.hasSize ? undefined : 'hidden'] />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="col-path">Path</th>
+            <th scope="col" class="col-method">Method</th>
+            <th scope="col" class="col-entry">Entry</th>
+            <th scope="col" class="col-middlware">Middleware</th>
+            <th scope="col" class="col-layouts">Layouts</th>
+            <th scope="col" class="col-meta">Meta</th>
+            <th scope="col" class="col-size">Size</th>
+          </tr>
+        </thead>
+        
+        <for|route| of=data.routes>
+          <tbody>
+            <for|verb| of=route.verbs>
+              <route-row route=route verb=verb />
+            </for>
+          </tbody>
+        </for>
+        <for|route| of=data.special>
+          <tbody>
+            <route-row route=route />
+          </tbody>
+        </for>
+      </table>
+    </section>
+
+
+    <section>
+      <h2>Generated Files</h2>
+
+      <ul>
+        <for|{ name, path }| of=data.files>
+          <li>
+            <a href=`/files/${name}`>${path}</a>
+          </li>
+        </for>
+      </ul>
+    </section>
+
+  </@then>
+</await>
+
+<macro|{ route, verb }| name="route-row">
+  <tr data-verb=verb>
+    <if(!route.verbs.length || verb === route.verbs[0])>
+      <th scope="row" rowspan=(route.verbs.length || undefined) class="col-path">
+        <a href=`/routes/${route.id}`>${route.path}</a>
+      </th>
+    </if>
+    <td class="col-method"><span>${(verb || 'all').toUpperCase()}</span></td>
+    <td class="col-entry">
+      <if(route.handler)>
+        Handler
+        <if(verb === 'get' && route.page)>
+          <span class="dim"> &rarr; </span>
+          Page
+        </if>
+      </if>
+      <else-if((!verb || verb === 'get') && route.page)>
+        Page
+      </else-if>
+    </td>
+    <td class="col-middleware">
+      <if(route.middleware.length)>
+        ${route.middleware.length}
+      </if>
+      <else>
+        0
+      </else>
+    </td>
+    <td class="col-layouts">
+      <if(route.layouts.length)>
+        ${route.layouts.length}
+      </if>
+      <else>
+        0
+      </else>
+    </td>
+    <td class="col-meta">
+      <if(route.meta)>
+        Yes
+      </if>
+      <else>
+        No
+      </else>
+    </td>
+    <td class="col-size"></td>
+  </tr>
+</macro>
+
+style {
+  .col-entry {
+    width: 50%;
+  }
+
+  .col-middleware,
+  .col-layouts {
+    text-align: right;
+  }
+
+  .col-meta {
+    text-align: center;
+  }
+
+  .col-method span{
+    border-radius: 5px;
+    padding: 0.2rem 0.3rem;
+    font-size: small;
+    font-weight: bold;
+  }
+
+  tr[data-verb="get"] .col-method > span {
+    background-color: green;
+    color: #fff;
+  }
+
+  tr[data-verb="post"] .col-method > span {
+    background-color: magenta;
+    color: #fff;
+  }
+
+  tr[data-verb="put"] .col-method > span {
+    background-color: cyan;
+    color: #fff;
+  }
+
+  tr[data-verb="delete"] .col-method > span {
+    background-color: red;
+    color: #fff;
+  }
+}

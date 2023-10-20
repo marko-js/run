@@ -1,7 +1,7 @@
 import supporsColor from "supports-color";
 import kleur from "kleur";
 
-export function logInfoBox(address: string) {
+export function logInfoBox(address: string, explorer?: string) {
   const color = !!supporsColor.stdout;
 
   let message = kleur.bold("Marko Run");
@@ -12,6 +12,13 @@ export function logInfoBox(address: string) {
   message += kleur.dim("Server listening at");
   message += "\n";
   message += kleur.cyan(kleur.underline(address));
+
+  if (explorer) {
+    message += "\n\n";
+    message += kleur.dim("Explore your routes at");
+    message += "\n";
+    message += kleur.dim(kleur.green(kleur.underline(explorer)));
+  }
 
   const lines = drawMarkoBox(message, { color, fill: color });
   console.log(lines.join("\n"));
@@ -37,7 +44,7 @@ export function drawMarkoBox(message: string, options?: LogoOptions) {
   const vBorder = "│";
 
   const lineDiff = logo.lines.length - textLines.length;
-  const textStartLine = lineDiff > 0 ? Math.floor(lineDiff / 2) : 1;
+  const textStartLine = lineDiff > 0 ? Math.max(Math.floor(lineDiff / 2), 1) : 1;
   const textEndLine = height - (lineDiff > 0 ? Math.ceil(lineDiff / 2) : 1);
   const logoEndLine = logo.lines.length;
   const logoFill = " ".repeat(logo.width);

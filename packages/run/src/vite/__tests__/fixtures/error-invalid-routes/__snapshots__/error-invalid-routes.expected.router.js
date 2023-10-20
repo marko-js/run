@@ -9,7 +9,7 @@ error.stack = `Error: Duplicate file type 'page' added at path '/$'. File '/$bar
     at VDir.addFile (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/vdir.ts:0:0)
     at onFile (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/builder.ts:0:0)
     at walk (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/walk.ts:0:0)
-    at Object.walkFS (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/walk.ts:0:0)
+    at Object.walkFS [as walker] (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/walk.ts:0:0)
     at buildRoutes (/Users/rturnquist/dev/marko/run/packages/run/src/vite/routes/builder.ts:0:0)
     at Context.<anonymous> (/Users/rturnquist/dev/marko/run/packages/run/src/vite/__tests__/main.test.ts:0:0)`;
 

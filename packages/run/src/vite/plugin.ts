@@ -11,7 +11,7 @@ import type { PluginContext, OutputOptions } from "rollup";
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin, { FileStore } from "@marko/vite";
 import type { BuildStore } from "@marko/vite";
-import { buildRoutes, matchRoutableFile, type RouteSource } from "./routes/builder";
+import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
   Options,
@@ -44,6 +44,10 @@ import {
   getExternalPluginOptions,
   setExternalPluginOptions,
 } from "./utils/config";
+
+// @ts-ignore
+import createDebug from 'debug';
+const debug = createDebug('@marko/run');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -133,14 +137,23 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         isRendered = false;
 
-        const sources: RouteSource[] = [{
-          walker: createFSWalker(resolvedRoutesDir),
-          importPrefix: routesDir
-        }];
+        // const sources: RouteSource[] = [];
 
+        // if (true) {
+        //   const explorerRoutesDir = path.resolve(__dirname, '../components/routes-explorer');
+        //   const explorerImportPrefix = path.relative(root, explorerRoutesDir);
+        //   sources.push({
+        //     walker: createFSWalker(explorerRoutesDir),
+        //     importPrefix: explorerImportPrefix,
+        //     basePath: '_route-explorer.%2Broutes'
+        //   });
+        // }
 
         const buildStartTime = performance.now();
-        routes = await buildRoutes(sources);
+        routes = await buildRoutes({
+          walker: createFSWalker(resolvedRoutesDir),
+          importPrefix: routesDir
+        });
         times.routesBuild = performance.now() - buildStartTime;
 
         if (!routes.list.length) {
@@ -190,6 +203,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
       if (render) {
         await writeTypesFile(routes);
+        if (adapter?.routesGenerated) {
+          await adapter.routesGenerated(routes, new Map(virtualFiles.entries()), {
+            buildTime: times.routesBuild,
+            renderTime: times.routesRender
+          })
+        }
         if (!isBuild) {
           await opts?.emitRoutes?.(routes.list);
         }
@@ -538,7 +557,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           await store.set(routeDataFilename, JSON.stringify(routeData));
 
           await opts?.emitRoutes?.(routes.list);
-        } else {
+        } else if (process.env.MR_EXPLORER !== "true") {
           logRoutesTable(routes, bundle, options);
         }
       },
@@ -664,12 +683,12 @@ export async function resolveAdapter(
         try {
           const module = await import(name);
           log &&
-            console.log(
+            debug(
               `Using adapter ${name} listed in your package.json dependecies`
             );
           return module.default();
         } catch (err) {
-          log && console.warn(`Attempt to use package '${name}' failed`, err);
+          log && debug(`Attempt to use package '${name}' failed %O`, err);
         }
       }
     }
@@ -677,7 +696,7 @@ export async function resolveAdapter(
 
   const defaultAdapter = "@marko/run/adapter";
   const module = await import(defaultAdapter);
-  log && console.log("Using default adapter");
+  log && debug("Using default adapter");
   return module.default();
 }
 

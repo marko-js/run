@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png">
+    <meta
+      name="description"
+      content="Marko Run route explorer"
+    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore your routes</title>
+  </head>
+  <body>
+    <header>
+      <div class="content">
+        <div class="logo">
+          <a href="/">
+            <img src="./marko-run-darkmode.png" />
+            <span>Explorer</span>
+          </a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="content">
+        <${input.renderBody} />
+      </div>
+    </main>
+  </body>
+</html>
+
+style {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    color: #1d1924;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF UI Text", "Helvetica Neue",
+      "Roboto", "Arial Nova", "Segoe UI", "Arial", sans-serif;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header,
+  main {
+    display: flex;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  header {
+    background-color: #1d1924;
+  }
+
+  main {
+    flex: 1 1 auto;
+  }
+
+  header > .content,
+  main > .content {
+    max-width: 1000px;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    margin: 0 2rem;
+  }
+
+  .logo,
+  .logo a {
+    display: flex;
+    line-height: 2rem;
+    font-size: 2rem;
+    padding: 0.5rem 0;
+    align-items: center;
+    text-decoration: none;
+    color: #fff;
+  }
+
+  .logo img {
+    height: 2rem;
+    margin-right: 1rem;
+  }
+
+  dl {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+  }
+
+  dl > div {
+    display: flex;
+    flex-direction: row;
+  }
+
+  dl > div + div {
+    margin-top: 0.5rem;
+  }
+
+  dl dt {
+    flex: 1 1 30%;
+  }
+
+  dl dd {
+    flex: 1 1 70%; 
+  }
+
+  ul, ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li + li {
+    margin-top: 0.25rem;
+  }
+
+  table {
+    padding: 0;
+    border-spacing: 0;
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  thead, tbody {
+    border-bottom: 1px solid rgba(0,0,0,0.25);
+  }
+
+  tbody tr:first-child td,
+  tbody tr:first-child th {
+    padding-top: 0.5rem;
+  }
+
+  tbody tr:last-child td,
+  tbody tr:last-child th {
+    padding-bottom: 0.5rem;
+  }
+  
+  td, th {
+    padding: 0.25rem 0.5rem;
+  }
+
+  thead {
+    background: #eee;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 0.5rem;
+  }
+
+  tbody th {
+    text-align: left;
+  }
+
+  tbody td {
+    vertical-align: middle;
+  }
+
+  col.hidden {
+    visibility: collapse;
+  }
+
+  .dim {
+    color: rgba(0,0,0,0.5);
+  }
+}

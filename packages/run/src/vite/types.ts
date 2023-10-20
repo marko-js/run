@@ -53,6 +53,7 @@ export interface Adapter {
     sourceEntries: string[]
   ): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string;
+  routesGenerated?(routes: BuiltRoutes, virtualFiles: Map<string, string>, data: RouteGenerationData): Promise<void> | void;
 }
 
 export interface RouterOptions {
@@ -118,4 +119,16 @@ export interface PackageData {
   version?: string;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+}
+
+export interface RouteGenerationData {
+  buildTime: number;
+  renderTime: number;
+}
+
+export interface ExplorerData {
+  meta: RouteGenerationData,
+  routes: Record<string, Route>,
+  files: Record<string, string>
+
 }
