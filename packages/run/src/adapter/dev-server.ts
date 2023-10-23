@@ -2,6 +2,7 @@ import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 import { createMiddleware, type NodeMiddleware } from "./middleware";
 import stripAnsi from "strip-ansi";
 import type { IncomingMessage } from "http";
+import { inspect } from "util";
 
 interface DevErrorCallback {
   id: string;
@@ -69,14 +70,21 @@ export async function createDevServer(
     globalThis.__marko_run__.fetch(request, platform)
   );
   devServer.middlewares.use(async (req, res, next) => {
-    function handleError(err: unknown) {
+    function handleNext(err: unknown) {
       if (err) {
-        res.statusCode = 500;
         if (err instanceof Error) {
           devServer.ssrFixStacktrace(err);
-          res.end(err.stack && stripAnsi(err.stack));
+        }
+
+        console.error(err);
+
+        if (res.headersSent) {
+          if (!res.destroyed) {
+            (res.socket as any)?.destroySoon();
+          }
         } else {
-          res.end();
+          res.statusCode = 500;
+          res.end(stripAnsi(inspect(err)));
         }
       } else {
         next?.();
@@ -86,9 +94,9 @@ export async function createDevServer(
     try {
       await devServer.ssrLoadModule("@marko/run/router");
     } catch (err) {
-      return handleError(err);
+      return handleNext(err);
     }
-    routerMiddleware(req, res, handleError);
+    routerMiddleware(req, res, handleNext);
   });
   return devServer;
 }

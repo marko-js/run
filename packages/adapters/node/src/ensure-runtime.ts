@@ -1,41 +1,87 @@
 import type { ViteDevServer } from "vite";
+import type { IncomingMessage } from "http";
 import type { NodeMiddleware } from "./middleware";
+import stripAnsi from "strip-ansi";
+import { inspect } from "util";
 
 declare global {
   var __marko_run_middleware__:
-    | ((factory: () => NodeMiddleware) => () => NodeMiddleware)
+    | (<T extends any[]>(
+        factory: (...args: T) => NodeMiddleware
+      ) => (...args: T) => NodeMiddleware)
     | undefined;
 }
 
-export default globalThis.__marko_run_middleware__ ??= (() => {
-  if (process.env.NODE_ENV !== "production") {
-    const devServerPromise: Promise<ViteDevServer> = (async () => {
-      const { createViteDevServer } = await import("@marko/run/adapter");
-      return createViteDevServer(globalThis.__marko_run_vite_config__);
-    })();
+export default globalThis.__marko_run_middleware__ ??=
+  process.env.NODE_ENV === "production"
+    ? (factory) => factory
+    : (() => {
+        let devServer: ViteDevServer | undefined;
 
-    return (factory) => () => {
-      // Create the middleware defined by the user
-      const originalMiddleware = factory();
+        const seenReqs = new WeakSet<IncomingMessage>();
+        const devServerPromise = import("@marko/run/adapter").then(
+          async (mod) => {
+            devServer = await mod.createViteDevServer(
+              globalThis.__marko_run_vite_config__
+            );
+            void devServer!.ssrLoadModule("@marko/run/router").catch(() => {});
+            devMiddleware = (req, res, next) => {
+              if (seenReqs.has(req)) {
+                return next?.();
+              }
+              seenReqs.add(req);
+              devServer!.middlewares(req, res, next);
+            };
+          }
+        );
 
-      // An async node middleware function which when called by the server during a request for the first time:
-      //   1. Waits for the dev server singleton to be created and then creates a new middleware using the dev
-      //      server which loads `@marko/run/router` for all requests. This is necessary to ensure the latest
-      //      code is used after a hot-replacement.
-      //   2. Replaces itself with the new middleware for susequent requests
-      //   3. Calles the new middleware
-      let middleware: NodeMiddleware = async (req, res, next) => {
-        const devServer = await devServerPromise!;
-        middleware = devServer.middlewares.use(async (req, res, next) => {
-          await devServer.ssrLoadModule("@marko/run/router");
-          originalMiddleware(req, res, next);
-        });
-        middleware(req, res, next);
-      };
+        let devMiddleware: NodeMiddleware = async (req, res, next) => {
+          await devServerPromise;
+          devMiddleware(req, res, next);
+        };
 
-      // Wrap the middleware described above so it can be swapped out after the first request.
-      return (req, res, next) => middleware(req, res, next);
-    };
-  }
-  return (factory) => factory;
-})();
+        return (factory) =>
+          (...args) => {
+            // Create the middleware defined by the user
+            const middleware = factory(...args);
+
+            return (req, res, next) => {
+              function handleNext(err: unknown) {
+                if (err) {
+                  if (err instanceof Error) {
+                    devServer!.ssrFixStacktrace(err);
+                  }
+
+                  console.error(err);
+
+                  if (res.headersSent) {
+                    if (!res.destroyed) {
+                      (res.socket as any)?.destroySoon();
+                    }
+                  } else {
+                    res.statusCode = 500;
+                    res.end(stripAnsi(inspect(err)));
+                  }
+                } else {
+                  next?.();
+                }
+              }
+
+              devMiddleware(req, res, async (err) => {
+                if (err) {
+                  handleNext(err);
+                  return;
+                }
+
+                try {
+                  await devServer!.ssrLoadModule("@marko/run/router");
+                } catch (err) {
+                  handleNext(err);
+                  return;
+                }
+
+                middleware(req, res, handleNext);
+              });
+            };
+          };
+      })();
