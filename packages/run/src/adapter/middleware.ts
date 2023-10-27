@@ -1,11 +1,9 @@
 import "./polyfill";
-import type { Fetch } from "../runtime";
+import type { Fetch, Platform } from "../runtime";
 import type { IncomingMessage, ServerResponse, OutgoingMessage } from "http";
 import type { TLSSocket } from "tls";
 
-
 export interface NodePlatformInfo {
-  ip: string;
   request: IncomingMessage;
   response: ServerResponse;
 }
@@ -18,7 +16,7 @@ export type NodeMiddleware = (
 ) => void;
 
 /** Adapter options */
-export interface NodeAdapterOptions {
+export interface NodeMiddlewareOptions {
   /**
    * Set the origin part of the URL to a constant value.
    * It defaults to `process.env.ORIGIN`. If neither is set,
@@ -39,7 +37,10 @@ export interface NodeAdapterOptions {
    * is set to `1`, otherwise false.
    */
   trustProxy?: boolean;
+
+  createPlatform?(platform: NodePlatformInfo): Platform & NodePlatformInfo;
 }
+
 
 // TODO: Support the newer `Forwarded` standard header
 function getForwardedHeader(req: IncomingMessage, name: string) {
@@ -143,23 +144,19 @@ export function getSetCookie_fallback(headers: Headers) {
  * middleware in Connect-style frameworks like Express.
  */
 export function createMiddleware(
-  fetch: Fetch<NodePlatformInfo>,
-  options: NodeAdapterOptions = {}
+  fetch: Fetch<Platform>,
+  options?: NodeMiddlewareOptions
 ): NodeMiddleware {
   const {
     origin = process.env.ORIGIN,
     trustProxy = process.env.TRUST_PROXY === "1",
-  } = options;
+    createPlatform = platform => platform
+  } = (options ??= {});
 
   return async (req, res, next) => {
     const controller = new AbortController();
     const { signal } = controller;
     const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
-    const ip =
-      (req as any).ip ||
-      (trustProxy && getForwardedHeader(req, "for")) ||
-      req.socket.remoteAddress ||
-      "";
 
     req.on("error", onErrorOrClose);
     req.socket.on("error", onErrorOrClose);
@@ -232,11 +229,12 @@ export function createMiddleware(
       signal,
     });
 
-    const response = await fetch(request, {
-      ip,
+    const platform = createPlatform({
       request: req,
       response: res,
-    });
+    })
+
+    const response = await fetch(request, platform);
 
     if (!response) {
       if (next) {
@@ -292,6 +290,10 @@ async function writeResponse(
 
 const bodyConsumedErrorStream = new ReadableStream({
   start(controller) {
-    controller.error(new Error("The request body stream was already consumed by something before Marko Run."))
-  }
-})
+    controller.error(
+      new Error(
+        "The request body stream was already consumed by something before Marko Run."
+      )
+    );
+  },
+});

@@ -2,12 +2,14 @@ import "@marko/run/router";
 import ensureRuntime from "./ensure-runtime";
 import {
   createMiddleware,
+  type NodeMiddlewareOptions,
   type NodeMiddleware,
+  type NodePlatformInfo,
 } from "@marko/run/adapter/middleware";
 import type { IncomingMessage } from "http";
 import type { RouteWithHandler } from "@marko/run";
 
-export { createMiddleware, type NodeMiddleware };
+export { createMiddleware, type NodeMiddleware, type NodeMiddlewareOptions };
 
 export interface MatchedRoute {
   match: RouteWithHandler;
@@ -16,19 +18,24 @@ export interface MatchedRoute {
 
 type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
-export const routerMiddleware = ensureRuntime(() => {
-  return createMiddleware((request, platform) =>
-    globalThis.__marko_run__.fetch(request, platform)
-  );
-});
+export const routerMiddleware = ensureRuntime(
+  (options: NodeMiddlewareOptions) => {
+    return createMiddleware(
+      (request, platform) => globalThis.__marko_run__.fetch(request, platform),
+      options
+    );
+  }
+);
 
-export const invokeMiddleware = () => {
-  return createMiddleware((request, platform) =>
-    globalThis.__marko_run__.invoke(
-      (platform.request as MatchedRequest).route.match,
-      request,
-      platform
-    )
+export const invokeMiddleware = (options: NodeMiddlewareOptions) => {
+  return createMiddleware(
+    (request, platform) =>
+      globalThis.__marko_run__.invoke(
+        ((platform as NodePlatformInfo).request as MatchedRequest).route.match,
+        request,
+        platform
+      ),
+    options
   );
 };
 
@@ -41,7 +48,10 @@ export const matchMiddleware = ensureRuntime(() => {
     if (match) {
       (req as MatchedRequest).route = {
         match,
-        config: match.meta as any,
+        config: {
+          path: match.path,
+          ...(match.meta as any),
+        },
       };
     }
     next?.();
