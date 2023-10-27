@@ -1,6 +1,5 @@
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
-import { createMiddleware, type NodeMiddleware } from "./middleware";
-import stripAnsi from "strip-ansi";
+import { createMiddleware } from "./middleware";
 import type { IncomingMessage } from "http";
 import { inspect } from "util";
 
@@ -19,34 +18,6 @@ export interface MarkoRunDev {
 
 declare global {
   var __marko_run_dev__: MarkoRunDev | undefined;
-}
-
-export function createViteDevMiddleware<T>(
-  devServer: ViteDevServer,
-  load: (prev: T | undefined) => Promise<T>,
-  factory: (value: T) => NodeMiddleware
-): NodeMiddleware {
-  let value: T | undefined;
-  let middleware: NodeMiddleware;
-
-  return async (req, res, next) => {
-    try {
-      const nextValue = await load(value);
-      if (nextValue !== value) {
-        value = nextValue;
-        middleware = factory(value);
-      }
-      await middleware(req, res, next);
-    } catch (err) {
-      res.statusCode = 500;
-      if (err instanceof Error) {
-        devServer.ssrFixStacktrace(err);
-        res.end(err.stack && stripAnsi(err.stack));
-      } else {
-        res.end();
-      }
-    }
-  };
 }
 
 export async function createViteDevServer(
@@ -84,7 +55,7 @@ export async function createDevServer(
           }
         } else {
           res.statusCode = 500;
-          res.end(stripAnsi(inspect(err)));
+          res.end(inspect(err).replace(/([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g, ""));
         }
       } else {
         next?.();

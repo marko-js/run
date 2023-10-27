@@ -1,8 +1,7 @@
+import { inspect } from "util";
 import type { ViteDevServer } from "vite";
 import type { IncomingMessage } from "http";
 import type { NodeMiddleware } from "./middleware";
-import stripAnsi from "strip-ansi";
-import { inspect } from "util";
 
 declare global {
   var __marko_run_middleware__:
@@ -60,7 +59,7 @@ export default globalThis.__marko_run_middleware__ ??=
                     }
                   } else {
                     res.statusCode = 500;
-                    res.end(stripAnsi(inspect(err)));
+                    res.end(inspect(err).replace(/([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g, ""));
                   }
                 } else {
                   next?.();

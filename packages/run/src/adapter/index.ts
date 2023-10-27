@@ -19,7 +19,6 @@ export {
   getDevGlobal,
   createDevServer,
   createViteDevServer,
-  createViteDevMiddleware,
   type MarkoRunDev,
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
