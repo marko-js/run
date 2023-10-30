@@ -49,7 +49,7 @@ export default function adapter(): Adapter {
 
       const explorerPromise = startExplorer();
 
-      if (entry) {
+      if (entry && entry !== defaultEntry) {
         const { nodeArgs } = parseNodeArgs(options.args);
         let worker: Worker;
 
@@ -131,7 +131,7 @@ export default function adapter(): Adapter {
         spawnServer("node", args, port, envFile),
       ]);
 
-      if (!options.sourceEntry) {
+      if (options.entry === defaultEntry) {
         logInfoBox(
           `http://localhost:${port}`,
           explorer && `http://localhost:${explorer.port}`

@@ -28,7 +28,7 @@ export interface StartDevOptions extends StartOptions {}
 
 export interface StartPreviewOptions extends StartOptions {
   dir: string;
-  sourceEntry?: string
+  entry?: string
 }
 
 export interface Adapter {

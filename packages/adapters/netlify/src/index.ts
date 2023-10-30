@@ -16,6 +16,8 @@ export type {
 } from "./types";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
+const defaultEdgeEntry = path.join(__dirname, "default-edge-entry");
+const defaultFunctionsEntry = path.join(__dirname, "default-functions-entry");
 
 export interface Options {
   edge?: boolean;
@@ -23,6 +25,7 @@ export interface Options {
 
 export default function netlifyAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
+  const defaultEntry = options.edge ? defaultEdgeEntry : defaultFunctionsEntry;
   return {
     name: "netlify-adapter",
 
@@ -42,13 +45,16 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
 
     getEntryFile() {
-      return path.join(
-        __dirname,
-        options.edge ? "default-edge-entry" : "default-functions-entry"
-      );
+      return defaultEntry;
     },
 
-    startDev,
+    startDev(entry, config, options) {
+      return startDev!(
+        entry === defaultEntry ? undefined : entry,
+        config,
+        options
+      );
+    },
 
     async startPreview(_entry, options) {
       const { port = 8888, cwd } = options;

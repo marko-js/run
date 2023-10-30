@@ -10,9 +10,10 @@ import baseAdapter from "@marko/run/adapter";
 import createStaticServe from "serve-static";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
-import type { Fetch } from "@marko/run/*";
+import type { Fetch } from "@marko/run";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
+const defaultEntry = path.join(__dirname, "default-entry");
 
 export interface Options {
   urls?: string[] | ((routes: Route[]) => string[] | Promise<string[]>);
@@ -25,7 +26,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
   let adapterConfig!: AdapterConfig;
   return {
     name: "static-adapter",
-    
+
     configure(config) {
       adapterConfig = config;
     },
@@ -37,10 +38,16 @@ export default function staticAdapter(options: Options = {}): Adapter {
     },
 
     async getEntryFile() {
-      return path.join(__dirname, "default-entry");
+      return defaultEntry;
     },
 
-    startDev,
+    startDev(entry, config, options) {
+      return startDev!(
+        entry === defaultEntry ? undefined : entry,
+        config,
+        options
+      );
+    },
 
     async startPreview(_entry, options) {
       const { dir, port, envFile } = options;
@@ -62,8 +69,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
           resolve({
             port: address.port,
             close() {
-              listener.close()
-            }
+              listener.close();
+            },
           });
         });
       });
@@ -89,7 +96,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
       const defaultEntry = await this.getEntryFile!();
 
       if (sourceEntries[0] === defaultEntry) {
-        envFile && await loadEnv(envFile);
+        envFile && (await loadEnv(envFile));
         const fetch: Fetch = (await import(builtEntries[0])).fetch;
         const crawler = createCrawler(
           async (request) => {
@@ -97,7 +104,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
             return response || new Response(null, { status: 404 });
           },
           {
-            out: path.dirname(builtEntries[0])
+            out: path.dirname(builtEntries[0]),
           }
         );
         await crawler.crawl(pathsToVisit);
@@ -106,7 +113,12 @@ export default function staticAdapter(options: Options = {}): Adapter {
         const origin = `http://localhost:${port}`;
         const client = new Pool(origin);
 
-        const server = await spawnServer(`node ${builtEntries[0]}`, [], port, envFile);
+        const server = await spawnServer(
+          `node ${builtEntries[0]}`,
+          [],
+          port,
+          envFile
+        );
         const crawler = createCrawler(
           async (request) => {
             const url = new URL(request.url, origin);
@@ -144,7 +156,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
     },
 
     typeInfo() {
-      return '{}';
+      return "{}";
     },
   };
 }

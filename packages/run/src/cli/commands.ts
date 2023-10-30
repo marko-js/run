@@ -13,6 +13,7 @@ import type { Adapter } from "../vite";
 import { MemoryStore } from "@marko/vite";
 import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
 import { default as plugin, resolveAdapter as pluginResolveAdapter, isPluginIncluded } from "../vite/plugin";
+import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultPort = Number(process.env.PORT || 3000);
@@ -21,8 +22,8 @@ export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
 export async function preview(
-  sourceEntry: string | undefined,
   entry: string | undefined,
+  distEntry: string | undefined,
   cwd: string,
   configFile: string,
   port?: number,
@@ -32,7 +33,7 @@ export async function preview(
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile, logLevel: "silent", build: { outDir } },
-    "serve"
+    "build"
   );
 
   const [availablePort, adapter] = await Promise.all([
@@ -46,21 +47,25 @@ export async function preview(
     throw new Error(`Adapter ${adapter.name} does not support 'serve' command`);
   }
 
+  if (!entry) {
+    entry = await adapter.getEntryFile?.();
+  }
+
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
-  const entryFile = entry
-    ? path.join(dir, entry)
+  const entryFile = distEntry
+    ? path.join(dir, distEntry)
     : await findFileWithExt(dir, "index", [".mjs", ".js"]);
   if (envFile) {
     envFile = path.resolve(cwd, envFile);
   }
 
-  const options = {
+  const options: StartPreviewOptions = {
     cwd,
     dir,
     args,
     port: availablePort,
     envFile,
-    sourceEntry
+    entry
   };
 
   return await adapter.startPreview(entryFile, options);
@@ -76,7 +81,7 @@ export async function dev(
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile, logLevel: "silent" },
-    "build"
+    "serve"
   );
 
   if (envFile) {
@@ -94,17 +99,21 @@ export async function dev(
     );
   } else if (!adapter.startDev) {
     throw new Error(
-      `Adapter '${adapter.name}' does not support 'serve' command`
+      `Adapter '${adapter.name}' does not support 'dev' command`
     );
   }
 
-  const config = {
+  if (!entry) {
+    entry = await adapter.getEntryFile?.();
+  }
+
+  const config: InlineConfig = {
     root: cwd,
     configFile,
     plugins: isPluginIncluded(resolvedConfig) ? undefined : [plugin()],
   }
 
-  const options = {
+  const options: StartDevOptions = {
     cwd,
     args,
     port: availablePort,
