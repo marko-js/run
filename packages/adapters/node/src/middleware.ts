@@ -19,7 +19,7 @@ export interface MatchedRoute {
 type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
 export const routerMiddleware = ensureRuntime(
-  (options: NodeMiddlewareOptions) => {
+  (options?: NodeMiddlewareOptions) => {
     return createMiddleware(
       (request, platform) => globalThis.__marko_run__.fetch(request, platform),
       options
@@ -27,11 +27,11 @@ export const routerMiddleware = ensureRuntime(
   }
 );
 
-export const invokeMiddleware = (options: NodeMiddlewareOptions) => {
+export const invokeMiddleware = (options?: NodeMiddlewareOptions) => {
   return createMiddleware(
     (request, platform) =>
       globalThis.__marko_run__.invoke(
-        ((platform as NodePlatformInfo).request as MatchedRequest).route.match,
+        ((platform as NodePlatformInfo).request as MatchedRequest).route?.match,
         request,
         platform
       ),
