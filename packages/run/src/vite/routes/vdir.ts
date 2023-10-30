@@ -99,18 +99,18 @@ export default class VDir {
       const existing = this.files.get(file.type)!;
       if (existing !== file) {
         throw new Error(
-          `Duplicate file type '${file.type}' added at path '${this.path}'. File '${file.filePath}' collides with '${existing.filePath}'.`
+          `Duplicate file type '${file.type}' added at path '${this.path}'. File '${file.importPath}' collides with '${existing.importPath}'.`
         );
       } else if (
         file.type === RoutableFileTypes.Page ||
         file.type === RoutableFileTypes.Handler
       ) {
         throw new Error(
-          `Ambiguous path definition: route '${this.path}' is defined multiple times by ${file.filePath}`
+          `Ambiguous path definition: route '${this.path}' is defined multiple times by ${file.importPath}`
         );
       }
       throw new Error(
-        `Ambiguous path definition: file '${this.path}' is included multiple times by ${file.filePath}`
+        `Ambiguous path definition: file '${this.path}' is included multiple times by ${file.importPath}`
       );
     }
   }

@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import snap from "mocha-snap";
-import { Walker, createTestWalker } from "../routes/walk";
-import { RouteSource, buildRoutes } from "../routes/builder";
+import { createTestWalker } from "../routes/walk";
+import { type RouteSource, buildRoutes } from "../routes/builder";
 import { createDirectory } from "./utils/fakeFS";
 import {
   renderMiddleware,
@@ -15,6 +15,7 @@ import {
 } from "../codegen";
 import { httpVerbs, markoRunFilePrefix } from "../constants";
 import type { BuiltRoutes, HttpVerb } from "../types";
+import { normalizeErrorStack } from "./utils/sanitize";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
@@ -30,7 +31,10 @@ describe("router codegen", () => {
 
       const sources: RouteSource[] = [];
 
-      for (const file of  await fs.promises.readdir(dir, { recursive: false, withFileTypes: true })) {
+      for (const file of await fs.promises.readdir(dir, {
+        recursive: false,
+        withFileTypes: true,
+      })) {
         if (file.isFile()) {
           const match = /^routes(?:-(.+))?\.txt$/.exec(file.name);
           if (match) {
@@ -40,22 +44,22 @@ describe("router codegen", () => {
             // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
             sources.push({
               walker: createTestWalker(createDirectory(src)),
-              importPrefix: 'src/routes',
-              basePath: match[1]
+              importPrefix: "src/routes",
+              basePath: match[1],
             });
           }
         }
       }
 
       if (!sources.length) {
-        throw new Error('Missing routes.txt')
+        throw new Error("Missing routes.txt");
       }
 
       let routes: BuiltRoutes | undefined;
       let error: Error | undefined;
 
       try {
-        routes = await buildRoutes(sources)
+        routes = await buildRoutes(sources);
       } catch (err) {
         error = err as Error;
       }
@@ -65,15 +69,16 @@ describe("router codegen", () => {
       let typesSnap = "";
 
       if (error || !routes) {
+        normalizeErrorStack((error ||= new Error("No routes generated")));
+
         routesSnap += `## Error\n`;
         routesSnap += "### Template\n";
         routesSnap += "```marko\n";
         routesSnap += renderEntryTemplate(`${markoRunFilePrefix}error`, [
           "<dev-error-page>",
         ]);
-        routerSnap = renderErrorRouter(
-          (error ||= new Error("No routes generated"))
-        ).replace(/(\.[a-z]+):\d+:\d+/gi, "$1:0:0");
+
+        routerSnap = renderErrorRouter(error);
       } else {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;

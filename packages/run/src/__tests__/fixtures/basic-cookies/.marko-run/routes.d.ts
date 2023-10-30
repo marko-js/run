@@ -10,7 +10,7 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": { verb: "get" };
+			"/": Routes["/"];
 		}
 	}> {}
 }
@@ -26,9 +26,6 @@ declare module "../src/routes/+middleware" {
 }
 
 declare module "../src/routes/+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
@@ -36,4 +33,8 @@ declare module "../src/routes/+page.marko" {
     export type Handler = Run.HandlerLike<Route>;
     export const route: Run.HandlerTypeFn<Route>;
   }
+}
+
+type Routes = {
+	"/": { verb: "get"; };
 }

@@ -1,6 +1,6 @@
 import express from "express";
 import compressionMiddleware from "compression";
-import { matchMiddleware, type MatchedRoute } from "@marko/run-adapter-node/middleware";
+import { matchMiddleware, invokeMiddleware, type MatchedRoute } from "@marko/run-adapter-node/middleware";
 
 declare module "http" {
   interface IncomingMessage {
@@ -16,9 +16,8 @@ express()
   .use((req, res, next) => {
     if (req.route) {
       req.myData = 'from express server'
-      req.route.invoke(req, res, next)
-    } else {
-      next();
     }
+    next();
   })
+  .use(invokeMiddleware())
   .listen(process.env.PORT);

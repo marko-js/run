@@ -3,15 +3,10 @@
 import { createContext } from 'virtual:marko-run/runtime/internal';
 import errorPage from 'virtual:marko-run/__marko-run__error.marko?marko-server-entry';
 
-const error = new Error(`Duplicate file type 'page' added at path '/$'. File '/$bar+page.marko' collides with '/$foo+page.marko'.`);
+const error = new Error(`Duplicate file type 'page' added at path '/$'. File 'src/routes/$bar+page.marko' collides with 'src/routes/$foo+page.marko'.`);
 error.name = 'Error';
-error.stack = `Error: Duplicate file type 'page' added at path '/$'. File '/$bar+page.marko' collides with '/$foo+page.marko'.
-    at VDir.addFile (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/routes/vdir.ts:0:0)
-    at onFile (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/routes/builder.ts:0:0)
-    at walk (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/routes/walk.ts:0:0)
-    at Object.walkFS (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/routes/walk.ts:0:0)
-    at buildRoutes (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/routes/builder.ts:0:0)
-    at Context.<anonymous> (/Users/mirawlings/dev/marko-js/run/packages/run/src/vite/__tests__/main.test.ts:0:0)`;
+error.stack = `Error: Duplicate file type 'page' added at path '/$'. File 'src/routes/$bar+page.marko' collides with 'src/routes/$foo+page.marko'.
+    at [Normalized Error Stack]`;
 
 globalThis.__marko_run__ = { match, fetch, invoke };
 

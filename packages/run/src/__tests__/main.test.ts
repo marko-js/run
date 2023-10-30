@@ -6,10 +6,7 @@ import { createRequire } from "module";
 import * as playwright from "playwright";
 import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import type { Options } from "../vite";
-import {
-  SpawnedServer,
-  waitForServer,
-} from "../vite/utils/server";
+import { SpawnedServer, waitForServer } from "../vite/utils/server";
 import * as cli from "../cli/commands";
 
 // https://github.com/esbuild-kit/tsx/issues/113
@@ -36,7 +33,7 @@ declare namespace globalThis {
 declare const __track__: (html: string) => void;
 
 export type Step = () => Promise<unknown> | unknown;
-export type Assert = (fn: () => Promise<void>) => Promise<void>
+export type Assert = (fn: () => Promise<void>) => Promise<void>;
 
 const requireCwd = createRequire(process.cwd());
 let browser: playwright.Browser;
@@ -53,16 +50,27 @@ before(async () => {
    */
   await Promise.all([
     context.exposeFunction("__track__", (html: string) => {
+      const fragment = JSDOM.fragment(html);
+
+      for (const pre of fragment.querySelectorAll("pre")) {
+        if (!pre.children.length && pre.textContent) {
+          const match = /(^\s*Error:.+(?:\r?\n\s+)?)/.exec(pre.textContent);
+          if (match) {
+            pre.textContent = match[1] + "at [Normalized Error Stack]";
+          }
+        }
+      }
+
       const formatted = defaultSerializer(
-        defaultNormalizer(JSDOM.fragment(html))
-      ).replace(/(\.[a-z]+):\d+:\d+/gi, "$1:0:0")
+        defaultNormalizer(fragment)
+      );
 
       if (changes.at(-1) !== formatted) {
         changes.push(formatted);
       }
     }),
     context.addInitScript(function foo() {
-      const getRoot = () => document.getElementById("app")
+      const getRoot = () => document.getElementById("app");
       const observer = new MutationObserver(() => {
         const html = (getRoot() || document.body).innerHTML;
         if (html) {
@@ -134,7 +142,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
         }
 
         if (config.assert_dev) {
-          await config.assert_dev(testBlock)
+          await config.assert_dev(testBlock);
         } else {
           await testBlock();
         }
@@ -144,16 +152,21 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     if (!config.skip_preview) {
       it("preview", async () => {
         const configFile = await cli.getViteConfig(dir);
-        
+
         async function testBlock() {
           process.env.BROWSER = "none";
-        await cli.build(config.entry, dir, configFile);
-        const server = await cli.preview(config.entry, undefined, dir, configFile);
-        await testPage(dir, path, steps, server);
+          await cli.build(config.entry, dir, configFile);
+          const server = await cli.preview(
+            config.entry,
+            undefined,
+            dir,
+            configFile
+          );
+          await testPage(dir, path, steps, server);
         }
 
         if (config.assert_preview) {
-          await config.assert_preview(testBlock)
+          await config.assert_preview(testBlock);
         } else {
           await testBlock();
         }
@@ -179,7 +192,7 @@ async function testPage(
     await page.waitForSelector("body");
 
     await forEachChange((html, i) => {
-      snap(html, `.loading.${i}.html`, dir)
+      snap(html, `.loading.${i}.html`, dir);
     });
     for (const [i, step] of steps.entries()) {
       await waitForPendingRequests(page, step);

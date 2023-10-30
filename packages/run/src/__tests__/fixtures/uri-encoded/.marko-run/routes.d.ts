@@ -10,15 +10,12 @@ import type Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/a%2fb%2fc/:$id": Routes["/a%2fb%2fc/$%24id"]
+			"/a%2fb%2fc/:$id": Routes["/a%2fb%2fc/$%24id"];
 		}
 	}> {}
 }
 
 declare module "../src/routes/a%2fb%2fc/$%24id/+page.marko" {
-  export interface Input {
-    renderBody: Marko.Body;
-  }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/a%2fb%2fc/:$id"];
