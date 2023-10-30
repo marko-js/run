@@ -46,8 +46,8 @@ import {
 } from "./utils/config";
 
 // @ts-ignore
-import createDebug from 'debug';
-const debug = createDebug('@marko/run');
+import createDebug from "debug";
+const debug = createDebug("@marko/run");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -152,7 +152,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         const buildStartTime = performance.now();
         routes = await buildRoutes({
           walker: createFSWalker(resolvedRoutesDir),
-          importPrefix: routesDir
+          importPrefix: routesDir,
         });
         times.routesBuild = performance.now() - buildStartTime;
 
@@ -204,10 +204,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       if (render) {
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {
-          await adapter.routesGenerated(routes, new Map(virtualFiles.entries()), {
-            buildTime: times.routesBuild,
-            renderTime: times.routesRender
-          })
+          await adapter.routesGenerated(
+            routes,
+            new Map(virtualFiles.entries()),
+            {
+              buildTime: times.routesBuild,
+              renderTime: times.routesRender,
+            }
+          );
         }
         if (!isBuild) {
           await opts?.emitRoutes?.(routes.list);
@@ -345,6 +349,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
         }
 
+        const browserslistTarget =
+          isBuild && !config.build?.target
+            ? browserslist(undefined, {
+                path: root,
+              })
+            : undefined;
+
         let pluginConfig: UserConfig = {
           logLevel: isBuild ? "warn" : undefined,
           define: isBuild
@@ -356,15 +367,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             noExternal: /@marko\/run/,
           },
           build: {
-            target:
-              isBuild && !config.build?.target
-                ? resolveToEsbuildTarget(
-                    browserslist(undefined, {
-                      path: root,
-                    }),
-                    { printUnknownTargets: false }
-                  )
-                : undefined,
+            target: browserslistTarget?.length
+              ? resolveToEsbuildTarget(browserslistTarget, {
+                  printUnknownTargets: false,
+                })
+              : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
             rollupOptions: {
               output: rollupOutputOptions,
@@ -496,7 +503,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (virtualFiles.has(importee)) {
           resolved = importee;
         } else if (virtualFilePath) {
-          const filePath = path.resolve(__dirname, "..", virtualFilePath)
+          const filePath = path.resolve(__dirname, "..", virtualFilePath);
           const resolution = await this.resolve(filePath, importer, {
             skipSelf: true,
           });
