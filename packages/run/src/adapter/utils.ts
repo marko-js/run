@@ -21,7 +21,7 @@ export function logInfoBox(address: string, explorer?: string) {
   }
 
   const lines = drawMarkoBox(message, { color, fill: color });
-  console.log(lines.join("\n"));
+  console.log(lines.join("\n") + '\n');
 }
 
 export function drawMarkoBox(message: string, options?: LogoOptions) {
