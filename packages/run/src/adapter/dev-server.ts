@@ -2,6 +2,7 @@ import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 import { createMiddleware } from "./middleware";
 import type { IncomingMessage } from "http";
 import { inspect } from "util";
+import logger from "./logger";
 
 interface DevErrorCallback {
   id: string;
@@ -30,6 +31,9 @@ export async function createViteDevServer(
   });
 
   getDevGlobal().addDevServer(devServer);
+
+  devServer.middlewares.use(logger())
+
   return devServer;
 }
 
