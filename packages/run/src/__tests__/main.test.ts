@@ -192,12 +192,12 @@ async function testPage(
     await page.waitForSelector("body");
 
     await forEachChange((html, i) => {
-      snap(html, `.loading.${i}.html`, dir);
+      snap(html, { ext: `.loading.${i}.html`, dir });
     });
     for (const [i, step] of steps.entries()) {
       await waitForPendingRequests(page, step);
       await forEachChange((html, j) => {
-        snap(html, `.step-${i}.${j}.html`, dir);
+        snap(html, { ext: `.step-${i}.${j}.html`, dir });
       });
     }
   } finally {

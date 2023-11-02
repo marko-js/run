@@ -1,7 +1,7 @@
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
-import glob from "glob";
+import { glob } from "glob";
 import { fileURLToPath } from "url";
 import browserslist from "browserslist";
 import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
@@ -641,14 +641,7 @@ function single<P extends any[], R>(
 }
 
 async function globFileExists(root: string, pattern: string) {
-  return new Promise<boolean>((resolve, reject) => {
-    glob(pattern, { root }, (err, matches) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(matches.length > 0);
-    });
-  });
+  return (await glob(pattern, { root })).length > 0;
 }
 
 async function ensureDir(dir: string) {

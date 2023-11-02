@@ -134,9 +134,9 @@ describe("router codegen", () => {
 
       await Promise.all(
         [
-          routerSnap && snap(routerSnap, ".router.js", dir),
-          routesSnap && snap(routesSnap, ".routes.md", dir),
-          typesSnap && snap(typesSnap, ".routetypes.d.ts", dir),
+          routerSnap && snap(routerSnap, { ext: ".router.js", dir }),
+          routesSnap && snap(routesSnap, { ext: ".routes.md", dir }),
+          typesSnap && snap(typesSnap, { ext: ".routetypes.d.ts", dir }),
         ].filter(Boolean)
       );
     });

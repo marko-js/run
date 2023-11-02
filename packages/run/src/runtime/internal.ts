@@ -76,7 +76,7 @@ export async function call<TRoute extends AnyRoute>(
   next: NextFunction,
   context: MultiRouteContext<TRoute>
 ): Promise<Response> {
-  let response: Response | null | void;
+  let response!: Response | null | void;
 
   if (process.env.NODE_ENV !== "production") {
     let nextCallCount = 0;
