@@ -34,7 +34,6 @@ prog
   .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
     process.env.NODE_ENV = "production";
-    process.env.MR_EXPLORER ??= "true";
     const cwd = process.cwd();
     const args = process.argv.slice(entry ? 4 : 3);
     const config = await getViteConfig(cwd, opts.config);
@@ -60,7 +59,6 @@ prog
   )
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
-    process.env.MR_EXPLORER ??= "true";
     const cwd = process.cwd();
     const args = process.argv.slice(entry ? 4 : 3);
     const config = await getViteConfig(cwd, opts.config);

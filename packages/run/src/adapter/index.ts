@@ -12,6 +12,7 @@ import {
   spawnServerWorker,
   waitForWorker,
   type SpawnedServer,
+  getAvailablePort,
 } from "../vite/utils/server";
 import { createRequire } from "module";
 
@@ -148,7 +149,7 @@ export default function adapter(): Adapter {
     },
 
     async routesGenerated(routes, virtualFiles, meta) {
-      if (process.env.MR_EXPLORER !== "true") {
+      if (process.env.MR_EXPLORER === "false") {
         return;
       }
 
@@ -207,11 +208,12 @@ export default function adapter(): Adapter {
 
 const require = createRequire(import.meta.url);
 async function startExplorer() {
-  if (process.env.MR_EXPLORER === "true") {
+  if (process.env.MR_EXPLORER !== "false") {
+    const port = await getAvailablePort(1234);
     const entry = require.resolve("@marko/run-explorer");
-    const worker = await spawnServerWorker(entry, [], 1234, undefined, false);
+    const worker = await spawnServerWorker(entry, [], port, undefined, false);
     return {
-      port: 1234,
+      port,
       async close (){
         worker.kill();
       }
