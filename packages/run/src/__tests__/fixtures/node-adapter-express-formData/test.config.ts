@@ -15,7 +15,6 @@ export async function steps() {
   const response = await page.request.post(page.url(), { form });
 
   assert.equal(response.ok(), true);
-  debugger;
 
   const json = await response.json();
   const actual = json.formData;

@@ -113,9 +113,7 @@ describe("Adapter Middleware", () => {
 
       copyResponseHeaders(res, response.headers);
       const actual = res.getHeader("set-cookie");
-
-      debugger;
-
+      
       assert.deepEqual(actual, expected);
     })
   })
