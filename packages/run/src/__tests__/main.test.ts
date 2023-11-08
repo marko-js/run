@@ -230,9 +230,10 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
   let resolve!: () => void;
   const addOne = () => remaining++;
   const finishOne = async () => {
+    remaining--;
     // wait a tick to see if new requests start from this one.
     await page.evaluate(() => {});
-    if (!--remaining) resolve();
+    if (!remaining) resolve();
   };
   const pending = new Promise<void>((_resolve) => (resolve = _resolve));
 
