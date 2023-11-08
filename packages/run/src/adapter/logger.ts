@@ -95,7 +95,12 @@ export default function (_options: LoggerOptions = {}): NodeMiddleware {
         inFlight ^= bitMask;
       }
 
-      const contentLength = (res.getHeader("content-length") || 0) as number;
+      let contentLength = res.getHeader("content-length") || 0;
+      if (Array.isArray(contentLength)) {
+        contentLength = parseInt(contentLength[0], 10) || 0;
+      } else if (typeof contentLength === "string") {
+        contentLength = parseInt(contentLength, 10) || 0;
+      }
 
       logResponse(
         id,
