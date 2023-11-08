@@ -1,6 +1,6 @@
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
 import { createMiddleware } from "./middleware";
-import type { IncomingMessage } from "http";
+import type { IncomingMessage, ServerResponse } from "http";
 import { inspect } from "util";
 import logger from "./logger";
 
@@ -14,7 +14,7 @@ export interface MarkoRunDev {
   readonly devServers: ReadonlySet<ViteDevServer>;
   addDevServer(devServer: ViteDevServer): void;
   clear(): void;
-  onClient(callaback: (ws: WebSocket) => void): (response: Response) => void;
+  onClient(res: ServerResponse, callaback: (ws: WebSocket) => void): void;
 }
 
 declare global {
@@ -32,7 +32,7 @@ export async function createViteDevServer(
 
   getDevGlobal().addDevServer(devServer);
 
-  devServer.middlewares.use(logger())
+  devServer.middlewares.use(logger());
 
   return devServer;
 }
@@ -59,7 +59,12 @@ export async function createDevServer(
           }
         } else {
           res.statusCode = 500;
-          res.end(inspect(err).replace(/([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g, ""));
+          res.end(
+            inspect(err).replace(
+              /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
+              ""
+            )
+          );
         }
       } else {
         next?.();
@@ -130,9 +135,7 @@ export function getDevGlobal(): MarkoRunDev {
           devServer.close();
         }
       },
-      onClient(
-        callback: (ws: WebSocket) => void
-      ): (response: Response) => void {
+      onClient(res, callback) {
         const expires = Date.now() + 1000;
         const id = Math.floor(Math.random() * expires).toString(36);
         callbacks.push({
@@ -141,12 +144,10 @@ export function getDevGlobal(): MarkoRunDev {
           callback,
         });
 
-        return (response) => {
-          response.headers.append(
-            "set-cookie",
-            `${ClientIdCookieName}=${id}; Path=/; Max-Age=100; HttpOnly`
-          );
-        };
+        res.setHeader(
+          "set-cookie",
+          `${ClientIdCookieName}=${id}; Path=/; Max-Age=100; HttpOnly`
+        );
       },
     };
   }

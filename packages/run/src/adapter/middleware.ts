@@ -1,6 +1,6 @@
-import "./polyfill";
+import { appendHeader, getSetCookie } from "./polyfill";
 import type { Fetch, Platform } from "../runtime";
-import type { IncomingMessage, ServerResponse, OutgoingMessage } from "http";
+import { IncomingMessage, ServerResponse } from "http";
 import type { TLSSocket } from "tls";
 
 export interface NodePlatformInfo {
@@ -41,7 +41,6 @@ export interface NodeMiddlewareOptions {
   createPlatform?(platform: NodePlatformInfo): Platform & NodePlatformInfo;
 }
 
-
 // TODO: Support the newer `Forwarded` standard header
 function getForwardedHeader(req: IncomingMessage, name: string) {
   const value = req.headers["x-forwarded-" + name];
@@ -79,64 +78,20 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
   return `${protocol}://${host}`;
 }
 
-const inExpiresDateRgs = /Expires\s*=\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*$/i;
-export function setResponseHeaders(response: Response, res: OutgoingMessage) {
-  for (const [key, value] of response.headers) {
+export function copyResponseHeaders(
+  response: ServerResponse,
+  headers: Headers
+) {
+  for (const [key, value] of headers) {
     if (key !== "set-cookie") {
-      res.setHeader(key, value);
+      response.setHeader(key, value);
     }
   }
 
-  const setCookies = getSetCookie(response.headers);
+  const setCookies = getSetCookie(headers);
   if (setCookies?.length) {
-    res.setHeader("set-cookie", setCookies);
+    appendHeader(response, "set-cookie", setCookies);
   }
-}
-
-const getSetCookie = (Headers.prototype.getSetCookie as any)
-  ? getSetCookie_platform
-  : getSetCookie_fallback;
-
-function getSetCookie_platform(headers: Headers) {
-  return headers.getSetCookie();
-}
-
-export function getSetCookie_fallback(headers: Headers) {
-  const value = headers.get("set-cookie");
-  if (!value) return undefined;
-
-  let sepIndex = value.indexOf(",") + 1;
-  if (!sepIndex) return value;
-
-  let index = 0;
-  let setCookie = undefined;
-  let setCookies = undefined;
-  do {
-    const valuePart = value.slice(index, sepIndex - 1);
-    if (!inExpiresDateRgs.test(valuePart)) {
-      if (setCookies) {
-        setCookies.push(valuePart);
-      } else if (setCookie) {
-        setCookies = [setCookie, valuePart];
-      } else {
-        setCookie = valuePart;
-      }
-      index = sepIndex;
-      while (value.charCodeAt(index) === 32) index++;
-    }
-    sepIndex = value.indexOf(",", sepIndex) + 1;
-  } while (sepIndex);
-
-  if (index) {
-    const valuePart = value.slice(index);
-    if (setCookies) {
-      setCookies.push(valuePart);
-      return setCookies;
-    }
-    return [setCookie!, valuePart];
-  }
-
-  return value;
 }
 
 /**
@@ -150,7 +105,7 @@ export function createMiddleware(
   const {
     origin = process.env.ORIGIN,
     trustProxy = process.env.TRUST_PROXY === "1",
-    createPlatform = platform => platform
+    createPlatform = (platform) => platform,
   } = (options ??= {});
 
   return async (req, res, next) => {
@@ -186,13 +141,12 @@ export function createMiddleware(
       }
     }
 
-    let setDevClientId: ((response: Response) => void) | undefined;
     if (
       process.env.NODE_ENV !== "production" &&
       globalThis.__marko_run_dev__ &&
       req.headers.accept?.includes("text/html")
     ) {
-      setDevClientId = globalThis.__marko_run_dev__.onClient((ws) => {
+      globalThis.__marko_run_dev__.onClient(res, (ws) => {
         if (signal.aborted) {
           sendError();
         } else {
@@ -232,7 +186,7 @@ export function createMiddleware(
     const platform = createPlatform({
       request: req,
       response: res,
-    })
+    });
 
     const response = await fetch(request, platform);
 
@@ -243,12 +197,8 @@ export function createMiddleware(
       return;
     }
 
-    if (process.env.NODE_ENV !== "production" && setDevClientId) {
-      setDevClientId(response);
-    }
-
     res.statusCode = response.status;
-    setResponseHeaders(response, res);
+    copyResponseHeaders(res, response.headers);
 
     if (!response.body) {
       if (!response.headers.has("content-length")) {
