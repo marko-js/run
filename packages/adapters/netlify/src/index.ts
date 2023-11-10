@@ -1,5 +1,5 @@
 import path from "path";
-import fs from "fs/promises";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
 import {
@@ -109,7 +109,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       ]) {
         const dirpath = path.join(config.root, dir);
         if (existsSync(dirpath)) {
-          fs.rm(dirpath, { recursive: true, force: true });
+          fs.promises.rm(dirpath, { recursive: true, force: true });
         }
       }
 
@@ -123,8 +123,8 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         await writeFunctionRedirects(config.root);
       }
 
-      for (const dir of ["assets"]) {
-        await fs.cp(path.join(distDir, dir), path.join(netlifyDir, dir), {
+      for (const dir of ["assets"].filter(fs.existsSync)) {
+        await fs.promises.cp(path.join(distDir, dir), path.join(netlifyDir, dir), {
           recursive: true,
           force: true,
         });
@@ -149,18 +149,18 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
 async function ensureDir(dir: string, clear?: boolean): Promise<string> {
   let exists = existsSync(dir);
   if (exists && clear) {
-    await fs.rm(dir, { force: true, recursive: true });
+    await fs.promises.rm(dir, { force: true, recursive: true });
     exists = false;
   }
   if (!exists) {
-    await fs.mkdir(dir, { recursive: true });
+    await fs.promises.mkdir(dir, { recursive: true });
   }
   return dir;
 }
 
 async function writeEdgeFunctionManifest(rootDir: string) {
   const dir = await ensureDir(path.join(rootDir, ".netlify", "edge-functions"));
-  await fs.writeFile(
+  await fs.promises.writeFile(
     path.join(dir, "manifest.json"),
     `{
   "functions": [
@@ -177,7 +177,7 @@ async function writeEdgeFunctionManifest(rootDir: string) {
 
 async function writeFunctionRedirects(rootDir: string) {
   const dir = await ensureDir(path.join(rootDir, "netlify"));
-  await fs.writeFile(
+  await fs.promises.writeFile(
     path.join(dir, "_redirects"),
     "/*  /.netlify/functions/index  200\n",
     "utf-8"

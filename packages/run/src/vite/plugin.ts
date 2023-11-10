@@ -1,5 +1,4 @@
 import path from "path";
-import crypto from "crypto";
 import fs from "fs";
 import { glob } from "glob";
 import { fileURLToPath } from "url";
@@ -9,8 +8,7 @@ import { mergeConfig } from "vite";
 import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
 import type * as Compiler from "@marko/compiler";
-import markoVitePlugin, { FileStore } from "@marko/vite";
-import type { BuildStore } from "@marko/vite";
+import markoVitePlugin from "@marko/vite";
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
@@ -47,6 +45,7 @@ import {
 
 // @ts-ignore
 import createDebug from "debug";
+import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 const debug = createDebug("@marko/run");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -77,7 +76,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let { routesDir, adapter, ...markoVitePluginOptions } = opts;
 
   let compiler: typeof Compiler;
-  let store: BuildStore;
+  let store: ReadOncePersistedStore<RouteData>;
   let root: string;
   let resolvedRoutesDir: string;
   let typesDir: string;
@@ -90,7 +89,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
-  let routeDataFilename = "routes.json";
   let extractVerbs: (filePath: string) => Promise<HttpVerb[]>;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
@@ -289,14 +287,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         });
 
         routesDir = opts.routesDir || "src/routes";
-        markoVitePluginOptions.store = store =
-          opts.store ||
-          new FileStore(
-            `marko-serve-vite-${crypto
-              .createHash("SHA1")
-              .update(root)
-              .digest("hex")}`
-          );
+        store = new ReadOncePersistedStore(
+          `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`
+        );
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
@@ -376,6 +369,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             rollupOptions: {
               output: rollupOutputOptions,
             },
+            modulePreload: { polyfill: false }
           },
           optimizeDeps: {
             entries: !config.optimizeDeps?.entries
@@ -456,9 +450,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (isBuild && !isSSRBuild) {
           // Routes and code should have been generated in the SSR build that ran previously
           try {
-            routeData = JSON.parse(
-              (await store.get(routeDataFilename))!
-            ) as RouteData;
+            routeData = await store.read();
           } catch {
             this.error(
               `You must run the "ssr" build before the "browser" build.`
@@ -561,7 +553,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             routeData.files.push({ key, code });
           }
 
-          await store.set(routeDataFilename, JSON.stringify(routeData));
+          store.write(routeData);
 
           await opts?.emitRoutes?.(routes.list);
         } else if (process.env.MR_EXPLORER !== "true") {

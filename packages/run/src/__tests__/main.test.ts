@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import url from 'url'
 import snap from "mocha-snap";
 import { JSDOM } from "jsdom";
 import { createRequire } from "module";
@@ -8,6 +9,8 @@ import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 import * as cli from "../cli/commands";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 // https://github.com/esbuild-kit/tsx/issues/113
 const { toString } = Function.prototype;

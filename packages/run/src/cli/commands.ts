@@ -3,16 +3,23 @@
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { build as viteBuild, resolveConfig, type ResolvedConfig, InlineConfig } from "vite";
+import {
+  build as viteBuild,
+  resolveConfig,
+  type ResolvedConfig,
+  InlineConfig,
+} from "vite";
 import {
   getExternalPluginOptions,
   setExternalAdapterOptions,
-  setExternalPluginOptions,
 } from "../vite/utils/config";
 import type { Adapter } from "../vite";
-import { MemoryStore } from "@marko/vite";
 import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
-import { default as plugin, resolveAdapter as pluginResolveAdapter, isPluginIncluded } from "../vite/plugin";
+import {
+  default as plugin,
+  resolveAdapter as pluginResolveAdapter,
+  isPluginIncluded,
+} from "../vite/plugin";
 import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,8 +44,13 @@ export async function preview(
   );
 
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(port ?? resolvedConfig.preview.port ?? resolvedConfig.server.port ?? defaultPort),
-    resolveAdapter(resolvedConfig)
+    getAvailablePort(
+      port ??
+        resolvedConfig.preview.port ??
+        resolvedConfig.server.port ??
+        defaultPort
+    ),
+    resolveAdapter(resolvedConfig),
   ]);
 
   if (!adapter) {
@@ -65,7 +77,7 @@ export async function preview(
     args,
     port: availablePort,
     envFile,
-    entry
+    entry,
   };
 
   return await adapter.startPreview(entryFile, options);
@@ -89,8 +101,13 @@ export async function dev(
   }
 
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(port ?? resolvedConfig.server.port ?? resolvedConfig.preview.port ?? defaultPort),
-    resolveAdapter(resolvedConfig)
+    getAvailablePort(
+      port ??
+        resolvedConfig.server.port ??
+        resolvedConfig.preview.port ??
+        defaultPort
+    ),
+    resolveAdapter(resolvedConfig),
   ]);
 
   if (!adapter) {
@@ -98,9 +115,7 @@ export async function dev(
       "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
     );
   } else if (!adapter.startDev) {
-    throw new Error(
-      `Adapter '${adapter.name}' does not support 'dev' command`
-    );
+    throw new Error(`Adapter '${adapter.name}' does not support 'dev' command`);
   }
 
   if (!entry) {
@@ -111,7 +126,7 @@ export async function dev(
     root: cwd,
     configFile,
     plugins: isPluginIncluded(resolvedConfig) ? undefined : [plugin()],
-  }
+  };
 
   const options: StartDevOptions = {
     cwd,
@@ -155,24 +170,21 @@ export async function build(
     envFile = path.resolve(cwd, envFile);
   }
 
-  let buildConfig: InlineConfig = {
-    root,
-    configFile,
-    build: {
-      ssr: false,
-      outDir,
+  const buildConfig = setExternalAdapterOptions(
+    {
+      root,
+      configFile,
+      build: {
+        ssr: false,
+        outDir,
+      },
     },
-  };
-
-  buildConfig = setExternalPluginOptions(buildConfig, {
-    store: new MemoryStore(),
-  });
-
-  buildConfig = setExternalAdapterOptions(buildConfig, {
-    root,
-    isBuild: true,
-    envFile,
-  });
+    {
+      root,
+      isBuild: true,
+      envFile,
+    }
+  );
 
   const hasPlugin = isPluginIncluded(resolvedConfig);
 
