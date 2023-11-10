@@ -65,13 +65,13 @@ export interface RouterOptions {
     | "RewriteWith";
 }
 
-export interface MarkoServeOptions extends Partial<RouterOptions> {
+export interface MarkoRunOptions extends Partial<RouterOptions> {
   routesDir?: string;
   emitRoutes?(routes: Route[]): void | Promise<void>;
   adapter?: Adapter | null;
 }
 
-export type Options = MarkoServeOptions & MarkoViteOptions;
+export type Options = MarkoRunOptions & MarkoViteOptions;
 
 export interface Route {
   key: string;
