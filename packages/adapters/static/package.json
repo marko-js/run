@@ -45,6 +45,7 @@
   "devDependencies": {
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.6",
+    "@types/serve-static": "^1.15.5",
     "cross-env": "^7.0.3",
     "esbuild": "^0.15.7",
     "mocha": "^10.0.0",
