@@ -125,7 +125,7 @@ export async function dev(
   const config: InlineConfig = {
     root: cwd,
     configFile,
-    plugins: isPluginIncluded(resolvedConfig) ? undefined : [plugin()],
+    plugins: isPluginIncluded(resolvedConfig) ? undefined : plugin(),
   };
 
   const options: StartDevOptions = {
@@ -174,6 +174,7 @@ export async function build(
     {
       root,
       configFile,
+      plugins: isPluginIncluded(resolvedConfig) ? undefined : plugin(),
       build: {
         ssr: false,
         outDir,
@@ -186,12 +187,10 @@ export async function build(
     }
   );
 
-  const hasPlugin = isPluginIncluded(resolvedConfig);
 
   // build SSR
   await viteBuild({
     ...buildConfig,
-    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       target: "esnext",
       ...buildConfig.build,
@@ -207,7 +206,6 @@ export async function build(
   // build client
   await viteBuild({
     ...buildConfig,
-    plugins: hasPlugin ? undefined : [plugin()],
     build: {
       ...buildConfig.build,
       sourcemap: true,
