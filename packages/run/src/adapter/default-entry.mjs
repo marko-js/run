@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import zlib from 'zlib';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const { PORT = 3456 } = process.env;
+const { PORT = 3000 } = process.env;
 
 const middleware = createMiddleware(fetch);
 const compress = compression({

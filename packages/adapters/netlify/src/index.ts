@@ -57,7 +57,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
 
     async startPreview(_entry, options) {
-      const { port = 8888, cwd } = options;
+      const { port = 3000, cwd } = options;
 
       const args = [
         "dev",
