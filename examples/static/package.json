@@ -5,20 +5,20 @@
   "scripts": {
     "build": "marko-run build",
     "dev": "marko-run",
-    "start": "marko-run preview"
+    "preview": "marko-run preview"
   },
   "devDependencies": {
-    "@marko/compiler": "^5.22.6",
-    "@marko/run": "^0.1.2",
-    "@marko/run-adapter-static": "^0.1.0",
-    "@types/mocha": "^9.1.1",
-    "@types/node": "^18.7.6",
-    "prettier": "^2.7.1",
-    "tsx": "^3.8.2",
-    "typescript": "^4.7.4",
-    "vite": "^4.1.4"
+    "@marko/compiler": "^5.33.7",
+    "@marko/run": "^0.3.0",
+    "@marko/run-adapter-static": "^0.1.6",
+    "@types/mocha": "^10.0.4",
+    "@types/node": "^20.9.0",
+    "prettier": "^3.1.0",
+    "tsx": "^4.1.2",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
   },
   "dependencies": {
-    "marko": "^5.22.4"
+    "marko": "^5.31.17"
   }
 }

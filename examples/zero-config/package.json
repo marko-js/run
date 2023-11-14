@@ -5,9 +5,9 @@
   "scripts": {
     "build": "marko-run build",
     "dev": "marko-run",
-    "start": "marko-run preview"
+    "preview": "marko-run preview"
   },
   "dependencies": {
-    "marko": "^5.22.4"
+    "marko": "^5.31.17"
   }
 }
