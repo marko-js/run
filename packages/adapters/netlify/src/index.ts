@@ -123,11 +123,14 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         await writeFunctionRedirects(config.root);
       }
 
-      for (const dir of ["assets"].filter(fs.existsSync)) {
-        await fs.promises.cp(path.join(distDir, dir), path.join(netlifyDir, dir), {
-          recursive: true,
-          force: true,
-        });
+      for (const dir of ["assets"]) {
+        const sourceDir = path.join(distDir, dir);
+        if (fs.existsSync(sourceDir)) {
+          await fs.promises.cp(sourceDir, path.join(netlifyDir, dir), {
+            recursive: true,
+            force: true,
+          });
+        }
       }
     },
 
