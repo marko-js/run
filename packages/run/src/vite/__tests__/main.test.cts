@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import url from 'url';
+// import url from 'url';
 import snap from "mocha-snap";
 import { createTestWalker } from "../routes/walk";
 import { type RouteSource, buildRoutes } from "../routes/builder";
@@ -18,7 +18,7 @@ import { httpVerbs, markoRunFilePrefix } from "../constants";
 import type { BuiltRoutes, HttpVerb } from "../types";
 import { normalizeErrorStack } from "./utils/sanitize";
 
-const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+// const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 const FIXTURES = path.join(__dirname, "fixtures");
 

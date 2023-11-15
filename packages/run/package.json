@@ -20,7 +20,7 @@
     "marko-run": "./dist/cli/index.mjs"
   },
   "scripts": {
-    "test": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.ts\"",
+    "test": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.?(c)ts\"",
     "test:watch": "npm test -- --watch",
     "test:inspect": "npm test -- --inspect",
     "test:update": "npm test -- --update",
