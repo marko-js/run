@@ -67,6 +67,8 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         "netlify",
         "--port",
         port.toString(),
+        "--cwd",
+        cwd,
         ...parseNetlifyArgs(options.args),
       ];
 
