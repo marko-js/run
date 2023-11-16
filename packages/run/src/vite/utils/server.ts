@@ -1,17 +1,17 @@
 import net, { type Socket } from "net";
 import cp, { type ChildProcess, type StdioOptions } from "child_process";
-import { parse, config } from 'dotenv';
+import { parse, config } from "dotenv";
 import fs from "fs";
 import cluster, { type Address, type Worker } from "cluster";
 
 export interface SpawnedServer {
-  port: number,
-  close(): Promise<void> | void
+  port: number;
+  close(): Promise<void> | void;
 }
 
 export async function parseEnv(envFile: string) {
   if (fs.existsSync(envFile)) {
-    const content = await fs.promises.readFile(envFile, 'utf8');
+    const content = await fs.promises.readFile(envFile, "utf8");
     return parse(content);
   }
 }
@@ -27,13 +27,13 @@ export async function spawnServer(
   env?: string | Record<string, string>,
   cwd: string = process.cwd(),
   wait: number = 30_000,
-  stdio: StdioOptions = ['ignore', 'inherit', 'inherit']
+  stdio: StdioOptions = ["ignore", "inherit", "inherit"]
 ): Promise<SpawnedServer> {
   if (port <= 0) {
     port = await getAvailablePort();
   }
 
-  if (typeof env === 'string') {
+  if (typeof env === "string") {
     env = await parseEnv(env);
   }
 
@@ -51,10 +51,7 @@ export async function spawnServer(
   };
 
   try {
-    await Promise.race([
-      waitForError(proc, port),
-      waitForServer(port, wait)
-    ])
+    await Promise.race([waitForError(proc, port), waitForServer(port, wait)]);
   } catch (err) {
     close();
     throw err;
@@ -62,7 +59,7 @@ export async function spawnServer(
 
   return {
     port,
-    close
+    close,
   };
 }
 
@@ -76,7 +73,7 @@ export async function spawnServerWorker(
   if (port <= 0) {
     port = await getAvailablePort();
   }
-  if (typeof env === 'string') {
+  if (typeof env === "string") {
     env = await parseEnv(env);
   }
 
@@ -86,16 +83,21 @@ export async function spawnServerWorker(
   try {
     cluster.settings.exec = module;
     cluster.settings.execArgv = args;
-    const worker = cluster.fork({ ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` });
+    const worker = cluster.fork({
+      ...env,
+      NODE_ENV: "development",
+      ...process.env,
+      PORT: `${port}`,
+    });
     if (wait) {
       return new Promise<Worker>((resolve) => {
         function ready(message: any) {
-          if (message === 'ready') {
-            worker.off('message', ready);
+          if (message === "ready") {
+            worker.off("message", ready);
             resolve(worker);
           }
         }
-        worker.on('message', ready);
+        worker.on("message", ready);
       });
     }
     return worker;
@@ -106,16 +108,26 @@ export async function spawnServerWorker(
   }
 }
 
-export async function waitForError(proc: ChildProcess, port: number): Promise<void> {
+export async function waitForError(
+  proc: ChildProcess,
+  port: number
+): Promise<void> {
   return new Promise((_, reject) => {
     proc.once("error", reject);
     proc.once("exit", (code) => {
-      reject(new Error(`Process exited with code ${code} while waiting for server to start on port "${port}".`));
+      reject(
+        new Error(
+          `Process exited with code ${code} while waiting for server to start on port "${port}".`
+        )
+      );
     });
-  })
+  });
 }
 
-export async function waitForServer(port: number, wait: number = 0): Promise<Socket> {
+export async function waitForServer(
+  port: number,
+  wait: number = 0
+): Promise<Socket> {
   let remaining = wait > 0 ? wait : Infinity;
   let connection: Socket | null;
   while (!(connection = await getConnection(port))) {
@@ -163,7 +175,7 @@ export async function getConnection(port: number): Promise<Socket | null> {
         resolve(null);
       })
       .on("connect", () => {
-        resolve(connection)
+        resolve(connection);
       });
   });
 }
@@ -187,4 +199,23 @@ export async function getAvailablePort(port?: number): Promise<number> {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function getInspectOptions(args: string[]):
+  | {
+      host: string | undefined;
+      port: number | undefined;
+      wait: boolean | undefined;
+    }
+  | undefined {
+  for (const arg of args) {
+    const match = arg.match(/^--inspect(-brk)?(?:=(?:(.+):)?(.+))?$/);
+    if (match) {
+      return {
+        host: match[2],
+        port: parseInt(match[3], 10) || undefined,
+        wait: !!match[1],
+      };
+    }
+  }
 }

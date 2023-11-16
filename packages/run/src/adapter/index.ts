@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import inspector from "inspector";
 import { fileURLToPath } from "url";
 import type { Worker } from "cluster";
 import type { Adapter, ExplorerData } from "../vite";
@@ -13,6 +14,7 @@ import {
   waitForWorker,
   type SpawnedServer,
   getAvailablePort,
+  getInspectOptions,
 } from "../vite/utils/server";
 import { createRequire } from "module";
 
@@ -100,6 +102,12 @@ export default function adapter(): Adapter {
 
       const devServer = await createDevServer(config);
       envFile && (await loadEnv(envFile));
+
+
+      const inspect = getInspectOptions(options.args);
+      if (inspect) {
+        inspector.open(inspect.port, inspect.host, inspect.wait);
+      }
 
       const listen = new Promise<AddressInfo>((resolve) => {
         const listener = devServer.middlewares.listen(port, () => {

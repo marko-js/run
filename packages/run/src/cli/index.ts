@@ -60,7 +60,8 @@ prog
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
     const cwd = process.cwd();
-    const args = process.argv.slice(entry ? 4 : 3);
+    const offset = (process.argv[2] === 'dev' ? 3 : 2) + (entry ? 1 : 0);
+    const args = process.argv.slice(offset);
     const config = await getViteConfig(cwd, opts.config);
     await dev(entry, cwd, config, opts.port, opts.env, args);
   });
