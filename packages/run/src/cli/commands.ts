@@ -148,7 +148,9 @@ export async function build(
   const root = cwd;
   const resolvedConfig = await resolveConfig(
     { root, configFile, logLevel: "silent" },
-    "build"
+    "build",
+    "production",
+    "production"
   );
   const adapter = await resolveAdapter(resolvedConfig);
 
