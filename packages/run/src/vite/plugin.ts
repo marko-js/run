@@ -383,7 +383,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           },
           resolve: isBuild
             ? {
-                browserField: isSSRBuild ? false : undefined,
+                mainFields: (isSSRBuild ? [] : ['browser']).concat(['module', 'jsnext:main', 'jsnext', 'main']),
                 conditions: [
                   isSSRBuild ? "node" : "browser",
                   "import",
