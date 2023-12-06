@@ -359,6 +359,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           ssr: {
             noExternal: /@marko\/run/,
           },
+          css: {
+            devSourcemap: true
+          },
           build: {
             target: browserslistTarget?.length
               ? resolveToEsbuildTarget(browserslistTarget, {
