@@ -8,17 +8,17 @@
     "preview": "marko-run preview"
   },
   "devDependencies": {
-    "@marko/compiler": "^5.33.7",
-    "@marko/run": "^0.3.0",
+    "@marko/compiler": "^5.34.1",
+    "@marko/run": "^0.3.2",
     "@marko/run-adapter-static": "^0.1.6",
-    "@types/mocha": "^10.0.4",
-    "@types/node": "^20.9.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.3",
     "prettier": "^3.1.0",
-    "tsx": "^4.1.2",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.6"
   },
   "dependencies": {
-    "marko": "^5.31.17"
+    "marko": "^5.32.0"
   }
 }

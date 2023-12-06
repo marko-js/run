@@ -359,6 +359,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           ssr: {
             noExternal: /@marko\/run/,
           },
+          css: {
+            devSourcemap: true
+          },
           build: {
             target: browserslistTarget?.length
               ? resolveToEsbuildTarget(browserslistTarget, {
@@ -383,7 +386,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           },
           resolve: isBuild
             ? {
-                browserField: isSSRBuild ? false : undefined,
+                mainFields: (isSSRBuild ? [] : ['browser']).concat(['module', 'jsnext:main', 'jsnext', 'main']),
                 conditions: [
                   isSSRBuild ? "node" : "browser",
                   "import",
