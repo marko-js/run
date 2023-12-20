@@ -188,7 +188,17 @@ export function createMiddleware(
       response: res,
     });
 
-    const response = await fetch(request, platform);
+    let response: Response | void;
+    try {
+      response = await fetch(request, platform);
+    } catch (err) {
+      if (next) {
+        next(err as Error);
+      } else {
+        console.error(err);
+      }
+      return;
+    }
 
     if (!response) {
       if (next) {
