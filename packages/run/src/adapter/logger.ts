@@ -64,16 +64,18 @@ export default function (_options: LoggerOptions = {}): NodeMiddleware {
     const _end = res.end;
 
     res.write = ((...args) => {
-      if (typeof args[1] !== "function") {
-        bodyLength += Buffer.byteLength(args[0], args[1]);
-      } else {
-        bodyLength += args[0].length;
+      if (args[0]) {
+        if (typeof args[1] !== "function") {
+          bodyLength += Buffer.byteLength(args[0], args[1]);
+        } else {
+          bodyLength += args[0].length;
+        }
       }
       return _write.apply(res, args as any);
     }) as typeof _write;
 
     res.end = ((...args) => {
-      if (args.length && typeof args[0] !== 'function') {
+      if (args[0] && typeof args[0] !== 'function') {
         if (typeof args[1] !== 'function') {
           bodyLength += Buffer.byteLength(args[0], args[1] as BufferEncoding);
         } else {
