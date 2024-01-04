@@ -236,10 +236,11 @@ async function writeResponse(
       if (done) {
         res.end();
         return;
-      } else if (!res.write(value)) {
-        res.once("drain", () => writeResponse(reader, res, controller));
-        return;
-      } else if ((res as any).flush) {
+      }
+      
+      res.write(value);
+      
+      if ((res as any).flush) {
         (res as any).flush();
       }
     }
