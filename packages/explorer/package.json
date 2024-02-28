@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-explorer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Explore routes in your Marko Run project",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/explorer",
