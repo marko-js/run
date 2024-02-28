@@ -6,6 +6,7 @@ export {
   loadEnv,
   parseEnv,
   spawnServer,
+  spawnServerWorker
 } from "./utils/server";
 
 export type { SpawnedServer } from "./utils/server";

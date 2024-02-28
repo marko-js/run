@@ -24,7 +24,7 @@
     "test:watch": "npm test -- --watch",
     "test:inspect": "npm test -- --inspect",
     "test:update": "npm test -- --update",
-    "build": "tsc -b && tsx scripts/build.ts"
+    "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
   },
   "exports": {
     ".": {

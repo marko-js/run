@@ -16,7 +16,7 @@ import {
   getAvailablePort,
   getInspectOptions,
 } from "../vite/utils/server";
-import { createRequire } from "module";
+import { start as explorerStart } from "@marko/run-explorer";
 
 export {
   getDevGlobal,
@@ -214,17 +214,9 @@ export default function adapter(): Adapter {
   };
 }
 
-const require = createRequire(import.meta.url);
 async function startExplorer() {
   if (process.env.MR_EXPLORER !== "false") {
     const port = await getAvailablePort(1234);
-    const entry = require.resolve("@marko/run-explorer");
-    const worker = await spawnServerWorker(entry, [], port, undefined, false);
-    return {
-      port,
-      async close (){
-        worker.kill();
-      }
-    }
+    return explorerStart(port);
   }
 }

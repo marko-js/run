@@ -17,19 +17,20 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "MR_EXPLORER=false marko-run build",
+    "build": "tsc -b tsconfig.build.json && tsx scripts/build.ts",
     "dev": "MR_EXPLORER=false marko-run",
     "preview": "MR_EXPLORER=false marko-run preview"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.mjs"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
-  "main": "./dist/index.mjs",
+  "main": "dist/index.cjs",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "devDependencies": {
     "@marko/run": "^0",
