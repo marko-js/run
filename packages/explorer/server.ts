@@ -12,21 +12,21 @@ import { ServerResponse } from "http";
 const { PORT = 3000 } = process.env;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageDir = path.join(__dirname, "..");
+const appDir = path.join(packageDir, ".app");
 const entryFile = path.join(packageDir, "src", "index.ts");
-const distDir = path.join(packageDir, ".app");
 
 let buildPromise: Promise<void> | null = null;
 async function build() {
   return (buildPromise ??= new Promise<void>((resolve, reject) => {
     exec(
-      `marko-run build --output ${distDir} ${entryFile}`,
+      `marko-run build --output ${appDir} ${entryFile}`,
       { cwd: packageDir, env: { ...process.env, MR_EXPLORER: "false" } },
       async (error) => {
         if (error) {
           reject(error);
         }
         ({ default: middleware } = await import(
-          path.join(distDir, "index.mjs")
+          path.join(appDir, "index.mjs")
         ));
         resolve();
       },
@@ -42,7 +42,7 @@ const compress = compression({
   flush: zlib.constants.Z_PARTIAL_FLUSH,
   threshold: 500,
 });
-const staticServe = createStaticServe(__dirname, {
+const staticServe = createStaticServe(appDir, {
   index: false,
   immutable: true,
   maxAge: "365 days",
