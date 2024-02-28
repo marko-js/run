@@ -77,7 +77,7 @@ prog
   .action(async (entry, opts) => {
     const cwd = process.cwd();
     const config = await getViteConfig(cwd, opts.config);
-    await build(entry, cwd, config, opts.ouput, opts.env);
+    await build(entry, cwd, config, opts.output, opts.env);
   });
 
 prog.parse(process.argv);
