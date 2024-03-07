@@ -357,7 +357,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
             : undefined,
           ssr: {
-            noExternal: /@marko\/run/,
+            noExternal: /@marko\/run($|\/)/,
           },
           css: {
             devSourcemap: true
