@@ -107,7 +107,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       routes &&
       (tsConfigExists ??= await globFileExists(
         root,
-        "{.tsconfig*,tsconfig*.json}"
+        "{.tsconfig*,tsconfig*.json}",
       ))
     ) {
       const filepath = path.join(typesDir, "routes.d.ts");
@@ -115,7 +115,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       const data = await renderRouteTypeInfo(
         routes,
         normalizePath(path.relative(typesDir, resolvedRoutesDir)),
-        adapter
+        adapter,
       );
 
       if (data !== typesFile || !fs.existsSync(filepath)) {
@@ -165,36 +165,36 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           route.handler.verbs = await extractVerbs(route.handler.filePath);
           if (!route.handler.verbs.length) {
             throw new Error(
-              `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`
+              `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`,
             );
           }
         }
         if (route.page) {
           virtualFiles.set(
             path.posix.join(root, `${route.entryName}.marko`),
-            render ? renderRouteTemplate(route) : ""
+            render ? renderRouteTemplate(route) : "",
           );
         }
         virtualFiles.set(
           path.posix.join(root, `${route.entryName}.js`),
-          render ? renderRouteEntry(route) : ""
+          render ? renderRouteEntry(route) : "",
         );
       }
       for (const route of Object.values(routes.special)) {
         virtualFiles.set(
           path.posix.join(root, `${route.entryName}.marko`),
-          render ? renderRouteTemplate(route) : ""
+          render ? renderRouteTemplate(route) : "",
         );
       }
       if (routes.middleware.length) {
         virtualFiles.set(
           path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
-          render ? renderMiddleware(routes.middleware) : ""
+          render ? renderMiddleware(routes.middleware) : "",
         );
       }
       virtualFiles.set(
         "@marko/run/router",
-        render ? renderRouter(routes, routerOptions) : ""
+        render ? renderRouter(routes, routerOptions) : "",
       );
 
       times.routesRender = performance.now() - renderStartTime;
@@ -208,7 +208,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             {
               buildTime: times.routesBuild,
               renderTime: times.routesRender,
-            }
+            },
           );
         }
         if (!isBuild) {
@@ -226,12 +226,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
       virtualFiles.set(
         path.posix.join(root, `${markoRunFilePrefix}error.marko`),
-        renderEntryTemplate(`${markoRunFilePrefix}error`, ["<dev-error-page>"])
+        renderEntryTemplate(`${markoRunFilePrefix}error`, ["<dev-error-page>"]),
       );
 
       virtualFiles.set(
         "@marko/run/router",
-        renderErrorRouter(err as Error, routerOptions)
+        renderErrorRouter(err as Error, routerOptions),
       );
 
       isRendered = true;
@@ -256,7 +256,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         adapter = await resolveAdapter(
           root,
           opts,
-          (config.logLevel !== "silent" && !isBuild) || isSSRBuild
+          (config.logLevel !== "silent" && !isBuild) || isSSRBuild,
         );
 
         if (adapter) {
@@ -275,20 +275,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         compiler.taglib.register("@marko/run", {
           "<dev-error-page>": {
             template: normalizePath(
-              path.resolve(__dirname, "../components/dev-error-page.marko")
-            ),
-          },
-          "<*>": {
-            transform: path.resolve(
-              __dirname,
-              "../components/src-attributes-transformer.cjs"
+              path.resolve(__dirname, "../components/dev-error-page.marko"),
             ),
           },
         });
 
         routesDir = opts.routesDir || "src/routes";
         store = new ReadOncePersistedStore(
-          `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`
+          `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`,
         );
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
@@ -360,7 +354,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             noExternal: /@marko\/run($|\/)/,
           },
           css: {
-            devSourcemap: true
+            devSourcemap: true,
           },
           build: {
             target: browserslistTarget?.length
@@ -372,7 +366,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             rollupOptions: {
               output: rollupOutputOptions,
             },
-            modulePreload: { polyfill: false }
+            modulePreload: { polyfill: false },
           },
           optimizeDeps: {
             entries: !config.optimizeDeps?.entries
@@ -386,7 +380,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           },
           resolve: isBuild
             ? {
-                mainFields: (isSSRBuild ? [] : ['browser']).concat(['module', 'jsnext:main', 'jsnext', 'main']),
+                mainFields: (isSSRBuild ? [] : ["browser"]).concat([
+                  "module",
+                  "jsnext:main",
+                  "jsnext",
+                  "main",
+                ]),
                 conditions: [
                   isSSRBuild ? "node" : "browser",
                   "import",
@@ -456,7 +455,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             routeData = await store.read();
           } catch {
             this.error(
-              `You must run the "ssr" build before the "browser" build.`
+              `You must run the "ssr" build before the "browser" build.`,
             );
           }
 
@@ -542,7 +541,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
               return acc;
             },
-            []
+            [],
           );
 
           routeData = {
@@ -569,7 +568,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             resolvedConfig,
             routes.list,
             routeData.builtEntries,
-            routeData.sourceEntries
+            routeData.sourceEntries,
           );
         }
       },
@@ -610,7 +609,7 @@ async function getVerbsFromFileDev(devServer: ViteDevServer, filePath: string) {
           verbs.push(verb);
         } else {
           console.warn(
-            `Found export '${id}' in handler ${filePath} which is close to '${verb.toUpperCase()}'. Exported handlers need to be uppercase: GET, POST, PUT or DELETE.`
+            `Found export '${id}' in handler ${filePath} which is close to '${verb.toUpperCase()}'. Exported handlers need to be uppercase: GET, POST, PUT or DELETE.`,
           );
         }
       }
@@ -621,7 +620,7 @@ async function getVerbsFromFileDev(devServer: ViteDevServer, filePath: string) {
 }
 
 function single<P extends any[], R>(
-  fn: (...args: P) => Promise<R>
+  fn: (...args: P) => Promise<R>,
 ): (...args: P) => Promise<R> {
   let promise: Promise<R> | undefined;
   return async (...args: P) => {
@@ -658,7 +657,7 @@ export async function getPackageData(dir: string): Promise<PackageData | null> {
 export async function resolveAdapter(
   root: string,
   options?: Options,
-  log?: boolean
+  log?: boolean,
 ): Promise<Adapter | null> {
   if (options && options.adapter !== undefined) {
     return options.adapter;
@@ -679,7 +678,7 @@ export async function resolveAdapter(
           const module = await import(name);
           log &&
             debug(
-              `Using adapter ${name} listed in your package.json dependecies`
+              `Using adapter ${name} listed in your package.json dependecies`,
             );
           return module.default();
         } catch (err) {
@@ -698,7 +697,7 @@ export async function resolveAdapter(
 const markoEntryFileRegex = /__marko-run__([^.]+)(?:\.(.+))?\.marko\.([^.]+)$/;
 function getEntryFileName(file: string | undefined | null) {
   const match = file && markoEntryFileRegex.exec(file);
-  return match ? match[2] || 'index' : undefined;
+  return match ? match[2] || "index" : undefined;
 }
 
 export function isPluginIncluded(config: ResolvedConfig) {

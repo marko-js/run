@@ -45,7 +45,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
       return startDev!(
         entry === defaultEntry ? undefined : entry,
         config,
-        options
+        options,
       );
     },
 
@@ -57,14 +57,14 @@ export default function staticAdapter(options: Options = {}): Adapter {
         index: "index.html",
       });
       const server = await createServer((req, res) =>
-        staticServe(req, res, noop)
+        staticServe(req, res, noop),
       );
 
       return new Promise((resolve) => {
         const listener = server.listen(port, () => {
           const address = listener.address() as AddressInfo;
           console.log(
-            `Preview server started: http://localhost:${address.port}`
+            `Preview server started: http://localhost:${address.port}`,
           );
           resolve({
             port: address.port,
@@ -82,7 +82,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
       const pathsToVisit: string[] = [];
       for (const route of routes) {
         for (const path of route.paths) {
-          if (!path.params?.length) {
+          if (!path.params || !Object.keys(path.params).length) {
             pathsToVisit.push(path.path);
           }
         }
@@ -105,7 +105,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             out: path.dirname(builtEntries[0]),
-          }
+          },
         );
         await crawler.crawl(pathsToVisit);
       } else {
@@ -117,7 +117,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
           `node ${builtEntries[0]}`,
           [],
           port,
-          envFile
+          envFile,
         );
         const crawler = createCrawler(
           async (request) => {
@@ -139,7 +139,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             origin,
-          }
+          },
         );
 
         try {

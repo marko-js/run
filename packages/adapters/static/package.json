@@ -44,18 +44,18 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
-    "@types/node": "^20.10.3",
-    "@types/serve-static": "^1.15.5",
+    "@types/node": "^20.12.12",
+    "@types/serve-static": "^1.15.7",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.19.8",
-    "mocha": "^10.2.0",
+    "esbuild": "^0.21.4",
+    "mocha": "^10.4.0",
     "mocha-snap": "^5.0.0",
-    "prettier": "^3.1.0",
-    "tsx": "^4.6.2",
-    "typescript": "^5.3.2",
-    "vite": "^5.0.6"
+    "prettier": "^3.2.5",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.12"
   },
   "dependencies": {
-    "undici": "^6.0.1"
+    "undici": "^6.18.1"
   }
 }
