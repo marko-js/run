@@ -15,7 +15,7 @@ Preview and deploy [@marko/run](../serve/README.md) apps to Netlify Functions/Ed
 ## Intallation
 
 ```sh
-npm install @marko/run-adapter-static
+npm install @marko/run-adapter-netlify
 ```
 
 ## Usage
