@@ -43,20 +43,20 @@
     "@marko/run": "^0"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^20.12.12",
+    "@types/mocha": "^10.0.8",
+    "@types/node": "^22.7.0",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.21.4",
-    "mocha": "^10.4.0",
+    "esbuild": "^0.24.0",
+    "mocha": "^10.7.3",
     "mocha-snap": "^5.0.0",
-    "prettier": "^3.2.5",
-    "tsx": "^4.11.0",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.12"
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
   },
   "dependencies": {
-    "@hattip/bundler-netlify": "^0.0.45",
-    "@netlify/edge-functions": "^2.8.1",
-    "@netlify/functions": "^2.7.0"
+    "@hattip/bundler-netlify": "^0.0.48",
+    "@netlify/edge-functions": "^2.11.0",
+    "@netlify/functions": "^2.8.1"
   }
 }
