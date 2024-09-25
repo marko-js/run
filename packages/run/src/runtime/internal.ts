@@ -158,9 +158,10 @@ export function normalize(
     };
     return (context, next) => fn(context, next);
   }
-  throw new Error(
-    `Invalid handler - expected function, array or Promise but received ${obj}`
-  );
+  return passthrough;
+}
+
+export function passthrough() {
 }
 
 export function noContent() {
