@@ -4,8 +4,14 @@ import { glob } from "glob";
 import { fileURLToPath } from "url";
 import browserslist from "browserslist";
 import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
-import { mergeConfig } from "vite";
-import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig, ModuleNode } from "vite";
+import { buildErrorMessage, mergeConfig } from "vite";
+import type {
+  ViteDevServer,
+  Plugin,
+  ResolvedConfig,
+  UserConfig,
+  ModuleNode,
+} from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin from "@marko/vite";
@@ -20,8 +26,6 @@ import type {
   RouterOptions,
 } from "./types";
 import {
-  renderEntryTemplate,
-  renderErrorRouter,
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
@@ -35,7 +39,7 @@ import {
   RoutableFileTypes,
   markoRunFilePrefix,
 } from "./constants";
-import { getExportIdentifiers } from "./utils/ast";
+import { getExportIdentifiers, getViteSSRExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
 import {
   getExternalAdapterOptions,
@@ -46,6 +50,8 @@ import {
 // @ts-ignore
 import createDebug from "debug";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
+import { prepareError } from "../adapter/utils";
+
 const debug = createDebug("@marko/run");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,9 +95,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
-  let getExportsFromFile: (context: PluginContext, filePath: string) => Promise<string[]>;
+  let getExportsFromFile: (
+    context: PluginContext,
+    filePath: string,
+  ) => Promise<string[]>;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
+  let seenErrors = new Set<string>();
 
   const virtualFiles = new Map<string, string>();
 
@@ -188,7 +198,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         for (const route of routes.list) {
           if (route.handler) {
-            const exports = await getExportsFromFile(context, route.handler.filePath);
+            const exports = await getExportsFromFile(
+              context,
+              route.handler.filePath,
+            );
             route.handler.verbs = [];
             for (const name of exports) {
               const verb = name.toLowerCase() as HttpVerb;
@@ -222,7 +235,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
-            if (!(await getExportsFromFile(context, middleware.filePath)).includes("default")) {
+            if (
+              !(
+                await getExportsFromFile(context, middleware.filePath)
+              ).includes("default")
+            ) {
               context.warn(
                 `Did not find a default export in middleware '${path.relative(root, middleware.filePath)}'`,
               );
@@ -257,19 +274,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (isBuild) {
           throw err;
         }
-
-        // In dev mode, errors are captured and ultimately produce a router which responds with the error for any request
-        context.warn((err as Error).message);
-
-        virtualFiles.set(
-          path.posix.join(root, `${markoRunFilePrefix}error.marko`),
-          renderEntryTemplate(`${markoRunFilePrefix}error`, [
-            "<dev-error-page>",
-          ]),
-        );
         virtualFiles.set(
           "@marko/run/router",
-          renderErrorRouter(err as Error, routerOptions),
+          `throw ${JSON.stringify(prepareError(err as Error))}`,
         );
       }
 
@@ -460,39 +467,53 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         } else {
           ssrEntryFiles = [];
         }
+
+        const baseError = config.logger.error;
+        config.logger.error = function (msg, options) {
+          if (!options?.error?.message) {
+            baseError.call(this, msg, options);
+          } else if (!seenErrors.has(options.error.message)) {
+            seenErrors.add(options.error.message);
+            console.error(buildErrorMessage(options.error));
+          }
+        };
       },
       configureServer(_server) {
         devServer = _server;
-        devServer.watcher.on("all", async (type, filename) => {
-          const routableFileType = matchRoutableFile(path.parse(filename).base);
-          if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
-            if (
-              type === "add" ||
-              type === "unlink" ||
-              (type === "change" &&
-                routableFileType === RoutableFileTypes.Handler)
-            ) {
-              buildVirtualFilesResult = undefined;
-              renderVirtualFilesResult = undefined;
+        devServer.watcher
+          .on("all", async (type, filename) => {
+            seenErrors.clear();
+            const routableFileType = matchRoutableFile(
+              path.parse(filename).base,
+            );
+            if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
+              if (
+                type === "add" ||
+                type === "unlink" ||
+                (type === "change" &&
+                  (routableFileType === RoutableFileTypes.Handler ||
+                    routableFileType === RoutableFileTypes.Middleware))
+              ) {
+                buildVirtualFilesResult = undefined;
+                renderVirtualFilesResult = undefined;
 
-              const module = devServer.moduleGraph.getModuleById(filename);
-              const importers = module && getImporters(module, filename);
-              if (importers?.size) {
-                for (const file of importers) {
-                  devServer.watcher.emit("change", file);
-                }
-              } else {
-                for (const file of virtualFiles.keys()) {
-                  if (!file.endsWith('.marko')) {
+                const module = devServer.moduleGraph.getModuleById(filename);
+                const importers = module && getImporters(module, filename);
+                if (importers?.size) {
+                  for (const file of importers) {
                     devServer.watcher.emit("change", file);
+                  }
+                } else {
+                  for (const file of virtualFiles.keys()) {
+                    if (!file.endsWith(".marko")) {
+                      devServer.watcher.emit("change", file);
+                    }
                   }
                 }
               }
             }
-          }
-
-
-        });
+          })
+          .unwatch(typesDir + "/*");
       },
       async buildStart(_options) {
         if (isBuild && !isSSRBuild) {
@@ -562,7 +583,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
-        } else if(path.basename(id).startsWith(markoRunFilePrefix) && /^\.(js|marko)$/.test(path.extname(id))) {
+        } else if (
+          path.basename(id).startsWith(markoRunFilePrefix) &&
+          /^\.(js|marko)$/.test(path.extname(id))
+        ) {
           return "";
         }
       },
@@ -625,27 +649,29 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   ];
 }
 
-async function getExportsFromFileBuild(context: PluginContext, filePath: string) {
+async function getExportsFromFileBuild(
+  context: PluginContext,
+  filePath: string,
+) {
   const result = await context.load({
     id: filePath,
     resolveDependencies: false,
   });
-  return result ? getExportIdentifiers(result.ast) : []
+  return result ? getExportIdentifiers(result.ast) : [];
 }
 
-async function getExportsFromFileDev(devServer: ViteDevServer, _context: PluginContext, filePath: string) {
-  const exports: string[] = [];
+async function getExportsFromFileDev(
+  devServer: ViteDevServer,
+  context: PluginContext,
+  filePath: string,
+) {
   const result = await devServer.transformRequest(filePath, { ssr: true });
-  if (result && result.code) {
-    const exportIdentifierRegex = /__vite_ssr_exports__,\s+["']([^"']+)["']/g;
-    let match: RegExpExecArray | null;
-    while (match = exportIdentifierRegex.exec(result.code)) {
-      exports.push(match[1]);
-    }
+  if (result) {
+    const ast = context.parse(result.code)
+    return getViteSSRExportIdentifiers(ast);
   }
-  return exports;
+  return [];
 }
-
 
 async function globFileExists(root: string, pattern: string) {
   return (await glob(pattern, { root })).length > 0;
@@ -719,7 +745,11 @@ export function isPluginIncluded(config: ResolvedConfig) {
   });
 }
 
-function getImporters(module: ModuleNode, fileName: string, seen: Set<string> = new Set()) {
+function getImporters(
+  module: ModuleNode,
+  fileName: string,
+  seen: Set<string> = new Set(),
+) {
   for (const importer of module.importers) {
     if (importer.id && !seen.has(importer.id)) {
       seen.add(importer.id);

@@ -1,8 +1,18 @@
-import { createServer, type InlineConfig, type ViteDevServer } from "vite";
-import { createMiddleware } from "./middleware";
 import type { IncomingMessage, ServerResponse } from "http";
-import { inspect } from "util";
+import path from "path";
+import {
+  createServer,
+  type Rollup,
+  type Connect,
+  type InlineConfig,
+  type ViteDevServer,
+  buildErrorMessage,
+} from "vite";
+import { createMiddleware } from "./middleware";
 import logger from "./logger";
+import { prepareError } from "./utils";
+
+type RollupError = Rollup.RollupError;
 
 interface DevErrorCallback {
   id: string;
@@ -22,7 +32,7 @@ declare global {
 }
 
 export async function createViteDevServer(
-  config?: InlineConfig
+  config?: InlineConfig,
 ): Promise<ViteDevServer> {
   const devServer = await createServer({
     ...config,
@@ -38,46 +48,22 @@ export async function createViteDevServer(
 }
 
 export async function createDevServer(
-  config?: InlineConfig
+  config?: InlineConfig,
 ): Promise<ViteDevServer> {
   const devServer = await createViteDevServer(config);
   const routerMiddleware = createMiddleware((request, platform) =>
-    globalThis.__marko_run__.fetch(request, platform)
+    globalThis.__marko_run__.fetch(request, platform),
   );
-  devServer.middlewares.use(async (req, res, next) => {
-    function handleNext(err: unknown) {
-      if (err) {
-        if (err instanceof Error) {
-          devServer.ssrFixStacktrace(err);
-        }
-
-        console.error(err);
-
-        if (res.headersSent) {
-          if (!res.destroyed) {
-            (res.socket as any)?.destroySoon();
-          }
-        } else {
-          res.statusCode = 500;
-          res.end(
-            inspect(err).replace(
-              /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
-              ""
-            )
-          );
-        }
-      } else {
-        next?.();
+  devServer.middlewares
+    .use(async (req, res, next) => {
+      try {
+        await devServer.ssrLoadModule("@marko/run/router");
+      } catch (err) {
+        return next(err);
       }
-    }
-
-    try {
-      await devServer.ssrLoadModule("@marko/run/router");
-    } catch (err) {
-      return handleNext(err);
-    }
-    routerMiddleware(req, res, handleNext);
-  });
+      routerMiddleware(req, res, next);
+    })
+    .use(createErrorMiddleware(devServer));
   return devServer;
 }
 
@@ -146,11 +132,53 @@ export function getDevGlobal(): MarkoRunDev {
 
         res.setHeader(
           "set-cookie",
-          `${ClientIdCookieName}=${id}; Path=/; Max-Age=100; HttpOnly`
+          `${ClientIdCookieName}=${id}; Path=/; Max-Age=100; HttpOnly`,
         );
       },
     };
   }
 
   return devGlobal;
+}
+
+function createErrorMiddleware(
+  devServer: ViteDevServer,
+): Connect.ErrorHandleFunction {
+  return function errorMiddleware(error: RollupError, _req, res, _next) {
+    if (!error.id) {
+      devServer.config.logger.error(buildErrorMessage(error, [`\x1b[31;1mRequest failed with error: ${error.message}\x1b[0m`]));
+    }
+    res.statusCode = 500;
+    res.end(`
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Error</title>
+    <script type="module">
+      const error = ${JSON.stringify(prepareError(error)).replace(
+        /</g,
+        "\\u003c",
+      )}
+      try {
+        const { ErrorOverlay } = await import(${JSON.stringify(path.posix.join(devServer.config.base, "/@vite/client"))})
+        document.body.appendChild(new ErrorOverlay(error))
+      } catch {
+        const h = (tag, text) => {
+          const el = document.createElement(tag)
+          el.textContent = text
+          return el
+        }
+        document.body.appendChild(h('h1', 'Internal Server Error'))
+        document.body.appendChild(h('h2', error.message))
+        document.body.appendChild(h('pre', error.stack))
+        document.body.appendChild(h('p', '(Error overlay failed to load)'))
+      }
+    <\/script>
+  </head>
+  <body>
+  </body>
+</html>
+    `);
+  };
 }

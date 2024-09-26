@@ -1,5 +1,34 @@
 import supporsColor from "supports-color";
 import kleur from "kleur";
+import type { Rollup } from "vite";
+
+type RollupError = Rollup.RollupError;
+
+function stripAnsi(string: string) {
+  return string.replace(
+    /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
+    "",
+  );
+}
+
+function cleanStack(stack: string) {
+  return stack
+    .split(/\n/)
+    .filter((l) => /^\s*at/.test(l))
+    .join("\n");
+}
+
+export function prepareError(err: Error | RollupError) {
+  return {
+    message: stripAnsi(err.message),
+    stack: stripAnsi(cleanStack(err.stack || "")),
+    id: (err as RollupError).id,
+    frame: stripAnsi((err as RollupError).frame || ""),
+    plugin: (err as RollupError).plugin,
+    pluginCode: (err as RollupError).pluginCode?.toString(),
+    loc: (err as RollupError).loc,
+  };
+}
 
 export function logInfoBox(address: string, explorer?: string) {
   const color = !!supporsColor.stdout;
