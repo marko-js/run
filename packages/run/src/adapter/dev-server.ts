@@ -141,7 +141,7 @@ export function getDevGlobal(): MarkoRunDev {
   return devGlobal;
 }
 
-function createErrorMiddleware(
+export function createErrorMiddleware(
   devServer: ViteDevServer,
 ): Connect.ErrorHandleFunction {
   return function errorMiddleware(error: RollupError, _req, res, _next) {

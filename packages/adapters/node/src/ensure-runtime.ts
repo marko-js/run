@@ -1,5 +1,4 @@
-import { inspect } from "util";
-import type { ViteDevServer } from "vite";
+import type { Connect, ViteDevServer } from "vite";
 import type { IncomingMessage } from "http";
 import type { NodeMiddleware } from "./middleware";
 
@@ -16,6 +15,7 @@ export default globalThis.__marko_run_middleware__ ??=
     ? (factory) => factory
     : (() => {
         let devServer: ViteDevServer | undefined;
+        let errorMiddleware: Connect.ErrorHandleFunction | undefined;
 
         const seenReqs = new WeakSet<IncomingMessage>();
         const devServerPromise = import("@marko/run/adapter").then(
@@ -23,6 +23,8 @@ export default globalThis.__marko_run_middleware__ ??=
             devServer = await mod.createViteDevServer(
               globalThis.__marko_run_vite_config__
             );
+            errorMiddleware = mod.createErrorMiddleware(devServer);
+            
             void devServer!.ssrLoadModule("@marko/run/router").catch(() => {});
             devMiddleware = (req, res, next) => {
               if (seenReqs.has(req)) {
@@ -45,41 +47,26 @@ export default globalThis.__marko_run_middleware__ ??=
             const middleware = factory(...args);
 
             return (req, res, next) => {
-              function handleNext(err: unknown) {
+              const handleError = (err: Error | undefined) => {
                 if (err) {
-                  if (err instanceof Error) {
-                    devServer!.ssrFixStacktrace(err);
-                  }
-
-                  console.error(err);
-
-                  if (res.headersSent) {
-                    if (!res.destroyed) {
-                      (res.socket as any)?.destroySoon();
-                    }
-                  } else {
-                    res.statusCode = 500;
-                    res.end(inspect(err).replace(/([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g, ""));
-                  }
-                } else {
-                  next?.();
+                  errorMiddleware!(err, req, res, next!);
                 }
               }
 
               devMiddleware(req, res, async (err) => {
                 if (err) {
-                  handleNext(err);
+                  handleError(err)
                   return;
                 }
 
                 try {
                   await devServer!.ssrLoadModule("@marko/run/router");
                 } catch (err) {
-                  handleNext(err);
+                  handleError(err as Error)
                   return;
                 }
 
-                middleware(req, res, handleNext);
+                middleware(req, res, handleError);
               });
             };
           };
