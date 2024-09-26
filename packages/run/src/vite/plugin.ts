@@ -4,8 +4,14 @@ import { glob } from "glob";
 import { fileURLToPath } from "url";
 import browserslist from "browserslist";
 import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
-import { mergeConfig } from "vite";
-import type { ViteDevServer, Plugin, ResolvedConfig, UserConfig } from "vite";
+import { buildErrorMessage, mergeConfig } from "vite";
+import type {
+  ViteDevServer,
+  Plugin,
+  ResolvedConfig,
+  UserConfig,
+  ModuleNode,
+} from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
 import type * as Compiler from "@marko/compiler";
 import markoVitePlugin from "@marko/vite";
@@ -20,8 +26,6 @@ import type {
   RouterOptions,
 } from "./types";
 import {
-  renderEntryTemplate,
-  renderErrorRouter,
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
@@ -35,7 +39,7 @@ import {
   RoutableFileTypes,
   markoRunFilePrefix,
 } from "./constants";
-import { getExportIdentifiers } from "./utils/ast";
+import { getExportIdentifiers, getViteSSRExportIdentifiers } from "./utils/ast";
 import { logRoutesTable } from "./utils/log";
 import {
   getExternalAdapterOptions,
@@ -46,6 +50,8 @@ import {
 // @ts-ignore
 import createDebug from "debug";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
+import { prepareError } from "../adapter/utils";
+
 const debug = createDebug("@marko/run");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,12 +95,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
-  let extractVerbs: (filePath: string) => Promise<HttpVerb[]>;
+  let getExportsFromFile: (
+    context: PluginContext,
+    filePath: string,
+  ) => Promise<string[]>;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
+  let seenErrors = new Set<string>();
 
-  let isStale = true;
-  let isRendered = false;
   const virtualFiles = new Map<string, string>();
 
   let times: TimeMetrics = {
@@ -125,16 +133,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }
   }
 
-  const buildVirtualFiles = single(async (render: boolean) => {
-    const routerOptions: RouterOptions = {
-      trailingSlashes: opts.trailingSlashes || "RedirectWithout",
-    };
-
-    try {
-      if (isStale) {
-        virtualFiles.clear();
-        isRendered = false;
-
+  let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
+  function buildVirtualFiles() {
+    return (buildVirtualFilesResult ??= new Promise(async (resolve, reject) => {
+      try {
         // const sources: RouteSource[] = [];
 
         // if (true) {
@@ -146,60 +148,114 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         //     basePath: '_route-explorer.%2Broutes'
         //   });
         // }
-
-        const buildStartTime = performance.now();
+        virtualFiles.clear();
         routes = await buildRoutes({
           walker: createFSWalker(resolvedRoutesDir),
           importPrefix: routesDir,
         });
-        times.routesBuild = performance.now() - buildStartTime;
-
         if (!routes.list.length) {
           throw new Error("No routes generated");
         }
-      }
 
-      const renderStartTime = performance.now();
-      for (const route of routes.list) {
-        if (render && route.handler) {
-          route.handler.verbs = await extractVerbs(route.handler.filePath);
-          if (!route.handler.verbs.length) {
-            throw new Error(
-              `Did not find any valid exports in middleware entry file:'${route.handler.filePath}' - expected to find any of 'GET', 'POST', 'PUT' or 'DELETE'`,
+        for (const route of routes.list) {
+          if (route.page) {
+            virtualFiles.set(
+              path.posix.join(root, `${route.entryName}.marko`),
+              "",
             );
           }
+          virtualFiles.set(path.posix.join(root, `${route.entryName}.js`), "");
         }
-        if (route.page) {
+        for (const route of Object.values(routes.special)) {
           virtualFiles.set(
             path.posix.join(root, `${route.entryName}.marko`),
-            render ? renderRouteTemplate(route) : "",
+            "",
+          );
+        }
+        if (routes.middleware.length) {
+          virtualFiles.set(
+            path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
+            "",
+          );
+        }
+        virtualFiles.set("@marko/run/router", "");
+
+        resolve(routes);
+      } catch (err) {
+        reject(err);
+      }
+    }));
+  }
+
+  let renderVirtualFilesResult: Promise<void> | undefined;
+  function renderVirtualFiles(context: PluginContext) {
+    return (renderVirtualFilesResult ??= new Promise<void>(async (resolve) => {
+      const routerOptions: RouterOptions = {
+        trailingSlashes: opts.trailingSlashes || "RedirectWithout",
+      };
+      try {
+        const routes = await buildVirtualFiles();
+
+        for (const route of routes.list) {
+          if (route.handler) {
+            const exports = await getExportsFromFile(
+              context,
+              route.handler.filePath,
+            );
+            route.handler.verbs = [];
+            for (const name of exports) {
+              const verb = name.toLowerCase() as HttpVerb;
+              if (name === verb.toUpperCase() && httpVerbs.includes(verb)) {
+                route.handler.verbs.push(verb);
+              }
+            }
+            if (!route.handler.verbs.length) {
+              context.warn(
+                `Did not find any http verb exports in handler '${path.relative(root, route.handler.filePath)}' - expected ${httpVerbs.map((v) => v.toUpperCase()).join(", ")}`,
+              );
+            }
+          }
+
+          if (route.page) {
+            virtualFiles.set(
+              path.posix.join(root, `${route.entryName}.marko`),
+              renderRouteTemplate(route),
+            );
+          }
+          virtualFiles.set(
+            path.posix.join(root, `${route.entryName}.js`),
+            renderRouteEntry(route),
+          );
+        }
+        for (const route of Object.values(routes.special)) {
+          virtualFiles.set(
+            path.posix.join(root, `${route.entryName}.marko`),
+            renderRouteTemplate(route),
+          );
+        }
+        if (routes.middleware.length) {
+          for (const middleware of routes.middleware) {
+            if (
+              !(
+                await getExportsFromFile(context, middleware.filePath)
+              ).includes("default")
+            ) {
+              context.warn(
+                `Did not find a default export in middleware '${path.relative(root, middleware.filePath)}'`,
+              );
+            }
+          }
+
+          virtualFiles.set(
+            path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
+            renderMiddleware(routes.middleware),
           );
         }
         virtualFiles.set(
-          path.posix.join(root, `${route.entryName}.js`),
-          render ? renderRouteEntry(route) : "",
+          "@marko/run/router",
+          renderRouter(routes, routerOptions),
         );
-      }
-      for (const route of Object.values(routes.special)) {
-        virtualFiles.set(
-          path.posix.join(root, `${route.entryName}.marko`),
-          render ? renderRouteTemplate(route) : "",
-        );
-      }
-      if (routes.middleware.length) {
-        virtualFiles.set(
-          path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
-          render ? renderMiddleware(routes.middleware) : "",
-        );
-      }
-      virtualFiles.set(
-        "@marko/run/router",
-        render ? renderRouter(routes, routerOptions) : "",
-      );
 
-      times.routesRender = performance.now() - renderStartTime;
-
-      if (render) {
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {
           await adapter.routesGenerated(
@@ -210,35 +266,23 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               renderTime: times.routesRender,
             },
           );
+          if (!isBuild) {
+            await opts?.emitRoutes?.(routes.list);
+          }
         }
-        if (!isBuild) {
-          await opts?.emitRoutes?.(routes.list);
+      } catch (err) {
+        if (isBuild) {
+          throw err;
         }
-        isRendered = true;
+        virtualFiles.set(
+          "@marko/run/router",
+          `throw ${JSON.stringify(prepareError(err as Error))}`,
+        );
       }
-    } catch (err) {
-      if (isBuild) {
-        throw err;
-      }
 
-      // In dev mode, errors are captured and ultimately produce a router which responds with the error for any request
-      console.error(err);
-
-      virtualFiles.set(
-        path.posix.join(root, `${markoRunFilePrefix}error.marko`),
-        renderEntryTemplate(`${markoRunFilePrefix}error`, ["<dev-error-page>"]),
-      );
-
-      virtualFiles.set(
-        "@marko/run/router",
-        renderErrorRouter(err as Error, routerOptions),
-      );
-
-      isRendered = true;
-    }
-
-    isStale = false;
-  });
+      resolve();
+    }));
+  }
 
   return [
     {
@@ -423,30 +467,53 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         } else {
           ssrEntryFiles = [];
         }
+
+        const baseError = config.logger.error;
+        config.logger.error = function (msg, options) {
+          if (!options?.error?.message) {
+            baseError.call(this, msg, options);
+          } else if (!seenErrors.has(options.error.message)) {
+            seenErrors.add(options.error.message);
+            console.error(buildErrorMessage(options.error));
+          }
+        };
       },
       configureServer(_server) {
         devServer = _server;
-        devServer.watcher.on("all", async (type, filename) => {
-          const routableFileType = matchRoutableFile(path.parse(filename).base);
-          if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
-            if (type === "add") {
-              isStale = true;
-            } else if (type === "unlink") {
-              isStale = true;
-            } else if (type === "change") {
-              if (routableFileType === RoutableFileTypes.Handler) {
-                isStale = true;
+        devServer.watcher
+          .on("all", async (type, filename) => {
+            seenErrors.clear();
+            const routableFileType = matchRoutableFile(
+              path.parse(filename).base,
+            );
+            if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
+              if (
+                type === "add" ||
+                type === "unlink" ||
+                (type === "change" &&
+                  (routableFileType === RoutableFileTypes.Handler ||
+                    routableFileType === RoutableFileTypes.Middleware))
+              ) {
+                buildVirtualFilesResult = undefined;
+                renderVirtualFilesResult = undefined;
+
+                const module = devServer.moduleGraph.getModuleById(filename);
+                const importers = module && getImporters(module, filename);
+                if (importers?.size) {
+                  for (const file of importers) {
+                    devServer.watcher.emit("change", file);
+                  }
+                } else {
+                  for (const file of virtualFiles.keys()) {
+                    if (!file.endsWith(".marko")) {
+                      devServer.watcher.emit("change", file);
+                    }
+                  }
+                }
               }
             }
-            if (isStale) {
-              // TODO: figure out how to make this better
-              for (const id of virtualFiles.keys()) {
-                devServer.watcher.emit("change", id);
-                break;
-              }
-            }
-          }
-        });
+          })
+          .unwatch(typesDir + "/*");
       },
       async buildStart(_options) {
         if (isBuild && !isSSRBuild) {
@@ -464,13 +531,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
           }
-          isStale = false;
-          isRendered = true;
+
+          buildVirtualFilesResult = Promise.resolve(routes);
+          renderVirtualFilesResult = Promise.resolve();
         } else {
           // Build routes and generate code
-          extractVerbs = isBuild
-            ? getVerbsFromFileBuild.bind(null, this)
-            : getVerbsFromFileDev.bind(null, devServer);
+          getExportsFromFile = isBuild
+            ? getExportsFromFileBuild
+            : getExportsFromFileDev.bind(null, devServer);
         }
       },
       async resolveId(importee, importer) {
@@ -491,8 +559,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         importee = normalizePath(importee);
 
-        if (isStale) {
-          await buildVirtualFiles(false);
+        if (!buildVirtualFilesResult) {
+          await buildVirtualFiles();
         }
         if (virtualFiles.has(importee)) {
           resolved = importee;
@@ -510,11 +578,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (id.endsWith(serverEntryQuery)) {
           id = id.slice(0, -serverEntryQuery.length);
         }
+        if (!renderVirtualFilesResult) {
+          await renderVirtualFiles(this);
+        }
         if (virtualFiles.has(id)) {
-          if (isStale || !isRendered) {
-            await buildVirtualFiles(true);
-          }
           return virtualFiles.get(id)!;
+        } else if (
+          path.basename(id).startsWith(markoRunFilePrefix) &&
+          /^\.(js|marko)$/.test(path.extname(id))
+        ) {
+          return "";
         }
       },
     },
@@ -576,62 +649,28 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   ];
 }
 
-async function getVerbsFromFileBuild(context: PluginContext, filePath: string) {
-  const verbs: HttpVerb[] = [];
+async function getExportsFromFileBuild(
+  context: PluginContext,
+  filePath: string,
+) {
   const result = await context.load({
     id: filePath,
     resolveDependencies: false,
   });
-  if (result) {
-    const exportIds = getExportIdentifiers(result.ast);
-    for (const id of exportIds) {
-      const verb = id.toLowerCase() as HttpVerb;
-      if (id === verb.toUpperCase() && httpVerbs.includes(verb)) {
-        verbs.push(verb);
-      }
-    }
-  }
-  return verbs;
+  return result ? getExportIdentifiers(result.ast) : [];
 }
 
-async function getVerbsFromFileDev(devServer: ViteDevServer, filePath: string) {
-  const verbs: HttpVerb[] = [];
+async function getExportsFromFileDev(
+  devServer: ViteDevServer,
+  context: PluginContext,
+  filePath: string,
+) {
   const result = await devServer.transformRequest(filePath, { ssr: true });
-  if (result && result.code) {
-    const verbMatchReg =
-      /__vite_ssr_exports__,\s+["'](GET|POST|PUT|DELETE)["']/gi;
-    let match = verbMatchReg.exec(result.code);
-    while (match) {
-      const id = match[1];
-      const verb = id.toLowerCase() as HttpVerb;
-      if (httpVerbs.includes(verb)) {
-        if (id === verb.toUpperCase()) {
-          verbs.push(verb);
-        } else {
-          console.warn(
-            `Found export '${id}' in handler ${filePath} which is close to '${verb.toUpperCase()}'. Exported handlers need to be uppercase: GET, POST, PUT or DELETE.`,
-          );
-        }
-      }
-      match = verbMatchReg.exec(result.code);
-    }
+  if (result) {
+    const ast = context.parse(result.code)
+    return getViteSSRExportIdentifiers(ast);
   }
-  return verbs;
-}
-
-function single<P extends any[], R>(
-  fn: (...args: P) => Promise<R>,
-): (...args: P) => Promise<R> {
-  let promise: Promise<R> | undefined;
-  return async (...args: P) => {
-    if (promise) {
-      return promise;
-    }
-    promise = fn(...args);
-    const result = await promise;
-    promise = undefined;
-    return result;
-  };
+  return [];
 }
 
 async function globFileExists(root: string, pattern: string) {
@@ -704,4 +743,18 @@ export function isPluginIncluded(config: ResolvedConfig) {
   return config.plugins.some((plugin) => {
     return plugin.name.startsWith(PLUGIN_NAME_PREFIX);
   });
+}
+
+function getImporters(
+  module: ModuleNode,
+  fileName: string,
+  seen: Set<string> = new Set(),
+) {
+  for (const importer of module.importers) {
+    if (importer.id && !seen.has(importer.id)) {
+      seen.add(importer.id);
+      getImporters(importer, fileName, seen);
+    }
+  }
+  return seen;
 }
