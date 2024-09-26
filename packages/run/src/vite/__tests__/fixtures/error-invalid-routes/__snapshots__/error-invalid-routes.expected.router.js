@@ -40,15 +40,7 @@ export async function fetch(request, platform) {
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {
-      let body;
-      if (error.cause) {
-        body = error.cause.stack || error.cause.message || error.cause;
-      } else {
-        body = error.stack || error.message || "Internal Server Error";
-      }
-      return new Response(body, {
-        status: 500
-      });
+      throw error;
     }
     return new Response(null, {
       status: 500

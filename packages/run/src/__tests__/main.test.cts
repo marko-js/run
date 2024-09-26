@@ -192,7 +192,7 @@ async function testPage(
       globalThis.response = await page.goto(url.href);
     });
 
-    await page.waitForSelector("body");
+    await page.waitForLoadState("domcontentloaded");
 
     await forEachChange((html, i) => {
       snap(html, { ext: `.loading.${i}.html`, dir });

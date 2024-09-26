@@ -14,6 +14,8 @@ export async function steps() {
 
   const response = await page.request.post(page.url(), { form });
 
+  const html = await response.text();
+
   assert.equal(response.ok(), false);
   assert.match(await response.text(), /The request body stream was already consumed by something before Marko Run/);
 }
