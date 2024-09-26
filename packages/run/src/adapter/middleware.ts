@@ -94,6 +94,14 @@ export function copyResponseHeaders(
   }
 }
 
+function normalizeError(error: Error) {
+  if (error.cause && !error.message) {
+    error.message = (error.cause as any).message;
+    error.stack ||= (error.cause as any).stack;
+  }
+  return error;
+}
+
 /**
  * Creates a request handler to be passed to http.createServer() or used as a
  * middleware in Connect-style frameworks like Express.
@@ -131,13 +139,14 @@ export function createMiddleware(
     }
 
     function onSignalAborted() {
+      const error = normalizeError(signal.reason);
       if (next) {
-        next(signal.reason);
+        next(error);
       } else {
         if (!res.destroyed && res.socket) {
           (res.socket as any).destroySoon();
         }
-        console.error(signal.reason);
+        console.error(error);
       }
     }
 
@@ -154,7 +163,7 @@ export function createMiddleware(
         }
 
         function sendError() {
-          const { message, stack = "" } = signal.reason;
+          const { message, stack = "" } = normalizeError(signal.reason);
           ws.send(
             JSON.stringify({
               type: "error",
@@ -192,6 +201,7 @@ export function createMiddleware(
     try {
       response = await fetch(request, platform);
     } catch (err) {
+      normalizeError(err as Error);
       if (next) {
         next(err as Error);
       } else {
@@ -250,11 +260,11 @@ async function writeResponse(
 }
 
 const bodyConsumedErrorStream = new ReadableStream({
-  start(controller) {
+  pull(controller) {
     controller.error(
       new Error(
         "The request body stream was already consumed by something before Marko Run."
       )
     );
-  },
+  }
 });

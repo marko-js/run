@@ -50,7 +50,9 @@ export default globalThis.__marko_run_middleware__ ??=
               const handleError = (err: Error | undefined) => {
                 if (err) {
                   errorMiddleware!(err, req, res, next!);
+                  return;
                 }
+                next?.();
               }
 
               devMiddleware(req, res, async (err) => {
