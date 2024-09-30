@@ -4,7 +4,7 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type Run from "@marko/run";
+import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
@@ -23,6 +23,7 @@ declare module "../src/routes/$$rest+page.marko" {
     export type Route = Run.Routes["/:rest*"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }

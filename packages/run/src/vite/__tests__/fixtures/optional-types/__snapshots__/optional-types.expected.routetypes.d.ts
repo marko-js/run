@@ -4,7 +4,7 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type Run from "@marko/run";
+import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
@@ -24,6 +24,7 @@ declare module "./aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get" {
     export type Route = Run.Routes["/aaa/:aId" | "/aaa/:aId/bbb/:bId" | "/aaa/:aId/bbb/:bId/ccc/:cId" | "/aaa/:aId/ccc/:cId"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -34,6 +35,7 @@ declare module "./+middleware" {
     export type Route = Run.Routes["/aaa/:aId" | "/aaa/:aId/bbb/:bId" | "/aaa/:aId/bbb/:bId/ccc/:cId" | "/aaa/:aId/ccc/:cId"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -44,6 +46,7 @@ declare module "./aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko" {
     export type Route = Run.Routes["/aaa/:aId" | "/aaa/:aId/bbb/:bId" | "/aaa/:aId/bbb/:bId/ccc/:cId" | "/aaa/:aId/ccc/:cId"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -57,6 +60,7 @@ declare module "./+layout.marko" {
     export type Route = Run.Routes["/aaa/:aId" | "/aaa/:aId/bbb/:bId" | "/aaa/:aId/bbb/:bId/ccc/:cId" | "/aaa/:aId/ccc/:cId"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
