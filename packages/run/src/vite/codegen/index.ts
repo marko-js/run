@@ -33,7 +33,7 @@ export function renderRouteTemplate(route: Route): string {
   }
   return renderEntryTemplate(
     route.entryName,
-    [...route.layouts, route.page].map((file) => `./${file.importPath}`)
+    [...route.layouts, route.page].map((file) => `./${file.importPath}`),
   );
 }
 
@@ -57,7 +57,7 @@ export function renderEntryTemplate(name: string, files: string[]): string {
 function writeEntryTemplateTag(
   writer: Writer,
   [file, ...rest]: string[],
-  index: number = 1
+  index: number = 1,
 ): void {
   if (file) {
     const isLast = !rest.length;
@@ -81,7 +81,7 @@ export function renderRouteEntry(route: Route): string {
 
   if (!verbs) {
     throw new Error(
-      `Route ${key} doesn't have a handler or page for any HTTP verbs`
+      `Route ${key} doesn't have a handler or page for any HTTP verbs`,
     );
   }
 
@@ -109,8 +109,8 @@ export function renderRouteEntry(route: Route): string {
   if (runtimeImports.length) {
     imports.writeLines(
       `import { ${runtimeImports.join(
-        ", "
-      )} } from '${virtualFilePrefix}/runtime/internal';`
+        ", ",
+      )} } from '${virtualFilePrefix}/runtime/internal';`,
     );
   }
 
@@ -118,8 +118,8 @@ export function renderRouteEntry(route: Route): string {
     const names = middleware.map((m) => `mware${m.id}`);
     imports.writeLines(
       `import { ${names.join(
-        ", "
-      )} } from '${virtualFilePrefix}/${markoRunFilePrefix}middleware.js';`
+        ", ",
+      )} } from '${virtualFilePrefix}/${markoRunFilePrefix}middleware.js';`,
     );
   }
 
@@ -133,17 +133,17 @@ export function renderRouteEntry(route: Route): string {
       writer.writeLines(`const ${verb}Handler = normalize(${importName});`);
     }
     imports.writeLines(
-      `import { ${names.join(", ")} } from './${handler.importPath}';`
+      `import { ${names.join(", ")} } from './${handler.importPath}';`,
     );
   }
   if (page) {
     imports.writeLines(
-      `import page from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`
+      `import page from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`,
     );
   }
   if (meta) {
     imports.writeLines(
-      `export { default as meta${index} } from './${meta.importPath}';`
+      `export { default as meta${index} } from './${meta.importPath}';`,
     );
   }
 
@@ -158,7 +158,7 @@ function writePageResponse(writer: Writer, wrapFn?: string): void {
   writer.writeLines(
     `${
       wrapFn ? `const ${wrapFn} = () =>` : `return`
-    } pageResponse(page, buildInput());`
+    } pageResponse(page, buildInput());`,
   );
 }
 
@@ -166,11 +166,11 @@ function writeMiddleware(
   writer: Writer,
   middleware: string,
   next: string,
-  wrapFn?: string
+  wrapFn?: string,
 ): void {
   if (wrapFn) {
     writer.writeLines(
-      `const ${wrapFn} = () => call(${middleware}, ${next}, context);`
+      `const ${wrapFn} = () => call(${middleware}, ${next}, context);`,
     );
   } else {
     writer.writeLines(`return call(${middleware}, ${next}, context);`);
@@ -180,7 +180,7 @@ function writeMiddleware(
 function writeRouteEntryHandler(
   writer: Writer,
   route: Route,
-  verb: HttpVerb
+  verb: HttpVerb,
 ): void {
   const { key, index, page, handler, middleware } = route;
   const len = middleware.length;
@@ -193,7 +193,7 @@ function writeRouteEntryHandler(
 
   if (page) {
     writer.writeBlockStart(
-      `export async function ${verb}${index}(context, buildInput) {`
+      `export async function ${verb}${index}(context, buildInput) {`,
     );
   } else {
     writer.writeBlockStart(`export async function ${verb}${index}(context) {`);
@@ -258,7 +258,7 @@ export function renderErrorRouter(
   error: Error,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
-  }
+  },
 ): string {
   const writer = createStringWriter();
 
@@ -306,7 +306,7 @@ export function renderRouter(
   routes: BuiltRoutes,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
-  }
+  },
 ): string {
   const writer = createStringWriter();
 
@@ -315,7 +315,7 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from '${virtualFilePrefix}/runtime/internal';`
+    `import { NotHandled, NotMatched, createContext } from '${virtualFilePrefix}/runtime/internal';`,
   );
 
   for (const route of routes.list) {
@@ -326,12 +326,12 @@ export function renderRouter(
     imports.writeLines(
       `import { ${names.join(", ")} } from '${virtualFilePrefix}/${
         route.entryName
-      }.js';`
+      }.js';`,
     );
   }
   for (const { key, entryName } of Object.values(routes.special)) {
     imports.writeLines(
-      `import page${key} from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`
+      `import page${key} from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`,
     );
   }
 
@@ -339,7 +339,7 @@ export function renderRouter(
     .writeLines(
       `
 globalThis.__marko_run__ = { match, fetch, invoke };
-    `
+    `,
     )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
@@ -347,7 +347,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     pathname = '/';
   } else if (pathname.charAt(0) !== '/') {
     pathname = '/' + pathname;
-  }`
+  }`,
     )
     .writeBlockStart(`switch (method) {`);
 
@@ -367,10 +367,10 @@ globalThis.__marko_run__ = { match, fetch, invoke };
   writer
     .writeLines("")
     .writeBlockStart(
-      "export async function invoke(route, request, platform, url) {"
+      "export async function invoke(route, request, platform, url) {",
     )
     .writeLines(
-      "const [context, buildInput] = createContext(route, request, platform, url);"
+      "const [context, buildInput] = createContext(route, request, platform, url);",
     );
 
   const hasErrorPage = Boolean(routes.special[RoutableFileTypes.Error]);
@@ -384,13 +384,13 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     .writeBlockStart("try {")
     .writeLines(
       "const response = await route.handler(context, buildInput);",
-      "if (response) return response;"
+      "if (response) return response;",
     ).indent--;
   writer
     .writeBlockStart("} catch (error) {")
     .writeLines(
       "if (error === NotHandled) return;",
-      "if (error !== NotMatched) throw error;"
+      "if (error !== NotMatched) throw error;",
     )
     .writeBlockEnd("}")
     .writeBlockEnd("}");
@@ -401,7 +401,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 const page404ResponseInit = {
   status: 404,
   headers: { "content-type": "text/html;charset=UTF-8" },
-};`
+};`,
     );
 
     writer.write(`    
@@ -423,10 +423,10 @@ const page500ResponseInit = {
     writer
       .writeBlockStart(`} catch (error) {`)
       .writeBlockStart(
-        `if (context.request.headers.get('Accept')?.includes('text/html')) {`
+        `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
       .writeLines(
-        `return new Response(page500.stream(buildInput({ error })), page500ResponseInit);`
+        `return new Response(page500.stream(buildInput({ error })), page500ResponseInit);`,
       )
       .writeBlockEnd("}")
       .writeLines("throw error;")
@@ -496,7 +496,7 @@ function writeRouterVerb(
   trie: RouteTrie,
   verb: HttpVerb,
   level: number = 0,
-  offset: number | string = 1
+  offset: number | string = 1,
 ): void {
   const { route, dynamic, catchAll } = trie;
   let closeCount = 0;
@@ -507,7 +507,7 @@ function writeRouterVerb(
       writer.writeLines(
         `if (len === 1) return ${renderMatch(verb, route, trie.path!)}; // ${
           trie.path!.path
-        }`
+        }`,
       );
     } else if (trie.static || dynamic) {
       writer.writeBlockStart(`if (len > 1) {`);
@@ -543,7 +543,11 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (terminal?.some(terminal => decodeURIComponent(terminal.key) !== terminal.key)) {
+      } else if (
+        terminal?.some(
+          (terminal) => decodeURIComponent(terminal.key) !== terminal.key,
+        )
+      ) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -562,7 +566,7 @@ function writeRouterVerb(
             writer.write(`if (${value} === '${decodedKey}') `, true);
           }
           writer.write(
-            `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`
+            `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`,
           );
         }
 
@@ -576,8 +580,8 @@ function writeRouterVerb(
           `if (${value}) return ${renderMatch(
             verb,
             dynamic.route,
-            dynamic.path!
-          )}; // ${dynamic.path!.path}`
+            dynamic.path!,
+          )}; // ${dynamic.path!.path}`,
         );
       }
     }
@@ -595,7 +599,9 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (children?.some(child => decodeURIComponent(child.key) !== child.key)) {
+      } else if (
+        children?.some((child) => decodeURIComponent(child.key) !== child.key)
+      ) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -611,9 +617,7 @@ function writeRouterVerb(
           if (useSwitch) {
             writer.writeBlockStart(`case '${decodedKey}': {`);
           } else {
-            writer.writeBlockStart(
-              `if (${value} === '${decodedKey}') {`
-            );
+            writer.writeBlockStart(`if (${value} === '${decodedKey}') {`);
           }
 
           const nextOffset =
@@ -650,8 +654,8 @@ function writeRouterVerb(
         verb,
         catchAll.route,
         catchAll.path,
-        String(offset)
-      )}; // ${catchAll.path.path}`
+        String(offset),
+      )}; // ${catchAll.path.path}`,
     );
   } else if (level === 0) {
     writer.writeLines("return null;");
@@ -665,7 +669,7 @@ function wrapPropertyName(name: string) {
 
 function renderParams(
   params: Record<string, number | null>,
-  pathIndex?: string
+  pathIndex?: string,
 ): string {
   let result = "";
   let catchAll = "";
@@ -682,7 +686,7 @@ function renderParams(
 
   if (catchAll) {
     result += `${sep} ${wrapPropertyName(
-      catchAll
+      catchAll,
     )}: pathname.slice(${pathIndex})`;
   }
 
@@ -693,7 +697,7 @@ function renderMatch(
   verb: HttpVerb,
   route: Route,
   path: PathInfo,
-  pathIndex?: string
+  pathIndex?: string,
 ) {
   const handler = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
@@ -705,12 +709,12 @@ function renderMatch(
 export function renderMiddleware(middleware: RoutableFile[]): string {
   const writer = createStringWriter();
   writer.writeLines(
-    `// ${virtualFilePrefix}/${markoRunFilePrefix}middleware.js`
+    `// ${virtualFilePrefix}/${markoRunFilePrefix}middleware.js`,
   );
 
   const imports = writer.branch("imports");
   imports.writeLines(
-    `import { normalize } from '${virtualFilePrefix}/runtime/internal';`
+    `import { normalize } from '${virtualFilePrefix}/runtime/internal';`,
   );
 
   writer.writeLines("");
@@ -739,7 +743,7 @@ function stripTsExtension(path: string) {
 export async function renderRouteTypeInfo(
   routes: BuiltRoutes,
   pathPrefix: string = ".",
-  adapter?: Adapter | null
+  adapter?: Adapter | null,
 ) {
   const writer = createStringWriter();
   writer.writeLines(
@@ -749,7 +753,7 @@ export async function renderRouteTypeInfo(
 */
 `,
     `import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";`,
-    `import type Run from "@marko/run";`
+    `import type * as Run from "@marko/run";`,
   );
 
   const headWriter = writer.branch("head");
@@ -758,7 +762,7 @@ export async function renderRouteTypeInfo(
 
   if (adapter && adapter.typeInfo) {
     const platformType = await adapter.typeInfo((data) =>
-      headWriter.write(data)
+      headWriter.write(data),
     );
     if (platformType) {
       writer.writeLines(`interface Platform extends ${platformType} {}\n`);
@@ -844,7 +848,7 @@ export async function renderRouteTypeInfo(
           `
   export interface Input {
     renderBody: Marko.Body;
-  }`
+  }`,
         );
         break;
       case RoutableFileTypes.Error:
@@ -855,7 +859,7 @@ export async function renderRouteTypeInfo(
           `
   export interface Input {
     error: unknown;
-  }`
+  }`,
         );
         break;
       case RoutableFileTypes.NotFound:
@@ -907,7 +911,7 @@ function writeModuleDeclaration(
   writer: Writer,
   path: string,
   routeType?: string,
-  moduleTypes?: string
+  moduleTypes?: string,
 ) {
   writer.writeLines("").write(`declare module "${stripTsExtension(path)}" {`);
 
@@ -925,6 +929,7 @@ function writeModuleDeclaration(
       isMarko ? " & Marko.Global" : ""
     };
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use \`((context, next) => { ... }) satisfies MarkoRun.Handler\` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }`);
   }
