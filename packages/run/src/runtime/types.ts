@@ -215,10 +215,10 @@ export type AnyHandler<
 
 export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
   0 extends HasAppData
-    ? <Params extends ParamsObject = ParamsObject, Meta = unknown>(
-        handler: HandlerLike<Route<Params, Meta>>
-      ) => HandlerLike<Route<Params, Meta>>
-    : (handler: HandlerLike<TRoute>) => HandlerLike<TRoute>;
+    ? <Params extends ParamsObject = ParamsObject, Meta = unknown, T extends HandlerLike<Route<Params, Meta>> = HandlerLike<Route<Params, Meta>>>(
+        handler: T
+      ) => T
+    : <T extends HandlerLike<TRoute>>(handler: T) => T;
 
 export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
 export type PostPaths = AppData extends { postPaths: infer T } ? T : string;
