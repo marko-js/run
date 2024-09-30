@@ -4,7 +4,7 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type Run from "@marko/run";
+import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
@@ -27,6 +27,7 @@ declare module "./_protected/_home/new/+handler.post" {
     export type Route = Run.Routes["/new"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -37,6 +38,7 @@ declare module "./_protected/_home/notes/$id/+handler.put_post_delete" {
     export type Route = Run.Routes["/notes/:id"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -47,6 +49,7 @@ declare module "./_protected/_home/notes/$id/comments/+handler.put_post_delete" 
     export type Route = Run.Routes["/notes/:id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -57,6 +60,7 @@ declare module "./callback/oauth2/+handler.get" {
     export type Route = Run.Routes["/callback/oauth2"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -67,6 +71,7 @@ declare module "./my/+handler.get" {
     export type Route = Run.Routes["/my"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -77,6 +82,7 @@ declare module "./$$match/+handler.get" {
     export type Route = Run.Routes["/:match*"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -87,6 +93,7 @@ declare module "./+middleware" {
     export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments" | "/callback/oauth2" | "/my" | "/:match*"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -97,6 +104,7 @@ declare module "./_protected/+middleware" {
     export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -107,6 +115,7 @@ declare module "./_protected/_home/+middleware" {
     export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -117,6 +126,7 @@ declare module "./_protected/_home/notes/$id/+middleware" {
     export type Route = Run.Routes["/notes/:id" | "/notes/:id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -127,6 +137,7 @@ declare module "./_protected/_home/+page.marko" {
     export type Route = Run.Routes["/"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -137,6 +148,7 @@ declare module "./_protected/_home/new/+page.marko" {
     export type Route = Run.Routes["/new"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -147,6 +159,7 @@ declare module "./_protected/_home/notes/$id/+page.marko" {
     export type Route = Run.Routes["/notes/:id"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -157,6 +170,7 @@ declare module "./my/+page.marko" {
     export type Route = Run.Routes["/my"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -170,6 +184,7 @@ declare module "./+layout.marko" {
     export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/my"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -183,6 +198,7 @@ declare module "./_protected/_home/+layout.marko" {
     export type Route = Run.Routes["/" | "/new" | "/notes/:id"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -193,6 +209,7 @@ declare module "./+404.marko" {
     export type Route = Run.Route;
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -206,6 +223,7 @@ declare module "./+500.marko" {
     export type Route = globalThis.MarkoRun.Route;
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }

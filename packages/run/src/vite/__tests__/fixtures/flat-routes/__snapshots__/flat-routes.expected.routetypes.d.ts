@@ -4,7 +4,7 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type Run from "@marko/run";
+import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
@@ -28,6 +28,7 @@ declare module "./foo,(a,b).(c,d)+handler.get.marko" {
     export type Route = Run.Routes["/foo" | "/a/c" | "/a/d" | "/b/c" | "/b/d"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -38,6 +39,7 @@ declare module "./$id,a.d+middleware.marko" {
     export type Route = Run.Routes["/:id" | "/a/d"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
@@ -48,6 +50,7 @@ declare module "./foo,$id,$$rest,+page.marko" {
     export type Route = Run.Routes["/" | "/foo" | "/:id" | "/:rest*"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
 }
