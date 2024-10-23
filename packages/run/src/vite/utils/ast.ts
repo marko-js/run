@@ -32,15 +32,7 @@ export function getExportIdentifiers(astProgramNode: any): string[] {
           }
         }
       } else if (t.isExportDefaultDeclaration(node)) {
-        const { declaration } = node;
-        if (t.isObjectExpression(declaration)) {
-          // export default { foo() {}, bar };
-          for (const property of declaration.properties) {
-            if (t.isObjectMember(property) && t.isIdentifier(property.key)) {
-              result.push(property.key.name);
-            }
-          }
-        }
+        result.push("default");
       }
     }
   }
