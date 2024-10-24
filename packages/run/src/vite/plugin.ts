@@ -58,6 +58,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_NAME_PREFIX = "marko-run-vite";
 const POSIX_SEP = "/";
 const WINDOWS_SEP = "\\";
+const CLIENT_OUT_DIR = "public";
 
 const normalizePath =
   path.sep === WINDOWS_SEP
@@ -324,10 +325,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
 
+        let outDir = config.build?.outDir || "dist";
         const assetsDir = config.build?.assetsDir || "assets";
         let rollupOutputOptions = config.build?.rollupOptions?.output;
 
         if (isBuild) {
+          if (!isSSRBuild) {
+            outDir = path.join(outDir, CLIENT_OUT_DIR)
+          }
+
           const defaultRollupOutputOptions: OutputOptions = {
             assetFileNames({ name }) {
               if (name && name.indexOf("_marko-virtual_id_") < 0) {
@@ -380,7 +386,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           logLevel: isBuild ? "warn" : undefined,
           define: isBuild
             ? {
-                "process.env.NODE_ENV": "'production'",
+                "process.env.NODE_ENV": "'production'"
               }
             : undefined,
           ssr: {
@@ -390,13 +396,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             devSourcemap: true,
           },
           build: {
+            outDir,
+            assetsDir,
             target: browserslistTarget?.length
               ? resolveToEsbuildTarget(browserslistTarget, {
                   printUnknownTargets: false,
                 })
               : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
-            ssrEmitAssets: isSSRBuild,
+            copyPublicDir: !isSSRBuild,
+            ssrEmitAssets: false,
             rollupOptions: {
               output: rollupOutputOptions,
             },

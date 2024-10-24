@@ -93,7 +93,7 @@
     "@types/glob": "^8.1.0",
     "@types/human-format": "^1.0.3",
     "@types/jsdom": "^21.1.7",
-    "@types/mocha": "^10.0.9",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "acorn": "^8.14.0",
     "body-parser": "^1.20.3",
@@ -113,7 +113,7 @@
   },
   "dependencies": {
     "@marko/run-explorer": "^0.1.2",
-    "@marko/vite": "^5.0.1",
+    "@marko/vite": "^5.0.2",
     "browserslist": "^4.24.2",
     "cli-table3": "^0.6.5",
     "compression": "^1.7.5",

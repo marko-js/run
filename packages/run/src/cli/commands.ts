@@ -40,7 +40,7 @@ export async function preview(
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
     { root: cwd, configFile, logLevel: "silent", build: { outDir } },
-    "build"
+    "serve"
   );
 
   const [availablePort, adapter] = await Promise.all([
