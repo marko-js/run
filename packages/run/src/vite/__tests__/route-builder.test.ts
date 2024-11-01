@@ -66,6 +66,17 @@ describe("route-builder", () => {
     );
   });
 
+  it("should work for a catch-all dynamic case after a param", async () => {
+    await fixture(
+      `
+        /$id
+          /$$rest
+            +page.marko
+        `,
+      { path: "/$id/$$rest", params: { id: 0, rest: null } }
+    );
+  });
+
   it("should exclude unnamed params from the param list", async () => {
     await fixture(
       `

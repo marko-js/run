@@ -595,7 +595,7 @@ function writeRouterVerb(
       }
 
       let value = `pathname.slice(${offset}, ${index} - 1)`;
-      if (dynamic?.static || dynamic?.dynamic) {
+      if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
