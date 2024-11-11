@@ -44,8 +44,15 @@ let context: playwright.BrowserContext;
 let changes: string[] = [];
 
 before(async () => {
+  process.env.TRUST_PROXY = "1";
+
   browser = await playwright.chromium.launch();
-  context = await browser.newContext();
+  context = await browser.newContext({
+    extraHTTPHeaders: {
+      'x-forwarded-proto': 'https',
+      'x-forwarded-host': 'markojs.com',
+    }
+  });
 
   /**
    * We add a mutation observer to track all mutations (batched)

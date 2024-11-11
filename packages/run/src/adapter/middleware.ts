@@ -55,12 +55,12 @@ function getForwardedHeader(req: IncomingMessage, name: string) {
 
 export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
   const protocol =
-    (req as any).protocol ||
     (trustProxy && getForwardedHeader(req, "proto")) ||
-    ((req.socket as TLSSocket).encrypted ? "https" : "http");
+    ((req.socket as TLSSocket).encrypted && "https") ||
+    (req as any).protocol || "http";
 
   let host =
-    req.headers.host || (trustProxy && getForwardedHeader(req, "host"));
+    (trustProxy && getForwardedHeader(req, "host")) || req.headers.host;
 
   if (!host) {
     if (process.env.NODE_ENV !== "production") {
