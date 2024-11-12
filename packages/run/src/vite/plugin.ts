@@ -583,10 +583,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
-        } else if (
-          path.basename(id).startsWith(markoRunFilePrefix) &&
-          /^\.(js|marko)$/.test(path.extname(id))
-        ) {
+        } else if (/[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)) {
           return "";
         }
       },
