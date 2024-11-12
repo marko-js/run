@@ -407,6 +407,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 })
               : undefined,
             emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
+            ssrEmitAssets: isSSRBuild,
             rollupOptions: {
               output: rollupOutputOptions,
             },
