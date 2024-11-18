@@ -132,6 +132,7 @@ export default function createCrawler(
 
       const startPaths = paths
         .map((path) => resolvePath(path, origin))
+        .filter(Boolean)
         .concat(notFoundPath) as string[];
 
       seen = new Set(startPaths);
@@ -187,13 +188,17 @@ function resolveHref(tagName: string, attrs: Record<string, string>) {
 }
 
 function resolvePath(href: string, origin: string) {
-  const url = new URL(href, origin);
-  if (url.origin === origin) {
-    let { pathname } = url;
-    const lastChar = pathname.length - 1;
-    if (pathname[lastChar] !== "/") {
-      pathname += '/'
+  try {
+    const url = new URL(href, origin);
+    if (url.origin === origin) {
+      let { pathname } = url;
+      const lastChar = pathname.length - 1;
+      if (pathname[lastChar] !== "/") {
+        pathname += '/'
+      }
+      return pathname + url.search;
     }
-    return pathname + url.search;
+  } catch (_) {
+    return undefined;
   }
 }
