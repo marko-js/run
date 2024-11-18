@@ -17,7 +17,7 @@ export function pageResponse(
   template: any,
   input: Record<PropertyKey, unknown>
 ): Response {
-  return new Response(template.stream(input), pageResponseInit);
+  return new Response(template.render(input), pageResponseInit);
 }
 
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
