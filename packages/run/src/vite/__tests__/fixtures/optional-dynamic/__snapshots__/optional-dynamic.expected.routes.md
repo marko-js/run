@@ -6,9 +6,9 @@
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$foo.marko
-import page from './src/routes/$foo,/$bar,$$rest/+page.marko';
+import Page from './src/routes/$foo,/$bar,$$rest/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -27,9 +27,9 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$foo.$bar.marko
-import page from './src/routes/$foo,/$bar,$$rest/+page.marko';
+import Page from './src/routes/$foo,/$bar,$$rest/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -48,9 +48,9 @@ export async function get2(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$foo.$$rest.marko
-import page from './src/routes/$foo,/$bar,$$rest/+page.marko';
+import Page from './src/routes/$foo,/$bar,$$rest/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -69,9 +69,9 @@ export async function get3(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$$rest.marko
-import page from './src/routes/$foo,/$bar,$$rest/+page.marko';
+import Page from './src/routes/$foo,/$bar,$$rest/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js

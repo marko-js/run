@@ -61,7 +61,7 @@ function writeEntryTemplateTag(
 ): void {
   if (file) {
     const isLast = !rest.length;
-    const tag = isLast ? "page" : `layout${index}`;
+    const tag = isLast ? "Page" : `Layout${index}`;
 
     writer.branch("imports").writeLines(`import ${tag} from '${file}';`);
 

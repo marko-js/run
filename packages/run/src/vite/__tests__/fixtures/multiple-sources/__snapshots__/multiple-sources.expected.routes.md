@@ -6,9 +6,9 @@
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.marko
-import page from './src/routes/+page.marko';
+import Page from './src/routes/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -27,9 +27,9 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route._routes.marko
-import page from './src/routes/+page.marko';
+import Page from './src/routes/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js

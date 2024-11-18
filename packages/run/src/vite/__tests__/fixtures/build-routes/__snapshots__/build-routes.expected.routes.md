@@ -22,13 +22,13 @@ export const mware13 = normalize(middleware13);
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route._protected._home.marko
-import layout1 from './src/routes/+layout.marko';
-import layout2 from './src/routes/_protected/_home/+layout.marko';
-import page from './src/routes/_protected/_home/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Layout2 from './src/routes/_protected/_home/+layout.marko';
+import Page from './src/routes/_protected/_home/+page.marko';
 
-<layout1 ...input>
-	<layout2 ...input>
-		<page ...input/>
+<Layout1 ...input>
+	<Layout2 ...input>
+		<Page ...input/>
 	</>
 </>
 ```
@@ -53,13 +53,13 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route._protected._home.new.marko
-import layout1 from './src/routes/+layout.marko';
-import layout2 from './src/routes/_protected/_home/+layout.marko';
-import page from './src/routes/_protected/_home/new/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Layout2 from './src/routes/_protected/_home/+layout.marko';
+import Page from './src/routes/_protected/_home/new/+page.marko';
 
-<layout1 ...input>
-	<layout2 ...input>
-		<page ...input/>
+<Layout1 ...input>
+	<Layout2 ...input>
+		<Page ...input/>
 	</>
 </>
 ```
@@ -95,13 +95,13 @@ export async function post2(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route._protected._home.notes.$id.marko
-import layout1 from './src/routes/+layout.marko';
-import layout2 from './src/routes/_protected/_home/+layout.marko';
-import page from './src/routes/_protected/_home/notes/$id/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Layout2 from './src/routes/_protected/_home/+layout.marko';
+import Page from './src/routes/_protected/_home/notes/$id/+page.marko';
 
-<layout1 ...input>
-	<layout2 ...input>
-		<page ...input/>
+<Layout1 ...input>
+	<Layout2 ...input>
+		<Page ...input/>
 	</>
 </>
 ```
@@ -214,11 +214,11 @@ export async function get5(context) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.my.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/my/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/my/+page.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 ### Handler
@@ -261,11 +261,11 @@ export async function get7(context) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__special.404.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/+404.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/+404.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 
@@ -274,10 +274,10 @@ import page from './src/routes/+404.marko';
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__special.500.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/+500.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/+500.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
