@@ -16,9 +16,9 @@ export const mware3 = normalize(middleware3);
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.marko
-import page from './src/routes/foo,$id,$$rest,+page.marko';
+import Page from './src/routes/foo,$id,$$rest,+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -37,9 +37,9 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.marko
-import page from './src/routes/foo,$id,$$rest,+page.marko';
+import Page from './src/routes/foo,$id,$$rest,+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -62,9 +62,9 @@ export async function get2(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$id.marko
-import page from './src/routes/foo,$id,$$rest,+page.marko';
+import Page from './src/routes/foo,$id,$$rest,+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -85,9 +85,9 @@ export async function get3(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.$$rest.marko
-import page from './src/routes/foo,$id,$$rest,+page.marko';
+import Page from './src/routes/foo,$id,$$rest,+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js

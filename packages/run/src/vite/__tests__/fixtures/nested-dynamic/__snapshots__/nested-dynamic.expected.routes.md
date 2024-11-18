@@ -6,9 +6,9 @@
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.$fooId.bar.$bar Id.baz.$1bazId.$qux-Id.marko
-import page from './src/routes/foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id/+page.marko';
+import Page from './src/routes/foo/$fooId/bar/$bar Id/baz/$1bazId/$qux-Id/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js

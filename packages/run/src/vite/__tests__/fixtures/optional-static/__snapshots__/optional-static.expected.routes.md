@@ -6,9 +6,9 @@
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -27,9 +27,9 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -48,9 +48,9 @@ export async function get2(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.bar.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -69,9 +69,9 @@ export async function get3(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.bar.baz.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -90,9 +90,9 @@ export async function get4(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.foo.baz.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -111,9 +111,9 @@ export async function get5(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.bar.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -132,9 +132,9 @@ export async function get6(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.bar.baz.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js
@@ -153,9 +153,9 @@ export async function get7(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.baz.marko
-import page from './src/routes/foo,/bar,/,baz/+page.marko';
+import Page from './src/routes/foo,/bar,/,baz/+page.marko';
 
-<page ...input/>
+<Page ...input/>
 ```
 ### Handler
 ```js

@@ -16,11 +16,11 @@ export const mware2 = normalize(middleware2);
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.aaa.$aId.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 ### Handler
@@ -46,11 +46,11 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 ### Handler
@@ -76,11 +76,11 @@ export async function get2(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 ### Handler
@@ -106,11 +106,11 @@ export async function get3(context, buildInput) {
 ### Template
 ```marko
 // virtual:marko-run/__marko-run__route.aaa.$aId.ccc.$cId.marko
-import layout1 from './src/routes/+layout.marko';
-import page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from './src/routes/+layout.marko';
+import Page from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<layout1 ...input>
-	<page ...input/>
+<Layout1 ...input>
+	<Page ...input/>
 </>
 ```
 ### Handler
