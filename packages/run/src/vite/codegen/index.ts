@@ -254,54 +254,6 @@ function writeRouteEntryHandler(
   writer.writeBlockEnd("}");
 }
 
-export function renderErrorRouter(
-  error: Error,
-  options: RouterOptions = {
-    trailingSlashes: "RedirectWithout",
-  },
-): string {
-  const writer = createStringWriter();
-
-  writer.write(`
-// @marko/run/router
-import { createContext } from '${virtualFilePrefix}/runtime/internal';
-import errorPage from '${virtualFilePrefix}/${markoRunFilePrefix}error.marko${serverEntryQuery}';
-
-const error = new Error(\`${error.message}\`);
-error.name = '${error.name}';`);
-
-  if (error.stack) {
-    writer.write(`
-error.stack = \`${error.stack}\`;`);
-  }
-
-  writer.write(`
-
-globalThis.__marko_run__ = { match, fetch, invoke };
-
-export function match() {
-  return { handler: errorPage, params: {}, meta: {}, path: '/*' }; // /$$
-}
-
-export async function invoke(route, request, platform, url) {
-  const [context, buildInput] = createContext(route, request, platform, url);
-  if (context.request.headers.get('Accept')?.includes('text/html')) {
-    return new Response(errorPage.stream(buildInput({ error })), {
-      status: 500,
-      headers: { "content-type": "text/html;charset=UTF-8" },
-    });
-  }
-  return new Response(error, {
-    status: 500,
-  });
-}
-`);
-
-  renderFetch(writer, options);
-
-  return writer.end();
-}
-
 export function renderRouter(
   routes: BuiltRoutes,
   options: RouterOptions = {

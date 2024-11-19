@@ -13,7 +13,6 @@ import type {
   ModuleNode,
 } from "vite";
 import type { PluginContext, OutputOptions } from "rollup";
-import type * as Compiler from "@marko/compiler";
 import markoVitePlugin from "@marko/vite";
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
@@ -81,7 +80,6 @@ interface RouteData {
 export default function markoRun(opts: Options = {}): Plugin[] {
   let { routesDir, adapter, ...markoVitePluginOptions } = opts;
 
-  let compiler: typeof Compiler;
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
   let resolvedRoutesDir: string;
@@ -314,15 +312,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             opts = mergeConfig(opts, adapterOptions);
           }
         }
-
-        compiler ??= await import(opts.compiler || "@marko/compiler");
-        compiler.taglib.register("@marko/run", {
-          "<dev-error-page>": {
-            template: normalizePath(
-              path.resolve(__dirname, "../components/dev-error-page.marko"),
-            ),
-          },
-        });
 
         routesDir = opts.routesDir || "src/routes";
         store = new ReadOncePersistedStore(
