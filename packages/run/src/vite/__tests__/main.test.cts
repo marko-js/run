@@ -5,16 +5,15 @@ import snap from "mocha-snap";
 import { createTestWalker } from "../routes/walk";
 import { type RouteSource, buildRoutes } from "../routes/builder";
 import { createDirectory } from "./utils/fakeFS";
+import { prepareError } from "../../adapter/utils";
 import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
   renderRouteTypeInfo,
-  renderErrorRouter,
-  renderEntryTemplate,
 } from "../codegen";
-import { httpVerbs, markoRunFilePrefix } from "../constants";
+import { httpVerbs  } from "../constants";
 import type { BuiltRoutes, HttpVerb } from "../types";
 import { normalizeErrorStack } from "./utils/sanitize";
 
@@ -73,15 +72,7 @@ describe("router codegen", () => {
 
       if (error || !routes) {
         normalizeErrorStack((error ||= new Error("No routes generated")));
-
-        routesSnap += `## Error\n`;
-        routesSnap += "### Template\n";
-        routesSnap += "```marko\n";
-        routesSnap += renderEntryTemplate(`${markoRunFilePrefix}error`, [
-          "<dev-error-page>",
-        ]);
-
-        routerSnap = renderErrorRouter(error);
+        routerSnap = `throw ${JSON.stringify(prepareError(error))}`
       } else {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
