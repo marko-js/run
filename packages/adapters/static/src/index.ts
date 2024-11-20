@@ -53,7 +53,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
       const { dir, port, envFile } = options;
       envFile && (await loadEnv(envFile));
 
-      const staticServe = createStaticServe(dir, {
+      const staticServe = createStaticServe(path.join(dir, "public"), {
         index: "index.html",
       });
       const server = await createServer((req, res) =>
@@ -104,7 +104,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
             return response || new Response(null, { status: 404 });
           },
           {
-            out: path.dirname(builtEntries[0]),
+            out: path.join(path.dirname(builtEntries[0]), "public"),
           },
         );
         await crawler.crawl(pathsToVisit);

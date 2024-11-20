@@ -15,15 +15,32 @@ const compress = compression({
   flush: zlib.constants.Z_PARTIAL_FLUSH,
   threshold: 500,
 });
-const staticServe = createStaticServe(__dirname, {
+
+const servePublic = createStaticServe(`${__dirname}/public`, {
   index: false,
+  redirect: false,
+  maxAge: "10 minutes"
+});
+
+const serveAssets = createStaticServe(`${__dirname}/public/assets`, {
+  index: false,
+  redirect: false,
   immutable: true,
+  fallthrough: false,
   maxAge: "365 days",
 });
 
-const server = createServer((req, res) =>
-  compress(req, res, () => 
-  staticServe(req, res, () => middleware(req, res))
-  )
+createServer((req, res) =>
+  compress(req, res, () => {
+    if (req.url.startsWith('/assets/')) {
+      req.url = req.url.slice(7);
+      serveAssets(req, res, () => {
+        res.statusCode = 404;
+        res.end()
+    });
+    } else {
+      servePublic(req, res, () => middleware(req, res))
+    }
+  })
 ).listen(PORT);
 
