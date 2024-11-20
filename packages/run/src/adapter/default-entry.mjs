@@ -34,7 +34,10 @@ createServer((req, res) =>
   compress(req, res, () => {
     if (req.url.startsWith('/assets/')) {
       req.url = req.url.slice(7);
-      serveAssets(req, res)
+      serveAssets(req, res, () => {
+        res.statusCode = 404;
+        res.end()
+    });
     } else {
       servePublic(req, res, () => middleware(req, res))
     }
