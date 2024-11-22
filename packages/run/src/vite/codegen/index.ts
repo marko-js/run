@@ -27,13 +27,13 @@ interface RouteTrie {
   dynamic?: RouteTrie;
 }
 
-export function renderRouteTemplate(route: Route): string {
+export function renderRouteTemplate(route: Route, getRelativePath: (path: string) => string): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
   return renderEntryTemplate(
     route.entryName,
-    [...route.layouts, route.page].map((file) => `./${file.importPath}`),
+    [...route.layouts, route.page].map((file) => getRelativePath(file.importPath)),
   );
 }
 
@@ -46,7 +46,7 @@ export function renderEntryTemplate(name: string, files: string[]): string {
   }
 
   const writer = createStringWriter();
-  writer.writeLines(`// ${virtualFilePrefix}/${name}.marko`);
+  writer.writeLines(`// ${name}.marko`);
   writer.branch("imports");
   writer.writeLines("");
   writeEntryTemplateTag(writer, files);
@@ -75,7 +75,7 @@ function writeEntryTemplateTag(
   }
 }
 
-export function renderRouteEntry(route: Route): string {
+export function renderRouteEntry(route: Route, entriesDir: string): string {
   const { key, index, handler, page, middleware, meta, entryName } = route;
   const verbs = getVerbs(route);
 
@@ -137,9 +137,10 @@ export function renderRouteEntry(route: Route): string {
     );
   }
   if (page) {
-    imports.writeLines(
-      `import page from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`,
-    );
+    const importPath = route.layouts.length
+      ? `./${entriesDir}/${entryName}.marko`
+      : `./${page.importPath}`;
+    imports.writeLines(`import page from '${importPath}${serverEntryQuery}';`);
   }
   if (meta) {
     imports.writeLines(
@@ -256,6 +257,7 @@ function writeRouteEntryHandler(
 
 export function renderRouter(
   routes: BuiltRoutes,
+  entriesDir: string,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
@@ -281,9 +283,12 @@ export function renderRouter(
       }.js';`,
     );
   }
-  for (const { key, entryName } of Object.values(routes.special)) {
+  for (const page of Object.values(routes.special)) {
+    const importPath = page.layouts.length
+      ? `./${entriesDir}/${page.entryName}.marko`
+      : `./${page.importPath}`;
     imports.writeLines(
-      `import page${key} from '${virtualFilePrefix}/${entryName}.marko${serverEntryQuery}';`,
+      `import page${page.key} from '${importPath}${serverEntryQuery}';`,
     );
   }
 

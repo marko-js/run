@@ -21,6 +21,8 @@ import { normalizeErrorStack } from "./utils/sanitize";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
+
+
 describe("router codegen", () => {
   for (const fixture of fs.readdirSync(FIXTURES)) {
     if (fixture.endsWith(".skip")) {
@@ -30,6 +32,12 @@ describe("router codegen", () => {
 
     it(fixture, async () => {
       const dir = path.join(FIXTURES, fixture);
+      const relativeEntryFilesDir = ".marko";
+      const entryFilesDir = path.join(dir, relativeEntryFilesDir);
+
+      function getEntryFileRelativePath(to: string) {
+        return path.relative(entryFilesDir, path.join(dir, to));
+      }
 
       const sources: RouteSource[] = [];
 
@@ -101,28 +109,30 @@ describe("router codegen", () => {
           for (const path of route.paths) {
             routesSnap += `  - \`${path.path}\`\n`;
           }
-          if (route.page) {
+          if (route.page && route.layouts.length) {
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route);
+            routesSnap += renderRouteTemplate(route, getEntryFileRelativePath);
             routesSnap += "```\n";
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route);
+          routesSnap += renderRouteEntry(route, relativeEntryFilesDir);
           routesSnap += "```\n";
           i++;
         }
 
         for (const route of Object.values(routes.special)) {
-          routesSnap += `\n\n## Special \`${route.key}\`\n`;
-          routesSnap += "### Template\n";
-          routesSnap += "```marko\n";
-          routesSnap += renderRouteTemplate(route);
-          routesSnap += "```\n";
+          if (route.layouts.length) {
+            routesSnap += `\n\n## Special \`${route.key}\`\n`;
+            routesSnap += "### Template\n";
+            routesSnap += "```marko\n";
+            routesSnap += renderRouteTemplate(route, getEntryFileRelativePath);
+            routesSnap += "```\n";
+          }
         }
 
-        routerSnap = renderRouter(routes);
+        routerSnap = renderRouter(routes, relativeEntryFilesDir);
         typesSnap = await renderRouteTypeInfo(routes);
       }
 

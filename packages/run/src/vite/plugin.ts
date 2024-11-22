@@ -22,7 +22,6 @@ import type {
   BuiltRoutes,
   HttpVerb,
   PackageData,
-  RouterOptions,
 } from "./types";
 import {
   renderMiddleware,
@@ -59,6 +58,8 @@ const PLUGIN_NAME_PREFIX = "marko-run-vite";
 const POSIX_SEP = "/";
 const WINDOWS_SEP = "\\";
 const CLIENT_OUT_DIR = "public";
+const MIDDLEWARE_FILENAME = `${markoRunFilePrefix}middleware.js`;
+const ROUTER_FILENAME = `${markoRunFilePrefix}router.js`;
 
 const normalizePath =
   path.sep === WINDOWS_SEP
@@ -84,6 +85,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
   let resolvedRoutesDir: string;
+  let entryFilesDir: string;
+  let relativeEntryFilesDir: string;
   let typesDir: string;
   let isBuild = false;
   let isSSRBuild = false;
@@ -108,6 +111,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesBuild: 0,
     routesRender: 0,
   };
+
+  function getEntryFileRelativePath(to: string) {
+    return path.relative(entryFilesDir, to);
+  }
 
   async function writeTypesFile(routes: BuiltRoutes) {
     if (
@@ -157,27 +164,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         for (const route of routes.list) {
-          if (route.page) {
-            virtualFiles.set(
-              path.posix.join(root, `${route.entryName}.marko`),
-              "",
-            );
-          }
           virtualFiles.set(path.posix.join(root, `${route.entryName}.js`), "");
         }
-        for (const route of Object.values(routes.special)) {
-          virtualFiles.set(
-            path.posix.join(root, `${route.entryName}.marko`),
-            "",
-          );
-        }
+
         if (routes.middleware.length) {
-          virtualFiles.set(
-            path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
-            "",
-          );
+          virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
         }
-        virtualFiles.set("@marko/run/router", "");
+        virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
 
         resolve(routes);
       } catch (err) {
@@ -189,11 +182,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let renderVirtualFilesResult: Promise<void> | undefined;
   function renderVirtualFiles(context: PluginContext) {
     return (renderVirtualFilesResult ??= new Promise<void>(async (resolve) => {
-      const routerOptions: RouterOptions = {
-        trailingSlashes: opts.trailingSlashes || "RedirectWithout",
-      };
       try {
         const routes = await buildVirtualFiles();
+
+        let entryFilesDirExists = false;
+        if (fs.existsSync(entryFilesDir)) {
+          fs.rmSync(entryFilesDir, { recursive: true });
+        }
 
         for (const route of routes.list) {
           if (route.handler) {
@@ -215,22 +210,30 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (route.page) {
-            virtualFiles.set(
-              path.posix.join(root, `${route.entryName}.marko`),
-              renderRouteTemplate(route),
+          if (route.page && route.layouts.length) {
+            entryFilesDirExists ||= !!fs.mkdirSync(entryFilesDir, {
+              recursive: true,
+            });
+            fs.writeFileSync(
+              path.posix.join(entryFilesDir, `${route.entryName}.marko`),
+              renderRouteTemplate(route, getEntryFileRelativePath),
             );
           }
           virtualFiles.set(
             path.posix.join(root, `${route.entryName}.js`),
-            renderRouteEntry(route),
+            renderRouteEntry(route, relativeEntryFilesDir),
           );
         }
         for (const route of Object.values(routes.special)) {
-          virtualFiles.set(
-            path.posix.join(root, `${route.entryName}.marko`),
-            renderRouteTemplate(route),
-          );
+          if (route.layouts.length) {
+            entryFilesDirExists ||= !!fs.mkdirSync(entryFilesDir, {
+              recursive: true,
+            });
+            fs.writeFileSync(
+              path.posix.join(entryFilesDir, `${route.entryName}.marko`),
+              renderRouteTemplate(route, getEntryFileRelativePath),
+            );
+          }
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
@@ -246,13 +249,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           virtualFiles.set(
-            path.posix.join(root, `${markoRunFilePrefix}middleware.js`),
+            path.posix.join(root, MIDDLEWARE_FILENAME),
             renderMiddleware(routes.middleware),
           );
         }
         virtualFiles.set(
-          "@marko/run/router",
-          renderRouter(routes, routerOptions),
+          path.posix.join(root, ROUTER_FILENAME),
+          renderRouter(routes, relativeEntryFilesDir, {
+            trailingSlashes: opts.trailingSlashes || "RedirectWithout",
+          }),
         );
 
         await writeTypesFile(routes);
@@ -274,7 +279,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           throw err;
         }
         virtualFiles.set(
-          "@marko/run/router",
+          path.posix.join(root, ROUTER_FILENAME),
           `throw ${JSON.stringify(prepareError(err as Error))}`,
         );
       }
@@ -321,17 +326,20 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
+
+        const modulesDir = findModulesDir() || path.join(root, "node_modules");
+        entryFilesDir = path.join(modulesDir, '.marko');
+        relativeEntryFilesDir = path.relative(root, entryFilesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
-
         let outDir = config.build?.outDir || "dist";
         const assetsDir = config.build?.assetsDir || "assets";
         let rollupOutputOptions = config.build?.rollupOptions?.output;
 
         if (isBuild) {
           if (!isSSRBuild) {
-            outDir = path.join(outDir, CLIENT_OUT_DIR)
+            outDir = path.join(outDir, CLIENT_OUT_DIR);
           }
 
           const defaultRollupOutputOptions: OutputOptions = {
@@ -386,7 +394,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           logLevel: isBuild ? "warn" : undefined,
           define: isBuild
             ? {
-                "process.env.NODE_ENV": "'production'"
+                "process.env.NODE_ENV": "'production'",
               }
             : undefined,
           ssr: {
@@ -543,7 +551,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async resolveId(importee, importer) {
         let resolved: string | undefined;
         let virtualFilePath: string | undefined;
-        if (importee.startsWith(virtualFilePrefix)) {
+        if (importee === "@marko/run/router") {
+          importee = path.resolve(root, `${markoRunFilePrefix}router.js`);
+        } else if (importee.startsWith(virtualFilePrefix)) {
           virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
           importee = path.resolve(root, virtualFilePath);
         } else if (
@@ -582,7 +592,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
-        } else if (/[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)) {
+        } else if (
+          !id.startsWith(entryFilesDir) &&
+          /[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)
+        ) {
           return "";
         }
       },
@@ -663,7 +676,7 @@ async function getExportsFromFileDev(
 ) {
   const result = await devServer.transformRequest(filePath, { ssr: true });
   if (result) {
-    const ast = context.parse(result.code)
+    const ast = context.parse(result.code);
     return getViteSSRExportIdentifiers(ast);
   }
   return [];
@@ -753,4 +766,22 @@ function getImporters(
     }
   }
   return seen;
+}
+
+function findModulesDir(dir: string = __dirname) {
+  const index = dir.indexOf("node_modules");
+  if (index >= 0) {
+    return dir.slice(0, index + 12);
+  }
+
+  // let cur = dir;
+  // while (cur) {
+  //   const modulesDir = path.join(cur, "node_modules");
+  //   if (fs.existsSync(modulesDir)) {
+  //     return modulesDir;
+  //   }
+  //   cur = path.dirname(cur);
+  // }
+
+  // throw new Error(`Could not find node_modules directory for path '${dir}'`);
 }
