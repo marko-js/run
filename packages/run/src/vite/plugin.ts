@@ -49,6 +49,7 @@ import {
 import createDebug from "debug";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 import { prepareError } from "../adapter/utils";
+import { createHash } from "crypto";
 
 const debug = createDebug("@marko/run");
 
@@ -328,7 +329,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         resolvedRoutesDir = path.resolve(root, routesDir);
 
         const modulesDir = getModulesDir() || path.join(root, "node_modules");
-        entryFilesDir = path.join(modulesDir, '.marko');
+        entryFilesDir = path.join(
+          modulesDir,
+          ".marko",
+          createHash("shake256", { outputLength: 4 })
+            .update(root)
+            .digest("hex"),
+        );
         relativeEntryFilesDir = path.relative(root, entryFilesDir);
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
