@@ -1,8 +1,9 @@
 import assert from "assert";
-
 export const entry = "src/index.ts";
+export const steps = [() => submitPost()];
 
-export async function steps() {
+
+async function submitPost() {
   const expected = new FormData();
   expected.append("foo", "a");
   expected.append("bar", "b");
