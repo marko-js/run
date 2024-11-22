@@ -327,7 +327,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
 
-        const modulesDir = findModulesDir() || path.join(root, "node_modules");
+        const modulesDir = getModulesDir() || path.join(root, "node_modules");
         entryFilesDir = path.join(modulesDir, '.marko');
         relativeEntryFilesDir = path.relative(root, entryFilesDir);
         typesDir = path.join(root, ".marko-run");
@@ -768,20 +768,9 @@ function getImporters(
   return seen;
 }
 
-function findModulesDir(dir: string = __dirname) {
+function getModulesDir(dir: string = __dirname) {
   const index = dir.indexOf("node_modules");
   if (index >= 0) {
     return dir.slice(0, index + 12);
   }
-
-  // let cur = dir;
-  // while (cur) {
-  //   const modulesDir = path.join(cur, "node_modules");
-  //   if (fs.existsSync(modulesDir)) {
-  //     return modulesDir;
-  //   }
-  //   cur = path.dirname(cur);
-  // }
-
-  // throw new Error(`Could not find node_modules directory for path '${dir}'`);
 }
