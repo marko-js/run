@@ -7,8 +7,8 @@ import { put4, post4, delete4, meta4 } from 'virtual:marko-run/__marko-run__rout
 import { get5 } from 'virtual:marko-run/__marko-run__route.callback.oauth2.js';
 import { get6 } from 'virtual:marko-run/__marko-run__route.my.js';
 import { get7 } from 'virtual:marko-run/__marko-run__route.$$match.js';
-import page404 from 'virtual:marko-run/__marko-run__special.404.marko?marko-server-entry';
-import page500 from 'virtual:marko-run/__marko-run__special.500.marko?marko-server-entry';
+import page404 from './.marko/__marko-run__special.404.marko?marko-server-entry';
+import page500 from './.marko/__marko-run__special.500.marko?marko-server-entry';
 
 const page404ResponseInit = {
   status: 404,

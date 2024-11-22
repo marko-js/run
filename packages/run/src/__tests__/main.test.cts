@@ -9,6 +9,7 @@ import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 import * as cli from "../cli/commands";
+import { diffLines } from "diff";
 
 // const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
@@ -66,9 +67,9 @@ before(async () => {
         }
       }
 
-      const formatted = defaultSerializer(
-        defaultNormalizer(fragment)
-      );
+      const formatted = defaultSerializer(defaultNormalizer(fragment))
+        .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
+        .replace(/\:(\d{4,})/g, ":9999");
 
       if (changes.at(-1) !== formatted) {
         changes.push(formatted);
@@ -84,6 +85,22 @@ before(async () => {
           queueMicrotask(observe);
         }
       });
+
+      let errorContainer: HTMLElement | null = null;
+      window.addEventListener("error", onError);
+      document.addEventListener("error", onError, true);
+
+      function onError(evt: ErrorEvent) {
+        if (!errorContainer) {
+          errorContainer = document.createElement("pre");
+          (getRoot() || document.body).appendChild(errorContainer);
+        }
+
+        errorContainer.insertAdjacentText(
+          "beforeend",
+          `${evt.error || `Error loading ${(evt.target as any).outerHTML}`}\n`,
+        );
+      }
 
       observe();
       function observe() {
@@ -165,7 +182,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             config.entry,
             undefined,
             dir,
-            configFile
+            configFile,
           );
           await testPage(dir, path, steps, server);
         }
@@ -184,7 +201,7 @@ async function testPage(
   dir: string,
   path: string,
   steps: Step[],
-  server: SpawnedServer
+  server: SpawnedServer,
 ) {
   try {
     const url = new URL(path, `http://localhost:${server.port}`);
@@ -196,15 +213,25 @@ async function testPage(
 
     await page.waitForLoadState("domcontentloaded");
 
-    await forEachChange((html, i) => {
-      snap(html, { ext: `.loading.${i}.html`, dir });
+    let snapshot = `# Loading\n\n`;
+    let prevHtml: string | undefined;
+    await forEachChange((html) => {
+      snapshot += htmlSnapshot(html, prevHtml);
+      prevHtml = html;
     });
+
     for (const [i, step] of steps.entries()) {
       await waitForPendingRequests(page, step);
-      await forEachChange((html, j) => {
-        snap(html, { ext: `.step-${i}.${j}.html`, dir });
+      snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
+
+      let prevHtml: string | undefined;
+      await forEachChange((html) => {
+        snapshot += htmlSnapshot(html, prevHtml);
+        prevHtml = html;
       });
     }
+
+    snap(snapshot, { ext: ".md", dir });
   } finally {
     await server.close();
   }
@@ -214,7 +241,7 @@ async function testPage(
  * Applies changes currently and ensures no new changes come in while processing.
  */
 async function forEachChange<F extends (html: string, i: number) => unknown>(
-  fn: F
+  fn: F,
 ) {
   const len = changes.length;
   await Promise.all(changes.map(fn));
@@ -277,4 +304,25 @@ function setCWD(dir: string) {
   afterEach(() => {
     process.chdir(_cwd);
   });
+}
+
+function getStepString(step: Step) {
+  return step
+    .toString()
+    .replace(/^.*?{\s*([\s\S]*?)\s*}.*?$/, "$1")
+    .replace(/^ {4}/gm, "")
+    .replace(/;$/, "");
+}
+
+function htmlSnapshot(html: string, prevHtml?: string) {
+  if (prevHtml) {
+    const diff = diffLines(prevHtml, html)
+      .map((part) =>
+        part.added ? `+${part.value}` : part.removed ? `-${part.value}` : "",
+      )
+      .filter(Boolean)
+      .join("");
+    return `\`\`\`diff\n${diff}\n\`\`\`\n\n`;
+  }
+  return `\`\`\`html\n${html}\n\`\`\`\n\n`;
 }

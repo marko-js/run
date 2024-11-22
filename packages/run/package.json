@@ -98,6 +98,7 @@
     "acorn": "^8.14.0",
     "body-parser": "^1.20.3",
     "cross-env": "^7.0.3",
+    "diff": "^7.0.0",
     "esbuild": "^0.24.0",
     "express": "^4.21.1",
     "jsdom": "^25.0.1",

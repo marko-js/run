@@ -13,18 +13,11 @@ export const mware3 = normalize(middleware3);
 ## Route `/`
 ### Paths
   - `/`
-### Template
-```marko
-// virtual:marko-run/__marko-run__route.marko
-import Page from './src/routes/foo,$id,$$rest,+page.marko';
-
-<Page ...input/>
-```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.js
 import { pageResponse } from 'virtual:marko-run/runtime/internal';
-import page from 'virtual:marko-run/__marko-run__route.marko?marko-server-entry';
+import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
 
 export async function get1(context, buildInput) {
 	return pageResponse(page, buildInput());
@@ -34,19 +27,12 @@ export async function get1(context, buildInput) {
 ## Route `/foo`
 ### Paths
   - `/foo`
-### Template
-```marko
-// virtual:marko-run/__marko-run__route.foo.marko
-import Page from './src/routes/foo,$id,$$rest,+page.marko';
-
-<Page ...input/>
-```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.foo.js
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { GET } from './src/routes/foo,(a,b).(c,d)+handler.get.marko';
-import page from 'virtual:marko-run/__marko-run__route.foo.marko?marko-server-entry';
+import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
@@ -59,19 +45,12 @@ export async function get2(context, buildInput) {
 ## Route `/$id`
 ### Paths
   - `/$id`
-### Template
-```marko
-// virtual:marko-run/__marko-run__route.$id.marko
-import Page from './src/routes/foo,$id,$$rest,+page.marko';
-
-<Page ...input/>
-```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.$id.js
 import { call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware3 } from 'virtual:marko-run/__marko-run__middleware.js';
-import page from 'virtual:marko-run/__marko-run__route.$id.marko?marko-server-entry';
+import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
 
 export async function get3(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
@@ -82,18 +61,11 @@ export async function get3(context, buildInput) {
 ## Route `/$$rest`
 ### Paths
   - `/$$rest`
-### Template
-```marko
-// virtual:marko-run/__marko-run__route.$$rest.marko
-import Page from './src/routes/foo,$id,$$rest,+page.marko';
-
-<Page ...input/>
-```
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.$$rest.js
 import { pageResponse } from 'virtual:marko-run/runtime/internal';
-import page from 'virtual:marko-run/__marko-run__route.$$rest.marko?marko-server-entry';
+import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
 
 export async function get4(context, buildInput) {
 	return pageResponse(page, buildInput());

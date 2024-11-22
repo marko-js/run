@@ -1,6 +1,8 @@
 import * as assert from "assert";
 
-export async function steps() {
+export const steps = [() => readCookies()]
+
+async function readCookies() {
   const expected = JSON.parse(await page.innerText("#app"));
   const actual: string[] = [];
   for (const { name, value } of await response!.headersArray()) {
