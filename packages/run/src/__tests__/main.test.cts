@@ -66,9 +66,9 @@ before(async () => {
         }
       }
 
-      const formatted = defaultSerializer(
-        defaultNormalizer(fragment)
-      );
+      const formatted = defaultSerializer(defaultNormalizer(fragment))
+        .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
+        .replace(/\:(\d{4,})/g, ":9999");
 
       if (changes.at(-1) !== formatted) {
         changes.push(formatted);
@@ -165,7 +165,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             config.entry,
             undefined,
             dir,
-            configFile
+            configFile,
           );
           await testPage(dir, path, steps, server);
         }
@@ -184,7 +184,7 @@ async function testPage(
   dir: string,
   path: string,
   steps: Step[],
-  server: SpawnedServer
+  server: SpawnedServer,
 ) {
   try {
     const url = new URL(path, `http://localhost:${server.port}`);
@@ -214,7 +214,7 @@ async function testPage(
  * Applies changes currently and ensures no new changes come in while processing.
  */
 async function forEachChange<F extends (html: string, i: number) => unknown>(
-  fn: F
+  fn: F,
 ) {
   const len = changes.length;
   await Promise.all(changes.map(fn));
