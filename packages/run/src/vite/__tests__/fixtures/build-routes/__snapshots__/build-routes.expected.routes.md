@@ -26,9 +26,9 @@ import Layout1 from '../src/routes/+layout.marko';
 import Layout2 from '../src/routes/_protected/_home/+layout.marko';
 import Page from '../src/routes/_protected/_home/+page.marko';
 
-<Layout1 ...input>
-	<Layout2 ...input>
-		<Page ...input/>
+<Layout1>
+	<Layout2>
+		<Page/>
 	</>
 </>
 ```
@@ -57,9 +57,9 @@ import Layout1 from '../src/routes/+layout.marko';
 import Layout2 from '../src/routes/_protected/_home/+layout.marko';
 import Page from '../src/routes/_protected/_home/new/+page.marko';
 
-<Layout1 ...input>
-	<Layout2 ...input>
-		<Page ...input/>
+<Layout1>
+	<Layout2>
+		<Page/>
 	</>
 </>
 ```
@@ -99,9 +99,9 @@ import Layout1 from '../src/routes/+layout.marko';
 import Layout2 from '../src/routes/_protected/_home/+layout.marko';
 import Page from '../src/routes/_protected/_home/notes/$id/+page.marko';
 
-<Layout1 ...input>
-	<Layout2 ...input>
-		<Page ...input/>
+<Layout1>
+	<Layout2>
+		<Page/>
 	</>
 </>
 ```
@@ -217,8 +217,8 @@ export async function get5(context) {
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/my/+page.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 ### Handler
@@ -264,8 +264,8 @@ export async function get7(context) {
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/+404.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 
@@ -277,7 +277,7 @@ import Page from '../src/routes/+404.marko';
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/+500.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page error=input.error/>
 </>
 ```

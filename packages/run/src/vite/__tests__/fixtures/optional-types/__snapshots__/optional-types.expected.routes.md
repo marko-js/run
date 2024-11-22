@@ -19,8 +19,8 @@ export const mware2 = normalize(middleware2);
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 ### Handler
@@ -49,8 +49,8 @@ export async function get1(context, buildInput) {
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 ### Handler
@@ -79,8 +79,8 @@ export async function get2(context, buildInput) {
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 ### Handler
@@ -109,8 +109,8 @@ export async function get3(context, buildInput) {
 import Layout1 from '../src/routes/+layout.marko';
 import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
-<Layout1 ...input>
-	<Page ...input/>
+<Layout1>
+	<Page/>
 </>
 ```
 ### Handler

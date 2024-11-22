@@ -27,17 +27,27 @@ interface RouteTrie {
   dynamic?: RouteTrie;
 }
 
-export function renderRouteTemplate(route: Route, getRelativePath: (path: string) => string): string {
+export function renderRouteTemplate(
+  route: Route,
+  getRelativePath: (path: string) => string,
+): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
   return renderEntryTemplate(
     route.entryName,
-    [...route.layouts, route.page].map((file) => getRelativePath(file.importPath)),
+    [...route.layouts, route.page].map((file) =>
+      getRelativePath(file.importPath),
+    ),
+    route.key === RoutableFileTypes.Error ? ["error"] : [],
   );
 }
 
-export function renderEntryTemplate(name: string, files: string[]): string {
+export function renderEntryTemplate(
+  name: string,
+  files: string[],
+  pageInputs: string[] = [],
+): string {
   if (!name) {
     throw new Error(`Invalid argument - 'name' cannot be empty`);
   }
@@ -49,7 +59,7 @@ export function renderEntryTemplate(name: string, files: string[]): string {
   writer.writeLines(`// ${name}.marko`);
   writer.branch("imports");
   writer.writeLines("");
-  writeEntryTemplateTag(writer, files);
+  writeEntryTemplateTag(writer, files, pageInputs);
 
   return writer.end();
 }
@@ -57,6 +67,7 @@ export function renderEntryTemplate(name: string, files: string[]): string {
 function writeEntryTemplateTag(
   writer: Writer,
   [file, ...rest]: string[],
+  pageInputs: string[],
   index: number = 1,
 ): void {
   if (file) {
@@ -66,10 +77,13 @@ function writeEntryTemplateTag(
     writer.branch("imports").writeLines(`import ${tag} from '${file}';`);
 
     if (isLast) {
-      writer.writeLines(`<${tag} ...input/>`);
+      const attributes = pageInputs.length
+        ? " " + pageInputs.map((name) => `${name}=input.${name}`).join(" ")
+        : "";
+      writer.writeLines(`<${tag}${attributes}/>`);
     } else {
-      writer.writeBlockStart(`<${tag} ...input>`);
-      writeEntryTemplateTag(writer, rest, index + 1);
+      writer.writeBlockStart(`<${tag}>`);
+      writeEntryTemplateTag(writer, rest, pageInputs, index + 1);
       writer.writeBlockEnd(`</>`);
     }
   }
