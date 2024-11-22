@@ -552,7 +552,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         let resolved: string | undefined;
         let virtualFilePath: string | undefined;
         if (importee === "@marko/run/router") {
-          importee = path.resolve(root, `${markoRunFilePrefix}router.js`);
+          importee = path.resolve(root, ROUTER_FILENAME);
         } else if (importee.startsWith(virtualFilePrefix)) {
           virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
           importee = path.resolve(root, virtualFilePath);
