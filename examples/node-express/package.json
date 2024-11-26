@@ -8,18 +8,18 @@
     "preview": "marko-run preview src/index.ts"
   },
   "devDependencies": {
-    "@marko/compiler": "^5.37.26",
-    "@marko/run": "^0.4",
+    "@marko/compiler": "^5.38.1",
+    "@marko/run": "^0.5",
     "@marko/run-adapter-node": "^0.1",
     "@types/node": "^22.9.1",
     "prettier": "^3.3.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0"
   },
   "dependencies": {
     "compression": "^1.7.5",
     "express": "^4.21.1",
-    "marko": "^5.35.35"
+    "marko": "^5.36.1"
   }
 }

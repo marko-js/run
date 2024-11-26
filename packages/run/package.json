@@ -114,7 +114,7 @@
   },
   "dependencies": {
     "@marko/run-explorer": "^0.1.2",
-    "@marko/vite": "^5.0.5",
+    "@marko/vite": "^5.0.8",
     "browserslist": "^4.24.2",
     "cli-table3": "^0.6.5",
     "compression": "^1.7.5",
@@ -131,7 +131,7 @@
     "serve-static": "^1.16.2",
     "supports-color": "^9.4.0",
     "undici": "^6.21.0",
-    "vite": "^5.4.11",
+    "vite": "^6.0.0",
     "warp10": "^2.1.0"
   }
 }
