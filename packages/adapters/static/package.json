@@ -53,7 +53,7 @@
     "prettier": "^3.3.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11"
+    "vite": "^6.0.0"
   },
   "dependencies": {
     "undici": "^6.21.0"
