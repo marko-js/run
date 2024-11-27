@@ -328,9 +328,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
 
-        const modulesDir = getModulesDir(root);
         entryFilesDir = path.join(
-          modulesDir,
+          getModulesDir(root),
           ".marko",
           createHash("shake256", { outputLength: 4 })
             .update(root)
@@ -556,11 +555,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async resolveId(importee, importer) {
-        let resolved: string | undefined;
-        let virtualFilePath: string | undefined;
         if (importee === "@marko/run/router") {
-          importee = path.resolve(root, ROUTER_FILENAME);
-        } else if (importee.startsWith(virtualFilePrefix)) {
+          return path.resolve(root, ROUTER_FILENAME);
+        } else if (importee.endsWith('.marko') && importee.includes(relativeEntryFilesDir)) {
+          if (!importee.startsWith(root)) {
+            importee = path.resolve(root, "." + importee)
+          }
+          return normalizePath(importee);
+        }
+
+        let virtualFilePath: string | undefined;
+        if (importee.startsWith(virtualFilePrefix)) {
           virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
           importee = path.resolve(root, virtualFilePath);
         } else if (
@@ -578,17 +583,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (!buildVirtualFilesResult) {
           await buildVirtualFiles();
         }
+        
         if (virtualFiles.has(importee)) {
-          resolved = importee;
+          return importee;
         } else if (virtualFilePath) {
           const filePath = path.resolve(__dirname, "..", virtualFilePath);
-          const resolution = await this.resolve(filePath, importer, {
+          return await this.resolve(filePath, importer, {
             skipSelf: true,
           });
-          return resolution;
         }
-
-        return resolved || null;
       },
       async load(id) {
         if (id.endsWith(serverEntryQuery)) {
