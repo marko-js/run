@@ -297,12 +297,12 @@ export function renderRouter(
       }.js';`,
     );
   }
-  for (const page of Object.values(routes.special)) {
-    const importPath = page.layouts.length
-      ? `./${entriesDir}/${page.entryName}.marko`
-      : `./${page.importPath}`;
+  for (const route of Object.values(routes.special) as Route[]) {
+    const importPath = route.layouts.length
+      ? `./${entriesDir}/${route.entryName}.marko`
+      : `./${route.page!.importPath}`;
     imports.writeLines(
-      `import page${page.key} from '${importPath}${serverEntryQuery}';`,
+      `import page${route.key} from '${importPath}${serverEntryQuery}';`,
     );
   }
 
