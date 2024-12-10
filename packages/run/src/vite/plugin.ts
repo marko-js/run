@@ -62,6 +62,8 @@ const CLIENT_OUT_DIR = "public";
 const MIDDLEWARE_FILENAME = `${markoRunFilePrefix}middleware.js`;
 const ROUTER_FILENAME = `${markoRunFilePrefix}router.js`;
 
+export const defaultPort = Number(process.env.PORT || 3000);
+
 const normalizePath =
   path.sep === WINDOWS_SEP
     ? (id: string) => id.replace(/\\/g, POSIX_SEP)
@@ -452,6 +454,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ],
               }
             : undefined,
+          server: !isBuild ? {
+            port: config.server?.port || defaultPort
+          } : undefined
         };
 
         if (adapter?.viteConfig) {

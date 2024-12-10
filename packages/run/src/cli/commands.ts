@@ -19,11 +19,12 @@ import {
   default as plugin,
   resolveAdapter as pluginResolveAdapter,
   isPluginIncluded,
+  defaultPort,
+  
 } from "../vite/plugin";
 import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultPort = Number(process.env.PORT || 3000);
 
 export const defaultConfigFileBases = ["serve.config", "vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
