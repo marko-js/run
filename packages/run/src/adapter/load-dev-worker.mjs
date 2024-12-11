@@ -1,3 +1,4 @@
+import net from "net";
 import { createServer } from "vite";
 import { getDevGlobal } from "@marko/run/adapter";
 
@@ -26,7 +27,9 @@ async function start(entry, config) {
     ssr: { external: ["@marko/run/router"] },
   });
 
-  await loader.listen(0);
+  const port = await getAvailablePort();
+  await loader.listen(port);
+  
   loader.ssrLoadModule(entry).catch((err) => {
     loader.ssrFixStacktrace(err);
 
@@ -58,4 +61,13 @@ function shutdown() {
     devServer.ws.send({ type: "full-reload" });
   }
   devGlobal.clear();
+}
+
+async function getAvailablePort() {
+  return new Promise((resolve) => {
+    const server = net.createServer().listen(0, () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+  });
 }
