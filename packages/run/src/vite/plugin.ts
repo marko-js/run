@@ -454,9 +454,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ],
               }
             : undefined,
-          server: !isBuild ? {
+          server: {
             port: config.server?.port || defaultPort
-          } : undefined
+          },
+          preview: {
+            port: config.preview?.port || defaultPort
+          }
         };
 
         if (adapter?.viteConfig) {
