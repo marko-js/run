@@ -7,7 +7,7 @@ import {
   build as viteBuild,
   resolveConfig,
   type ResolvedConfig,
-  InlineConfig,
+  type InlineConfig,
 } from "vite";
 import {
   getExternalPluginOptions,
@@ -20,7 +20,7 @@ import {
   resolveAdapter as pluginResolveAdapter,
   isPluginIncluded,
   defaultPort,
-  
+  defaultConfigPlugin,
 } from "../vite/plugin";
 import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 
@@ -37,11 +37,17 @@ export async function preview(
   port?: number,
   outDir?: string,
   envFile?: string,
-  args: string[] = []
+  args: string[] = [],
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: "silent", build: { outDir } },
-    "serve"
+    {
+      root: cwd,
+      configFile,
+      logLevel: "silent",
+      build: { outDir },
+      plugins: [defaultConfigPlugin],
+    },
+    "serve",
   );
 
   const [availablePort, adapter] = await Promise.all([
@@ -49,7 +55,7 @@ export async function preview(
       port ??
         resolvedConfig.preview.port ??
         resolvedConfig.server.port ??
-        defaultPort
+        defaultPort,
     ),
     resolveAdapter(resolvedConfig),
   ]);
@@ -90,11 +96,16 @@ export async function dev(
   configFile: string,
   port?: number,
   envFile?: string,
-  args: string[] = []
+  args: string[] = [],
 ): Promise<SpawnedServer> {
   const resolvedConfig = await resolveConfig(
-    { root: cwd, configFile, logLevel: "silent" },
-    "serve"
+    {
+      root: cwd,
+      configFile,
+      logLevel: "silent",
+      plugins: [defaultConfigPlugin],
+    },
+    "serve",
   );
 
   if (envFile) {
@@ -106,14 +117,14 @@ export async function dev(
       port ??
         resolvedConfig.server.port ??
         resolvedConfig.preview.port ??
-        defaultPort
+        defaultPort,
     ),
     resolveAdapter(resolvedConfig),
   ]);
 
   if (!adapter) {
     throw new Error(
-      "No adapter specified for 'dev' command without custom target" // Would the user know what a target is if presented with this error?
+      "No adapter specified for 'dev' command without custom target", // Would the user know what a target is if presented with this error?
     );
   } else if (!adapter.startDev) {
     throw new Error(`Adapter '${adapter.name}' does not support 'dev' command`);
@@ -144,14 +155,14 @@ export async function build(
   cwd: string,
   configFile: string,
   outDir?: string,
-  envFile?: string
+  envFile?: string,
 ) {
   const root = cwd;
   const resolvedConfig = await resolveConfig(
-    { root, configFile, logLevel: "silent" },
+    { root, configFile, logLevel: "silent", plugins: [defaultConfigPlugin] },
     "build",
     "production",
-    "production"
+    "production",
   );
   const adapter = await resolveAdapter(resolvedConfig);
 
@@ -164,7 +175,7 @@ export async function build(
 
     if (!entry) {
       throw new Error(
-        `Adapter '${adapter.name}' does not support building without an entry`
+        `Adapter '${adapter.name}' does not support building without an entry`,
       );
     }
   }
@@ -187,9 +198,8 @@ export async function build(
       root,
       isBuild: true,
       envFile,
-    }
+    },
   );
-
 
   // build SSR
   await viteBuild({
@@ -219,7 +229,7 @@ export async function build(
 function findFileWithExt(
   dir: string,
   base: string,
-  extensions: string[] = defaultConfigFileExts
+  extensions: string[] = defaultConfigFileExts,
 ): string | undefined {
   for (const ext of extensions) {
     const filePath = path.join(dir, base + ext);
@@ -233,7 +243,7 @@ function findFileWithExt(
 export async function getViteConfig(
   dir: string,
   configFile?: string,
-  bases: string[] = defaultConfigFileBases
+  bases: string[] = defaultConfigFileBases,
 ): Promise<string> {
   if (configFile) {
     const configFilePath = path.join(dir, configFile);

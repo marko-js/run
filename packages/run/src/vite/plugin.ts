@@ -292,6 +292,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   }
 
   return [
+    defaultConfigPlugin,
     {
       name: `${PLUGIN_NAME_PREFIX}:pre`,
       enforce: "pre",
@@ -454,12 +455,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ],
               }
             : undefined,
-          server: {
-            port: config.server?.port || defaultPort
-          },
-          preview: {
-            port: config.preview?.port || defaultPort
-          }
         };
 
         if (adapter?.viteConfig) {
@@ -565,9 +560,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async resolveId(importee, importer) {
         if (importee === "@marko/run/router") {
           return path.resolve(root, ROUTER_FILENAME);
-        } else if (importee.endsWith('.marko') && importee.includes(relativeEntryFilesDir)) {
+        } else if (
+          importee.endsWith(".marko") &&
+          importee.includes(relativeEntryFilesDir)
+        ) {
           if (!importee.startsWith(root)) {
-            importee = path.resolve(root, "." + importee)
+            importee = path.resolve(root, "." + importee);
           }
           return normalizePath(importee);
         }
@@ -591,7 +589,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (!buildVirtualFilesResult) {
           await buildVirtualFiles();
         }
-        
+
         if (virtualFiles.has(importee)) {
           return importee;
         } else if (virtualFilePath) {
@@ -768,7 +766,7 @@ function getEntryFileName(file: string | undefined | null) {
 
 export function isPluginIncluded(config: ResolvedConfig) {
   return config.plugins.some((plugin) => {
-    return plugin.name.startsWith(PLUGIN_NAME_PREFIX);
+    return plugin.name === `${PLUGIN_NAME_PREFIX}:pre`;
   });
 }
 
@@ -795,3 +793,18 @@ function getModulesDir(root: string, dir: string = __dirname) {
   }
   return path.join(root, "node_modules");
 }
+
+export const defaultConfigPlugin: Plugin = {
+  name: `${PLUGIN_NAME_PREFIX}:defaults`,
+  enforce: "pre",
+  config(config) {
+    return {
+      server: {
+        port: config.server?.port ?? defaultPort,
+      },
+      preview: {
+        port: config.preview?.port ?? defaultPort,
+      },
+    };
+  },
+};
