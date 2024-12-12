@@ -1,7 +1,6 @@
 import fs from "fs";
 import nodePath from "path";
 import { WritableStream as Parser } from "htmlparser2/lib/WritableStream";
-// import { AbortController } from "abort-controller";
 
 const noop = () => {};
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
@@ -31,7 +30,7 @@ export default function createCrawler(
   async function visit(path: string) {
     const parser = new Parser({
       onopentag(name, attrs) {
-        const href = resolveHref(name, attrs);
+        const href = getTagHref(name, attrs);
         const path = href && resolvePath(href, origin);
 
         if (path !== undefined && !seen.has(path)) {
@@ -54,30 +53,37 @@ export default function createCrawler(
       });
 
       const res = await makeRequest(req);
-
-      if (!res.headers.get("content-type")?.includes(contentType)) {
-        //res.body.on("error", noop);
-        abortController.abort();
-        return;
-      }
+      const validContentType = !!res.headers.get("content-type")?.includes(contentType);
 
       let redirect: string | undefined;
 
       switch (res.status) {
         case 200:
+          if (!validContentType) {
+            abortController.abort();
+            return;
+          }
           break;
         case 404:
           if (path !== notFoundPath) {
             redirect = origin + notFoundPath;
+          } else if (!validContentType) {
+            abortController.abort();
+            return;
           }
           break;
         case 301: {
-          redirect = res.headers.get("location")!;
-          const redirectPath = resolvePath(redirect, origin);
+          const location = res.headers.get("location") || "";
+          redirect = resolvePathWithHash(location, origin);
 
-          if (redirectPath && !seen.has(redirectPath)) {
-            seen.add(redirectPath);
-            queue.push(visit(redirectPath));
+          if (redirect) {
+            const redirectPath = resolvePath(location, origin);
+            if (redirectPath && !seen.has(redirectPath)) {
+              seen.add(redirectPath);
+              queue.push(visit(redirectPath));
+            }
+          } else {
+            redirect = location
           }
           break;
         }
@@ -86,19 +92,12 @@ export default function createCrawler(
           console.warn(`Status code ${res.status} was while crawling: '${path}'`);
           return;
         }
-        // default:
-        //   //res.body.on("error", noop);
-        //   abortController.abort();
-        //   throw new Error(
-        //     `Unexpected status code ${res.status} was discovered while crawling.`
-        //   );
       }
 
       await fs.promises.mkdir(dirname, { recursive: true }).catch(noop);
       fsWriter = fs.createWriteStream(nodePath.join(dirname, "index.html"));
 
       if (redirect) {
-        //res.body.on("error", noop);
         abortController.abort();
         fsWriter.write(
           `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${redirect.replace(
@@ -152,7 +151,7 @@ export default function createCrawler(
   };
 }
 
-function resolveHref(tagName: string, attrs: Record<string, string>) {
+function getTagHref(tagName: string, attrs: Record<string, string>) {
   switch (tagName) {
     case "a":
       if (attrs.href && !(attrs.download || ignoredRels.has(attrs.rel))) {
@@ -187,18 +186,28 @@ function resolveHref(tagName: string, attrs: Record<string, string>) {
   }
 }
 
-function resolvePath(href: string, origin: string) {
+function resolveUrl(href: string, origin: string) {
   try {
     const url = new URL(href, origin);
     if (url.origin === origin) {
       let { pathname } = url;
       const lastChar = pathname.length - 1;
       if (pathname[lastChar] !== "/") {
-        pathname += '/'
+        url.pathname += '/'
       }
-      return pathname + url.search;
+      return url;
     }
-  } catch (_) {
+  } catch {
     return undefined;
   }
+}
+
+function resolvePath(href: string, origin: string) {
+  const url = resolveUrl(href, origin);
+  return url && url.pathname + url.search;
+}
+
+function resolvePathWithHash(href: string, origin: string) {
+  const url = resolveUrl(href, origin);
+  return url && url.pathname + url.search + url.hash;
 }
