@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-static",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Preview and deploy @marko/run apps as static files",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/static",
