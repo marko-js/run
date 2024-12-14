@@ -8,6 +8,6 @@
     "preview": "marko-run preview"
   },
   "dependencies": {
-    "marko": "^5.36.1"
+    "marko": "^5.37.4"
   }
 }
