@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "The Marko application framework.",
   "license": "MIT",
   "homepage": "https://github.com/marko-js/run/tree/main/packages/run",
@@ -83,6 +83,9 @@
   "files": [
     "dist"
   ],
+  "peerDependencies": {
+    "marko": "^5"
+  },
   "devDependencies": {
     "@babel/types": "^7.26.0",
     "@marko/fixture-snapshots": "^2.2.1",
