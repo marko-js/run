@@ -8,8 +8,8 @@
     "preview": "marko-run preview"
   },
   "devDependencies": {
-    "@marko/compiler": "^5.38.1",
-    "@marko/run": "^0.5.2",
+    "@marko/compiler": "^5.39.4",
+    "@marko/run": "^0.5.8",
     "@marko/run-adapter-netlify": "^0.1.9",
     "@types/compression": "^1.7.5",
     "@types/express": "^5.0.0",
@@ -20,6 +20,6 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "marko": "^5.36.1"
+    "marko": "^5.37.4"
   }
 }
