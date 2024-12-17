@@ -89,7 +89,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let root: string;
   let resolvedRoutesDir: string;
   let entryFilesDir: string;
-  let relativeEntryFilesDir: string;
+  let entryFilesDirPosix: string;
+  let relativeEntryFilesDirPosix: string;
   let typesDir: string;
   let isBuild = false;
   let isSSRBuild = false;
@@ -116,7 +117,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   };
 
   function getEntryFileRelativePath(to: string) {
-    return path.relative(entryFilesDir, to);
+    return normalizePath(path.relative(entryFilesDir, to));
   }
 
   async function writeTypesFile(routes: BuiltRoutes) {
@@ -218,13 +219,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               recursive: true,
             });
             fs.writeFileSync(
-              path.posix.join(entryFilesDir, `${route.entryName}.marko`),
+              path.join(entryFilesDir, `${route.entryName}.marko`),
               renderRouteTemplate(route, getEntryFileRelativePath),
             );
           }
           virtualFiles.set(
             path.posix.join(root, `${route.entryName}.js`),
-            renderRouteEntry(route, relativeEntryFilesDir),
+            renderRouteEntry(route, relativeEntryFilesDirPosix),
           );
         }
         for (const route of Object.values(routes.special)) {
@@ -233,7 +234,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               recursive: true,
             });
             fs.writeFileSync(
-              path.posix.join(entryFilesDir, `${route.entryName}.marko`),
+              path.join(entryFilesDir, `${route.entryName}.marko`),
               renderRouteTemplate(route, getEntryFileRelativePath),
             );
           }
@@ -258,7 +259,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
-          renderRouter(routes, relativeEntryFilesDir, {
+          renderRouter(routes, relativeEntryFilesDirPosix, {
             trailingSlashes: opts.trailingSlashes || "RedirectWithout",
           }),
         );
@@ -338,7 +339,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             .update(root)
             .digest("hex"),
         );
-        relativeEntryFilesDir = path.relative(root, entryFilesDir);
+        entryFilesDirPosix = normalizePath(entryFilesDir);
+        relativeEntryFilesDirPosix = normalizePath(path.relative(root, entryFilesDir));
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
@@ -562,7 +564,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           return path.resolve(root, ROUTER_FILENAME);
         } else if (
           importee.endsWith(".marko") &&
-          importee.includes(relativeEntryFilesDir)
+          importee.includes(relativeEntryFilesDirPosix)
         ) {
           if (!importee.startsWith(root)) {
             importee = path.resolve(root, "." + importee);
@@ -609,7 +611,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
         } else if (
-          !id.startsWith(entryFilesDir) &&
+          !id.startsWith(entryFilesDirPosix) &&
           /[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)
         ) {
           return "";
