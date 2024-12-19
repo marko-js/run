@@ -218,11 +218,7 @@ export async function build(
 
   // build client
   await viteBuild({
-    ...buildConfig,
-    build: {
-      ...buildConfig.build,
-      sourcemap: true,
-    },
+    ...buildConfig
   });
 }
 
