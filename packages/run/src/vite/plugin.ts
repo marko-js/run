@@ -429,6 +429,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               output: rollupOutputOptions,
             },
             modulePreload: { polyfill: false },
+            sourcemap: config.build?.sourcemap ?? (isBuild && !isSSRBuild),
           },
           optimizeDeps: {
             entries: !config.optimizeDeps?.entries
