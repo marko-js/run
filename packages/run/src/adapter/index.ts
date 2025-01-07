@@ -33,6 +33,7 @@ export type MarkoRunDevAccessor = () => MarkoRunDev;
 // @ts-expect-error
 import parseNodeArgs from "parse-node-args";
 import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";
+import { Server } from "http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
@@ -96,7 +97,7 @@ export default function adapter(): Adapter {
         return {
           port,
           async close() {
-            await Promise.all([worker.kill(), explorer?.close()]);
+            await Promise.allSettled([worker.kill(), explorer?.close()]);
           },
         };
       }
@@ -110,13 +111,14 @@ export default function adapter(): Adapter {
         inspector.open(inspect.port, inspect.host, inspect.wait);
       }
 
-      const listen = new Promise<AddressInfo>((resolve) => {
+      const listenerPromise = new Promise<Server>((resolve) => {
         const listener = devServer.middlewares.listen(port, () => {
-          resolve(listener.address() as AddressInfo);
+          resolve(listener);
         });
       });
 
-      const [explorer, address] = await Promise.all([explorerPromise, listen]);
+      const [explorer, listener] = await Promise.all([explorerPromise, listenerPromise]);
+      const address = listener.address() as AddressInfo;
 
       logInfoBox(
         `http://localhost:${address.port}`,
@@ -126,7 +128,7 @@ export default function adapter(): Adapter {
       return {
         port: address.port,
         async close() {
-          await Promise.all([devServer.close(), explorer?.close()]);
+          await Promise.allSettled([devServer.close(), listener.close(), explorer?.close()])
         },
       };
     },
@@ -151,7 +153,7 @@ export default function adapter(): Adapter {
         ? {
             port: server.port,
             async close() {
-              await Promise.all([server.close(), explorer.close()]);
+              await Promise.allSettled([server.close(), explorer.close()])
             },
           }
         : server;
