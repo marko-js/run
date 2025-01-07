@@ -2,6 +2,7 @@ import { appendHeader, getSetCookie } from "./polyfill";
 import type { Fetch, Platform } from "../runtime";
 import { IncomingMessage, ServerResponse } from "http";
 import type { TLSSocket } from "tls";
+import { Readable } from 'node:stream'
 
 export interface NodePlatformInfo {
   request: IncomingMessage;
@@ -175,14 +176,17 @@ export function createMiddleware(
     }
 
     let body: BodyInit | undefined;
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      if (req.readableDidRead) {
-        body = bodyConsumedErrorStream;
-      } else {
-        body = req as unknown as ReadableStream;
-      }
+    switch (req.method) {
+      case "POST":
+      case "PUT":
+      case "PATCH":
+        if (Readable.isDisturbed(req)) {
+          body = bodyConsumedErrorStream;
+        } else {
+          body = req as unknown as ReadableStream;
+        }
+        break;
     }
-
     const request = new Request(url, {
       method: req.method,
       headers: req.headers as Record<string, string>,
@@ -263,7 +267,7 @@ const bodyConsumedErrorStream = new ReadableStream({
   pull(controller) {
     controller.error(
       new Error(
-        "The request body stream was already consumed by something before Marko Run."
+        "The request body stream has been destroyed or consumed by something before Marko Run."
       )
     );
   }
