@@ -22,9 +22,9 @@ export const mware13 = normalize(middleware13);
 ### Template
 ```marko
 // __marko-run__route._protected._home.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Layout2 from '../src/routes/_protected/_home/+layout.marko';
-import Page from '../src/routes/_protected/_home/+page.marko';
+import Layout1 from '../../../src/routes/+layout.marko';
+import Layout2 from '../../../src/routes/_protected/_home/+layout.marko';
+import Page from '../../../src/routes/_protected/_home/+page.marko';
 
 <Layout1>
 	<Layout2>
@@ -37,7 +37,7 @@ import Page from '../src/routes/_protected/_home/+page.marko';
 // virtual:marko-run/__marko-run__route._protected._home.js
 import { call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
-import page from './.marko/__marko-run__route._protected._home.marko?marko-server-entry';
+import page from './.marko/_protected/_home/route.marko?marko-server-entry';
 
 export async function get1(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
@@ -53,9 +53,9 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // __marko-run__route._protected._home.new.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Layout2 from '../src/routes/_protected/_home/+layout.marko';
-import Page from '../src/routes/_protected/_home/new/+page.marko';
+import Layout1 from '../../../../src/routes/+layout.marko';
+import Layout2 from '../../../../src/routes/_protected/_home/+layout.marko';
+import Page from '../../../../src/routes/_protected/_home/new/+page.marko';
 
 <Layout1>
 	<Layout2>
@@ -69,7 +69,7 @@ import Page from '../src/routes/_protected/_home/new/+page.marko';
 import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { POST } from './src/routes/_protected/_home/new/+handler.post.ts';
-import page from './.marko/__marko-run__route._protected._home.new.marko?marko-server-entry';
+import page from './.marko/_protected/_home/new/route.marko?marko-server-entry';
 export { default as meta2 } from './src/routes/_protected/_home/new/+meta.json';
 
 const postHandler = normalize(POST);
@@ -95,9 +95,9 @@ export async function post2(context, buildInput) {
 ### Template
 ```marko
 // __marko-run__route._protected._home.notes.$id.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Layout2 from '../src/routes/_protected/_home/+layout.marko';
-import Page from '../src/routes/_protected/_home/notes/$id/+page.marko';
+import Layout1 from '../../../../../src/routes/+layout.marko';
+import Layout2 from '../../../../../src/routes/_protected/_home/+layout.marko';
+import Page from '../../../../../src/routes/_protected/_home/notes/$id/+page.marko';
 
 <Layout1>
 	<Layout2>
@@ -111,7 +111,7 @@ import Page from '../src/routes/_protected/_home/notes/$id/+page.marko';
 import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7, mware13 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { PUT, POST, DELETE } from './src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts';
-import page from './.marko/__marko-run__route._protected._home.notes.$id.marko?marko-server-entry';
+import page from './.marko/_protected/_home/notes/$id/route.marko?marko-server-entry';
 
 const putHandler = normalize(PUT);
 const postHandler = normalize(POST);
@@ -214,8 +214,8 @@ export async function get5(context) {
 ### Template
 ```marko
 // __marko-run__route.my.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/my/+page.marko';
+import Layout1 from '../../src/routes/+layout.marko';
+import Page from '../../src/routes/my/+page.marko';
 
 <Layout1>
 	<Page/>
@@ -227,7 +227,7 @@ import Page from '../src/routes/my/+page.marko';
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/my/+handler.get.ts';
-import page from './.marko/__marko-run__route.my.marko?marko-server-entry';
+import page from './.marko/my/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 

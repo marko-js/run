@@ -17,6 +17,7 @@ import type {
 } from "../types";
 import type { Writer } from "./writer";
 import { getVerbs, hasVerb } from "../utils/route";
+import path from 'path';
 
 interface RouteTrie {
   key: string;
@@ -152,7 +153,7 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
   }
   if (page) {
     const importPath = route.layouts.length
-      ? `./${entriesDir}/${entryName}.marko`
+      ? `./${path.posix.join(entriesDir, page.relativePath, '..', 'route.marko')}`
       : `./${page.importPath}`;
     imports.writeLines(`import page from '${importPath}${serverEntryQuery}';`);
   }
@@ -299,7 +300,7 @@ export function renderRouter(
   }
   for (const route of Object.values(routes.special) as Route[]) {
     const importPath = route.layouts.length
-      ? `./${entriesDir}/${route.entryName}.marko`
+      ? `./${path.posix.join(entriesDir, route.page!.relativePath, '..', `route.${route.key}.marko`)}`
       : `./${route.page!.importPath}`;
     imports.writeLines(
       `import page${route.key} from '${importPath}${serverEntryQuery}';`,
@@ -863,7 +864,7 @@ export async function renderRouteTypeInfo(
       if (meta) {
         const metaPath = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
         let metaType = `typeof import("${metaPath}")`;
-        if (/\.(ts|js|mjs)$/.test(meta.relativePath)) {
+        if (/\.(ts|js|mjs)$/.test(meta.name)) {
           metaType += `["default"]`;
         }
         routeType += ` meta: ${metaType};`;

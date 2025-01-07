@@ -16,8 +16,8 @@ export const mware2 = normalize(middleware2);
 ### Template
 ```marko
 // __marko-run__route.aaa.$aId.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from '../../src/routes/+layout.marko';
+import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <Layout1>
 	<Page/>
@@ -29,7 +29,7 @@ import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
-import page from './.marko/__marko-run__route.aaa.$aId.marko?marko-server-entry';
+import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
@@ -46,8 +46,8 @@ export async function get1(context, buildInput) {
 ### Template
 ```marko
 // __marko-run__route.aaa.$aId.bbb.$bId.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from '../../src/routes/+layout.marko';
+import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <Layout1>
 	<Page/>
@@ -59,7 +59,7 @@ import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
-import page from './.marko/__marko-run__route.aaa.$aId.bbb.$bId.marko?marko-server-entry';
+import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
@@ -76,8 +76,8 @@ export async function get2(context, buildInput) {
 ### Template
 ```marko
 // __marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from '../../src/routes/+layout.marko';
+import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <Layout1>
 	<Page/>
@@ -89,7 +89,7 @@ import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
-import page from './.marko/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.marko?marko-server-entry';
+import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
@@ -106,8 +106,8 @@ export async function get3(context, buildInput) {
 ### Template
 ```marko
 // __marko-run__route.aaa.$aId.ccc.$cId.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
+import Layout1 from '../../src/routes/+layout.marko';
+import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 
 <Layout1>
 	<Page/>
@@ -119,7 +119,7 @@ import Page from '../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko';
 import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
-import page from './.marko/__marko-run__route.aaa.$aId.ccc.$cId.marko?marko-server-entry';
+import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 

@@ -21,7 +21,10 @@ import { normalizeErrorStack } from "./utils/sanitize";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
-
+const normalizePath =
+  path.sep === "\\"
+    ? (id: string) => id.replace(/\\/g, "/")
+    : (id: string) => id;
 
 describe("router codegen", () => {
   for (const fixture of fs.readdirSync(FIXTURES)) {
@@ -34,11 +37,6 @@ describe("router codegen", () => {
       const dir = path.join(FIXTURES, fixture);
       const relativeEntryFilesDir = ".marko";
       const entryFilesDir = path.join(dir, relativeEntryFilesDir);
-
-      function getEntryFileRelativePath(to: string) {
-        return path.relative(entryFilesDir, path.join(dir, to));
-      }
-
       const sources: RouteSource[] = [];
 
       for (const file of await fs.promises.readdir(dir, {
@@ -110,9 +108,12 @@ describe("router codegen", () => {
             routesSnap += `  - \`${path.path}\`\n`;
           }
           if (route.page && route.layouts.length) {
+            const routeFileDir = path.join(entryFilesDir, route.page.filePath, '..');
+            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, dir));
+
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, getEntryFileRelativePath);
+            routesSnap += renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to));
             routesSnap += "```\n";
           }
           routesSnap += "### Handler\n";
@@ -123,11 +124,14 @@ describe("router codegen", () => {
         }
 
         for (const route of Object.values(routes.special)) {
-          if (route.layouts.length) {
+          if (route.page && route.layouts.length) {
+            const routeFileDir = path.join(entryFilesDir, route.page.filePath, '..');
+            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, dir));
+
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, getEntryFileRelativePath);
+            routesSnap += renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to));
             routesSnap += "```\n";
           }
         }

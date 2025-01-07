@@ -22,6 +22,7 @@ import type {
   BuiltRoutes,
   HttpVerb,
   PackageData,
+  Route,
 } from "./types";
 import {
   renderMiddleware,
@@ -116,10 +117,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesRender: 0,
   };
 
-  function getEntryFileRelativePath(to: string) {
-    return normalizePath(path.relative(entryFilesDir, to));
-  }
-
   async function writeTypesFile(routes: BuiltRoutes) {
     if (
       routes &&
@@ -188,8 +185,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     return (renderVirtualFilesResult ??= new Promise<void>(async (resolve) => {
       try {
         const routes = await buildVirtualFiles();
-
-        let entryFilesDirExists = false;
         if (fs.existsSync(entryFilesDir)) {
           fs.rmSync(entryFilesDir, { recursive: true });
         }
@@ -215,12 +210,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (route.page && route.layouts.length) {
-            entryFilesDirExists ||= !!fs.mkdirSync(entryFilesDir, {
-              recursive: true,
-            });
+            const relativePath = path.relative(resolvedRoutesDir, route.page.filePath);
+            const routeFileDir = path.join(entryFilesDir, relativePath, '..');
+            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, root));
+
+            fs.mkdirSync(routeFileDir, { recursive: true });
             fs.writeFileSync(
-              path.join(entryFilesDir, `${route.entryName}.marko`),
-              renderRouteTemplate(route, getEntryFileRelativePath),
+              path.join(routeFileDir, 'route.marko'),
+              renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to)),
             );
           }
           virtualFiles.set(
@@ -228,14 +225,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             renderRouteEntry(route, relativeEntryFilesDirPosix),
           );
         }
-        for (const route of Object.values(routes.special)) {
-          if (route.layouts.length) {
-            entryFilesDirExists ||= !!fs.mkdirSync(entryFilesDir, {
-              recursive: true,
-            });
+        for (const route of Object.values(routes.special) as Route[]) {
+          if (route.page && route.layouts.length) {
+            const relativePath = path.relative(resolvedRoutesDir, route.page.filePath);
+            const routeFileDir = path.join(entryFilesDir, relativePath, '..');
+            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, root));
+
+            fs.mkdirSync(routeFileDir, { recursive: true });
             fs.writeFileSync(
-              path.join(entryFilesDir, `${route.entryName}.marko`),
-              renderRouteTemplate(route, getEntryFileRelativePath),
+              path.join(routeFileDir, `route.${route.key}.marko`),
+              renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to)),
             );
           }
         }
