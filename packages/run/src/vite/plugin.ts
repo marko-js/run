@@ -561,6 +561,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         if (importee === "@marko/run/router") {
+          console.log('plugin resolveId router')
           return path.resolve(root, ROUTER_FILENAME);
         } else if (
           importee.endsWith(".marko") &&
@@ -741,7 +742,7 @@ export async function resolveAdapter(
         name.indexOf("marko-run-adapter") !== -1
       ) {
         try {
-          const module = await import(name);
+          const module = await import(/* @vite-ignore */name);
           log &&
             debug(
               `Using adapter ${name} listed in your package.json dependecies`,
@@ -755,7 +756,7 @@ export async function resolveAdapter(
   }
 
   const defaultAdapter = "@marko/run/adapter";
-  const module = await import(defaultAdapter);
+  const module = await import(/* @vite-ignore */defaultAdapter);
   log && debug("Using default adapter");
   return module.default();
 }
