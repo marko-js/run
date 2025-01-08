@@ -1,7 +1,7 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
 import { get1 } from 'virtual:marko-run/__marko-run__route.js';
-import page500 from './.marko/__marko-run__special.500.marko?marko-server-entry';
+import page500 from './.marko/route.500.marko?marko-server-entry';
 
 const page500ResponseInit = {
   status: 500,

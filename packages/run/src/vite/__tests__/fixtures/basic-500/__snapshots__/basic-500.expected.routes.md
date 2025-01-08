@@ -17,7 +17,7 @@ import Page from '../src/routes/+page.marko';
 ```js
 // virtual:marko-run/__marko-run__route.js
 import { pageResponse } from 'virtual:marko-run/runtime/internal';
-import page from './.marko/__marko-run__route.marko?marko-server-entry';
+import page from './.marko/route.marko?marko-server-entry';
 
 export async function get1(context, buildInput) {
 	return pageResponse(page, buildInput());
