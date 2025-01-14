@@ -1,5 +1,10 @@
 {
   "private": true,
+  "workspaces": [
+    "./packages/*",
+    "./packages/adapters/*",
+    "./examples/*"
+  ],
   "scripts": {
     "@ci:build": "npm run build",
     "@ci:lint": "eslint --format unix . && prettier . --check --with-node-modules --log-level=warn",
@@ -16,15 +21,8 @@
     "test": "npm run test -w packages -w packages/adapters --if-present",
     "test:update": "UPDATE_EXPECTATIONS=1 mocha --update"
   },
-  "workspaces": [
-    "./packages/*",
-    "./packages/adapters/*",
-    "./examples/*"
-  ],
   "devDependencies": {
     "@changesets/cli": "^2.27.11",
-    "netlify-cli": "^17.38.1",
-
     "@eslint/js": "^9.18.0",
     "c8": "^10.1.3",
     "eslint": "^9.18.0",
@@ -32,6 +30,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
+    "netlify-cli": "^17.38.1",
     "prettier": "^3.4.2",
     "prettier-plugin-packagejson": "^2.5.6",
     "pretty-format": "^29.7.0",

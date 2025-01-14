@@ -1,40 +1,41 @@
 import { InlineConfig } from "vite";
+
 import { NotHandled, NotMatched } from "./namespace";
 import type {
-  GetPaths,
-  PostPaths,
-  GetablePath,
-  GetableHref,
-  PostablePath,
-  PostableHref,
-  Platform,
-  HandlerTypeFn,
-  RuntimeModule,
-  AnyRoute,
   AnyContext,
   AnyHandler,
+  AnyRoute,
+  GetableHref,
+  GetablePath,
+  GetPaths,
+  HandlerTypeFn,
+  Platform,
+  PostableHref,
+  PostablePath,
+  PostPaths,
+  RuntimeModule,
 } from "./types";
 
 declare global {
-  var __marko_run__: RuntimeModule;
-  var __marko_run_vite_config__: InlineConfig | undefined;
+  const __marko_run__: RuntimeModule;
+  const __marko_run_vite_config__: InlineConfig | undefined;
 
   namespace MarkoRun {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: HandlerTypeFn;
     export {
-      GetPaths,
-      PostPaths,
-      GetablePath,
+      AnyContext as Context,
       GetableHref,
-      PostablePath,
-      PostableHref,
-      Platform,
+      GetablePath,
+      GetPaths,
+      AnyHandler as Handler,
       NotHandled,
       NotMatched,
+      Platform,
+      PostableHref,
+      PostablePath,
+      PostPaths,
       AnyRoute as Route,
-      AnyContext as Context,
-      AnyHandler as Handler,
     };
   }
 }
@@ -44,8 +45,8 @@ export type {
   Context,
   DefineApp,
   Fetch,
-  HandlerTypeFn,
   HandlerLike,
+  HandlerTypeFn,
   InputObject,
   Invoke,
   Match,
@@ -54,8 +55,8 @@ export type {
   ParamsObject,
   Platform,
   Route,
-  Routes,
   RouteHandler,
+  Routes,
   RouteWithHandler,
   RuntimeModule,
 } from "./types";

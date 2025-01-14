@@ -1,8 +1,10 @@
-import { appendHeader, getSetCookie } from "./polyfill";
-import type { Fetch, Platform } from "../runtime";
+import { Readable } from "node:stream";
+
 import { IncomingMessage, ServerResponse } from "http";
 import type { TLSSocket } from "tls";
-import { Readable } from 'node:stream'
+
+import type { Fetch, Platform } from "../runtime";
+import { appendHeader, getSetCookie } from "./polyfill";
 
 export interface NodePlatformInfo {
   request: IncomingMessage;
@@ -13,7 +15,7 @@ export interface NodePlatformInfo {
 export type NodeMiddleware = (
   req: IncomingMessage,
   res: ServerResponse,
-  next?: (error?: Error) => void
+  next?: (error?: Error) => void,
 ) => void;
 
 /** Adapter options */
@@ -58,7 +60,8 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
   const protocol =
     (trustProxy && getForwardedHeader(req, "proto")) ||
     ((req.socket as TLSSocket).encrypted && "https") ||
-    (req as any).protocol || "http";
+    (req as any).protocol ||
+    "http";
 
   let host =
     (trustProxy && getForwardedHeader(req, "host")) || req.headers.host;
@@ -67,11 +70,11 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
     if (process.env.NODE_ENV !== "production") {
       host = "localhost";
       console.warn(
-        `Could not automatically determine the origin host, using 'localhost'. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`
+        `Could not automatically determine the origin host, using 'localhost'. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`,
       );
     } else {
       throw new Error(
-        `Could not automatically determine the origin host. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`
+        `Could not automatically determine the origin host. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`,
       );
     }
   }
@@ -81,7 +84,7 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
 
 export function copyResponseHeaders(
   response: ServerResponse,
-  headers: Headers
+  headers: Headers,
 ) {
   for (const [key, value] of headers) {
     if (key !== "set-cookie") {
@@ -109,7 +112,7 @@ function normalizeError(error: Error) {
  */
 export function createMiddleware(
   fetch: Fetch<Platform>,
-  options?: NodeMiddlewareOptions
+  options?: NodeMiddlewareOptions,
 ): NodeMiddleware {
   const {
     origin = process.env.ORIGIN,
@@ -169,7 +172,7 @@ export function createMiddleware(
             JSON.stringify({
               type: "error",
               err: { message, stack },
-            })
+            }),
           );
         }
       });
@@ -242,7 +245,7 @@ export function createMiddleware(
 async function writeResponse(
   reader: ReadableStreamDefaultReader,
   res: ServerResponse,
-  controller: AbortController
+  controller: AbortController,
 ) {
   try {
     while (!controller.signal.aborted) {
@@ -251,9 +254,9 @@ async function writeResponse(
         res.end();
         return;
       }
-      
+
       res.write(value);
-      
+
       if ((res as any).flush) {
         (res as any).flush();
       }
@@ -267,8 +270,8 @@ const bodyConsumedErrorStream = new ReadableStream({
   pull(controller) {
     controller.error(
       new Error(
-        "The request body stream has been destroyed or consumed by something before Marko Run."
-      )
+        "The request body stream has been destroyed or consumed by something before Marko Run.",
+      ),
     );
-  }
+  },
 });

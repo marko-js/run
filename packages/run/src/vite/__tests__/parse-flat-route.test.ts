@@ -1,12 +1,13 @@
-import { parseFlatRoute } from "../routes/parse";
 import assert from "assert";
+
+import { parseFlatRoute } from "../routes/parse";
 
 describe("parse-flat-route", () => {
   it("should work for a single static segment", () => {
     const actual = parseFlatRoute("a");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a"]
+      ["a"],
     );
   });
 
@@ -14,7 +15,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("$");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["$"]
+      ["$"],
     );
   });
 
@@ -22,7 +23,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("$id");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["$"]
+      ["$"],
     );
     assert.deepEqual(actual[0].segments[0].param, "id");
   });
@@ -31,7 +32,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("_abc,_def,_,");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["_abc", "_def", "_", ""]
+      ["_abc", "_def", "_", ""],
     );
   });
 
@@ -39,7 +40,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a.b.c");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a/b/c"]
+      ["a/b/c"],
     );
   });
 
@@ -47,7 +48,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a.b.c,d.e.f,h");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a/b/c", "d/e/f", "h"]
+      ["a/b/c", "d/e/f", "h"],
     );
   });
 
@@ -55,7 +56,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a.(b,c,d)");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a/b", "a/c", "a/d"]
+      ["a/b", "a/c", "a/d"],
     );
   });
 
@@ -63,7 +64,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a.(b,c,d).e");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a/b/e", "a/c/e", "a/d/e"]
+      ["a/b/e", "a/c/e", "a/d/e"],
     );
   });
 
@@ -71,7 +72,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a(,(b,c).d,e.$(");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a(", "b/d", "c/d", "e/$"]
+      ["a(", "b/d", "c/d", "e/$"],
     );
     assert.deepEqual(actual[3].segments[1].param, "(");
   });
@@ -80,7 +81,7 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("a.(b,c.(e,f.(g,h)).i).j");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["a/b/j", "a/c/e/i/j", "a/c/f/g/i/j", "a/c/f/h/i/j"]
+      ["a/b/j", "a/c/e/i/j", "a/c/f/g/i/j", "a/c/f/h/i/j"],
     );
   });
 
@@ -88,35 +89,35 @@ describe("parse-flat-route", () => {
     const actual = parseFlatRoute("($a,_).(_,$b)");
     assert.deepEqual(
       actual.map((path) => path.segments.map((s) => s.name).join("/")),
-      ["$/_", "_/_", "$/$", "_/$"]
+      ["$/_", "_/_", "$/$", "_/$"],
     );
   });
 
   it("should thow for ambiguous hoisting", () => {
     assert.throws(
       () => parseFlatRoute("(a,).(,a)"),
-      (err: Error) => err.message.startsWith("Invalid route pattern")
+      (err: Error) => err.message.startsWith("Invalid route pattern"),
     );
   });
 
   it("should throw when defining multiple dynamic segments", () => {
     assert.throws(
       () => parseFlatRoute("$,$a"),
-      (err: Error) => err.message.startsWith("Invalid route pattern")
+      (err: Error) => err.message.startsWith("Invalid route pattern"),
     );
   });
 
   it("should throw when defining ambiguous dynamic segments", () => {
     assert.throws(
       () => parseFlatRoute("($a,).(,$b)"),
-      (err: Error) => err.message.startsWith("Invalid route pattern")
+      (err: Error) => err.message.startsWith("Invalid route pattern"),
     );
   });
 
   it("should throw when nested segments are added to a catch-all", () => {
     assert.throws(
       () => parseFlatRoute("a.(b,$$).c"),
-      (err: Error) => err.message.startsWith("Invalid route pattern")
+      (err: Error) => err.message.startsWith("Invalid route pattern"),
     );
   });
 });

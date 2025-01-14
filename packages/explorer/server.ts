@@ -1,13 +1,13 @@
-import createStaticServe from "serve-static";
+import { exec } from "child_process";
 import compression from "compression";
 import { createServer } from "http";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import zlib from "zlib";
-import { exec } from "child_process";
-import path from "path";
 import { IncomingMessage } from "http";
 import { ServerResponse } from "http";
+import { dirname } from "path";
+import path from "path";
+import createStaticServe from "serve-static";
+import { fileURLToPath } from "url";
+import zlib from "zlib";
 
 const { PORT = 3000 } = process.env;
 const __dirname = dirname(fileURLToPath(import.meta.url));

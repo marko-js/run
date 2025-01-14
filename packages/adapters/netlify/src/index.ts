@@ -1,18 +1,18 @@
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import baseAdapter, { type Adapter } from "@marko/run/adapter";
 import {
   bundleEdgeFunction,
   bundleRegularFunction,
   type NetlifyBundlerOptions,
 } from "@hattip/bundler-netlify";
-import { existsSync } from "fs";
+import baseAdapter, { type Adapter } from "@marko/run/adapter";
 import { spawn } from "child_process";
+import fs from "fs";
+import { existsSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 export type {
-  NetlifyFunctionsPlatformInfo,
   NetlifyEdgePlatformInfo,
+  NetlifyFunctionsPlatformInfo,
 } from "./types";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
@@ -52,7 +52,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       return startDev!(
         entry === defaultEntry ? undefined : entry,
         config,
-        options
+        options,
       );
     },
 
@@ -95,7 +95,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       const distDir = path.dirname(entry);
       const netlifyDir = await ensureDir(
         path.join(config.root, "netlify"),
-        true
+        true,
       );
       const esbuildOptionsFn: NetlifyBundlerOptions["manipulateEsbuildOptions"] =
         (options) => {
@@ -139,12 +139,12 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     typeInfo(writer) {
       if (options.edge) {
         writer(
-          `import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';`
+          `import type { NetlifyEdgePlatformInfo } from '@marko/run-adapter-netlify';`,
         );
         return "NetlifyEdgePlatformInfo";
       }
       writer(
-        `import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';`
+        `import type { NetlifyFunctionsPlatformInfo } from '@marko/run-adapter-netlify';`,
       );
       return "NetlifyFunctionsPlatformInfo";
     },
@@ -176,7 +176,7 @@ async function writeEdgeFunctionManifest(rootDir: string) {
   ],
   "version": 1
 }`,
-    "utf-8"
+    "utf-8",
   );
 }
 
@@ -185,7 +185,7 @@ async function writeFunctionRedirects(rootDir: string) {
   await fs.promises.writeFile(
     path.join(dir, "_redirects"),
     "/*  /.netlify/functions/index  200\n",
-    "utf-8"
+    "utf-8",
   );
 }
 
@@ -209,7 +209,7 @@ const devFlags = new RegExp(
     .map((flag) => {
       return `--${flag}`;
     })
-    .join("|")
+    .join("|"),
 );
 
 function parseNetlifyArgs(args: string[]) {

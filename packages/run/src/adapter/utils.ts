@@ -1,5 +1,5 @@
-import supporsColor from "supports-color";
 import kleur from "kleur";
+import supporsColor from "supports-color";
 import type { Rollup } from "vite";
 
 type RollupError = Rollup.RollupError;
@@ -50,7 +50,7 @@ export function logInfoBox(address: string, explorer?: string) {
   }
 
   const lines = drawMarkoBox(message, { color, fill: color });
-  console.log(lines.join("\n") + '\n');
+  console.log(lines.join("\n") + "\n");
 }
 
 export function drawMarkoBox(message: string, options?: LogoOptions) {
@@ -63,17 +63,19 @@ export function drawMarkoBox(message: string, options?: LogoOptions) {
 
   const textLines = message.split(/\n/);
   const textWidths = textLines.map(
-    (line) => line.replace(/\x1b\[\d+m/g, "").length
+    (line) => line.replace(/\x1b\[\d+m/g, "").length,
   );
   const textWidth = Math.max(...textWidths);
 
   const height = Math.max(textLines.length + 2, logo.lines.length);
-  const width = textPaddingWidth * 2 + logoPaddingWidth + textWidth + logo.width;
+  const width =
+    textPaddingWidth * 2 + logoPaddingWidth + textWidth + logo.width;
   const hBorder = "─".repeat(width);
   const vBorder = "│";
 
   const lineDiff = logo.lines.length - textLines.length;
-  const textStartLine = lineDiff > 0 ? Math.max(Math.floor(lineDiff / 2), 1) : 1;
+  const textStartLine =
+    lineDiff > 0 ? Math.max(Math.floor(lineDiff / 2), 1) : 1;
   const textEndLine = height - (lineDiff > 0 ? Math.ceil(lineDiff / 2) : 1);
   const logoEndLine = logo.lines.length;
   const logoFill = " ".repeat(logo.width);
@@ -91,7 +93,7 @@ export function drawMarkoBox(message: string, options?: LogoOptions) {
     }
     line += textPadding;
     if (i >= textStartLine && i < textEndLine) {
-      let index = i - textStartLine;
+      const index = i - textStartLine;
       line += textLines[index];
       line += " ".repeat(textWidth - textWidths[index]);
     } else {
@@ -135,13 +137,16 @@ B╲   ╲ GG‾‾‾‾ O╱   ╱ P╱   ╱
     O: "#ff9500",
     R: "#f3154d",
     P: "#ce176c",
-  }).reduce((acc, [key, hex]) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    acc[key] = `\x1b[38;2;${r};${g};${b}m`;
-    return acc;
-  }, {} as Record<string, string>);
+  }).reduce(
+    (acc, [key, hex]) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      acc[key] = `\x1b[38;2;${r};${g};${b}m`;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 
   const lines = [];
   const lineWidths = [];

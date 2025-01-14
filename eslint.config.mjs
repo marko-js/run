@@ -10,6 +10,8 @@ export default tseslint.config(
       ".cache",
       ".sizes",
       ".vscode",
+      "**/.app",
+      "**/.marko-run",
       "**/__snapshots__",
       "**/*.marko.js",
       "**/*actual*",
@@ -19,6 +21,8 @@ export default tseslint.config(
       "**/test/**/input.js",
       "coverage",
       "node_modules",
+      "**/netlify/*-functions",
+      "**/netlify/assets",
     ],
   },
   eslint.configs.recommended,
@@ -37,6 +41,7 @@ export default tseslint.config(
     rules: {
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
+      "no-control-regex": "off",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-import-type-side-effects": "error",
@@ -46,6 +51,7 @@ export default tseslint.config(
       "@typescript-eslint/no-duplicate-enum-values": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-namespace": "off",
     },
   },
 );

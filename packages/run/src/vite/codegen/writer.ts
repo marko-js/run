@@ -10,7 +10,7 @@ export interface Writer {
 }
 
 export interface WriterOptions {
-  indentWith?: string,
+  indentWith?: string;
   onJoin?: (writer: Writer) => void;
 }
 
@@ -20,20 +20,23 @@ interface WriterInternal extends Writer {
 
 interface Branch {
   writer: Writer;
-  buffer: string
+  buffer: string;
 }
 
-export function createWriter(sink: (data: string) => void, options?: WriterOptions): Writer {
+export function createWriter(
+  sink: (data: string) => void,
+  options?: WriterOptions,
+): Writer {
   let buffer: string = "";
   let indentLevel = 0;
-  let indentString = '';
+  let indentString = "";
   let firstOpenIndex = 0;
   const branches: (Branch | null)[] = [];
   const openWriters = new Map<string, Writer>();
 
   function write(data: string) {
     if (!writer.__isActive) {
-      throw new Error('Cannot write to branch that has been joined')
+      throw new Error("Cannot write to branch that has been joined");
     }
     if (openWriters.size) {
       buffer += data;
@@ -46,7 +49,7 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
   const writer: WriterInternal = {
     __isActive: true,
     get indent() {
-      return indentLevel
+      return indentLevel;
     },
     set indent(value) {
       if (options?.indentWith) {
@@ -68,9 +71,9 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
     writeLines(...lines) {
       for (const line of lines) {
         if (line) {
-          writer.write(line, true)
+          writer.write(line, true);
         }
-        writer.write('\n');
+        writer.write("\n");
       }
       return writer;
     },
@@ -78,7 +81,7 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
       writer.writeLines(data).indent++;
       return writer;
     },
-    writeBlockEnd(data: string = '}') {
+    writeBlockEnd(data: string = "}") {
       writer.indent--;
       writer.writeLines(data);
       return writer;
@@ -90,7 +93,7 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
         .writeBlockEnd(end);
     },
     branch(name) {
-      let existing = openWriters.get(name);
+      const existing = openWriters.get(name);
       if (existing) {
         return existing;
       }
@@ -118,17 +121,17 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
               }
               if (!openWriters.size) {
                 sink(buffer);
-                buffer = '';
+                buffer = "";
               }
             },
-          }
-        )
+          },
+        ),
       };
 
       branch.writer.indent = indentLevel;
       openWriters.set(name, branch.writer);
       branches.push(branch);
-      buffer = '';
+      buffer = "";
 
       return branch.writer;
     },
@@ -141,7 +144,7 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
             }
           } else {
             throw new Error(
-              `Cannot join a Writer with un-joined branches - use the \`recursive\` argument to join all open branches`
+              `Cannot join a Writer with un-joined branches - use the \`recursive\` argument to join all open branches`,
             );
           }
         }
@@ -156,16 +159,21 @@ export function createWriter(sink: (data: string) => void, options?: WriterOptio
 }
 
 interface StringWriter extends Writer {
-  end(): string
+  end(): string;
 }
 
-export function createStringWriter(opts?: WriterOptions) : StringWriter {
-  let code = '';
-  const writer = createWriter(data => { code += data}, { indentWith: '\t', ...opts });
+export function createStringWriter(opts?: WriterOptions): StringWriter {
+  let code = "";
+  const writer = createWriter(
+    (data) => {
+      code += data;
+    },
+    { indentWith: "\t", ...opts },
+  );
   return Object.assign(writer, {
     end() {
       writer.join(true);
       return code;
-    }
-  })
+    },
+  });
 }

@@ -7,6 +7,11 @@
     "dev": "marko-run src/index.ts",
     "preview": "marko-run preview src/index.ts"
   },
+  "dependencies": {
+    "compression": "^1.7.5",
+    "express": "^4.21.1",
+    "marko": "^5.37.3"
+  },
   "devDependencies": {
     "@marko/compiler": "^5.39.3",
     "@marko/run": "^0.5",
@@ -16,10 +21,5 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
-  },
-  "dependencies": {
-    "compression": "^1.7.5",
-    "express": "^4.21.1",
-    "marko": "^5.37.3"
   }
 }

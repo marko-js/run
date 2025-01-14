@@ -24,7 +24,7 @@ export interface Context<TRoute extends Route = AnyRoute> {
 
 export type MultiRouteContext<
   TRoute extends Route,
-  _Preserved extends TRoute = TRoute
+  _Preserved extends TRoute = TRoute,
 > = TRoute extends any
   ? Context<Simplify<SuperSets<TRoute, _Preserved, "params">>>
   : never;
@@ -38,13 +38,13 @@ export type HandlerLike<TRoute extends Route = AnyRoute> = Awaitable<
 
 export type RouteHandler<TRoute extends Route = AnyRoute> = (
   context: MultiRouteContext<TRoute>,
-  next: NextFunction
+  next: NextFunction,
 ) => Awaitable<Response | null | void>;
 
 export interface Route<
   Params extends ParamsObject = ParamsObject,
   Meta = unknown,
-  Path extends string = string
+  Path extends string = string,
 > {
   path: Path;
   params: Params;
@@ -61,7 +61,7 @@ type DefineRoutes<T extends Record<string, { meta?: unknown }>> = {
 
 type DefinePaths<
   T extends Record<string, { verb: unknown }>,
-  Verb extends "get" | "post"
+  Verb extends "get" | "post",
 > = {
   [K in keyof T]: K extends string
     ? T[K] extends { verb: infer V }
@@ -75,7 +75,7 @@ type DefinePaths<
 export type DefineApp<
   T extends {
     routes: Record<string, { verb: "get" | "post"; meta?: unknown }>;
-  }
+  },
 > = {
   routes: DefineRoutes<T["routes"]>;
   getPaths: DefinePaths<T["routes"], "get">;
@@ -85,25 +85,25 @@ export type DefineApp<
 export interface RouteWithHandler<
   Params extends ParamsObject = ParamsObject,
   Meta = unknown,
-  Path extends string = string
+  Path extends string = string,
 > extends Route<Params, Meta, Path> {
   handler: RouteHandler<this>;
 }
 
 export type Fetch<TPlatform extends Platform = Platform> = (
   request: Request,
-  platform: TPlatform
+  platform: TPlatform,
 ) => Promise<Response | void>;
 
 export type Match = (
   method: string,
-  pathname: string
+  pathname: string,
 ) => RouteWithHandler | null;
 
 export type Invoke<TPlatform extends Platform = Platform> = (
   route: RouteWithHandler | null,
   request: Request,
-  platform: TPlatform
+  platform: TPlatform,
 ) => Promise<Response | void>;
 
 export interface RuntimeModule {
@@ -122,58 +122,58 @@ type PathParamKeys<Path extends string> =
   Path extends `${infer _}:${infer Param}/${infer Rest}`
     ? [Param, ...PathParamKeys<Rest>]
     : Path extends `${infer _}:${infer Param}*`
-    ? [Param]
-    : Path extends `${infer _}:${infer Param}`
-    ? [Param]
-    : [];
+      ? [Param]
+      : Path extends `${infer _}:${infer Param}`
+        ? [Param]
+        : [];
 
 type PathParams<
   Path extends string,
-  Keys extends string[] = PathParamKeys<Path>
+  Keys extends string[] = PathParamKeys<Path>,
 > = 0 extends Keys["length"] ? NoParams : { [K in Keys[number]]: string };
 
 type Segments<T extends string, Acc extends string[] = []> = T extends ""
   ? Acc
   : T extends `${infer Left}/${infer Rest}`
-  ? Segments<Rest, [...Acc, Left]>
-  : [...Acc, T];
+    ? Segments<Rest, [...Acc, Left]>
+    : [...Acc, T];
 
 type GTE<A extends any[], B extends any[]> = A["length"] extends B["length"]
   ? 1
   : A extends [infer _Ha, ...infer Ta]
-  ? B extends [infer _Hb, ...infer Tb]
-    ? GTE<Ta, Tb>
-    : 1
-  : 0;
+    ? B extends [infer _Hb, ...infer Tb]
+      ? GTE<Ta, Tb>
+      : 1
+    : 0;
 
 type MatchSegments<
   A extends string,
-  B extends string
+  B extends string,
 > = A extends `${infer P}/${string}*`
   ? 1 extends GTE<Segments<B>, Segments<P>>
     ? `${P}/${string}`
     : never
   : Segments<B>["length"] extends Segments<A>["length"]
-  ? A
-  : never;
+    ? A
+    : never;
 
 type PathPattern<T extends string> =
   T extends `${infer Left}/\${${string}}/${infer Rest}`
     ? PathPattern<`${Left}/${string}/${Rest}`>
     : T extends `${infer Left}/\${...${string}}`
-    ? PathPattern<`${Left}/${string}*`>
-    : T extends `${infer Left}/\${${string}}`
-    ? PathPattern<`${Left}/${string}`>
-    : T;
+      ? PathPattern<`${Left}/${string}*`>
+      : T extends `${infer Left}/\${${string}}`
+        ? PathPattern<`${Left}/${string}`>
+        : T;
 
 export type ConvertPath<Path extends string> =
   Path extends `${infer Left}/:${infer Param}/${infer Rest}`
     ? ConvertPath<`${Left}/\${${Param}}/${Rest}`>
     : Path extends `${infer Left}/:${infer Param}*`
-    ? `${Left}/\${${Param}...}`
-    : Path extends `${infer Left}/:${infer Param}`
-    ? `${Left}/\${${Param}}`
-    : Path;
+      ? `${Left}/\${${Param}...}`
+      : Path extends `${infer Left}/:${infer Param}`
+        ? `${Left}/\${${Param}}`
+        : Path;
 
 type ValidatePath<Paths extends string, Path extends string> =
   | Paths
@@ -183,14 +183,14 @@ type ValidatePath<Paths extends string, Path extends string> =
 
 type ValidateHref<
   Paths extends string,
-  Href extends string
+  Href extends string,
 > = Href extends `${infer P}#${infer H}?${infer Q}`
   ? `${ValidatePath<Paths, P>}#${H}?${Q}`
   : Href extends `${infer P}?${infer Q}`
-  ? `${ValidatePath<Paths, P>}?${Q}`
-  : Href extends `${infer P}#${infer H}`
-  ? `${ValidatePath<Paths, P>}#${H}`
-  : ValidatePath<Paths, Href>;
+    ? `${ValidatePath<Paths, P>}?${Q}`
+    : Href extends `${infer P}#${infer H}`
+      ? `${ValidatePath<Paths, P>}#${H}`
+      : ValidatePath<Paths, Href>;
 
 export interface AppData {}
 
@@ -208,15 +208,21 @@ export type AnyContext = MultiRouteContext<AnyRoute>;
 
 export type AnyHandler<
   Params extends AnyParams = AnyParams,
-  Meta extends AnyMeta = AnyMeta
+  Meta extends AnyMeta = AnyMeta,
 > = 0 extends HasAppData
   ? HandlerLike<Route<Params, Meta>>
   : HandlerLike<AnyRoute>;
 
 export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
   0 extends HasAppData
-    ? <Params extends ParamsObject = ParamsObject, Meta = unknown, T extends HandlerLike<Route<Params, Meta>> = HandlerLike<Route<Params, Meta>>>(
-        handler: T
+    ? <
+        Params extends ParamsObject = ParamsObject,
+        Meta = unknown,
+        T extends HandlerLike<Route<Params, Meta>> = HandlerLike<
+          Route<Params, Meta>
+        >,
+      >(
+        handler: T,
       ) => T
     : <T extends HandlerLike<TRoute>>(handler: T) => T;
 

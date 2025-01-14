@@ -1,28 +1,29 @@
 #!/usr/bin/env node
 
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { fileURLToPath } from "url";
 import {
   build as viteBuild,
+  type InlineConfig,
   resolveConfig,
   type ResolvedConfig,
-  type InlineConfig,
 } from "vite";
+
+import type { Adapter } from "../vite";
+import {
+  default as plugin,
+  defaultConfigPlugin,
+  defaultPort,
+  isPluginIncluded,
+  resolveAdapter as pluginResolveAdapter,
+} from "../vite/plugin";
+import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 import {
   getExternalPluginOptions,
   setExternalAdapterOptions,
 } from "../vite/utils/config";
-import type { Adapter } from "../vite";
 import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
-import {
-  default as plugin,
-  resolveAdapter as pluginResolveAdapter,
-  isPluginIncluded,
-  defaultPort,
-  defaultConfigPlugin,
-} from "../vite/plugin";
-import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -218,7 +219,7 @@ export async function build(
 
   // build client
   await viteBuild({
-    ...buildConfig
+    ...buildConfig,
   });
 }
 

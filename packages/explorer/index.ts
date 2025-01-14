@@ -1,4 +1,3 @@
-// @ts-ignore-next-line
 import { spawnServerWorker } from "@marko/run/vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -14,5 +13,5 @@ export async function start(port: number) {
     async close() {
       worker.kill();
     },
-  }
+  };
 }

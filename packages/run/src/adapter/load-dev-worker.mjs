@@ -1,6 +1,6 @@
+import { getDevGlobal } from "@marko/run/adapter";
 import net from "net";
 import { createServer } from "vite";
-import { getDevGlobal } from "@marko/run/adapter";
 
 process
   .on("message", (message) => {
@@ -15,7 +15,7 @@ process
 
 async function start(entry, config) {
   if (config.plugins) {
-    const plugin = await import('@marko/run/vite');
+    const plugin = await import("@marko/run/vite");
     config.plugins = plugin.default();
   }
 
@@ -29,7 +29,7 @@ async function start(entry, config) {
 
   const port = await getAvailablePort();
   await loader.listen(port);
-  
+
   loader.ssrLoadModule(entry).catch((err) => {
     loader.ssrFixStacktrace(err);
 
@@ -42,7 +42,7 @@ async function start(entry, config) {
         JSON.stringify({
           type: "error",
           err: { message, stack },
-        })
+        }),
       );
     }
   });

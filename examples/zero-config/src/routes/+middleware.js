@@ -1,3 +1,3 @@
 export default () => {
-  console.log('Middleware')
-}
+  console.log("Middleware");
+};

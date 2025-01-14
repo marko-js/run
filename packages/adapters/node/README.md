@@ -30,9 +30,9 @@ import nodeAdapter from "@marko/run-adapter-node";
 export default defineConfig({
   plugins: [
     marko({
-      adapter: nodeAdapter()
-    })
-  ]
+      adapter: nodeAdapter(),
+    }),
+  ],
 });
 ```
 
@@ -41,11 +41,12 @@ export default defineConfig({
 This package provides two different middlwares. Both middleware handle converting Connect-style requests to [WHATWG requests](https://fetch.spec.whatwg.org/#request-class) and similarly writing [WHATWG responses](https://fetch.spec.whatwg.org/#response-class) back to the Connect response.
 
 ### Router Middleware
+
 This middleware fully handles requests that match a route.
 
 ```ts
 // my-app-server.ts
-import express from 'express'
+import express from "express";
 import { routerMiddleware } from "@marko/run-adapter-node/middleware";
 
 express()
@@ -55,11 +56,12 @@ express()
 ```
 
 ### Match Middleware
+
 This middleware attaches the matched route onto the request object where it can be invoked later. Along with an invoke function, the object will contain the route's meta data. This is useful if you have other middleware that need to run between finding a match and invoking the route.
 
 ```ts
 // my-app-server.ts
-import express from 'express'
+import express from "express";
 import { matchMiddleware } from "@marko/run-adapter-node/middleware";
 
 express()
@@ -76,7 +78,7 @@ express()
   .use((req, res, next) => {
     if (req.route) {
       // finally invoke the route handler
-      req.route.invoke(req, res, next)
+      req.route.invoke(req, res, next);
     } else {
       next();
     }
@@ -84,6 +86,6 @@ express()
   .listen(8080);
 ```
 
-## Build and Dev 
+## Build and Dev
 
 For now, check out the [examples](../../examples/) directory for more info.

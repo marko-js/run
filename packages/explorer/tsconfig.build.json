@@ -4,5 +4,5 @@
   "compilerOptions": {
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
-  },
+  }
 }

@@ -1,6 +1,6 @@
-import path from "path";
 import { build, BuildOptions } from "esbuild";
-import { copyFile, mkdir, lstat, cp } from "fs/promises";
+import { copyFile, cp, lstat, mkdir } from "fs/promises";
+import path from "path";
 
 const srcdir = path.resolve("src");
 const outdir = path.resolve("dist");
@@ -22,7 +22,7 @@ const opts: BuildOptions = {
   treeShaking: true,
   define: {
     "process.env.npm_package_version": JSON.stringify(
-      process.env.npm_package_version || ""
+      process.env.npm_package_version || "",
     ),
   },
   plugins: [
@@ -34,7 +34,7 @@ const opts: BuildOptions = {
           ({ path }) => ({
             path,
             external: true,
-          })
+          }),
         );
       },
     },
@@ -67,7 +67,7 @@ await Promise.all([
     "cli/default.config.mjs",
     "adapter/default-entry.mjs",
     "adapter/load-dev-worker.mjs",
-    "components"
+    "components",
   ),
 ]);
 

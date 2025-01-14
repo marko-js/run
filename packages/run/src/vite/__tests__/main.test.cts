@@ -1,10 +1,8 @@
 import fs from "fs";
-import path from "path";
 // import url from 'url';
 import snap from "mocha-snap";
-import { createTestWalker } from "../routes/walk";
-import { type RouteSource, buildRoutes } from "../routes/builder";
-import { createDirectory } from "./utils/fakeFS";
+import path from "path";
+
 import { prepareError } from "../../adapter/utils";
 import {
   renderMiddleware,
@@ -13,8 +11,11 @@ import {
   renderRouteTemplate,
   renderRouteTypeInfo,
 } from "../codegen";
-import { httpVerbs  } from "../constants";
+import { httpVerbs } from "../constants";
+import { buildRoutes, type RouteSource } from "../routes/builder";
+import { createTestWalker } from "../routes/walk";
 import type { BuiltRoutes, HttpVerb } from "../types";
+import { createDirectory } from "./utils/fakeFS";
 import { normalizeErrorStack } from "./utils/sanitize";
 
 // const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -78,7 +79,7 @@ describe("router codegen", () => {
 
       if (error || !routes) {
         normalizeErrorStack((error ||= new Error("No routes generated")));
-        routerSnap = `throw ${JSON.stringify(prepareError(error))}`
+        routerSnap = `throw ${JSON.stringify(prepareError(error))}`;
       } else {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
@@ -94,11 +95,11 @@ describe("router codegen", () => {
           }
           if (route.handler) {
             const match = route.handler.name.match(
-              /\+handler(?:\.(.+))?\.[^.]+/
+              /\+handler(?:\.(.+))?\.[^.]+/,
             );
             const meta = match ? match[1] : "";
             const verbs = (meta.toLowerCase().split("_") as HttpVerb[]).filter(
-              (v) => httpVerbs.includes(v)
+              (v) => httpVerbs.includes(v),
             );
             route.handler.verbs = verbs.length ? verbs : (httpVerbs as any);
           }
@@ -108,12 +109,20 @@ describe("router codegen", () => {
             routesSnap += `  - \`${path.path}\`\n`;
           }
           if (route.page && route.layouts.length) {
-            const routeFileDir = path.join(entryFilesDir, route.page.filePath, '..');
-            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, dir));
+            const routeFileDir = path.join(
+              entryFilesDir,
+              route.page.filePath,
+              "..",
+            );
+            const routeFileRelativePathPosix = normalizePath(
+              path.relative(routeFileDir, dir),
+            );
 
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to));
+            routesSnap += renderRouteTemplate(route, (to) =>
+              path.posix.join(routeFileRelativePathPosix, to),
+            );
             routesSnap += "```\n";
           }
           routesSnap += "### Handler\n";
@@ -125,13 +134,21 @@ describe("router codegen", () => {
 
         for (const route of Object.values(routes.special)) {
           if (route.page && route.layouts.length) {
-            const routeFileDir = path.join(entryFilesDir, route.page.filePath, '..');
-            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, dir));
+            const routeFileDir = path.join(
+              entryFilesDir,
+              route.page.filePath,
+              "..",
+            );
+            const routeFileRelativePathPosix = normalizePath(
+              path.relative(routeFileDir, dir),
+            );
 
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to));
+            routesSnap += renderRouteTemplate(route, (to) =>
+              path.posix.join(routeFileRelativePathPosix, to),
+            );
             routesSnap += "```\n";
           }
         }
@@ -145,7 +162,7 @@ describe("router codegen", () => {
           routerSnap && snap(routerSnap, { ext: ".router.js", dir }),
           routesSnap && snap(routesSnap, { ext: ".routes.md", dir }),
           typesSnap && snap(typesSnap, { ext: ".routetypes.d.ts", dir }),
-        ].filter(Boolean)
+        ].filter(Boolean),
       );
     });
   }

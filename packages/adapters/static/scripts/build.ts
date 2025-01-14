@@ -1,6 +1,6 @@
-import path from "path";
 import { build, BuildOptions } from "esbuild";
 import { copyFile, mkdir } from "fs/promises";
+import path from "path";
 
 const srcdir = path.resolve("src");
 const outdir = path.resolve("dist");
@@ -21,11 +21,11 @@ const opts: BuildOptions = {
           ({ path }) => ({
             path,
             external: true,
-          })
+          }),
         );
       },
     },
-  ]
+  ],
 };
 
 await Promise.all([
@@ -34,16 +34,16 @@ await Promise.all([
     format: "cjs",
     outExtension: { ".js": ".cjs" },
     define: {
-      "import.meta.url": '__importMetaURL'
+      "import.meta.url": "__importMetaURL",
     },
-    inject: ['./scripts/importMetaURL.js']
+    inject: ["./scripts/importMetaURL.js"],
   }),
   build({
     ...opts,
     format: "esm",
-    splitting: true
+    splitting: true,
   }),
-  copy('default-entry.mjs')
+  copy("default-entry.mjs"),
 ]);
 
 async function copy(...items: ([string, string] | [string] | string)[]) {

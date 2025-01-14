@@ -1,13 +1,10 @@
-import path from "path";
 import { build, BuildOptions } from "esbuild";
+import path from "path";
 
 const outdir = path.resolve("dist");
 
 const opts: BuildOptions = {
-  entryPoints: [
-    "index.ts",
-    "server.ts",
-  ],
+  entryPoints: ["index.ts", "server.ts"],
   outdir,
   platform: "node",
   target: ["node14"],
@@ -15,7 +12,7 @@ const opts: BuildOptions = {
   treeShaking: true,
   define: {
     "process.env.npm_package_version": JSON.stringify(
-      process.env.npm_package_version || ""
+      process.env.npm_package_version || "",
     ),
   },
   plugins: [
@@ -27,7 +24,7 @@ const opts: BuildOptions = {
           ({ path }) => ({
             path,
             external: true,
-          })
+          }),
         );
       },
     },

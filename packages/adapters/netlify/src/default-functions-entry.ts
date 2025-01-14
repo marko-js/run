@@ -1,14 +1,15 @@
 import { fetch } from "@marko/run/router";
 import type {
-  HandlerEvent,
   HandlerContext,
+  HandlerEvent,
   HandlerResponse,
 } from "@netlify/functions";
+
 import type { NetlifyFunctionsPlatformInfo } from "./types";
 
 export async function handler(
   event: HandlerEvent,
-  context: HandlerContext
+  context: HandlerContext,
 ): Promise<HandlerResponse> {
   const request = new Request(event.rawUrl, {
     method: event.httpMethod,
@@ -17,8 +18,8 @@ export async function handler(
       !event.body || event.httpMethod === "GET" || event.httpMethod === "HEAD"
         ? undefined
         : event.isBase64Encoded
-        ? Buffer.from(event.body, "base64")
-        : event.body,
+          ? Buffer.from(event.body, "base64")
+          : event.body,
 
     // @ts-expect-error: Node requires this for streams
     duplex: "half",

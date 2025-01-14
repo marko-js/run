@@ -8,9 +8,5 @@
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.marko"
   ],
-  "exclude": [
-    "**/__tests__",
-    "packages/runtime-tags/src/html/reorder-runtime.ts",
-    "**/*.d.ts"
-  ]
+  "exclude": ["**/__tests__", "**/*.d.ts"]
 }

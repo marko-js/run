@@ -2,24 +2,17 @@
   "name": "@marko/run-adapter-static",
   "version": "0.2.1",
   "description": "Preview and deploy @marko/run apps as static files",
-  "license": "MIT",
+  "keywords": [
+    "marko"
+  ],
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/static",
-  "logo": {
-    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/marko-js/run.git"
   },
+  "license": "MIT",
   "author": "Ryan Turnquist <rturnq@gmail.com>",
-  "keywords": [
-    "marko"
-  ],
   "type": "module",
-  "scripts": {
-    "test": "",
-    "build": "tsc -b && tsx scripts/build.ts"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,6 +20,8 @@
       "require": "./dist/index.cjs"
     }
   },
+  "main": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "*": [
@@ -34,13 +29,15 @@
       ]
     }
   },
-  "types": "./dist/index.d.ts",
-  "main": "./src/index.ts",
   "files": [
     "dist"
   ],
-  "peerDependencies": {
-    "@marko/run": "^0"
+  "scripts": {
+    "build": "tsc -b && tsx scripts/build.ts",
+    "test": ""
+  },
+  "dependencies": {
+    "undici": "^6.21.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -55,7 +52,10 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
   },
-  "dependencies": {
-    "undici": "^6.21.0"
+  "peerDependencies": {
+    "@marko/run": "^0"
+  },
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
   }
 }

@@ -2,24 +2,17 @@
   "name": "@marko/run-adapter-netlify",
   "version": "0.1.9",
   "description": "Preview and deploy @marko/run apps to Netlify Functions/Edge Functions",
-  "license": "MIT",
+  "keywords": [
+    "marko"
+  ],
   "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/node",
-  "logo": {
-    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/marko-js/run.git"
   },
+  "license": "MIT",
   "author": "Ryan Turnquist <rturnq@gmail.com>",
-  "keywords": [
-    "marko"
-  ],
   "type": "module",
-  "scripts": {
-    "test": "",
-    "build": "tsc -b && tsx scripts/build.ts"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,6 +20,8 @@
       "require": "./dist/index.cjs"
     }
   },
+  "main": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "*": [
@@ -34,13 +29,17 @@
       ]
     }
   },
-  "types": "./dist/index.d.ts",
-  "main": "./src/index.ts",
   "files": [
     "dist"
   ],
-  "peerDependencies": {
-    "@marko/run": "^0"
+  "scripts": {
+    "build": "tsc -b && tsx scripts/build.ts",
+    "test": ""
+  },
+  "dependencies": {
+    "@hattip/bundler-netlify": "^0.0.49",
+    "@netlify/edge-functions": "^2.11.1",
+    "@netlify/functions": "^2.8.2"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -54,9 +53,10 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
   },
-  "dependencies": {
-    "@hattip/bundler-netlify": "^0.0.49",
-    "@netlify/edge-functions": "^2.11.1",
-    "@netlify/functions": "^2.8.2"
+  "peerDependencies": {
+    "@marko/run": "^0"
+  },
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
   }
 }

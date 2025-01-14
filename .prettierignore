@@ -2,6 +2,7 @@ __snapshots__
 .cache
 .nvm
 .vscode
+.marko-run
 *actual*
 *expected*
 ~*
@@ -13,3 +14,5 @@ input.*
 node_modules
 package-lock.json
 snapshots
+netlify/*-functions
+netlify/assets

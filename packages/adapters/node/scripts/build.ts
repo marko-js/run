@@ -1,5 +1,5 @@
-import path from "path";
 import { build, BuildOptions } from "esbuild";
+import path from "path";
 
 const srcdir = path.resolve("src");
 const outdir = path.resolve("dist");
@@ -19,7 +19,7 @@ const opts: BuildOptions = {
           ({ path }) => ({
             path,
             external: true,
-          })
+          }),
         );
       },
     },

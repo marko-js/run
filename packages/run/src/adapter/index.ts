@@ -1,28 +1,29 @@
-import path from "path";
+import { start as explorerStart } from "@marko/run-explorer";
+import type { Worker } from "cluster";
 import fs from "fs";
 import inspector from "inspector";
-import { fileURLToPath } from "url";
-import type { Worker } from "cluster";
-import type { Adapter, ExplorerData } from "../vite";
-import { createDevServer, type MarkoRunDev } from "./dev-server";
-import { logInfoBox } from "./utils";
 import type { AddressInfo } from "net";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import type { Adapter, ExplorerData } from "../vite";
 import {
+  getAvailablePort,
+  getInspectOptions,
   loadEnv,
+  type SpawnedServer,
   spawnServer,
   spawnServerWorker,
   waitForWorker,
-  type SpawnedServer,
-  getAvailablePort,
-  getInspectOptions,
 } from "../vite/utils/server";
-import { start as explorerStart } from "@marko/run-explorer";
+import { createDevServer, type MarkoRunDev } from "./dev-server";
+import { logInfoBox } from "./utils";
 
 export {
-  getDevGlobal,
   createDevServer,
-  createViteDevServer,
   createErrorMiddleware,
+  createViteDevServer,
+  getDevGlobal,
   type MarkoRunDev,
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
@@ -30,10 +31,11 @@ export type { NodePlatformInfo } from "./middleware";
 
 export type MarkoRunDevAccessor = () => MarkoRunDev;
 
-// @ts-expect-error
-import parseNodeArgs from "parse-node-args";
-import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";
 import { Server } from "http";
+// @ts-expect-error - no types 🥲
+import parseNodeArgs from "parse-node-args";
+
+import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
@@ -63,7 +65,7 @@ export default function adapter(): Adapter {
             loadDevWorker,
             nodeArgs,
             port,
-            envFile
+            envFile,
           );
 
           nextWorker
@@ -78,13 +80,12 @@ export default function adapter(): Adapter {
 
           if (worker) {
             const prevWorker = worker;
-            let timeout: any;
             worker.once("disconnect", () => {
               clearTimeout(timeout);
             });
             worker.send({ type: "shutdown" });
             worker.disconnect();
-            timeout = setTimeout(() => {
+            const timeout = setTimeout(() => {
               prevWorker.kill();
             }, 2000);
           }
@@ -105,7 +106,6 @@ export default function adapter(): Adapter {
       const devServer = await createDevServer(config);
       envFile && (await loadEnv(envFile));
 
-
       const inspect = getInspectOptions(options.args);
       if (inspect) {
         inspector.open(inspect.port, inspect.host, inspect.wait);
@@ -117,18 +117,25 @@ export default function adapter(): Adapter {
         });
       });
 
-      const [explorer, listener] = await Promise.all([explorerPromise, listenerPromise]);
+      const [explorer, listener] = await Promise.all([
+        explorerPromise,
+        listenerPromise,
+      ]);
       const address = listener.address() as AddressInfo;
 
       logInfoBox(
         `http://localhost:${address.port}`,
-        explorer && `http://localhost:${explorer.port}`
+        explorer && `http://localhost:${explorer.port}`,
       );
 
       return {
         port: address.port,
         async close() {
-          await Promise.allSettled([devServer.close(), listener.close(), explorer?.close()])
+          await Promise.allSettled([
+            devServer.close(),
+            listener.close(),
+            explorer?.close(),
+          ]);
         },
       };
     },
@@ -146,14 +153,14 @@ export default function adapter(): Adapter {
       if (options.entry === defaultEntry) {
         logInfoBox(
           `http://localhost:${port}`,
-          explorer && `http://localhost:${explorer.port}`
+          explorer && `http://localhost:${explorer.port}`,
         );
       }
       return explorer
         ? {
             port: server.port,
             async close() {
-              await Promise.allSettled([server.close(), explorer.close()])
+              await Promise.allSettled([server.close(), explorer.close()]);
             },
           }
         : server;
@@ -181,7 +188,7 @@ export default function adapter(): Adapter {
 
       for (const [name, code] of virtualFiles) {
         let fileName = "";
-        let index = name.indexOf(markoRunFilePrefix);
+        const index = name.indexOf(markoRunFilePrefix);
         if (index >= 0) {
           fileName = name.slice(index);
           data.files[fileName] = `${virtualFilePrefix}/${fileName}`;
@@ -191,7 +198,7 @@ export default function adapter(): Adapter {
         }
         if (fileName) {
           promises.push(
-            fs.promises.writeFile(path.join(codeDir, fileName), code, {})
+            fs.promises.writeFile(path.join(codeDir, fileName), code, {}),
           );
         }
       }
@@ -208,8 +215,8 @@ export default function adapter(): Adapter {
         fs.promises.writeFile(
           path.join(cacheDir, "data.json"),
           JSON.stringify(data),
-          {}
-        )
+          {},
+        ),
       );
 
       await Promise.all(promises);

@@ -1,15 +1,16 @@
+import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
+import { diffLines } from "diff";
 import fs from "fs";
-import path from "path";
+import { JSDOM } from "jsdom";
 // import url from 'url'
 import snap from "mocha-snap";
-import { JSDOM } from "jsdom";
 import { createRequire } from "module";
+import path from "path";
 import * as playwright from "playwright";
-import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
+
+import * as cli from "../cli/commands";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
-import * as cli from "../cli/commands";
-import { diffLines } from "diff";
 
 // const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
@@ -69,7 +70,7 @@ before(async () => {
 
       const formatted = defaultSerializer(defaultNormalizer(fragment))
         .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
-        .replace(/\:(\d{4,})/g, ":9999");
+        .replace(/:(\d{4,})/g, ":9999");
 
       if (changes.at(-1) !== formatted) {
         changes.push(formatted);

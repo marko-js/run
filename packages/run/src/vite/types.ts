@@ -1,13 +1,14 @@
+import type { Options as MarkoViteOptions } from "@marko/vite";
+import type { InlineConfig, ResolvedConfig, UserConfig } from "vite";
+
 import type {
-  RoutableFileType,
   HttpVerb,
+  RoutableFileType,
   RoutableFileTypes,
 } from "./constants";
-import type { Options as MarkoViteOptions } from "@marko/vite";
-import type { ResolvedConfig, UserConfig, InlineConfig } from "vite";
 import type { SpawnedServer } from "./utils/server";
 
-export type { RoutableFileType, HttpVerb };
+export type { HttpVerb, RoutableFileType };
 
 export type StartServer = (port?: number) => Promise<void>;
 
@@ -28,7 +29,7 @@ export interface StartDevOptions extends StartOptions {}
 
 export interface StartPreviewOptions extends StartOptions {
   dir: string;
-  entry?: string
+  entry?: string;
 }
 
 export interface Adapter {
@@ -40,20 +41,24 @@ export interface Adapter {
   startDev?(
     entry: string | undefined,
     config: InlineConfig,
-    options: StartDevOptions
+    options: StartDevOptions,
   ): Promise<SpawnedServer> | SpawnedServer;
   startPreview?(
     entry: string | undefined,
-    options: StartPreviewOptions
+    options: StartPreviewOptions,
   ): Promise<SpawnedServer> | SpawnedServer;
   buildEnd?(
     config: ResolvedConfig,
     routes: Route[],
     builtEntries: string[],
-    sourceEntries: string[]
+    sourceEntries: string[],
   ): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string;
-  routesGenerated?(routes: BuiltRoutes, virtualFiles: Map<string, string>, data: RouteGenerationData): Promise<void> | void;
+  routesGenerated?(
+    routes: BuiltRoutes,
+    virtualFiles: Map<string, string>,
+    data: RouteGenerationData,
+  ): Promise<void> | void;
 }
 
 export interface RouterOptions {
@@ -112,7 +117,7 @@ export type BuiltRoutes = {
   list: Route[];
   special: SpecialRoutes;
   middleware: RoutableFile[];
-}
+};
 
 export interface PackageData {
   name?: string;
@@ -127,8 +132,7 @@ export interface RouteGenerationData {
 }
 
 export interface ExplorerData {
-  meta: RouteGenerationData,
-  routes: Record<string, Route>,
-  files: Record<string, string>
-
+  meta: RouteGenerationData;
+  routes: Record<string, Route>;
+  files: Record<string, string>;
 }
