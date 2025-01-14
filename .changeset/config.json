@@ -6,6 +6,6 @@
   "access": "public",
   "commit": false,
   "linked": [],
-  "ignore": [],
+  "ignore": ["*-example"],
   "fixed": []
 }
