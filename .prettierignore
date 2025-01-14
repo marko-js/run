@@ -3,6 +3,7 @@ __snapshots__
 .nvm
 .vscode
 .marko-run
+.cache
 *actual*
 *expected*
 ~*

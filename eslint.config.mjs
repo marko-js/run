@@ -11,6 +11,7 @@ export default tseslint.config(
       ".sizes",
       ".vscode",
       "**/.app",
+      "**/.cache",
       "**/.marko-run",
       "**/__snapshots__",
       "**/*.marko.js",
