@@ -17,8 +17,11 @@ import type {
 } from "./types";
 
 declare global {
-  const __marko_run__: RuntimeModule;
-  const __marko_run_vite_config__: InlineConfig | undefined;
+  // eslint-disable-next-line no-var
+  var __marko_run__: RuntimeModule;
+
+  // eslint-disable-next-line no-var
+  var __marko_run_vite_config__: InlineConfig | undefined;
 
   namespace MarkoRun {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */

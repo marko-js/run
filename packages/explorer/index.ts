@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore-next-line - Errors during build due to missing types?
 import { spawnServerWorker } from "@marko/run/vite";
 import path from "path";
 import { fileURLToPath } from "url";
