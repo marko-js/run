@@ -153,8 +153,12 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
     );
   }
   if (page) {
+    const pageNameIndex = page.name.indexOf("+page");
+    const pageNamePrefix =
+      pageNameIndex > 0 ? `${page.name.slice(0, pageNameIndex)}.` : "";
+
     const importPath = route.layouts.length
-      ? `./${path.posix.join(entriesDir, page.relativePath, "..", "route.marko")}`
+      ? `./${path.posix.join(entriesDir, page.relativePath, "..", pageNamePrefix + "route.marko")}`
       : `./${page.importPath}`;
     imports.writeLines(`import page from '${importPath}${serverEntryQuery}';`);
   }
