@@ -11,23 +11,27 @@ import type {
   OutputChunk,
 } from "rollup";
 
-import type { BuiltRoutes, Route } from "../types";
+import { httpVerbs } from "../constants";
+import type { BuiltRoutes, HttpVerb, Route } from "../types";
 import { getVerbs } from "./route";
 
 const HttpVerbColors = {
   get: kleur.green,
+  head: kleur.dim().green,
   post: kleur.magenta,
   put: kleur.cyan,
   delete: kleur.red,
-  other: kleur.white,
+  patch: kleur.yellow,
+  options: kleur.grey,
 };
 
-const HttpVerbOrder = {
-  get: 0,
-  post: 1,
-  put: 2,
-  delete: 3,
-};
+const HttpVerbOrder = httpVerbs.reduce(
+  (order, verb, index) => {
+    order[verb] = index;
+    return order;
+  },
+  {} as Record<HttpVerb, number>,
+);
 
 export function logRoutesTable(
   routes: BuiltRoutes,
@@ -73,6 +77,11 @@ export function logRoutesTable(
       for (const verb of verbs) {
         let size = "";
         const entryType: string[] = [];
+        const verbColor =
+          verb in HttpVerbColors
+            ? HttpVerbColors[verb as keyof typeof HttpVerbColors]
+            : kleur.gray;
+
         if (route.handler) {
           entryType.push(kleur.blue("handler"));
         }
@@ -81,9 +90,7 @@ export function logRoutesTable(
           size = prettySize(computeRouteSize(getRouteChunkName(route), bundle));
         }
 
-        const row: any[] = [
-          kleur.bold(HttpVerbColors[verb](verb.toUpperCase())),
-        ];
+        const row: any[] = [kleur.bold(verbColor(verb.toUpperCase()))];
 
         if (verbs.length === 1 || firstRow) {
           row.push({ rowSpan: verbs.length, content: prettyPath(path.path) });
