@@ -1,6 +1,6 @@
-import express from "express";
+import { invokeMiddleware, type MatchedRoute,matchMiddleware } from "@marko/run-adapter-node/middleware";
 import compressionMiddleware from "compression";
-import { matchMiddleware, invokeMiddleware, type MatchedRoute } from "@marko/run-adapter-node/middleware";
+import express from "express";
 
 declare module "http" {
   interface IncomingMessage {

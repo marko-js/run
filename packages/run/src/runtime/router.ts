@@ -5,13 +5,13 @@ function fromRuntime<T extends keyof RuntimeModule>(name: T): RuntimeModule[T] {
     const runtime = globalThis.__marko_run__;
     if (!runtime) {
       throw new Error(
-        "This should have been replaced by the @marko/run plugin at build/dev time"
+        "This should have been replaced by the @marko/run plugin at build/dev time",
       );
     }
-    return (runtime[name] as any)(...args)
-  }
+    return (runtime[name] as any)(...args);
+  };
 }
 
-export const fetch = fromRuntime('fetch');
-export const match = fromRuntime('match');
-export const invoke = fromRuntime('invoke');
+export const fetch = fromRuntime("fetch");
+export const match = fromRuntime("match");
+export const invoke = fromRuntime("invoke");

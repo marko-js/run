@@ -2,94 +2,66 @@
   "name": "@marko/run",
   "version": "0.5.13",
   "description": "The Marko application framework.",
-  "license": "MIT",
+  "keywords": [
+    "marko"
+  ],
   "homepage": "https://github.com/marko-js/run/tree/main/packages/run",
-  "logo": {
-    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/marko-js/run.git"
   },
+  "license": "MIT",
   "author": "Ryan Turnquist <rturnq@gmail.com>",
-  "keywords": [
-    "marko"
-  ],
   "type": "module",
+  "exports": {
+    ".": "./src/runtime/index.ts",
+    "./namespace": "./src/runtime/namespace.ts",
+    "./router": "./src/runtime/router.ts",
+    "./vite": "./src/vite/index.ts",
+    "./adapter/middleware": "./src/adapter/middleware.ts",
+    "./adapter": "./src/adapter/index.ts"
+  },
+  "types": "./src/runtime/index.ts",
   "bin": {
     "marko-run": "./dist/cli/index.mjs"
   },
-  "scripts": {
-    "test": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.?(c)ts\"",
-    "test:watch": "npm test -- --watch",
-    "test:inspect": "npm test -- --inspect",
-    "test:update": "npm test -- --update",
-    "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/runtime/index.d.ts",
-      "import": "./dist/runtime/index.js",
-      "require": "./dist/runtime/index.cjs"
-    },
-    "./namespace": {
-      "types": "./dist/runtime/namespace.d.ts"
-    },
-    "./router": {
-      "types": "./dist/runtime/router.d.ts",
-      "import": "./dist/runtime/router.js",
-      "require": "./dist/runtime/router.cjs"
-    },
-    "./vite": {
-      "types": "./dist/vite/index.d.ts",
-      "import": "./dist/vite/index.js",
-      "require": "./dist/vite/index.cjs"
-    },
-    "./adapter/middleware": {
-      "types": "./dist/adapter/middleware.d.ts",
-      "import": "./dist/adapter/middleware.js",
-      "require": "./dist/adapter/middleware.cjs"
-    },
-    "./adapter": {
-      "types": "./dist/adapter/index.d.ts",
-      "import": "./dist/adapter/index.js",
-      "require": "./dist/adapter/index.cjs"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/runtime/index.d.ts"
-      ],
-      "namespace": [
-        "./dist/runtime/namespace.d.ts"
-      ],
-      "router": [
-        "./dist/runtime/router.d.ts"
-      ],
-      "vite": [
-        "./dist/vite/index.d.ts"
-      ],
-      "adapter/middleware": [
-        "./dist/adapter/middleware.d.ts"
-      ],
-      "adapter": [
-        "./dist/adapter/index.d.ts"
-      ]
-    }
-  },
-  "types": "./dist/runtime/index.d.ts",
-  "main": "./src/runtime/index.ts",
   "files": [
     "dist"
   ],
-  "peerDependencies": {
-    "marko": "5 - 6"
+  "scripts": {
+    "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS='$NODE_OPTIONS --import tsx' mocha \"./src/**/__tests__/*.test.?(c)ts\"",
+    "test:inspect": "npm test -- --inspect",
+    "test:update": "npm test -- --update",
+    "test:watch": "npm test -- --watch"
+  },
+  "dependencies": {
+    "@marko/run-explorer": "^0.1.2",
+    "@marko/vite": "^5.0.10",
+    "browserslist": "^4.24.2",
+    "cli-table3": "^0.6.5",
+    "compression": "^1.7.5",
+    "debug": "^4.3.7",
+    "dotenv": "^16.4.5",
+    "draftlog": "^1.0.13",
+    "esbuild-plugin-browserslist": "^0.15.0",
+    "glob": "^11.0.0",
+    "human-format": "^1.2.1",
+    "kleur": "^4.1.5",
+    "parse-node-args": "^1.1.2",
+    "sade": "^1.8.1",
+    "serve-static": "^1.16.2",
+    "supports-color": "^9.4.0",
+    "undici": "^6.21.0",
+    "vite": "^6.0.0",
+    "warp10": "^2.1.0"
   },
   "devDependencies": {
     "@babel/types": "^7.26.0",
     "@marko/fixture-snapshots": "^2.2.1",
     "@marko/testing-library": "^6.2.0",
+    "@types/debug": "^4.1.12",
+    "@types/diff": "^7.0.0",
     "@types/glob": "^8.1.0",
     "@types/human-format": "^1.0.3",
     "@types/jsdom": "^21.1.7",
@@ -112,25 +84,10 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
-  "dependencies": {
-    "@marko/run-explorer": "^0.1.2",
-    "@marko/vite": "^5.0.10",
-    "browserslist": "^4.24.2",
-    "cli-table3": "^0.6.5",
-    "compression": "^1.7.5",
-    "debug": "^4.3.7",
-    "dotenv": "^16.4.5",
-    "draftlog": "^1.0.13",
-    "esbuild-plugin-browserslist": "^0.15.0",
-    "glob": "^11.0.0",
-    "human-format": "^1.2.1",
-    "kleur": "^4.1.5",
-    "parse-node-args": "^1.1.2",
-    "sade": "^1.8.1",
-    "serve-static": "^1.16.2",
-    "supports-color": "^9.4.0",
-    "undici": "^6.21.0",
-    "vite": "^6.0.0",
-    "warp10": "^2.1.0"
+  "peerDependencies": {
+    "marko": "5 - 6"
+  },
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
   }
 }

@@ -1,6 +1,6 @@
+import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import { promises as fs } from "fs";
 
 const noop = () => {};
 const tmpFile = path.join(os.tmpdir(), "marko-run-storage.json");

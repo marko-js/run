@@ -1,3 +1,3 @@
 export function GET() {
-  console.log('GET handler')
+  console.log("GET handler");
 }

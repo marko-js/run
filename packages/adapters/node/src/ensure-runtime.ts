@@ -1,11 +1,13 @@
-import type { Connect, ViteDevServer } from "vite";
 import type { IncomingMessage } from "http";
+import type { Connect, ViteDevServer } from "vite";
+
 import type { NodeMiddleware } from "./middleware";
 
 declare global {
+  // eslint-disable-next-line no-var
   var __marko_run_middleware__:
     | (<T extends any[]>(
-        factory: (...args: T) => NodeMiddleware
+        factory: (...args: T) => NodeMiddleware,
       ) => (...args: T) => NodeMiddleware)
     | undefined;
 }
@@ -21,10 +23,10 @@ export default globalThis.__marko_run_middleware__ ??=
         const devServerPromise = import("@marko/run/adapter").then(
           async (mod) => {
             devServer = await mod.createViteDevServer(
-              globalThis.__marko_run_vite_config__
+              globalThis.__marko_run_vite_config__,
             );
             errorMiddleware = mod.createErrorMiddleware(devServer);
-            
+
             void devServer!.ssrLoadModule("@marko/run/router").catch(() => {});
             devMiddleware = (req, res, next) => {
               if (seenReqs.has(req)) {
@@ -33,7 +35,7 @@ export default globalThis.__marko_run_middleware__ ??=
               seenReqs.add(req);
               devServer!.middlewares(req, res, next);
             };
-          }
+          },
         );
 
         let devMiddleware: NodeMiddleware = async (req, res, next) => {
@@ -53,18 +55,18 @@ export default globalThis.__marko_run_middleware__ ??=
                   return;
                 }
                 next?.();
-              }
+              };
 
               devMiddleware(req, res, async (err) => {
                 if (err) {
-                  handleError(err)
+                  handleError(err);
                   return;
                 }
 
                 try {
                   await devServer!.ssrLoadModule("@marko/run/router");
                 } catch (err) {
-                  handleError(err as Error)
+                  handleError(err as Error);
                   return;
                 }
 

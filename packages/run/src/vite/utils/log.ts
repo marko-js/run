@@ -1,16 +1,18 @@
 import zlib from "node:zlib";
+
+import { Blob } from "buffer";
 import Table, { HorizontalAlignment } from "cli-table3";
+import format from "human-format";
 import kleur from "kleur";
 import type {
+  NormalizedOutputOptions,
+  OutputAsset,
   OutputBundle,
   OutputChunk,
-  OutputAsset,
-  NormalizedOutputOptions,
 } from "rollup";
+
 import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
-import format from "human-format";
-import { Blob } from "buffer";
 
 const HttpVerbColors = {
   get: kleur.green,
@@ -30,7 +32,7 @@ const HttpVerbOrder = {
 export function logRoutesTable(
   routes: BuiltRoutes,
   bundle: OutputBundle,
-  options: NormalizedOutputOptions
+  options: NormalizedOutputOptions,
 ) {
   function getRouteChunkName(route: Route) {
     return options.sanitizeFileName(`${route.entryName}.marko`);
@@ -64,7 +66,7 @@ export function logRoutesTable(
   for (const route of routes.list) {
     for (const path of route.paths) {
       const verbs = getVerbs(route).sort(
-        (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]
+        (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b],
       );
       let firstRow = true;
 
@@ -100,7 +102,7 @@ export function logRoutesTable(
 
   for (const [key, route] of Object.entries(routes.special).sort() as [
     string,
-    Route
+    Route,
   ][]) {
     const row = [kleur.bold(kleur.white("*")), key, kleur.yellow("page")];
     hasMiddleware && row.push("");
@@ -116,7 +118,7 @@ export function logRoutesTable(
 
 function computeRouteSize(
   entryName: string,
-  bundle: OutputBundle
+  bundle: OutputBundle,
 ): [number, number] {
   for (const chunk of Object.values(bundle)) {
     if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
@@ -138,7 +140,7 @@ function byteSize(source: string | Uint8Array): number {
 function computeChunkSize(
   chunk: OutputChunk | OutputAsset,
   bundle: OutputBundle,
-  seen: Set<string> = new Set()
+  seen: Set<string> = new Set(),
 ): [number, number] {
   if (chunk.type === "asset") {
     return [byteSize(chunk.source), gzipSize(chunk.source)];

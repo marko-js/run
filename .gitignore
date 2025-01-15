@@ -9,3 +9,5 @@ dist
 .cache
 *.actual.*
 .app
+coverage
+*.lcov

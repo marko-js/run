@@ -1,5 +1,3 @@
-
-
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
@@ -10,24 +8,25 @@
 </div>
 
 ## Features
-* 🚀 Fastest way to build a Marko app
-* 💖 Scales from zero configuration
-* ⚡️ Pages live-reload as you make changes
-* 📁 Directory-based routes, layouts, and middleware
-* 🖌️ TypeScript powered editor support
-* 🧬 [Designed with web standards](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/URLPattern) to run anywhere
+
+- 🚀 Fastest way to build a Marko app
+- 💖 Scales from zero configuration
+- ⚡️ Pages live-reload as you make changes
+- 📁 Directory-based routes, layouts, and middleware
+- 🖌️ TypeScript powered editor support
+- 🧬 [Designed with web standards](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/URLPattern) to run anywhere
 
 And when you build your production-ready app:
 
-* 🔥 Blazing fast server-side rendering
-* 🌊 Streams content to users ASAP
-* 📦 Partial hydration & automatic code splitting
-* 🚢 Deploy to multiple platforms
+- 🔥 Blazing fast server-side rendering
+- 🌊 Streams content to users ASAP
+- 📦 Partial hydration & automatic code splitting
+- 🚢 Deploy to multiple platforms
 
 ## Installation
+
 > **Warning**
 > This project is in BETA - use at your own peril, but please do provide helpful feedback.
-
 
 ```sh
 npm install @marko/run
@@ -38,11 +37,13 @@ npm install @marko/run
 `marko-run` makes it easy to get started without little to no config. The package ships with a default Vite config and node-based adapter.
 
 To get started from a template:
+
 1. `npm init marko -- -t basic`
 2. `cd ./<PROJECT_NAME>`
-4. `npm run dev`
+3. `npm run dev`
 
 Or manually create a project:
+
 1. Install `@marko/run`
 2. Create file `src/routes/+page.marko`
 3. Run `npm exec marko-run`
@@ -52,21 +53,25 @@ Finally open `http://localhost:3000` 🚀
 ### CLI
 
 **`dev`** - Start a development server in watch mode
+
 ```sh
 > npm exec marko-run
 ```
+
 or (with explicit sub command)
+
 ```sh
 > npm exec marko-run dev
 ```
 
-
 **`build`** - Create a production build
+
 ```sh
 > npm exec marko-run build
 ```
 
 **`preview`** - Create a production build and start the preview server
+
 ```sh
 > npm exec marko-run preview
 ```
@@ -89,10 +94,12 @@ import { defineConfig } from "vite";
 import marko from "@marko/run/vite";
 
 export default defineConfig({
-  plugins: [marko({
-    routesDir: 'src/pages' // Use `./src/pages` (relative to this file) as the routes directory
-  })]
-})
+  plugins: [
+    marko({
+      routesDir: "src/pages", // Use `./src/pages` (relative to this file) as the routes directory
+    }),
+  ],
+});
 ```
 
 ### Routeable Files
@@ -158,8 +165,8 @@ Typically, these will be `.js` or `.ts` files depending on your project. Like pa
           return new Response('Successfully removed', { status: 204 });
         }
         ```
-</details>
 
+</details>
 
 #### `+middleware.*`
 
@@ -195,6 +202,7 @@ These files are like layouts, but for handlers. Middleware files are called befo
           }
         }
         ```
+
 </details>
 
 #### `+meta.*`
@@ -212,7 +220,7 @@ These special pages are subject to a root layout file (`pages/+layout.marko` in 
 This special page responds to any request where:
 
 - The `Accept` request header includes `text/html`
-- *And* no other handler or page rendered the request
+- _And_ no other handler or page rendered the request
 
 Responses with this page will have a `404` status code.
 
@@ -221,7 +229,7 @@ Responses with this page will have a `404` status code.
 This special page responds to any request where:
 
 - The `Accept` request header includes `text/html`
-- *And* an uncaught error occurs while serving the request
+- _And_ an uncaught error occurs while serving the request
 
 Responses with this page will have a `500` status code.
 
@@ -273,40 +281,44 @@ Within the [routes directory](#routes-directory), the directory structure determ
 
 1. **Static directories** - The most common type, and the default behavior. Each static directory contributes its name as a segment in the route's served path, like a traditional fileserver. Unless a directory name matches the requirements for one of the below types, it is seen as a static directory.
 
-    Examples:
-    ```
-    /foo
-    /users
-    /projects
-    ```
+   Examples:
+
+   ```
+   /foo
+   /users
+   /projects
+   ```
 
 2. **Pathless directories** - These directories do **not** contribute their name to the route's served path. Directory names that start with an underscore (`_`) will be ignored when parsing the route.
 
-    Examples:
-    ```
-    /_users
-    /_public
-    ```
+   Examples:
+
+   ```
+   /_users
+   /_public
+   ```
 
 3. **Dynamic directories** - These directories introduce a dynamic parameter to the route's served path and will match any value at that segment. Any directory name that starts with a single dollar sign (`$`) will be a dynamic directory, and the remaining directory name will be the parameter at runtime. If the directory name is exactly `$`, the parameter will not be captured but it will be matched.
 
-    Examples:
-    ```
-    /$id
-    /$name
-    /$
-    ```
+   Examples:
+
+   ```
+   /$id
+   /$name
+   /$
+   ```
 
 4. **Catch-all directories** - These directories are similar to dynamic directories and introduce a dynamic parameter, but instead of matching a single path segment, they match to the end of the path. Any directory that starts with two dollar signs (`$$`) will be a catch-all directory, and the remaining directory name will be the parameter at runtime. In the case of a directory named `$$`, the parameter name will not be captured but it will match. Catch-all directories can be used to make `404` Not Found routes at any level, including the root.
 
-    Because catch-all directories match any path segment and consume the rest of the path, you cannot nest route files in them and no further directories will be traversed.
+   Because catch-all directories match any path segment and consume the rest of the path, you cannot nest route files in them and no further directories will be traversed.
 
-    Examples:
-    ```
-    /$$all
-    /$$rest
-    /$$
-    ```
+   Examples:
+
+   ```
+   /$$all
+   /$$rest
+   /$$
+   ```
 
 ### Flat Routes
 
@@ -357,8 +369,6 @@ routes/
   projects.$projectId+page.marko
 ```
 
-
-
 ### Multiple Paths, Groups and Optional Segments
 
 Along with descibing multiple segements, flat route syntax supports defining routes that match more than one path and segments that are optional. To describe a route that matches multiple paths, use a comma (`,`) and define each route.
@@ -393,7 +403,9 @@ The last concept is **optionallity**. By introducing an empty segment or pathles
 routes/
   projects.(home,)+page.marko
 ```
+
 or
+
 ```
 routes/
   projects.(home,_pathless)+page.marko
@@ -401,17 +413,9 @@ routes/
 
 While both of these create a route which matches the paths, they have slightly different semantics. Using a pathless segment is the same as creating a pathless folder which allows you to isolate middleware and loayouts. Using an empty segement is the same as defining a file at the current location.
 
-
-
-
-
-
 <!-- ### Match Ranking
 
 *TODO: Write some things* -->
-
-
-
 
 ## Vite Plugin
 
@@ -423,8 +427,8 @@ import { defineConfig } from "vite";
 import marko from "@marko/run/vite"; // Import the Vite plugin
 
 export default defineConfig({
-  plugins: [marko()] // Register the Vite plugin
-})
+  plugins: [marko()], // Register the Vite plugin
+});
 ```
 
 ### Adapters
@@ -437,13 +441,15 @@ Specify your adapter in the Vite config when registering the `@marko/run` plugin
 // vite.config.ts
 import { defineConfig } from "vite";
 import marko from "@marko/run/vite";
-import netlify from "@marko/run-adapter-netlify" // Import the adapter
+import netlify from "@marko/run-adapter-netlify"; // Import the adapter
 
 export default defineConfig({
-  plugins: [marko({
-    adapter: netlify({ edge: true }) // Configure and apply the adapter
-  })]
-})
+  plugins: [
+    marko({
+      adapter: netlify({ edge: true }), // Configure and apply the adapter
+    }),
+  ],
+});
 ```
 
 #### Available Adapters
@@ -451,6 +457,7 @@ export default defineConfig({
 - [@marko/run-adapter-node](https://github.com/marko-js/run/blob/main/packages/adapters/node/README.md)
 - [@marko/run-adapter-netlify](https://github.com/marko-js/run/blob/main/packages/adapters/netlify/README.md)
 - [@marko/run-adapter-static](https://github.com/marko-js/run/blob/main/packages/adapters/static/README.md)
+
 ## Runtime
 
 Generally, when using an adapter, this runtime will be abstracted away.
@@ -464,15 +471,11 @@ import * as Run from '@marko/run/router`;
 
 ### Emdedding in Existing Server
 
-
-
 ### `Run.fetch`
 
 ```ts
 async function fetch<T>(request: Request, platform: T) => Promise<Response | void>;
 ```
-
-
 
 This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.whatwg.org/#request-class) and an object containing any platform-specific data you may want access to, and returns any of
 
@@ -482,6 +485,7 @@ This asynchronous function takes a [WHATWG `Request` object](https://fetch.spec.
 - a `500` status code response (if an error occurs)
 
 Express example:
+
 ```ts
 import express from "express";
 import * as Run from "@marko/run/router";
@@ -503,7 +507,6 @@ express()
   })
   .listen(3000);
 ```
-
 
 ### Other APIs
 
@@ -530,9 +533,11 @@ This synchronous function takes an HTTP method and path name and returns an obje
 ```ts
 async function invoke(route: Route, request: Request, platform: any) => Promise<Response | void>;
 ```
+
 This asynchronous function takes a route object returned by [Run.match](#Run.match) the request and platform data and returns a response in the same way the [Run.fetch](#Run.fetch) does.
 
 Express example:
+
 ```ts
 import express from "express";
 import * as Run from "@marko/run/router";
@@ -569,12 +574,10 @@ express()
   .listen(3000);
 ```
 
-
-
 ## TypeScript
 
-
 ### Global Namespace
+
 `marko/run` provides a global namespace `MarkoRun` with the following types:
 
 **`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
@@ -582,38 +585,44 @@ express()
 **`MarkoRun.Route`** - Type of the route's params and metadata
 
 **`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your applcation code
+
 ```ts
 declare module "@marko/run" {
   interface Context {
-    customPropery: MyCustomThing // will be globally defined on MarkoRun.Context
+    customPropery: MyCustomThing; // will be globally defined on MarkoRun.Context
   }
 }
 ```
 
-**`MarkoRun.Platform`** - Type of the platform object provided by the adapter in use. This interface can be extended in that same way as `Context` (see above) by declaring a `Platform` interface: 
+**`MarkoRun.Platform`** - Type of the platform object provided by the adapter in use. This interface can be extended in that same way as `Context` (see above) by declaring a `Platform` interface:
+
 ```ts
 declare module "@marko/run" {
   interface Platform {
-    customPropery: MyCustomThing // will be globally defined on MarkoRun.Platform
+    customPropery: MyCustomThing; // will be globally defined on MarkoRun.Platform
   }
 }
 ```
 
-
 ### Generated Types
+
 If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in the project root, the Vite plugin will automatically generate a .d.ts file which provides more specific types for each of your middleware, handlers, layouts, and pages. This file will be generated at `.marko-run/routes.d.ts` whenever the project is built - including dev.
+
 > **Note** TypeScript will not include this file by default. You should use the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
 
 These types are replaced with more specific versions per routable file:
 
 **`MarkoRun.Handler`**
+
 - Overrides context with specific MarkoRun.Context
 
 **`MarkoRun.Route`**
-- Adds specific parameters and meta types 
+
+- Adds specific parameters and meta types
 - In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see
 
 **`MarkoRun.Context`**
+
 - In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see.
 - When an adapter is used, it can provide types for the platform
 

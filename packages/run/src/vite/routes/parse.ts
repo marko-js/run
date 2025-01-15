@@ -56,7 +56,7 @@ export function parseFlatRoute(pattern: string): Path[] {
             })),
             "",
             "_",
-            pathMap
+            pathMap,
           );
         } else {
           segmentEnd(current, pattern.slice(segmentStart, i), type, pathMap);
@@ -101,8 +101,8 @@ export function parseFlatRoute(pattern: string): Path[] {
     if (group && charCode !== 41) {
       throw new Error(
         `Invalid route pattern: group was not closed '${pattern.slice(
-          group
-        )}' in '${pattern}'`
+          group,
+        )}' in '${pattern}'`,
       );
     }
 
@@ -114,7 +114,7 @@ export function parseFlatRoute(pattern: string): Path[] {
         })),
         "",
         "_",
-        pathMap
+        pathMap,
       );
     } else {
       segmentEnd(current, pattern.slice(segmentStart, i), type, pathMap);
@@ -127,7 +127,7 @@ export function parseFlatRoute(pattern: string): Path[] {
     paths: Path[],
     raw: string,
     type: "_" | "$" | "$$" | undefined,
-    map?: Map<string, Path>
+    map?: Map<string, Path>,
   ) {
     let segment: Segment | undefined;
     if (raw) {
@@ -149,8 +149,8 @@ export function parseFlatRoute(pattern: string): Path[] {
           throw new Error(
             `Invalid route pattern: nested segments are not allowed after a catch-all parameter. Found '.' following '${pattern.slice(
               0,
-              i
-            )}' in '${pattern}'.`
+              i,
+            )}' in '${pattern}'.`,
           );
         }
 
@@ -171,7 +171,7 @@ export function parseFlatRoute(pattern: string): Path[] {
             .join(".");
           const currentExpansion = path.segments.map((s) => s.raw).join(".");
           throw new Error(
-            `Invalid route pattern: route '${path.id}' is ambiguous. Expansion '${currentExpansion}' collides with '${existingExpansion}' in '${pattern}'.`
+            `Invalid route pattern: route '${path.id}' is ambiguous. Expansion '${currentExpansion}' collides with '${existingExpansion}' in '${pattern}'.`,
           );
         }
         map.set(path.id, path);

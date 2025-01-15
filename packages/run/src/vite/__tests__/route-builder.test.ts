@@ -1,8 +1,9 @@
+import assert from "assert";
+
 import { buildRoutes } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
-import { createDirectory } from "./utils/fakeFS";
-import assert from "assert";
 import type { PathInfo } from "../types";
+import { createDirectory } from "./utils/fakeFS";
 
 type PathParams = Pick<PathInfo, "path" | "params">;
 
@@ -26,7 +27,7 @@ describe("route-builder", () => {
             result.params = path.params;
           }
           return result;
-        })
+        }),
       );
       return acc;
     }, []);
@@ -40,7 +41,7 @@ describe("route-builder", () => {
           /b
             +page.marko
         `,
-      { path: "/a/b" }
+      { path: "/a/b" },
     );
   });
 
@@ -51,7 +52,7 @@ describe("route-builder", () => {
           /$id
             +page.marko
         `,
-      { path: "/a/$id", params: { id: 1 } }
+      { path: "/a/$id", params: { id: 1 } },
     );
   });
 
@@ -62,7 +63,7 @@ describe("route-builder", () => {
           /$$rest
             +page.marko
         `,
-      { path: "/a/$$rest", params: { rest: null } }
+      { path: "/a/$$rest", params: { rest: null } },
     );
   });
 
@@ -73,7 +74,7 @@ describe("route-builder", () => {
           /$$rest
             +page.marko
         `,
-      { path: "/$id/$$rest", params: { id: 0, rest: null } }
+      { path: "/$id/$$rest", params: { id: 0, rest: null } },
     );
   });
 
@@ -85,7 +86,7 @@ describe("route-builder", () => {
             /$$
               +page.marko
         `,
-      { path: "/a/$/$$" }
+      { path: "/a/$/$$" },
     );
   });
 
@@ -97,7 +98,7 @@ describe("route-builder", () => {
             /$id
               +page.marko
         `,
-      { path: "/a/$id", params: { id: 1 } }
+      { path: "/a/$id", params: { id: 1 } },
     );
   });
 
@@ -112,7 +113,7 @@ describe("route-builder", () => {
       { path: "/a/c/$id", params: { id: 2 } },
       { path: "/a/d/$id", params: { id: 2 } },
       { path: "/b/c/$id", params: { id: 2 } },
-      { path: "/b/d/$id", params: { id: 2 } }
+      { path: "/b/d/$id", params: { id: 2 } },
     );
   });
 
@@ -127,7 +128,7 @@ describe("route-builder", () => {
       { path: "/a/$id", params: { id: 1 } },
       { path: "/a/c/$id", params: { id: 2 } },
       { path: "/b/$id", params: { id: 1 } },
-      { path: "/b/c/$id", params: { id: 2 } }
+      { path: "/b/c/$id", params: { id: 2 } },
     );
   });
 
@@ -143,7 +144,7 @@ describe("route-builder", () => {
         }),
       (err: Error) => {
         return err.message.startsWith("Ambiguous directory structure");
-      }
+      },
     );
   });
 
@@ -158,7 +159,7 @@ describe("route-builder", () => {
         }),
       (err: Error) => {
         return err.message.startsWith("Invalid route pattern");
-      }
+      },
     );
   });
 
@@ -175,7 +176,7 @@ describe("route-builder", () => {
         }),
       (err: Error) => {
         return err.message.startsWith("Duplicate routes for path");
-      }
+      },
     );
   });
 
@@ -193,7 +194,7 @@ describe("route-builder", () => {
               +page.marko
       `),
         }),
-      (err: Error) => err.message.startsWith("Duplicate routes for path")
+      (err: Error) => err.message.startsWith("Duplicate routes for path"),
     );
   });
 

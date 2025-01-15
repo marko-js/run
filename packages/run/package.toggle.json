@@ -1,0 +1,43 @@
+{
+  "exports": {
+    ".": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js",
+      "require": "./dist/runtime/index.cjs"
+    },
+    "./namespace": {
+      "types": "./dist/runtime/namespace.d.ts"
+    },
+    "./router": {
+      "types": "./dist/runtime/router.d.ts",
+      "import": "./dist/runtime/router.js",
+      "require": "./dist/runtime/router.cjs"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js",
+      "require": "./dist/vite/index.cjs"
+    },
+    "./adapter/middleware": {
+      "types": "./dist/adapter/middleware.d.ts",
+      "import": "./dist/adapter/middleware.js",
+      "require": "./dist/adapter/middleware.cjs"
+    },
+    "./adapter": {
+      "types": "./dist/adapter/index.d.ts",
+      "import": "./dist/adapter/index.js",
+      "require": "./dist/adapter/index.cjs"
+    }
+  },
+  "types": "./dist/runtime/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["./dist/runtime/index.d.ts"],
+      "namespace": ["./dist/runtime/namespace.d.ts"],
+      "router": ["./dist/runtime/router.d.ts"],
+      "vite": ["./dist/vite/index.d.ts"],
+      "adapter/middleware": ["./dist/adapter/middleware.d.ts"],
+      "adapter": ["./dist/adapter/index.d.ts"]
+    }
+  }
+}

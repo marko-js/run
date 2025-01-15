@@ -1,8 +1,8 @@
-import net, { type Socket } from "net";
 import cp, { type ChildProcess, type StdioOptions } from "child_process";
-import { parse, config } from "dotenv";
-import fs from "fs";
 import cluster, { type Address, type Worker } from "cluster";
+import { config, parse } from "dotenv";
+import fs from "fs";
+import net, { type Socket } from "net";
 
 export interface SpawnedServer {
   port: number;
@@ -27,7 +27,7 @@ export async function spawnServer(
   env?: string | Record<string, string>,
   cwd: string = process.cwd(),
   wait: number = 30_000,
-  stdio: StdioOptions = ["ignore", "inherit", "inherit"]
+  stdio: StdioOptions = ["ignore", "inherit", "inherit"],
 ): Promise<SpawnedServer> {
   if (port <= 0) {
     port = await getAvailablePort();
@@ -68,7 +68,7 @@ export async function spawnServerWorker(
   args: string[] = [],
   port: number = 0,
   env?: string | Record<string, string>,
-  wait: boolean = true
+  wait: boolean = true,
 ): Promise<Worker> {
   if (port <= 0) {
     port = await getAvailablePort();
@@ -110,15 +110,15 @@ export async function spawnServerWorker(
 
 export async function waitForError(
   proc: ChildProcess,
-  port: number
+  port: number,
 ): Promise<void> {
   return new Promise((_, reject) => {
     proc.once("error", reject);
     proc.once("exit", (code) => {
       reject(
         new Error(
-          `Process exited with code ${code} while waiting for server to start on port "${port}".`
-        )
+          `Process exited with code ${code} while waiting for server to start on port "${port}".`,
+        ),
       );
     });
   });
@@ -126,7 +126,7 @@ export async function waitForError(
 
 export async function waitForServer(
   port: number,
-  wait: number = 0
+  wait: number = 0,
 ): Promise<Socket> {
   let remaining = wait > 0 ? wait : Infinity;
   let connection: Socket | null;
@@ -136,7 +136,7 @@ export async function waitForServer(
       await sleep(100);
     } else {
       throw new Error(
-        `Timeout while wating for server to start on port "${port}".`
+        `Timeout while wating for server to start on port "${port}".`,
       );
     }
   }
@@ -157,8 +157,8 @@ export async function waitForWorker(worker: Worker, port: number) {
       .once("exit", (code) => {
         reject(
           new Error(
-            `Worker exited with code ${code} while waiting for dev server to start on port "${port}".`
-          )
+            `Worker exited with code ${code} while waiting for dev server to start on port "${port}".`,
+          ),
         );
       });
   });

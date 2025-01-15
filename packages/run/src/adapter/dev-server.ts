@@ -1,15 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import path from "path";
 import {
-  createServer,
-  type Rollup,
-  type Connect,
-  type InlineConfig,
-  type ViteDevServer,
   buildErrorMessage,
+  type Connect,
+  createServer,
+  type InlineConfig,
+  type Rollup,
+  type ViteDevServer,
 } from "vite";
-import { createMiddleware } from "./middleware";
+
 import logger from "./logger";
+import { createMiddleware } from "./middleware";
 import { prepareError } from "./utils";
 
 type RollupError = Rollup.RollupError;
@@ -28,6 +29,7 @@ export interface MarkoRunDev {
 }
 
 declare global {
+  // eslint-disable-next-line no-var
   var __marko_run_dev__: MarkoRunDev | undefined;
 }
 
@@ -146,7 +148,11 @@ export function createErrorMiddleware(
 ): Connect.ErrorHandleFunction {
   return function errorMiddleware(error: RollupError, _req, res, _next) {
     if (!error.id) {
-      devServer.config.logger.error(buildErrorMessage(error, [`\x1b[31;1mRequest failed with error: ${error.message}\x1b[0m`]));
+      devServer.config.logger.error(
+        buildErrorMessage(error, [
+          `\x1b[31;1mRequest failed with error: ${error.message}\x1b[0m`,
+        ]),
+      );
     }
     res.statusCode = 500;
     res.end(`
@@ -174,7 +180,7 @@ export function createErrorMiddleware(
         document.body.appendChild(h('pre', error.stack))
         document.body.appendChild(h('p', '(Error overlay failed to load)'))
       }
-    <\/script>
+    </script>
   </head>
   <body>
   </body>

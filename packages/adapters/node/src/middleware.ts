@@ -1,13 +1,15 @@
 import "@marko/run/router";
-import ensureRuntime from "./ensure-runtime";
+
+import type { RouteWithHandler } from "@marko/run";
 import {
   createMiddleware,
-  type NodeMiddlewareOptions,
   type NodeMiddleware,
+  type NodeMiddlewareOptions,
   type NodePlatformInfo,
 } from "@marko/run/adapter/middleware";
 import type { IncomingMessage } from "http";
-import type { RouteWithHandler } from "@marko/run";
+
+import ensureRuntime from "./ensure-runtime";
 
 export { createMiddleware, type NodeMiddleware, type NodeMiddlewareOptions };
 
@@ -22,9 +24,9 @@ export const routerMiddleware = ensureRuntime(
   (options?: NodeMiddlewareOptions) => {
     return createMiddleware(
       (request, platform) => globalThis.__marko_run__.fetch(request, platform),
-      options
+      options,
     );
-  }
+  },
 );
 
 export const invokeMiddleware = (options?: NodeMiddlewareOptions) => {
@@ -33,9 +35,9 @@ export const invokeMiddleware = (options?: NodeMiddlewareOptions) => {
       globalThis.__marko_run__.invoke(
         ((platform as NodePlatformInfo).request as MatchedRequest).route?.match,
         request,
-        platform
+        platform,
       ),
-    options
+    options,
   );
 };
 

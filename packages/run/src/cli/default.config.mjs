@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
 import marko from "@marko/run/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [marko()]
+  plugins: [marko()],
 });

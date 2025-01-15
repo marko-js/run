@@ -1,9 +1,10 @@
-import kleur from "kleur";
-import type { NodeMiddleware } from "./middleware";
-import { IncomingMessage, ServerResponse } from "http";
 import DraftLog from "draftlog";
+import { IncomingMessage, ServerResponse } from "http";
 import format from "human-format";
 import inpspector from "inspector";
+import kleur from "kleur";
+
+import type { NodeMiddleware } from "./middleware";
 
 if (!inpspector.url()) {
   DraftLog.into(console);
@@ -38,9 +39,9 @@ export interface LoggerOptions {}
 
 export default function (_options: LoggerOptions = {}): NodeMiddleware {
   let inFlight = 0;
-  
+
   return function logger(req, res, next) {
-    let startTime = Date.now();
+    const startTime = Date.now();
 
     const handleFinish = () => done("finish");
     const handleClose = () => done("close");
@@ -75,14 +76,14 @@ export default function (_options: LoggerOptions = {}): NodeMiddleware {
     }) as typeof _write;
 
     res.end = ((...args) => {
-      if (args[0] && typeof args[0] !== 'function') {
-        if (typeof args[1] !== 'function') {
+      if (args[0] && typeof args[0] !== "function") {
+        if (typeof args[1] !== "function") {
           bodyLength += Buffer.byteLength(args[0], args[1] as BufferEncoding);
         } else {
-          bodyLength += args[0].length
+          bodyLength += args[0].length;
         }
       }
-      return _end.apply(res, args as any)
+      return _end.apply(res, args as any);
     }) as typeof _end;
 
     next?.();
@@ -110,7 +111,7 @@ export default function (_options: LoggerOptions = {}): NodeMiddleware {
         res,
         startTime,
         contentLength || bodyLength,
-        event === "finish"
+        event === "finish",
       );
     }
   };
@@ -123,7 +124,7 @@ function logRequest(id: string, req: IncomingMessage) {
   const final = kleur.dim(requestArrow(id)) + info;
 
   if (console.draft) {
-    spinners ??= createAnimationManager({ steps: ArrowSteps.length })
+    spinners ??= createAnimationManager({ steps: ArrowSteps.length });
     const update = console.draft();
     const stop = spinners.add((step) => {
       update(kleur.cyan(requestArrow(id, step)) + info);
@@ -145,7 +146,7 @@ function logResponse(
   res: ServerResponse,
   startTime: number,
   contentLength: number,
-  success: boolean
+  success: boolean,
 ) {
   const status = res.statusCode;
   const color = HttpStatusColors[(status / 100) | 0] || "red";
@@ -178,7 +179,7 @@ function logResponse(
       " " +
       formatMeasurement(time(startTime)) +
       " " +
-      length
+      length,
   );
 }
 

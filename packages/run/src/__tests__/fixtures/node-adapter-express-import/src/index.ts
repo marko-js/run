@@ -1,6 +1,6 @@
-import express from "express";
-import compressionMiddleware from "compression";
 import { importRouterMiddleware, type NodeMiddleware } from "@marko/run-adapter-node/middleware";
+import compressionMiddleware from "compression";
+import express from "express";
 
 let router: NodeMiddleware | undefined;
 

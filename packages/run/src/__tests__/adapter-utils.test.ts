@@ -21,8 +21,7 @@ describe("adapter-utils", () => {
     }
 
     it("should draw", () => {
-      const message =
-        "Marko Run\n\nHello\nWorld";
+      const message = "Marko Run\n\nHello\nWorld";
       print(drawMarkoBox(message, { fill: true, color: true }));
       print(drawMarkoBox(message, { fill: true, color: false }));
       print(drawMarkoBox(message, { fill: false, color: true }));

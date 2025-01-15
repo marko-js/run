@@ -1,12 +1,17 @@
-import type { ExplorerData, Route, RoutableFile, RouteGenerationData } from '@marko/run/vite';
-import fs from 'fs';
-import path from 'path';
-import url from 'url';
+import type {
+  ExplorerData,
+  RoutableFile,
+  Route,
+  RouteGenerationData,
+} from "@marko/run/vite";
+import fs from "fs";
+import path from "path";
+import url from "url";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-const cacheDir = path.join(__dirname, '../../run/.cache/explorer');
-const codeDir = path.join(cacheDir, 'code');
-const dataFilePath = path.join(cacheDir, 'data.json');
+const cacheDir = path.join(__dirname, "../../run/.cache/explorer");
+const codeDir = path.join(cacheDir, "code");
+const dataFilePath = path.join(cacheDir, "data.json");
 
 export interface RoutesData {
   hasMiddleware: boolean;
@@ -15,13 +20,13 @@ export interface RoutesData {
   generation: RouteGenerationData;
   routes: RouteListItem[];
   special: RouteListItem[];
-  files: { name: string, path: string }[];
+  files: { name: string; path: string }[];
 }
 
 export interface RouteData {
-  id: string,
+  id: string;
   key: string;
-  verbs: ('get' | 'post' | 'put' | 'delete')[];
+  verbs: ("get" | "post" | "put" | "delete")[];
   path: string;
   params?: string[];
   layouts: RoutableFile[];
@@ -29,14 +34,14 @@ export interface RouteData {
   meta?: RoutableFile;
   handler?: RoutableFile;
   page?: RoutableFile;
-  files: { name: string, path: string }[];
+  files: { name: string; path: string }[];
 }
 
 export interface RouteListItem {
   id: string;
-  verbs: ('get' | 'post' | 'put' | 'delete')[];
+  verbs: ("get" | "post" | "put" | "delete")[];
   path: string;
-  isSpecial: boolean,
+  isSpecial: boolean;
   layouts: RoutableFile[];
   middleware: RoutableFile[];
   meta?: RoutableFile;
@@ -54,12 +59,10 @@ const HttpVerbOrder = {
 
 function getVerbs(route: Route) {
   const verbs = route.handler?.verbs?.slice() || [];
-  if (route.page && !verbs.includes('get')) {
-    verbs.unshift('get');
+  if (route.page && !verbs.includes("get")) {
+    verbs.unshift("get");
   }
-  return verbs.sort(
-    (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]
-  );
+  return verbs.sort((a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]);
 }
 
 function formatPath(path: string) {
@@ -69,8 +72,8 @@ function formatPath(path: string) {
 }
 
 async function getData() {
-  const json = await fs.promises.readFile(dataFilePath, 'utf-8');
-  return JSON.parse(json) as ExplorerData
+  const json = await fs.promises.readFile(dataFilePath, "utf-8");
+  return JSON.parse(json) as ExplorerData;
 }
 
 export async function getRoutes() {
@@ -83,7 +86,7 @@ export async function getRoutes() {
     generation: data.meta,
     routes: [],
     special: [],
-    files: Object.entries(data.files).map(([name, path]) => ({ name, path }))
+    files: Object.entries(data.files).map(([name, path]) => ({ name, path })),
   };
 
   for (const [id, route] of Object.entries(data.routes)) {
@@ -96,25 +99,25 @@ export async function getRoutes() {
     if (route.meta) {
       result.hasMeta = true;
     }
-    const isSpecial = id.startsWith('s');
+    const isSpecial = id.startsWith("s");
     const listItem: RouteListItem = {
       verbs: [],
       id,
       isSpecial,
-      path: '',
+      path: "",
       layouts: route.layouts,
       middleware: route.middleware,
       meta: route.meta,
       handler: route.handler,
       page: route.page,
-    }
+    };
 
     if (!isSpecial) {
       for (const path of route.paths) {
         result.routes.push({
           ...listItem,
           verbs: getVerbs(route),
-          path: formatPath(path.path)
+          path: formatPath(path.path),
         });
       }
     } else {
@@ -134,26 +137,29 @@ export async function getRouteById(id: string) {
     return undefined;
   }
 
-  const isSpecial = id.startsWith('s');
+  const isSpecial = id.startsWith("s");
   const result: RouteData = {
     id,
     key: route.key,
     verbs: [],
-    path: '',
+    path: "",
     layouts: route.layouts,
     middleware: route.middleware,
     meta: route.meta,
     handler: route.handler,
     page: route.page,
-    files: [{ name: 'Marko Template', path: `${route.entryName}.marko`}]
+    files: [{ name: "Marko Template", path: `${route.entryName}.marko` }],
   };
-  
+
   if (!isSpecial) {
     const path = route.paths[0];
     result.path = formatPath(path.path);
     result.verbs = getVerbs(route);
     result.params = path.params ? Object.keys(path.params) : undefined;
-    result.files.push({ name: 'JavaScript Entry', path: `${route.entryName}.js`})
+    result.files.push({
+      name: "JavaScript Entry",
+      path: `${route.entryName}.js`,
+    });
   }
 
   return result;
@@ -162,7 +168,7 @@ export async function getRouteById(id: string) {
 export function getFileStream(name: string) {
   const filePath = path.join(codeDir, name);
   if (fs.existsSync(filePath)) {
-    return fs.createReadStream(filePath, { encoding: 'utf-8' });
+    return fs.createReadStream(filePath, { encoding: "utf-8" });
   }
   return undefined;
 }

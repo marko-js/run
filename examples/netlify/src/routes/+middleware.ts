@@ -12,7 +12,7 @@ export default MarkoRun.route(async ({ request, url, meta }, next) => {
     console.log(
       `${requestName} completed ${
         success ? "successfully" : "with errors"
-      } in ${performance.now() - startTime}ms`
+      } in ${performance.now() - startTime}ms`,
     );
   }
 });

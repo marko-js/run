@@ -1,23 +1,24 @@
+import path from "path";
+
 import {
   httpVerbs,
+  markoRunFilePrefix,
   RoutableFileTypes,
   serverEntryQuery,
   virtualFilePrefix,
-  markoRunFilePrefix,
 } from "../constants";
-import { createStringWriter } from "./writer";
 import type {
   Adapter,
-  HttpVerb,
-  Route,
   BuiltRoutes,
-  RoutableFile,
-  RouterOptions,
+  HttpVerb,
   PathInfo,
+  RoutableFile,
+  Route,
+  RouterOptions,
 } from "../types";
-import type { Writer } from "./writer";
 import { getVerbs, hasVerb } from "../utils/route";
-import path from 'path';
+import type { Writer } from "./writer";
+import { createStringWriter } from "./writer";
 
 interface RouteTrie {
   key: string;
@@ -153,7 +154,7 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
   }
   if (page) {
     const importPath = route.layouts.length
-      ? `./${path.posix.join(entriesDir, page.relativePath, '..', 'route.marko')}`
+      ? `./${path.posix.join(entriesDir, page.relativePath, "..", "route.marko")}`
       : `./${page.importPath}`;
     imports.writeLines(`import page from '${importPath}${serverEntryQuery}';`);
   }
@@ -300,7 +301,7 @@ export function renderRouter(
   }
   for (const route of Object.values(routes.special) as Route[]) {
     const importPath = route.layouts.length
-      ? `./${path.posix.join(entriesDir, route.page!.relativePath, '..', `route.${route.key}.marko`)}`
+      ? `./${path.posix.join(entriesDir, route.page!.relativePath, "..", `route.${route.key}.marko`)}`
       : `./${route.page!.importPath}`;
     imports.writeLines(
       `import page${route.key} from '${importPath}${serverEntryQuery}';`,
@@ -911,7 +912,7 @@ function writeModuleDeclaration(
 }
 
 function pathToURLPatternString(path: string): string {
-  return path.replace(/\/\$(\$?)([^\/]*)/g, (_, catchAll, name) => {
+  return path.replace(/\/\$(\$?)([^/]*)/g, (_, catchAll, name) => {
     name = decodeURIComponent(name);
     return catchAll ? `/:${name || "rest"}*` : `/:${name}`;
   });

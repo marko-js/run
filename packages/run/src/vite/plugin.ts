@@ -1,29 +1,23 @@
-import path from "path";
+import markoVitePlugin from "@marko/vite";
+import browserslist from "browserslist";
+import { createHash } from "crypto";
+import createDebug from "debug";
+import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
 import { glob } from "glob";
+import path from "path";
+import type { OutputOptions, PluginContext } from "rollup";
 import { fileURLToPath } from "url";
-import browserslist from "browserslist";
-import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
-import { buildErrorMessage, mergeConfig } from "vite";
 import type {
-  ViteDevServer,
+  ModuleNode,
   Plugin,
   ResolvedConfig,
   UserConfig,
-  ModuleNode,
+  ViteDevServer,
 } from "vite";
-import type { PluginContext, OutputOptions } from "rollup";
-import markoVitePlugin from "@marko/vite";
-import { buildRoutes, matchRoutableFile } from "./routes/builder";
-import { createFSWalker } from "./routes/walk";
-import type {
-  Options,
-  Adapter,
-  BuiltRoutes,
-  HttpVerb,
-  PackageData,
-  Route,
-} from "./types";
+import { buildErrorMessage, mergeConfig } from "vite";
+
+import { prepareError } from "../adapter/utils";
 import {
   renderMiddleware,
   renderRouteEntry,
@@ -32,25 +26,30 @@ import {
   renderRouteTypeInfo,
 } from "./codegen";
 import {
-  virtualFilePrefix,
   httpVerbs,
-  serverEntryQuery,
-  RoutableFileTypes,
   markoRunFilePrefix,
+  RoutableFileTypes,
+  serverEntryQuery,
+  virtualFilePrefix,
 } from "./constants";
+import { buildRoutes, matchRoutableFile } from "./routes/builder";
+import { createFSWalker } from "./routes/walk";
+import type {
+  Adapter,
+  BuiltRoutes,
+  HttpVerb,
+  Options,
+  PackageData,
+  Route,
+} from "./types";
 import { getExportIdentifiers, getViteSSRExportIdentifiers } from "./utils/ast";
-import { logRoutesTable } from "./utils/log";
 import {
   getExternalAdapterOptions,
   getExternalPluginOptions,
   setExternalPluginOptions,
 } from "./utils/config";
-
-// @ts-ignore
-import createDebug from "debug";
+import { logRoutesTable } from "./utils/log";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
-import { prepareError } from "../adapter/utils";
-import { createHash } from "crypto";
 
 const debug = createDebug("@marko/run");
 
@@ -84,6 +83,7 @@ interface RouteData {
 }
 
 export default function markoRun(opts: Options = {}): Plugin[] {
+  // eslint-disable-next-line prefer-const
   let { routesDir, adapter, ...markoVitePluginOptions } = opts;
 
   let store: ReadOncePersistedStore<RouteData>;
@@ -108,7 +108,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   ) => Promise<string[]>;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
-  let seenErrors = new Set<string>();
+  const seenErrors = new Set<string>();
 
   const virtualFiles = new Map<string, string>();
 
@@ -142,47 +142,43 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
   function buildVirtualFiles() {
-    return (buildVirtualFilesResult ??= new Promise(async (resolve, reject) => {
-      try {
-        // const sources: RouteSource[] = [];
+    return (buildVirtualFilesResult ??= (async () => {
+      // const sources: RouteSource[] = [];
 
-        // if (true) {
-        //   const explorerRoutesDir = path.resolve(__dirname, '../components/routes-explorer');
-        //   const explorerImportPrefix = path.relative(root, explorerRoutesDir);
-        //   sources.push({
-        //     walker: createFSWalker(explorerRoutesDir),
-        //     importPrefix: explorerImportPrefix,
-        //     basePath: '_route-explorer.%2Broutes'
-        //   });
-        // }
-        virtualFiles.clear();
-        routes = await buildRoutes({
-          walker: createFSWalker(resolvedRoutesDir),
-          importPrefix: routesDir,
-        });
-        if (!routes.list.length) {
-          throw new Error("No routes generated");
-        }
-
-        for (const route of routes.list) {
-          virtualFiles.set(path.posix.join(root, `${route.entryName}.js`), "");
-        }
-
-        if (routes.middleware.length) {
-          virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
-        }
-        virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
-
-        resolve(routes);
-      } catch (err) {
-        reject(err);
+      // if (true) {
+      //   const explorerRoutesDir = path.resolve(__dirname, '../components/routes-explorer');
+      //   const explorerImportPrefix = path.relative(root, explorerRoutesDir);
+      //   sources.push({
+      //     walker: createFSWalker(explorerRoutesDir),
+      //     importPrefix: explorerImportPrefix,
+      //     basePath: '_route-explorer.%2Broutes'
+      //   });
+      // }
+      virtualFiles.clear();
+      routes = await buildRoutes({
+        walker: createFSWalker(resolvedRoutesDir),
+        importPrefix: routesDir,
+      });
+      if (!routes.list.length) {
+        throw new Error("No routes generated");
       }
-    }));
+
+      for (const route of routes.list) {
+        virtualFiles.set(path.posix.join(root, `${route.entryName}.js`), "");
+      }
+
+      if (routes.middleware.length) {
+        virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
+      }
+      virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+
+      return routes;
+    })());
   }
 
   let renderVirtualFilesResult: Promise<void> | undefined;
   function renderVirtualFiles(context: PluginContext) {
-    return (renderVirtualFilesResult ??= new Promise<void>(async (resolve) => {
+    return (renderVirtualFilesResult ??= (async () => {
       try {
         const routes = await buildVirtualFiles();
         if (fs.existsSync(entryFilesDir)) {
@@ -210,14 +206,21 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (route.page && route.layouts.length) {
-            const relativePath = path.relative(resolvedRoutesDir, route.page.filePath);
-            const routeFileDir = path.join(entryFilesDir, relativePath, '..');
-            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, root));
+            const relativePath = path.relative(
+              resolvedRoutesDir,
+              route.page.filePath,
+            );
+            const routeFileDir = path.join(entryFilesDir, relativePath, "..");
+            const routeFileRelativePathPosix = normalizePath(
+              path.relative(routeFileDir, root),
+            );
 
             fs.mkdirSync(routeFileDir, { recursive: true });
             fs.writeFileSync(
-              path.join(routeFileDir, 'route.marko'),
-              renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to)),
+              path.join(routeFileDir, "route.marko"),
+              renderRouteTemplate(route, (to) =>
+                path.posix.join(routeFileRelativePathPosix, to),
+              ),
             );
           }
           virtualFiles.set(
@@ -227,14 +230,21 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         for (const route of Object.values(routes.special) as Route[]) {
           if (route.page && route.layouts.length) {
-            const relativePath = path.relative(resolvedRoutesDir, route.page.filePath);
-            const routeFileDir = path.join(entryFilesDir, relativePath, '..');
-            const routeFileRelativePathPosix = normalizePath(path.relative(routeFileDir, root));
+            const relativePath = path.relative(
+              resolvedRoutesDir,
+              route.page.filePath,
+            );
+            const routeFileDir = path.join(entryFilesDir, relativePath, "..");
+            const routeFileRelativePathPosix = normalizePath(
+              path.relative(routeFileDir, root),
+            );
 
             fs.mkdirSync(routeFileDir, { recursive: true });
             fs.writeFileSync(
               path.join(routeFileDir, `route.${route.key}.marko`),
-              renderRouteTemplate(route, (to) => path.posix.join(routeFileRelativePathPosix, to)),
+              renderRouteTemplate(route, (to) =>
+                path.posix.join(routeFileRelativePathPosix, to),
+              ),
             );
           }
         }
@@ -286,9 +296,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           `throw ${JSON.stringify(prepareError(err as Error))}`,
         );
       }
-
-      resolve();
-    }));
+    })());
   }
 
   return [
@@ -339,7 +347,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             .digest("hex"),
         );
         entryFilesDirPosix = normalizePath(entryFilesDir);
-        relativeEntryFilesDirPosix = normalizePath(path.relative(root, entryFilesDir));
+        relativeEntryFilesDirPosix = normalizePath(
+          path.relative(root, entryFilesDir),
+        );
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
@@ -364,7 +374,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             entryFileNames(info) {
               let name = getEntryFileName(info.facadeModuleId);
               if (!name) {
-                for (let id of info.moduleIds) {
+                for (const id of info.moduleIds) {
                   name = getEntryFileName(id);
                   if (name) {
                     break;
@@ -561,6 +571,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         if (importee === "@marko/run/router") {
+          console.log("plugin resolveId router");
           return path.resolve(root, ROUTER_FILENAME);
         } else if (
           importee.endsWith(".marko") &&
@@ -741,7 +752,7 @@ export async function resolveAdapter(
         name.indexOf("marko-run-adapter") !== -1
       ) {
         try {
-          const module = await import(name);
+          const module = await import(/* @vite-ignore */ name);
           log &&
             debug(
               `Using adapter ${name} listed in your package.json dependecies`,
@@ -755,7 +766,7 @@ export async function resolveAdapter(
   }
 
   const defaultAdapter = "@marko/run/adapter";
-  const module = await import(defaultAdapter);
+  const module = await import(/* @vite-ignore */ defaultAdapter);
   log && debug("Using default adapter");
   return module.default();
 }

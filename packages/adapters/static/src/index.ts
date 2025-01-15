@@ -1,16 +1,16 @@
-import path from "path";
-import { fileURLToPath } from "url";
-import type { Adapter, Route, AdapterConfig } from "@marko/run/vite";
-
-import { Pool } from "undici";
-import createCrawler from "./crawler";
-import fs from "fs/promises";
-import { getAvailablePort, spawnServer, loadEnv } from "@marko/run/vite";
+import type { Fetch } from "@marko/run";
 import baseAdapter from "@marko/run/adapter";
-import createStaticServe from "serve-static";
+import type { Adapter, AdapterConfig, Route } from "@marko/run/vite";
+import { getAvailablePort, loadEnv, spawnServer } from "@marko/run/vite";
+import fs from "fs/promises";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
-import type { Fetch } from "@marko/run";
+import path from "path";
+import createStaticServe from "serve-static";
+import { Pool } from "undici";
+import { fileURLToPath } from "url";
+
+import createCrawler from "./crawler";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");

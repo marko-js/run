@@ -1,4 +1,5 @@
 import assert from "assert";
+
 import { getInspectOptions } from "../utils/server";
 
 describe("server-utils", () => {

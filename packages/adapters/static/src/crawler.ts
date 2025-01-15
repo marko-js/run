@@ -1,6 +1,6 @@
 import fs from "fs";
-import nodePath from "path";
 import { WritableStream as Parser } from "htmlparser2/lib/WritableStream";
+import nodePath from "path";
 
 const noop = () => {};
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
@@ -18,7 +18,7 @@ export interface Crawler {
 
 export default function createCrawler(
   makeRequest: (request: Request) => Promise<Response>,
-  opts: Options = {}
+  opts: Options = {},
 ): Crawler {
   const origin = opts.origin || `http://localhost`;
   const out = nodePath.resolve(opts.out || "dist");
@@ -53,7 +53,9 @@ export default function createCrawler(
       });
 
       const res = await makeRequest(req);
-      const validContentType = !!res.headers.get("content-type")?.includes(contentType);
+      const validContentType = !!res.headers
+        .get("content-type")
+        ?.includes(contentType);
 
       let redirect: string | undefined;
 
@@ -83,13 +85,15 @@ export default function createCrawler(
               queue.push(visit(redirectPath));
             }
           } else {
-            redirect = location
+            redirect = location;
           }
           break;
         }
         default: {
           abortController.abort();
-          console.warn(`Status code ${res.status} was while crawling: '${path}'`);
+          console.warn(
+            `Status code ${res.status} was while crawling: '${path}'`,
+          );
           return;
         }
       }
@@ -102,8 +106,8 @@ export default function createCrawler(
         fsWriter.write(
           `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${redirect.replace(
             /"/g,
-            "&#40;"
-          )}">`
+            "&#40;",
+          )}">`,
         );
       } else {
         const writable = new WritableStream({
@@ -190,10 +194,10 @@ function resolveUrl(href: string, origin: string) {
   try {
     const url = new URL(href, origin);
     if (url.origin === origin) {
-      let { pathname } = url;
+      const { pathname } = url;
       const lastChar = pathname.length - 1;
       if (pathname[lastChar] !== "/") {
-        url.pathname += '/'
+        url.pathname += "/";
       }
       return url;
     }

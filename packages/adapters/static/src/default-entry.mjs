@@ -1,1 +1,1 @@
-export { fetch } from '@marko/run/router';
+export { fetch } from "@marko/run/router";

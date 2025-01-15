@@ -1,5 +1,5 @@
-import type { HandlerEvent, HandlerContext } from "@netlify/functions";
 import type { Context } from "@netlify/edge-functions";
+import type { HandlerContext, HandlerEvent } from "@netlify/functions";
 
 export interface NetlifyFunctionsPlatformInfo {
   event: HandlerEvent;

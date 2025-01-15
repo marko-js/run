@@ -1,5 +1,5 @@
-import { mergeConfig } from "vite";
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
+import { mergeConfig } from "vite";
 export type { NodePlatformInfo } from "@marko/run/adapter";
 
 export default function (): Adapter {
@@ -11,10 +11,12 @@ export default function (): Adapter {
       const baseConfig = await base.viteConfig?.(config);
       const adapterConfig = {
         ssr: {
-          noExternal: /@marko\/run-adapter-node/
-        }
-      }
-      return baseConfig ? mergeConfig(baseConfig, adapterConfig) : adapterConfig;
+          noExternal: /@marko\/run-adapter-node/,
+        },
+      };
+      return baseConfig
+        ? mergeConfig(baseConfig, adapterConfig)
+        : adapterConfig;
     },
     typeInfo(writer) {
       writer(`import type { NodePlatformInfo } from '@marko/run-adapter-node'`);

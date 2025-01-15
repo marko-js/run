@@ -1,11 +1,11 @@
 import type {
-  InputObject,
-  NextFunction,
   AnyRoute,
   Context,
+  InputObject,
   MultiRouteContext,
+  NextFunction,
+  Platform,
   RouteHandler,
-  Platform
 } from "./types";
 
 const pageResponseInit = {
@@ -15,7 +15,7 @@ const pageResponseInit = {
 
 export function pageResponse(
   template: any,
-  input: Record<PropertyKey, unknown>
+  input: Record<PropertyKey, unknown>,
 ): Response {
   return new Response(template.render(input), pageResponseInit);
 }
@@ -28,7 +28,7 @@ globalThis.MarkoRun ??= {
   NotMatched,
   route(handler) {
     return handler;
-  }
+  },
 };
 
 const serializedGlobals = { params: true, url: true };
@@ -37,7 +37,7 @@ export function createContext<TRoute extends AnyRoute>(
   route: TRoute | undefined,
   request: Request,
   platform: Platform,
-  url: URL = new URL(request.url)
+  url: URL = new URL(request.url),
 ): [Context<TRoute>, (data?: InputObject) => InputObject] {
   const context: Context<TRoute> = route
     ? {
@@ -47,7 +47,7 @@ export function createContext<TRoute extends AnyRoute>(
         meta: route.meta,
         params: route.params,
         route: route.path,
-        serializedGlobals
+        serializedGlobals,
       }
     : {
         request,
@@ -56,7 +56,7 @@ export function createContext<TRoute extends AnyRoute>(
         meta: {},
         params: {},
         route: "",
-        serializedGlobals
+        serializedGlobals,
       };
 
   let input: InputObject | undefined;
@@ -74,7 +74,7 @@ export function createContext<TRoute extends AnyRoute>(
 export async function call<TRoute extends AnyRoute>(
   handler: RouteHandler<TRoute>,
   next: NextFunction,
-  context: MultiRouteContext<TRoute>
+  context: MultiRouteContext<TRoute>,
 ): Promise<Response> {
   let response!: Response | null | void;
 
@@ -98,12 +98,12 @@ export async function call<TRoute extends AnyRoute>(
           `Handler '${handler.name}' called its next function but no response was returned. ` +
             "This will cause the next function to be called again which is wasteful. " +
             "Either return or throw the result of calling `next`, return or throw a " +
-            "new Response object or finally `throw null` to skip handling the request"
+            "new Response object or finally `throw null` to skip handling the request",
         );
       } else if (nextCallCount > 1) {
         console.warn(
           `Handler '${handler.name}' called its next function more than once. ` +
-            "Make sure this is intentional because it is inefficient."
+            "Make sure this is intentional because it is inefficient.",
         );
       }
     }
@@ -142,7 +142,7 @@ export function compose(handlers: RouteHandler[]): RouteHandler {
 }
 
 export function normalize(
-  obj: RouteHandler | RouteHandler[] | Promise<RouteHandler | RouteHandler[]>
+  obj: RouteHandler | RouteHandler[] | Promise<RouteHandler | RouteHandler[]>,
 ): RouteHandler {
   if (typeof obj === "function") {
     return obj;
@@ -161,8 +161,7 @@ export function normalize(
   return passthrough;
 }
 
-export function passthrough() {
-}
+export function passthrough() {}
 
 export function noContent() {
   return new Response(null, {

@@ -7,6 +7,9 @@
     "dev": "marko-run",
     "preview": "marko-run preview"
   },
+  "dependencies": {
+    "marko": "^5.37.4"
+  },
   "devDependencies": {
     "@marko/compiler": "^5.39.4",
     "@marko/run": "^0.5.8",
@@ -18,8 +21,5 @@
     "prettier": "^3.3.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
-  },
-  "dependencies": {
-    "marko": "^5.37.4"
   }
 }

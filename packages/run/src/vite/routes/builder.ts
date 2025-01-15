@@ -1,20 +1,20 @@
-import { RoutableFileTypes, markoRunFilePrefix } from "../constants";
-import VDir from "./vdir";
+import { markoRunFilePrefix, RoutableFileTypes } from "../constants";
 import type {
   BuiltRoutes,
   RoutableFile,
-  Route,
   RoutableFileType,
+  Route,
   SpecialRoutes,
 } from "../types";
-import type { WalkOptions, Walker } from "./walk";
 import { parseFlatRoute } from "./parse";
+import VDir from "./vdir";
+import type { Walker, WalkOptions } from "./walk";
 
 const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
 const nonMarkoFiles = `(${RoutableFileTypes.Middleware}|${RoutableFileTypes.Handler}|${RoutableFileTypes.Meta})\\.(?:.*\\.)?(.+)`;
 const routeableFileRegex = new RegExp(
   `[+](?:${markoFiles}|${nonMarkoFiles})$`,
-  "i"
+  "i",
 );
 
 export function isRoutableFile(filename: string) {
@@ -27,7 +27,7 @@ export function matchRoutableFile(filename: string) {
 }
 
 export function isSpecialType(
-  type: RoutableFileType
+  type: RoutableFileType,
 ): type is keyof SpecialRoutes {
   return (
     type === RoutableFileTypes.NotFound || type === RoutableFileTypes.Error
@@ -35,13 +35,14 @@ export function isSpecialType(
 }
 
 export interface RouteSource {
-  walker: Walker,
-  importPrefix?: string,
-  basePath?: string
+  walker: Walker;
+  importPrefix?: string;
+  basePath?: string;
 }
 
-export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise<BuiltRoutes> {
-
+export async function buildRoutes(
+  sources: RouteSource | RouteSource[],
+): Promise<BuiltRoutes> {
   const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
   const routes: Route[] = [];
   const special: SpecialRoutes = {};
@@ -59,7 +60,7 @@ export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise
   let importPrefix: string;
   let activeDirs: VDir[];
   let isBaseDir: boolean;
-  
+
   let nextFileId = 1;
   let nextRouteIndex = 1;
 
@@ -96,7 +97,7 @@ export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise
 
       if (dirStack.length && isSpecialType(type)) {
         console.warn(
-          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${path}`
+          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${path}`,
         );
         return;
       }
@@ -130,8 +131,10 @@ export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise
   }
 
   for (const source of sources) {
-    importPrefix = source.importPrefix ? source.importPrefix.replace(/^\/+|\/+$/g, "") : '';
-    basePath = source.basePath || ''
+    importPrefix = source.importPrefix
+      ? source.importPrefix.replace(/^\/+|\/+$/g, "")
+      : "";
+    basePath = source.basePath || "";
     activeDirs = [root];
     isBaseDir = true;
     await source.walker(walkOptions);
@@ -206,7 +209,11 @@ export async function buildRoutes(sources: RouteSource | RouteSource[]): Promise
           handler,
           entryName:
             `${markoRunFilePrefix}route` +
-            (dir.path !== "/" ? dir.fullPath.replace(/\//g, ".").replace(/(%[A-Fa-f0-9]{2})+/g, '_') : ""),
+            (dir.path !== "/"
+              ? dir.fullPath
+                  .replace(/\//g, ".")
+                  .replace(/(%[A-Fa-f0-9]{2})+/g, "_")
+              : ""),
         });
       }
 

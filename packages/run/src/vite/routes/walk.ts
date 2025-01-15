@@ -60,7 +60,7 @@ export function createFSWalker(dir: string): Walker {
         path: dir,
         name: path.basename(dir),
       },
-      maxDepth
+      maxDepth,
     );
   };
 }

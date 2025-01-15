@@ -1,11 +1,11 @@
 export declare const NotHandled: unique symbol;
 export declare const NotMatched: unique symbol;
 export type {
-  GetPaths,
-  PostPaths,
-  GetablePath,
   GetableHref,
-  PostablePath,
+  GetablePath,
+  GetPaths,
+  Platform,
   PostableHref,
-  Platform
+  PostablePath,
+  PostPaths,
 } from "./types";

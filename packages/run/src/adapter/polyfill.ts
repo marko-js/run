@@ -1,7 +1,7 @@
-import * as webStream from 'stream/web';
-import { webcrypto } from 'crypto';
-import * as undici from 'undici';
-import { ServerResponse } from 'http';
+import { webcrypto } from "crypto";
+import { ServerResponse } from "http";
+import * as webStream from "stream/web";
+import * as undici from "undici";
 
 (globalThis as any).crypto ??= webcrypto;
 (globalThis as any).fetch ??= undici.fetch;
@@ -15,9 +15,9 @@ import { ServerResponse } from 'http';
 (globalThis as any).File ??= undici.File;
 
 declare global {
-	interface Headers {
-		getSetCookie: () => string[]
-	}
+  interface Headers {
+    getSetCookie: () => string[];
+  }
 }
 
 export const appendHeader = (ServerResponse.prototype.appendHeader as any)
@@ -27,7 +27,7 @@ export const appendHeader = (ServerResponse.prototype.appendHeader as any)
 function appendHeader_platform(
   response: ServerResponse,
   name: string,
-  value: string | readonly string[]
+  value: string | readonly string[],
 ) {
   response.appendHeader(name, value);
 }
@@ -35,16 +35,16 @@ function appendHeader_platform(
 function appendHeader_fallback(
   response: ServerResponse,
   name: string,
-  value: string | readonly string[]
+  value: string | readonly string[],
 ) {
-	const existing = response.getHeader(name);
-	if (existing === undefined) {
-		response.setHeader(name, value)
-	} else if (Array.isArray(existing)) {
-		response.setHeader(name, existing.concat(value))
-	} else {
-		response.setHeader(name, [String(existing)].concat(value))
-	}
+  const existing = response.getHeader(name);
+  if (existing === undefined) {
+    response.setHeader(name, value);
+  } else if (Array.isArray(existing)) {
+    response.setHeader(name, existing.concat(value));
+  } else {
+    response.setHeader(name, [String(existing)].concat(value));
+  }
 }
 
 export const getSetCookie = (Headers.prototype.getSetCookie as any)
