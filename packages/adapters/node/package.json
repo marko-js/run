@@ -14,29 +14,10 @@
   "author": "Ryan Turnquist <rturnq@gmail.com>",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./middleware": {
-      "types": "./dist/middleware.d.ts",
-      "import": "./dist/middleware.js",
-      "require": "./dist/middleware.cjs"
-    }
+    ".": "./src/index.ts",
+    "./middleware": "./src/middleware.ts"
   },
-  "main": "./src/index.ts",
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/index.d.ts"
-      ],
-      "middleware": [
-        "./dist/middleware.d.ts"
-      ]
-    }
-  },
+  "types": "./src/index.ts",
   "files": [
     "dist"
   ],

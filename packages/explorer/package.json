@@ -15,17 +15,15 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
     }
   },
-  "main": "dist/index.cjs",
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
-    "build": "tsc -b tsconfig.build.json && tsx scripts/build.ts",
     "dev": "MR_EXPLORER=false marko-run",
     "preview": "MR_EXPLORER=false marko-run preview"
   },
@@ -41,6 +39,9 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.0"
+  },
+  "peerDependencies": {
+    "@marko/run": "^0"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"

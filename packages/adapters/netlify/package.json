@@ -14,21 +14,9 @@
   "author": "Ryan Turnquist <rturnq@gmail.com>",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
+    ".": "./src/index.ts"
   },
-  "main": "./src/index.ts",
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/index.d.ts"
-      ]
-    }
-  },
+  "types": "./src/index.ts",
   "files": [
     "dist"
   ],

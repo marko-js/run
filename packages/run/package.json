@@ -14,59 +14,14 @@
   "author": "Ryan Turnquist <rturnq@gmail.com>",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/runtime/index.d.ts",
-      "import": "./dist/runtime/index.js",
-      "require": "./dist/runtime/index.cjs"
-    },
-    "./namespace": {
-      "types": "./dist/runtime/namespace.d.ts"
-    },
-    "./router": {
-      "types": "./dist/runtime/router.d.ts",
-      "import": "./dist/runtime/router.js",
-      "require": "./dist/runtime/router.cjs"
-    },
-    "./vite": {
-      "types": "./dist/vite/index.d.ts",
-      "import": "./dist/vite/index.js",
-      "require": "./dist/vite/index.cjs"
-    },
-    "./adapter/middleware": {
-      "types": "./dist/adapter/middleware.d.ts",
-      "import": "./dist/adapter/middleware.js",
-      "require": "./dist/adapter/middleware.cjs"
-    },
-    "./adapter": {
-      "types": "./dist/adapter/index.d.ts",
-      "import": "./dist/adapter/index.js",
-      "require": "./dist/adapter/index.cjs"
-    }
+    ".": "./src/runtime/index.ts",
+    "./namespace": "./src/runtime/namespace.ts",
+    "./router": "./src/runtime/router.ts",
+    "./vite": "./src/vite/index.ts",
+    "./adapter/middleware": "./src/adapter/middleware.ts",
+    "./adapter": "./src/adapter/index.ts"
   },
-  "main": "./src/runtime/index.ts",
-  "types": "./dist/runtime/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/runtime/index.d.ts"
-      ],
-      "namespace": [
-        "./dist/runtime/namespace.d.ts"
-      ],
-      "router": [
-        "./dist/runtime/router.d.ts"
-      ],
-      "vite": [
-        "./dist/vite/index.d.ts"
-      ],
-      "adapter/middleware": [
-        "./dist/adapter/middleware.d.ts"
-      ],
-      "adapter": [
-        "./dist/adapter/index.d.ts"
-      ]
-    }
-  },
+  "types": "./src/runtime/index.ts",
   "bin": {
     "marko-run": "./dist/cli/index.mjs"
   },
@@ -75,7 +30,7 @@
   ],
   "scripts": {
     "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts",
-    "test": "cross-env NODE_ENV=test mocha \"./src/**/__tests__/*.test.?(c)ts\"",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS='$NODE_OPTIONS --import tsx' mocha \"./src/**/__tests__/*.test.?(c)ts\"",
     "test:inspect": "npm test -- --inspect",
     "test:update": "npm test -- --update",
     "test:watch": "npm test -- --watch"
@@ -106,6 +61,7 @@
     "@marko/fixture-snapshots": "^2.2.1",
     "@marko/testing-library": "^6.2.0",
     "@types/debug": "^4.1.12",
+    "@types/diff": "^7.0.0",
     "@types/glob": "^8.1.0",
     "@types/human-format": "^1.0.3",
     "@types/jsdom": "^21.1.7",

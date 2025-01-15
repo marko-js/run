@@ -2,17 +2,18 @@ import { defaultNormalizer, defaultSerializer } from "@marko/fixture-snapshots";
 import { diffLines } from "diff";
 import fs from "fs";
 import { JSDOM } from "jsdom";
-// import url from 'url'
-import snap from "mocha-snap";
+import mochaSnap from "mocha-snap";
 import { createRequire } from "module";
 import path from "path";
 import * as playwright from "playwright";
+import url from "url";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 
-// const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const snap = (mochaSnap as any).default as typeof mochaSnap;
 
 // https://github.com/esbuild-kit/tsx/issues/113
 const { toString } = Function.prototype;
