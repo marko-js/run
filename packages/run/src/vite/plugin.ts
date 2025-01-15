@@ -186,29 +186,27 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         for (const route of routes.list) {
-          if (route.handler) {
-            const exports = await getExportsFromFile(
-              context,
-              route.handler.filePath,
-            );
-            route.handler.verbs = [];
+          const { handler, page, layouts } = route;
+          if (handler) {
+            const exports = await getExportsFromFile(context, handler.filePath);
+            handler.verbs = [];
             for (const name of exports) {
               const verb = name.toLowerCase() as HttpVerb;
               if (name === verb.toUpperCase() && httpVerbs.includes(verb)) {
-                route.handler.verbs.push(verb);
+                handler.verbs.push(verb);
               }
             }
-            if (!route.handler.verbs.length) {
+            if (!handler.verbs.length) {
               context.warn(
-                `Did not find any http verb exports in handler '${path.relative(root, route.handler.filePath)}' - expected ${httpVerbs.map((v) => v.toUpperCase()).join(", ")}`,
+                `Did not find any http verb exports in handler '${path.relative(root, handler.filePath)}' - expected ${httpVerbs.map((v) => v.toUpperCase()).join(", ")}`,
               );
             }
           }
 
-          if (route.page && route.layouts.length) {
+          if (page && layouts.length) {
             const relativePath = path.relative(
               resolvedRoutesDir,
-              route.page.filePath,
+              page.filePath,
             );
             const routeFileDir = path.join(entryFilesDir, relativePath, "..");
             const routeFileRelativePathPosix = normalizePath(
@@ -216,8 +214,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             );
 
             fs.mkdirSync(routeFileDir, { recursive: true });
+
+            const pageNameIndex = page.name.indexOf("+page");
+            const pageNamePrefix =
+              pageNameIndex > 0 ? `${page.name.slice(0, pageNameIndex)}.` : "";
+
             fs.writeFileSync(
-              path.join(routeFileDir, "route.marko"),
+              path.join(routeFileDir, pageNamePrefix + "route.marko"),
               renderRouteTemplate(route, (to) =>
                 path.posix.join(routeFileRelativePathPosix, to),
               ),
@@ -229,10 +232,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.page && route.layouts.length) {
+          const { page, layouts, key } = route;
+          if (page && layouts.length) {
             const relativePath = path.relative(
               resolvedRoutesDir,
-              route.page.filePath,
+              page.filePath,
             );
             const routeFileDir = path.join(entryFilesDir, relativePath, "..");
             const routeFileRelativePathPosix = normalizePath(
@@ -241,7 +245,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
             fs.mkdirSync(routeFileDir, { recursive: true });
             fs.writeFileSync(
-              path.join(routeFileDir, `route.${route.key}.marko`),
+              path.join(routeFileDir, `route.${key}.marko`),
               renderRouteTemplate(route, (to) =>
                 path.posix.join(routeFileRelativePathPosix, to),
               ),
