@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.5.15
+
+### Patch Changes
+
+- c03efd5: Support PATCH, OPTIONS and HEAD http methods
+
 ## 0.5.14
 
 ### Patch Changes
