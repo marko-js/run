@@ -65,7 +65,7 @@ declare module "./callback/oauth2/+handler.get" {
   }
 }
 
-declare module "./my/+handler.get" {
+declare module "./my/+handler.get_head" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/my"];

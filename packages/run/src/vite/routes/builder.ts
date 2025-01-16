@@ -117,7 +117,7 @@ export async function buildRoutes(
         filePath: path,
         relativePath,
         importPath: `${importPrefix}/${relativePath}`,
-        verbs: type === RoutableFileTypes.Page ? ["get"] : undefined,
+        verbs: type === RoutableFileTypes.Page ? ["get", "head"] : undefined,
       };
 
       for (const dir of dirs) {

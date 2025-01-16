@@ -11,23 +11,24 @@ import type {
   OutputChunk,
 } from "rollup";
 
-import type { BuiltRoutes, Route } from "../types";
+import type { BuiltRoutes, HttpVerb, Route } from "../types";
 import { getVerbs } from "./route";
 
 const HttpVerbColors = {
   get: kleur.green,
+  head: kleur.dim().green,
   post: kleur.magenta,
   put: kleur.cyan,
   delete: kleur.red,
-  other: kleur.white,
+  patch: kleur.yellow,
+  options: kleur.grey,
 };
 
-const HttpVerbOrder = {
-  get: 0,
-  post: 1,
-  put: 2,
-  delete: 3,
-};
+function verbColor(verb: HttpVerb) {
+  return verb in HttpVerbColors
+    ? HttpVerbColors[verb as keyof typeof HttpVerbColors]
+    : kleur.gray;
+}
 
 export function logRoutesTable(
   routes: BuiltRoutes,
@@ -65,25 +66,30 @@ export function logRoutesTable(
 
   for (const route of routes.list) {
     for (const path of route.paths) {
-      const verbs = getVerbs(route).sort(
-        (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b],
-      );
+      const verbs = getVerbs(route, true);
       let firstRow = true;
 
       for (const verb of verbs) {
-        let size = "";
         const entryType: string[] = [];
+        let size = "";
+        let verbCell = verbColor(verb)(verb.toUpperCase());
+
+        if (verb === "get" && !verbs.includes("head")) {
+          verbCell += kleur.dim(`,${verbColor(verb)("HEAD")}`);
+        }
         if (route.handler) {
           entryType.push(kleur.blue("handler"));
         }
-        if (verb === "get" && route.page) {
+        if (route.page && (verb === "get" || verb === "head")) {
           entryType.push(kleur.yellow("page"));
-          size = prettySize(computeRouteSize(getRouteChunkName(route), bundle));
+          if (verb === "get") {
+            size = prettySize(
+              computeRouteSize(getRouteChunkName(route), bundle),
+            );
+          }
         }
 
-        const row: any[] = [
-          kleur.bold(HttpVerbColors[verb](verb.toUpperCase())),
-        ];
+        const row: any[] = [verbCell];
 
         if (verbs.length === 1 || firstRow) {
           row.push({ rowSpan: verbs.length, content: prettyPath(path.path) });

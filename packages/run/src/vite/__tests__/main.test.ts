@@ -1,7 +1,7 @@
 import fs from "fs";
-// import url from 'url';
-import snap from "mocha-snap";
+import mochaSnap from "mocha-snap";
 import path from "path";
+import url from "url";
 
 import { prepareError } from "../../adapter/utils";
 import {
@@ -18,7 +18,8 @@ import type { BuiltRoutes, HttpVerb } from "../types";
 import { createDirectory } from "./utils/fakeFS";
 import { normalizeErrorStack } from "./utils/sanitize";
 
-// const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const snap = (mochaSnap as any).default as typeof mochaSnap;
 
 const FIXTURES = path.join(__dirname, "fixtures");
 

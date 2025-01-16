@@ -19,8 +19,8 @@
     "lint": "eslint --format unix . && prettier . --check --with-node-modules --log-level=warn",
     "prepare": "husky",
     "report": "open ./coverage/lcov-report/index.html",
-    "test": "npm run test -w packages -w packages/adapters --if-present",
-    "test:update": "UPDATE_EXPECTATIONS=1 mocha --update"
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS='$NODE_OPTIONS --import tsx' mocha",
+    "test:update": "cross-env UPDATE_EXPECTATIONS=1 npm test -- --update"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.11",

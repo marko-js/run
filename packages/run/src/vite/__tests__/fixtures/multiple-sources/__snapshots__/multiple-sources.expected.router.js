@@ -1,7 +1,7 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route.js';
-import { get2 } from 'virtual:marko-run/__marko-run__route._routes.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
+import { get2, head2 } from 'virtual:marko-run/__marko-run__route._routes.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -19,6 +19,16 @@ export function match(method, pathname) {
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === '+routes') return { handler: get2, params: {}, meta: {}, path: '/%2Broutes' }; // /%2Broutes
+			}
+			return null;
+		}
+		case 'HEAD':
+		case 'head': {
+			const len = pathname.length;
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				if (decodeURIComponent(pathname.slice(1, i1 ? -1 : len)) === '+routes') return { handler: head2, params: {}, meta: {}, path: '/%2Broutes' }; // /%2Broutes
 			}
 			return null;
 		}

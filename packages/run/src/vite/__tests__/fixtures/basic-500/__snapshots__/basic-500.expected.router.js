@@ -1,6 +1,6 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
 import page500 from './.marko/route.500.marko?marko-server-entry';
 
 const page500ResponseInit = {
@@ -21,6 +21,12 @@ export function match(method, pathname) {
 		case 'get': {
 			const len = pathname.length;
 			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
+			return null;
+		}
+		case 'HEAD':
+		case 'head': {
+			const len = pathname.length;
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
 			return null;
 		}
 	}

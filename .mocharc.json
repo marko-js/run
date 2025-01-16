@@ -2,6 +2,7 @@
   "exit": true,
   "timeout": 20000,
   "extension": ["js", "ts", "marko"],
-  "watchFiles": ["src/**/*.ts", "src/**/*.marko"],
+  "spec": ["packages/**/src/**/*.test.@(js|ts)"],
+  "watchFiles": ["packages/**/src/**/*.@(ts|marko)"],
   "require": ["tsx", "mocha-snap"]
 }

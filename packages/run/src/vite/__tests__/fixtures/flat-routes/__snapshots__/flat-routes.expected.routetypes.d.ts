@@ -22,7 +22,7 @@ declare module "@marko/run" {
 	}> {}
 }
 
-declare module "./foo,(a,b).(c,d)+handler.get.marko" {
+declare module "./foo,(a,b).(c,d)+handler.get_post.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/foo" | "/a/c" | "/a/d" | "/b/c" | "/b/d"];
@@ -57,11 +57,11 @@ declare module "./foo,$id,$$rest,+page.marko" {
 
 type Routes = {
 	"/": { verb: "get"; };
-	"/foo": { verb: "get"; };
+	"/foo": { verb: "get" | "post"; };
 	"/$id": { verb: "get"; };
 	"/$$rest": { verb: "get"; };
-	"/a/c": { verb: "get"; };
-	"/a/d": { verb: "get"; };
-	"/b/c": { verb: "get"; };
-	"/b/d": { verb: "get"; };
+	"/a/c": { verb: "get" | "post"; };
+	"/a/d": { verb: "get" | "post"; };
+	"/b/c": { verb: "get" | "post"; };
+	"/b/d": { verb: "get" | "post"; };
 }

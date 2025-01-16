@@ -575,7 +575,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         if (importee === "@marko/run/router") {
-          console.log("plugin resolveId router");
           return path.resolve(root, ROUTER_FILENAME);
         } else if (
           importee.endsWith(".marko") &&

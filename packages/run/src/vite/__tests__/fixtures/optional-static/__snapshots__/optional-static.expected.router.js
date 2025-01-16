@@ -1,13 +1,13 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route.js';
-import { get2 } from 'virtual:marko-run/__marko-run__route.foo.js';
-import { get3 } from 'virtual:marko-run/__marko-run__route.foo.bar.js';
-import { get4 } from 'virtual:marko-run/__marko-run__route.foo.bar.baz.js';
-import { get5 } from 'virtual:marko-run/__marko-run__route.foo.baz.js';
-import { get6 } from 'virtual:marko-run/__marko-run__route.bar.js';
-import { get7 } from 'virtual:marko-run/__marko-run__route.bar.baz.js';
-import { get8 } from 'virtual:marko-run/__marko-run__route.baz.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
+import { get2, head2 } from 'virtual:marko-run/__marko-run__route.foo.js';
+import { get3, head3 } from 'virtual:marko-run/__marko-run__route.foo.bar.js';
+import { get4, head4 } from 'virtual:marko-run/__marko-run__route.foo.bar.baz.js';
+import { get5, head5 } from 'virtual:marko-run/__marko-run__route.foo.baz.js';
+import { get6, head6 } from 'virtual:marko-run/__marko-run__route.bar.js';
+import { get7, head7 } from 'virtual:marko-run/__marko-run__route.bar.baz.js';
+import { get8, head8 } from 'virtual:marko-run/__marko-run__route.baz.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -51,6 +51,45 @@ export function match(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: get7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
+						}
+					} break;
+				}
+			}
+			return null;
+		}
+		case 'HEAD':
+		case 'head': {
+			const len = pathname.length;
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				switch (pathname.slice(1, i1 ? -1 : len)) {
+					case 'foo': return { handler: head2, params: {}, meta: {}, path: '/foo' }; // /foo
+					case 'bar': return { handler: head6, params: {}, meta: {}, path: '/bar' }; // /bar
+					case 'baz': return { handler: head8, params: {}, meta: {}, path: '/baz' }; // /baz
+				}
+			} else {
+				switch (pathname.slice(1, i1 - 1)) {
+					case 'foo': {
+						const i2 = pathname.indexOf('/', 5) + 1;
+						if (!i2 || i2 === len) {
+							switch (pathname.slice(5, i2 ? -1 : len)) {
+								case 'bar': return { handler: head3, params: {}, meta: {}, path: '/foo/bar' }; // /foo/bar
+								case 'baz': return { handler: head5, params: {}, meta: {}, path: '/foo/baz' }; // /foo/baz
+							}
+						} else {
+							if (pathname.slice(5, i2 - 1) === 'bar') {
+								const i3 = pathname.indexOf('/', 9) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(9, i3 ? -1 : len) === 'baz') return { handler: head4, params: {}, meta: {}, path: '/foo/bar/baz' }; // /foo/bar/baz
+								}
+							}
+						}
+					} break;
+					case 'bar': {
+						const i2 = pathname.indexOf('/', 5) + 1;
+						if (!i2 || i2 === len) {
+							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: head7, params: {}, meta: {}, path: '/bar/baz' }; // /bar/baz
 						}
 					} break;
 				}

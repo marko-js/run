@@ -4,7 +4,16 @@ export const markoRunFilePrefix = "__marko-run__";
 
 export const virtualFilePrefix = "virtual:marko-run";
 
-export const httpVerbs = ["get", "post", "put", "delete"] as const;
+// no support for "connect" or "trace" verbs
+export const httpVerbs = [
+  "get",
+  "head",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+] as const;
 
 // These need to match the Marko Vite plugin
 export const serverEntryQuery = "?marko-server-entry";

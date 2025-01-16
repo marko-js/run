@@ -29,11 +29,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts",
-    "test": "cross-env NODE_ENV=test NODE_OPTIONS='$NODE_OPTIONS --import tsx' mocha \"./src/**/__tests__/*.test.?(c)ts\"",
-    "test:inspect": "npm test -- --inspect",
-    "test:update": "npm test -- --update",
-    "test:watch": "npm test -- --watch"
+    "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
   },
   "dependencies": {
     "@marko/run-explorer": "^0.1.2",
