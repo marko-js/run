@@ -9,12 +9,12 @@ const httpVerbOrder = httpVerbs.reduce(
   {} as Record<HttpVerb, number>,
 );
 
-export function getVerbs(route: Route) {
+export function getVerbs(route: Route, noAutoHead?: boolean): HttpVerb[] {
   const verbs = new Set(route.handler?.verbs);
   if (route.page) {
     verbs.add("get");
   }
-  if (verbs.has("get")) {
+  if (!noAutoHead && verbs.has("get")) {
     verbs.add("head");
   }
   return [...verbs].sort((a, b) => httpVerbOrder[a] - httpVerbOrder[b]);
