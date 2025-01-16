@@ -26,17 +26,21 @@ import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko'
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
-export async function get1(context, buildInput) {
+export function get1(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware2, __getHandler, context);
+}
+
+export function head1(context, buildInput) {
+	return stripResponseBody(get1(context, buildInput));
 }
 ```
 ---
@@ -56,17 +60,21 @@ import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko'
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
-export async function get2(context, buildInput) {
+export function get2(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware2, __getHandler, context);
+}
+
+export function head2(context, buildInput) {
+	return stripResponseBody(get2(context, buildInput));
 }
 ```
 ---
@@ -86,17 +94,21 @@ import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko'
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.bbb.$bId.ccc.$cId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
-export async function get3(context, buildInput) {
+export function get3(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware2, __getHandler, context);
+}
+
+export function head3(context, buildInput) {
+	return stripResponseBody(get3(context, buildInput));
 }
 ```
 ---
@@ -116,16 +128,20 @@ import Page from '../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko'
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.aaa.$aId.ccc.$cId.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware2 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts';
 import page from './.marko/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
 
-export async function get4(context, buildInput) {
+export function get4(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware2, __getHandler, context);
+}
+
+export function head4(context, buildInput) {
+	return stripResponseBody(get4(context, buildInput));
 }
 ```

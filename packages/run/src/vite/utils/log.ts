@@ -11,8 +11,7 @@ import type {
   OutputChunk,
 } from "rollup";
 
-import { httpVerbs } from "../constants";
-import type { BuiltRoutes, HttpVerb, Route } from "../types";
+import type { BuiltRoutes, Route } from "../types";
 import { getVerbs } from "./route";
 
 const HttpVerbColors = {
@@ -24,14 +23,6 @@ const HttpVerbColors = {
   patch: kleur.yellow,
   options: kleur.grey,
 };
-
-const HttpVerbOrder = httpVerbs.reduce(
-  (order, verb, index) => {
-    order[verb] = index;
-    return order;
-  },
-  {} as Record<HttpVerb, number>,
-);
 
 export function logRoutesTable(
   routes: BuiltRoutes,
@@ -69,9 +60,7 @@ export function logRoutesTable(
 
   for (const route of routes.list) {
     for (const path of route.paths) {
-      const verbs = getVerbs(route).sort(
-        (a, b) => HttpVerbOrder[a] - HttpVerbOrder[b],
-      );
+      const verbs = getVerbs(route);
       let firstRow = true;
 
       for (const verb of verbs) {

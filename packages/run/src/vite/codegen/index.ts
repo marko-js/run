@@ -115,11 +115,14 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
   if (handler || middleware.length) {
     runtimeImports.push("call");
   }
-  if (!page || verbs.length > 1) {
+  if (!page || verbs.some((verb) => verb !== "get" && verb !== "head")) {
     runtimeImports.push("noContent");
   }
   if (page) {
     runtimeImports.push("pageResponse");
+  }
+  if (verbs.includes("head")) {
+    runtimeImports.push("stripResponseBody");
   }
 
   if (runtimeImports.length) {
@@ -175,29 +178,6 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
   return writer.end();
 }
 
-function writePageResponse(writer: Writer, wrapFn?: string): void {
-  writer.writeLines(
-    `${
-      wrapFn ? `const ${wrapFn} = () =>` : `return`
-    } pageResponse(page, buildInput());`,
-  );
-}
-
-function writeMiddleware(
-  writer: Writer,
-  middleware: string,
-  next: string,
-  wrapFn?: string,
-): void {
-  if (wrapFn) {
-    writer.writeLines(
-      `const ${wrapFn} = () => call(${middleware}, ${next}, context);`,
-    );
-  } else {
-    writer.writeLines(`return call(${middleware}, ${next}, context);`);
-  }
-}
-
 function writeRouteEntryHandler(
   writer: Writer,
   route: Route,
@@ -212,49 +192,77 @@ function writeRouteEntryHandler(
 
   writer.writeLines("");
 
-  if (page) {
+  if (page && (verb === "get" || verb === "head")) {
     writer.writeBlockStart(
-      `export async function ${verb}${index}(context, buildInput) {`,
+      `export function ${verb}${index}(context, buildInput) {`,
     );
   } else {
-    writer.writeBlockStart(`export async function ${verb}${index}(context) {`);
+    writer.writeBlockStart(`export function ${verb}${index}(context) {`);
   }
 
   const continuations = writer.branch("cont");
 
-  if (page && verb === "get") {
+  if (page && (verb === "get" || verb === "head")) {
     currentName = "__page";
     if (handler?.verbs?.includes(verb)) {
       const name = `${verb}Handler`;
 
-      writePageResponse(continuations, currentName);
+      continuations.writeLines(
+        `const ${currentName} = () => pageResponse(page, buildInput());`,
+      );
 
       if (len) {
         nextName = currentName;
         currentName = `__${name}`;
-        writeMiddleware(continuations, name, nextName, currentName);
+        continuations.writeLines(
+          `const ${currentName} = () => call(${name}, ${nextName}, context);`,
+        );
       } else {
-        writeMiddleware(writer, name, currentName);
+        if (verb === "head") {
+          writer.writeLines(
+            `return stripResponseBody(call(${name}, ${currentName}, context));`,
+          );
+        } else {
+          writer.writeLines(`return call(${name}, ${currentName}, context);`);
+        }
         hasBody = true;
       }
+    } else if (verb === "head") {
+      writer.writeLines(
+        `return stripResponseBody(get${index}(context, buildInput));`,
+      );
+      hasBody = true;
     } else if (len) {
-      writePageResponse(continuations, currentName);
+      continuations.writeLines(
+        `const ${currentName} = () => pageResponse(page, buildInput());`,
+      );
       nextName = currentName;
     } else {
-      writePageResponse(continuations);
+      writer.writeLines(`return pageResponse(page, buildInput());`);
       hasBody = true;
     }
-  } else if (handler) {
+  } else if (handler?.verbs?.includes(verb)) {
     const name = `${verb}Handler`;
     currentName = `__${name}`;
     nextName = "noContent";
 
     if (len) {
-      writeMiddleware(continuations, name, nextName, currentName);
+      continuations.writeLines(
+        `const ${currentName} = () => call(${name}, ${nextName}, context);`,
+      );
     } else {
-      writeMiddleware(writer, name, nextName);
+      if (verb === "head") {
+        writer.writeLines(
+          `return stripResponseBody(call(${name}, ${nextName}, context));`,
+        );
+      } else {
+        writer.writeLines(`return call(${name}, ${nextName}, context);`);
+      }
       hasBody = true;
     }
+  } else if (verb === "head" && route.handler?.verbs?.includes("get")) {
+    writer.writeLines(`return stripResponseBody(get${index}(context));`);
+    hasBody = true;
   } else {
     throw new Error(`Route ${key} has no handler for ${verb} requests`);
   }
@@ -264,9 +272,19 @@ function writeRouteEntryHandler(
     while (i--) {
       const { id } = middleware[i];
       const name = `mware${id}`;
-      nextName = currentName;
+      nextName = currentName!;
       currentName = i ? `__${name}` : "";
-      writeMiddleware(continuations, name, nextName, currentName);
+      if (currentName) {
+        continuations.writeLines(
+          `const ${currentName} = () => call(${name}, ${nextName}, context);`,
+        );
+      } else if (verb === "head") {
+        continuations.writeLines(
+          `return stripResponseBody(call(${name}, ${nextName}, context));`,
+        );
+      } else {
+        continuations.writeLines(`return call(${name}, ${nextName}, context);`);
+      }
     }
   }
 

@@ -35,15 +35,19 @@ import Page from '../../../src/routes/_protected/_home/+page.marko';
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.js
-import { call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import page from './.marko/_protected/_home/route.marko?marko-server-entry';
 
-export async function get1(context, buildInput) {
+export function get1(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __mware7 = () => call(mware7, __page, context);
 	const __mware5 = () => call(mware5, __mware7, context);
 	return call(mware4, __mware5, context);
+}
+
+export function head1(context, buildInput) {
+	return stripResponseBody(get1(context, buildInput));
 }
 ```
 ---
@@ -66,7 +70,7 @@ import Page from '../../../../src/routes/_protected/_home/new/+page.marko';
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.new.js
-import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, noContent, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { POST } from './src/routes/_protected/_home/new/+handler.post.ts';
 import page from './.marko/_protected/_home/new/route.marko?marko-server-entry';
@@ -74,14 +78,18 @@ export { default as meta2 } from './src/routes/_protected/_home/new/+meta.json';
 
 const postHandler = normalize(POST);
 
-export async function get2(context, buildInput) {
+export function get2(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __mware7 = () => call(mware7, __page, context);
 	const __mware5 = () => call(mware5, __mware7, context);
 	return call(mware4, __mware5, context);
 }
 
-export async function post2(context, buildInput) {
+export function head2(context, buildInput) {
+	return stripResponseBody(get2(context, buildInput));
+}
+
+export function post2(context) {
 	const __postHandler = () => call(postHandler, noContent, context);
 	const __mware7 = () => call(mware7, __postHandler, context);
 	const __mware5 = () => call(mware5, __mware7, context);
@@ -108,7 +116,7 @@ import Page from '../../../../../src/routes/_protected/_home/notes/$id/+page.mar
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route._protected._home.notes.$id.js
-import { normalize, call, noContent, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, noContent, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4, mware5, mware7, mware13 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { PUT, POST, DELETE } from './src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts';
 import page from './.marko/_protected/_home/notes/$id/route.marko?marko-server-entry';
@@ -117,7 +125,7 @@ const putHandler = normalize(PUT);
 const postHandler = normalize(POST);
 const deleteHandler = normalize(DELETE);
 
-export async function get3(context, buildInput) {
+export function get3(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __mware13 = () => call(mware13, __page, context);
 	const __mware7 = () => call(mware7, __mware13, context);
@@ -125,15 +133,11 @@ export async function get3(context, buildInput) {
 	return call(mware4, __mware5, context);
 }
 
-export async function put3(context, buildInput) {
-	const __putHandler = () => call(putHandler, noContent, context);
-	const __mware13 = () => call(mware13, __putHandler, context);
-	const __mware7 = () => call(mware7, __mware13, context);
-	const __mware5 = () => call(mware5, __mware7, context);
-	return call(mware4, __mware5, context);
+export function head3(context, buildInput) {
+	return stripResponseBody(get3(context, buildInput));
 }
 
-export async function post3(context, buildInput) {
+export function post3(context) {
 	const __postHandler = () => call(postHandler, noContent, context);
 	const __mware13 = () => call(mware13, __postHandler, context);
 	const __mware7 = () => call(mware7, __mware13, context);
@@ -141,7 +145,15 @@ export async function post3(context, buildInput) {
 	return call(mware4, __mware5, context);
 }
 
-export async function delete3(context, buildInput) {
+export function put3(context) {
+	const __putHandler = () => call(putHandler, noContent, context);
+	const __mware13 = () => call(mware13, __putHandler, context);
+	const __mware7 = () => call(mware7, __mware13, context);
+	const __mware5 = () => call(mware5, __mware7, context);
+	return call(mware4, __mware5, context);
+}
+
+export function delete3(context) {
 	const __deleteHandler = () => call(deleteHandler, noContent, context);
 	const __mware13 = () => call(mware13, __deleteHandler, context);
 	const __mware7 = () => call(mware7, __mware13, context);
@@ -165,15 +177,7 @@ const putHandler = normalize(PUT);
 const postHandler = normalize(POST);
 const deleteHandler = normalize(DELETE);
 
-export async function put4(context) {
-	const __putHandler = () => call(putHandler, noContent, context);
-	const __mware13 = () => call(mware13, __putHandler, context);
-	const __mware7 = () => call(mware7, __mware13, context);
-	const __mware5 = () => call(mware5, __mware7, context);
-	return call(mware4, __mware5, context);
-}
-
-export async function post4(context) {
+export function post4(context) {
 	const __postHandler = () => call(postHandler, noContent, context);
 	const __mware13 = () => call(mware13, __postHandler, context);
 	const __mware7 = () => call(mware7, __mware13, context);
@@ -181,7 +185,15 @@ export async function post4(context) {
 	return call(mware4, __mware5, context);
 }
 
-export async function delete4(context) {
+export function put4(context) {
+	const __putHandler = () => call(putHandler, noContent, context);
+	const __mware13 = () => call(mware13, __putHandler, context);
+	const __mware7 = () => call(mware7, __mware13, context);
+	const __mware5 = () => call(mware5, __mware7, context);
+	return call(mware4, __mware5, context);
+}
+
+export function delete4(context) {
 	const __deleteHandler = () => call(deleteHandler, noContent, context);
 	const __mware13 = () => call(mware13, __deleteHandler, context);
 	const __mware7 = () => call(mware7, __mware13, context);
@@ -196,15 +208,19 @@ export async function delete4(context) {
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.callback.oauth2.js
-import { normalize, call, noContent } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/callback/oauth2/+handler.get.ts';
 
 const getHandler = normalize(GET);
 
-export async function get5(context) {
+export function get5(context) {
 	const __getHandler = () => call(getHandler, noContent, context);
 	return call(mware4, __getHandler, context);
+}
+
+export function head5(context) {
+	return stripResponseBody(get5(context));
 }
 ```
 ---
@@ -224,17 +240,24 @@ import Page from '../../src/routes/my/+page.marko';
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.my.js
-import { normalize, call, pageResponse } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
-import { GET } from './src/routes/my/+handler.get.ts';
+import { GET, HEAD } from './src/routes/my/+handler.get_head.ts';
 import page from './.marko/my/route.marko?marko-server-entry';
 
 const getHandler = normalize(GET);
+const headHandler = normalize(HEAD);
 
-export async function get6(context, buildInput) {
+export function get6(context, buildInput) {
 	const __page = () => pageResponse(page, buildInput());
 	const __getHandler = () => call(getHandler, __page, context);
 	return call(mware4, __getHandler, context);
+}
+
+export function head6(context, buildInput) {
+	const __page = () => pageResponse(page, buildInput());
+	const __headHandler = () => call(headHandler, __page, context);
+	return stripResponseBody(call(mware4, __headHandler, context));
 }
 ```
 ---
@@ -244,15 +267,19 @@ export async function get6(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run/__marko-run__route.$$match.js
-import { normalize, call, noContent } from 'virtual:marko-run/runtime/internal';
+import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
 import { mware4 } from 'virtual:marko-run/__marko-run__middleware.js';
 import { GET } from './src/routes/$$match/+handler.get.ts';
 
 const getHandler = normalize(GET);
 
-export async function get7(context) {
+export function get7(context) {
 	const __getHandler = () => call(getHandler, noContent, context);
 	return call(mware4, __getHandler, context);
+}
+
+export function head7(context) {
+	return stripResponseBody(get7(context));
 }
 ```
 

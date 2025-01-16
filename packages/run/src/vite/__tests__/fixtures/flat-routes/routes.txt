@@ -1,3 +1,3 @@
 foo,$id,$$rest,+page.marko
-foo,(a,b).(c,d)+handler.get.marko
+foo,(a,b).(c,d)+handler.get_post.marko
 $id,a.d+middleware.marko

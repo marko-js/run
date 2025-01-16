@@ -36,11 +36,20 @@ declare global {
 export async function createViteDevServer(
   config?: InlineConfig,
 ): Promise<ViteDevServer> {
-  const devServer = await createServer({
+  const finalConfig = {
     ...config,
     appType: "custom",
     server: { ...config?.server, middlewareMode: true },
-  });
+  } satisfies InlineConfig;
+
+  const { cors } = finalConfig.server;
+  if (cors === undefined) {
+    finalConfig.server.cors = { preflightContinue: true };
+  } else if (typeof cors === "object") {
+    cors.preflightContinue ??= true;
+  }
+
+  const devServer = await createServer(finalConfig);
 
   getDevGlobal().addDevServer(devServer);
 

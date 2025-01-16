@@ -1,12 +1,12 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route._protected._home.js';
-import { get2, post2, meta2 } from 'virtual:marko-run/__marko-run__route._protected._home.new.js';
-import { get3, put3, post3, delete3 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.js';
-import { put4, post4, delete4, meta4 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.comments.js';
-import { get5 } from 'virtual:marko-run/__marko-run__route.callback.oauth2.js';
-import { get6 } from 'virtual:marko-run/__marko-run__route.my.js';
-import { get7 } from 'virtual:marko-run/__marko-run__route.$$match.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route._protected._home.js';
+import { get2, head2, post2, meta2 } from 'virtual:marko-run/__marko-run__route._protected._home.new.js';
+import { get3, head3, post3, put3, delete3 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.js';
+import { post4, put4, delete4, meta4 } from 'virtual:marko-run/__marko-run__route._protected._home.notes.$id.comments.js';
+import { get5, head5 } from 'virtual:marko-run/__marko-run__route.callback.oauth2.js';
+import { get6, head6 } from 'virtual:marko-run/__marko-run__route.my.js';
+import { get7, head7 } from 'virtual:marko-run/__marko-run__route.$$match.js';
 import page404 from './.marko/route.404.marko?marko-server-entry';
 import page500 from './.marko/route.500.marko?marko-server-entry';
 
@@ -57,6 +57,35 @@ export function match(method, pathname) {
 				}
 			}
 			return { handler: get7, params: { match: pathname.slice(1) }, meta: {}, path: '/:match*' }; // /$$match
+		}
+		case 'HEAD':
+		case 'head': {
+			const len = pathname.length;
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				switch (pathname.slice(1, i1 ? -1 : len)) {
+					case 'new': return { handler: head2, params: {}, meta: meta2, path: '/new' }; // /new
+					case 'my': return { handler: head6, params: {}, meta: {}, path: '/my' }; // /my
+				}
+			} else {
+				switch (pathname.slice(1, i1 - 1)) {
+					case 'notes': {
+						const i2 = pathname.indexOf('/', 7) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							if (s2) return { handler: head3, params: { id: s2 }, meta: {}, path: '/notes/:id' }; // /notes/$id
+						}
+					} break;
+					case 'callback': {
+						const i2 = pathname.indexOf('/', 10) + 1;
+						if (!i2 || i2 === len) {
+							if (pathname.slice(10, i2 ? -1 : len) === 'oauth2') return { handler: head5, params: {}, meta: {}, path: '/callback/oauth2' }; // /callback/oauth2
+						}
+					} break;
+				}
+			}
+			return { handler: head7, params: { match: pathname.slice(1) }, meta: {}, path: '/:match*' }; // /$$match
 		}
 		case 'POST':
 		case 'post': {

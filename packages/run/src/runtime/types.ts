@@ -1,4 +1,4 @@
-type Awaitable<T> = Promise<T> | T;
+export type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
 type NoParams = {};
 type AllKeys<T> = T extends T ? keyof T : never;

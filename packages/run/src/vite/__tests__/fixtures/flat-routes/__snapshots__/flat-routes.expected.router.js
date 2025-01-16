@@ -1,13 +1,13 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1 } from 'virtual:marko-run/__marko-run__route.js';
-import { get2 } from 'virtual:marko-run/__marko-run__route.foo.js';
-import { get3 } from 'virtual:marko-run/__marko-run__route.$id.js';
-import { get4 } from 'virtual:marko-run/__marko-run__route.$$rest.js';
-import { get5 } from 'virtual:marko-run/__marko-run__route.a.c.js';
-import { get6 } from 'virtual:marko-run/__marko-run__route.a.d.js';
-import { get7 } from 'virtual:marko-run/__marko-run__route.b.c.js';
-import { get8 } from 'virtual:marko-run/__marko-run__route.b.d.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
+import { get2, head2, post2 } from 'virtual:marko-run/__marko-run__route.foo.js';
+import { get3, head3 } from 'virtual:marko-run/__marko-run__route.$id.js';
+import { get4, head4 } from 'virtual:marko-run/__marko-run__route.$$rest.js';
+import { get5, head5, post5 } from 'virtual:marko-run/__marko-run__route.a.c.js';
+import { get6, head6, post6 } from 'virtual:marko-run/__marko-run__route.a.d.js';
+import { get7, head7, post7 } from 'virtual:marko-run/__marko-run__route.b.c.js';
+import { get8, head8, post8 } from 'virtual:marko-run/__marko-run__route.b.d.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -50,6 +50,71 @@ export function match(method, pathname) {
 				}
 			}
 			return { handler: get4, params: { rest: pathname.slice(1) }, meta: {}, path: '/:rest*' }; // /$$rest
+		}
+		case 'HEAD':
+		case 'head': {
+			const len = pathname.length;
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+				if (s1 === 'foo') return { handler: head2, params: {}, meta: {}, path: '/foo' }; // /foo
+				if (s1) return { handler: head3, params: { id: s1 }, meta: {}, path: '/:id' }; // /$id
+			} else {
+				switch (pathname.slice(1, i1 - 1)) {
+					case 'a': {
+						const i2 = pathname.indexOf('/', 3) + 1;
+						if (!i2 || i2 === len) {
+							switch (pathname.slice(3, i2 ? -1 : len)) {
+								case 'c': return { handler: head5, params: {}, meta: {}, path: '/a/c' }; // /a/c
+								case 'd': return { handler: head6, params: {}, meta: {}, path: '/a/d' }; // /a/d
+							}
+						}
+					} break;
+					case 'b': {
+						const i2 = pathname.indexOf('/', 3) + 1;
+						if (!i2 || i2 === len) {
+							switch (pathname.slice(3, i2 ? -1 : len)) {
+								case 'c': return { handler: head7, params: {}, meta: {}, path: '/b/c' }; // /b/c
+								case 'd': return { handler: head8, params: {}, meta: {}, path: '/b/d' }; // /b/d
+							}
+						}
+					} break;
+				}
+			}
+			return { handler: head4, params: { rest: pathname.slice(1) }, meta: {}, path: '/:rest*' }; // /$$rest
+		}
+		case 'POST':
+		case 'post': {
+			const len = pathname.length;
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (!i1 || i1 === len) {
+					if (pathname.slice(1, i1 ? -1 : len) === 'foo') return { handler: post2, params: {}, meta: {}, path: '/foo' }; // /foo
+				} else {
+					switch (pathname.slice(1, i1 - 1)) {
+						case 'a': {
+							const i2 = pathname.indexOf('/', 3) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(3, i2 ? -1 : len)) {
+									case 'c': return { handler: post5, params: {}, meta: {}, path: '/a/c' }; // /a/c
+									case 'd': return { handler: post6, params: {}, meta: {}, path: '/a/d' }; // /a/d
+								}
+							}
+						} break;
+						case 'b': {
+							const i2 = pathname.indexOf('/', 3) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(3, i2 ? -1 : len)) {
+									case 'c': return { handler: post7, params: {}, meta: {}, path: '/b/c' }; // /b/c
+									case 'd': return { handler: post8, params: {}, meta: {}, path: '/b/d' }; // /b/d
+								}
+							}
+						} break;
+					}
+				}
+			}
+			return null;
 		}
 	}
 	return null;

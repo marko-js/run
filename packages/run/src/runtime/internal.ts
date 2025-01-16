@@ -1,5 +1,6 @@
 import type {
   AnyRoute,
+  Awaitable,
   Context,
   InputObject,
   MultiRouteContext,
@@ -49,7 +50,7 @@ export function createContext<TRoute extends AnyRoute>(
         route: route.path,
         serializedGlobals,
       }
-    : {
+    : ({
         request,
         url,
         platform,
@@ -57,7 +58,7 @@ export function createContext<TRoute extends AnyRoute>(
         params: {},
         route: "",
         serializedGlobals,
-      };
+      } as unknown as Context<TRoute>);
 
   let input: InputObject | undefined;
   return [
@@ -159,6 +160,18 @@ export function normalize(
     return (context, next) => fn(context, next);
   }
   return passthrough;
+}
+
+export function stripResponseBodySync(response: Response): Response {
+  return response.body ? new Response(null, response) : response;
+}
+
+export function stripResponseBody(
+  response: Awaitable<Response>,
+): Awaitable<Response> {
+  return "then" in response
+    ? response.then(stripResponseBodySync)
+    : stripResponseBodySync(response);
 }
 
 export function passthrough() {}

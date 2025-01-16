@@ -20,7 +20,7 @@
   /oauth2
     +handler.get.ts
 /my
-  +handler.get.ts
+  +handler.get_head.ts
   +page.marko
 /$$match
   +handler.get.ts
