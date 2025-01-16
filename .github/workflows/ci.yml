@@ -28,13 +28,13 @@ jobs:
       - name: Lint Code
         run: npm run @ci:lint
   test:
-    runs-on: ubuntu-latest
-    name: "test: node@${{ matrix.node }}"
+    runs-on: ${{ matrix.os }}
+    name: "test: node@${{ matrix.node }} (${{ matrix.os }})"
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [18, 20]
+        node: [20, 22]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
