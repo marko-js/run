@@ -1,1 +1,1 @@
-throw {"message":"Duplicate file type 'page' added at path '/$'. File 'src/routes/$bar+page.marko' collides with 'src/routes/$foo+page.marko'.","stack":"    at [Normalized Error Stack]","frame":""}
+throw {"message":"Duplicate routes for path '/$' were defined. A route established by:\n      /$foo+page.marko via '/$foo'\n        collides with\n      /$bar+page.marko via '/$bar'\n      ","stack":"      at [Normalized Error Stack]","frame":""}

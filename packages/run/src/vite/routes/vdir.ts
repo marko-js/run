@@ -81,12 +81,13 @@ export default class VDir {
       segment.type === "_"
         ? (this.#pathlessDirs ??= new Map())
         : (this.#dirs ??= new Map());
-    if (!map.has(segment.name)) {
+    const key = segment.type === "$" ? segment.raw : segment.name;
+    if (!map.has(key)) {
       const dir = new VDir(this, segment, path);
-      map.set(segment.name, dir);
+      map.set(key, dir);
       return dir;
     }
-    return map.get(segment.name)!;
+    return map.get(key)!;
   }
 
   addFile(file: RoutableFile): void {
@@ -133,17 +134,19 @@ export default class VDir {
 
   static addPaths(roots: VDir[], paths: Path[]): VDir[] {
     const dirs: VDir[] = [];
-    const unique = new Set<string>();
+    const unique = new Map<string, VDir>();
     for (const root of roots) {
       for (const path of paths) {
         let dir: VDir = root;
         for (const segment of path.segments) {
           dir = dir.addDir(path, segment);
         }
-        if (unique.has(dir.path)) {
+
+        const existing = unique.get(dir.path);
+        if (existing) {
           const sources = new Set<string>();
           let sourcePath = "";
-          for (const { source } of dir) {
+          for (const { source } of existing) {
             if (source && !sources.has(source.source)) {
               sources.add(source.source);
               sourcePath += source.source + "/";
@@ -153,7 +156,7 @@ export default class VDir {
             `Ambiguous directory structure: '${sourcePath}${path.source}' defines '${dir.path}' multiple times.`,
           );
         } else {
-          unique.add(dir.path);
+          unique.set(dir.path, dir);
           dirs.push(dir);
         }
       }

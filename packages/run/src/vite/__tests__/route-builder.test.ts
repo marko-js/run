@@ -132,6 +132,17 @@ describe("route-builder", () => {
     );
   });
 
+  it("should work for optional dynamic segements", async () => {
+    await fixture(
+      `
+        /$foo,
+          /$bar
+            +page.marko
+      `,
+      { path: "/$foo/$bar", params: { foo: 0, bar: 1 } },
+      { path: "/$bar", params: { bar: 0 } },
+    );
+  });
   it("should throw on ambiguous hoisting", async () => {
     await assert.rejects(
       () =>
