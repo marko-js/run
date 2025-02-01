@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.5.16
+
+### Patch Changes
+
+- 1e558d5: Fix build command failing on Windows
+
 ## 0.5.15
 
 ### Patch Changes
