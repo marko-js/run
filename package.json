@@ -19,7 +19,7 @@
     "lint": "eslint --format unix . && prettier . --check --with-node-modules --log-level=warn",
     "prepare": "husky",
     "report": "open ./coverage/lcov-report/index.html",
-    "test": "cross-env NODE_ENV=test NODE_OPTIONS='$NODE_OPTIONS --import tsx' mocha",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"$NODE_OPTIONS --import tsx\" mocha",
     "test:update": "cross-env UPDATE_EXPECTATIONS=1 npm test -- --update"
   },
   "devDependencies": {
