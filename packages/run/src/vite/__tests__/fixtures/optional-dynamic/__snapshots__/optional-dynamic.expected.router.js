@@ -1,8 +1,8 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1, head1 } from 'virtual:marko-run/__marko-run__route.$foo.js';
-import { get2, head2 } from 'virtual:marko-run/__marko-run__route.$foo.$bar.js';
-import { get3, head3 } from 'virtual:marko-run/__marko-run__route.$foo.$$rest.js';
+import { get1, head1 } from 'virtual:marko-run/__marko-run__route.$foo.$bar.js';
+import { get2, head2 } from 'virtual:marko-run/__marko-run__route.$foo.$$rest.js';
+import { get3, head3 } from 'virtual:marko-run/__marko-run__route.$bar.js';
 import { get4, head4 } from 'virtual:marko-run/__marko-run__route.$$rest.js';
 
 globalThis.__marko_run__ = { match, fetch, invoke };
@@ -21,16 +21,16 @@ export function match(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: get1, params: { foo: s1 }, meta: {}, path: '/:foo' }; // /$foo
+					if (s1) return { handler: get3, params: { bar: s1 }, meta: {}, path: '/:bar' }; // /$bar
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: get2, params: { foo: s1, bar: s2 }, meta: {}, path: '/:foo/:bar' }; // /$foo/$bar
+							if (s2) return { handler: get1, params: { foo: s1, bar: s2 }, meta: {}, path: '/:foo/:bar' }; // /$foo/$bar
 						}
-						return { handler: get3, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:foo/:rest*' }; // /$foo/$$rest
+						return { handler: get2, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:foo/:rest*' }; // /$foo/$$rest
 					}
 				}
 			}
@@ -43,16 +43,16 @@ export function match(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: head1, params: { foo: s1 }, meta: {}, path: '/:foo' }; // /$foo
+					if (s1) return { handler: head3, params: { bar: s1 }, meta: {}, path: '/:bar' }; // /$bar
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: head2, params: { foo: s1, bar: s2 }, meta: {}, path: '/:foo/:bar' }; // /$foo/$bar
+							if (s2) return { handler: head1, params: { foo: s1, bar: s2 }, meta: {}, path: '/:foo/:bar' }; // /$foo/$bar
 						}
-						return { handler: head3, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:foo/:rest*' }; // /$foo/$$rest
+						return { handler: head2, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:foo/:rest*' }; // /$foo/$$rest
 					}
 				}
 			}

@@ -189,11 +189,11 @@ export async function buildRoutes(
             .filter(Boolean)
             .map((f) => f!.filePath);
           throw new Error(`Duplicate routes for path '${
-            path.path
+            path.id
           }' were defined. A route established by:
-      ${existingFiles.join(" and ")} via '${existing.dir.path}'
+      ${existingFiles.join(" and ")} via '${existing.dir.fullPath}'
         collides with
-      ${currentFiles.join(" and ")} via '${dir.path}'
+      ${currentFiles.join(" and ")} via '${dir.fullPath}'
       `);
         }
 

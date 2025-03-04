@@ -93,6 +93,14 @@ describe("parse-flat-route", () => {
     );
   });
 
+  it("should work for optional nested dynamic segments", () => {
+    const actual = parseFlatRoute("($a,).$b");
+    assert.deepEqual(
+      actual.map((path) => path.segments.map((s) => s.raw).join("/")),
+      ["$a/$b", "$b"],
+    );
+  });
+
   it("should thow for ambiguous hoisting", () => {
     assert.throws(
       () => parseFlatRoute("(a,).(,a)"),
