@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.5.17
+
+### Patch Changes
+
+- e7cd949: Fix chained optional dynamic params
+
 ## 0.5.16
 
 ### Patch Changes
