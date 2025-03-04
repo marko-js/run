@@ -1,14 +1,7 @@
 export type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
 type NoParams = {};
-type AllKeys<T> = T extends T ? keyof T : never;
 type Simplify<T> = T extends unknown ? { [K in keyof T]: T[K] } : never;
-type SuperSet<T, U extends T> = Simplify<
-  T & { [K in AllKeys<U> as K extends keyof T ? never : K]: undefined }
->;
-type SuperSets<T, U extends T, K extends keyof T> = Omit<T, K> & {
-  [P in K]: SuperSet<T[P], U[P]>;
-};
 
 export interface Platform {}
 
@@ -22,11 +15,8 @@ export interface Context<TRoute extends Route = AnyRoute> {
   readonly serializedGlobals: Record<string, boolean>;
 }
 
-export type MultiRouteContext<
-  TRoute extends Route,
-  _Preserved extends TRoute = TRoute,
-> = TRoute extends any
-  ? Context<Simplify<SuperSets<TRoute, _Preserved, "params">>>
+export type MultiRouteContext<TRoute extends Route> = TRoute extends any
+  ? Context<Simplify<TRoute>>
   : never;
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
