@@ -1,6 +1,5 @@
 import markoVitePlugin from "@marko/vite";
 import browserslist from "browserslist";
-import { createHash } from "crypto";
 import createDebug from "debug";
 import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
@@ -342,18 +341,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
-
         entryFilesDir = path.join(
-          getModulesDir(root),
-          ".marko",
-          createHash("shake256", { outputLength: 4 })
-            .update(root)
-            .digest("hex"),
+          root,
+          config.build?.outDir || "dist",
+          ".marko-run",
         );
         entryFilesDirPosix = normalizePath(entryFilesDir);
         relativeEntryFilesDirPosix = normalizePath(
           path.relative(root, entryFilesDir),
         );
+
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
@@ -677,13 +674,19 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async closeBundle() {
-        if (isBuild && !isSSRBuild && adapter?.buildEnd && routes) {
-          await adapter.buildEnd(
-            resolvedConfig,
-            routes.list,
-            routeData.builtEntries,
-            routeData.sourceEntries,
-          );
+        if (isBuild && !isSSRBuild) {
+          if (fs.existsSync(entryFilesDir)) {
+            fs.rmdirSync(entryFilesDir, { recursive: true });
+          }
+
+          if (adapter?.buildEnd && routes) {
+            await adapter.buildEnd(
+              resolvedConfig,
+              routes.list,
+              routeData.builtEntries,
+              routeData.sourceEntries,
+            );
+          }
         }
       },
     },
@@ -798,16 +801,6 @@ function getImporters(
     }
   }
   return seen;
-}
-
-function getModulesDir(root: string, dir: string = __dirname) {
-  if (dir.startsWith(root)) {
-    const index = dir.indexOf("node_modules");
-    if (index >= 0) {
-      return dir.slice(0, index + 12);
-    }
-  }
-  return path.join(root, "node_modules");
 }
 
 export const defaultConfigPlugin: Plugin = {
