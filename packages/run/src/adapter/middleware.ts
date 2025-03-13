@@ -98,14 +98,6 @@ export function copyResponseHeaders(
   }
 }
 
-function normalizeError(error: Error) {
-  if (error.cause && !error.message) {
-    error.message = (error.cause as any).message;
-    error.stack ||= (error.cause as any).stack;
-  }
-  return error;
-}
-
 /**
  * Creates a request handler to be passed to http.createServer() or used as a
  * middleware in Connect-style frameworks like Express.
@@ -121,149 +113,96 @@ export function createMiddleware(
   } = (options ??= {});
 
   return async (req, res, next) => {
-    const controller = new AbortController();
-    const { signal } = controller;
-    const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
-
-    req.on("error", onErrorOrClose);
-    req.socket.on("error", onErrorOrClose);
-    res.on("error", onErrorOrClose);
-    res.on("close", onErrorOrClose);
-    signal.addEventListener("abort", onSignalAborted);
-
-    function onErrorOrClose(err?: Error) {
-      req.off("error", onErrorOrClose);
-      req.socket.off("error", onErrorOrClose);
-      res.off("error", onErrorOrClose);
-      res.off("close", onErrorOrClose);
-      if (err) {
-        signal.removeEventListener("abort", onSignalAborted);
-        controller.abort(err);
-      }
-    }
-
-    function onSignalAborted() {
-      const error = normalizeError(signal.reason);
-      if (next) {
-        next(error);
-      } else {
-        if (!res.destroyed && res.socket) {
-          (res.socket as any).destroySoon();
-        }
-        console.error(error);
-      }
-    }
-
-    if (
-      process.env.NODE_ENV !== "production" &&
-      globalThis.__marko_run_dev__ &&
-      req.headers.accept?.includes("text/html")
-    ) {
-      globalThis.__marko_run_dev__.onClient(res, (ws) => {
-        if (signal.aborted) {
-          sendError();
-        } else {
-          signal.addEventListener("abort", sendError);
-        }
-
-        function sendError() {
-          const { message, stack = "" } = normalizeError(signal.reason);
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              err: { message, stack },
-            }),
-          );
-        }
-      });
-    }
-
-    let body: BodyInit | undefined;
-    switch (req.method) {
-      case "POST":
-      case "PUT":
-      case "PATCH":
-        if (Readable.isDisturbed(req)) {
-          body = bodyConsumedErrorStream;
-        } else {
-          body = req as unknown as ReadableStream;
-        }
-        break;
-    }
-    const request = new Request(url, {
-      method: req.method,
-      headers: req.headers as Record<string, string>,
-      body,
-      // @ts-expect-error: Node requires this for streams
-      duplex: "half",
-      signal,
-    });
-
-    const platform = createPlatform({
-      request: req,
-      response: res,
-    });
-
-    let response: Response | void;
     try {
-      response = await fetch(request, platform);
-    } catch (err) {
-      normalizeError(err as Error);
-      if (next) {
-        next(err as Error);
-      } else {
-        console.error(err);
+      if (
+        (!process.env.NODE_ENV || process.env.NODE_ENV === "development") &&
+        globalThis.__marko_run_dev__ &&
+        req.headers.accept?.includes("text/html")
+      ) {
+        // eslint-disable-next-line no-var
+        var devWebSocket: WebSocket | undefined;
+        globalThis.__marko_run_dev__.onClient(res, (ws) => {
+          devWebSocket = ws;
+        });
       }
-      return;
-    }
 
-    if (!response) {
-      if (next) {
-        next();
+      let body: BodyInit | undefined;
+      switch (req.method) {
+        case "POST":
+        case "PUT":
+        case "PATCH":
+          if (Readable.isDisturbed(req)) {
+            body = bodyConsumedErrorStream;
+          } else {
+            body = req as unknown as ReadableStream;
+          }
+          break;
       }
-      return;
-    }
 
-    res.statusCode = response.status;
-    copyResponseHeaders(res, response.headers);
+      const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
+      const request = new Request(url, {
+        method: req.method,
+        headers: req.headers as Record<string, string>,
+        body,
+        // @ts-expect-error: Node requires this for streams
+        duplex: "half",
+      });
 
-    if (!response.body) {
-      if (!response.headers.has("content-length")) {
-        res.setHeader("content-length", "0");
-      }
-      res.end();
-      return;
-    } else if (res.destroyed) {
-      controller.abort(new Error("Response stream destroyed"));
-      return;
-    }
+      const platform = createPlatform({
+        request: req,
+        response: res,
+      });
 
-    writeResponse(response.body.getReader(), res, controller);
-  };
-}
+      const response = await fetch(request, platform);
 
-async function writeResponse(
-  reader: ReadableStreamDefaultReader,
-  res: ServerResponse,
-  controller: AbortController,
-) {
-  try {
-    while (!controller.signal.aborted) {
-      const { done, value } = await reader.read();
-      if (done) {
-        res.end();
+      if (res.destroyed || res.headersSent) {
         return;
       }
 
-      res.write(value);
+      if (response) {
+        res.statusCode = response.status;
+        copyResponseHeaders(res, response.headers);
+        if (response.body) {
+          for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+            if (res.destroyed) return;
+            res.write(chunk);
+            (res as any).flush?.();
+          }
+        } else if (!response.headers.has("content-length")) {
+          res.setHeader("content-length", "0");
+        }
 
-      if ((res as any).flush) {
-        (res as any).flush();
+        res.end();
+      } else if (next) {
+        next();
+      } else {
+        res.socket?.destroySoon();
+      }
+    } catch (err) {
+      const error = err as Error;
+
+      if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
+        if (error.cause && !error.message) {
+          error.message = (error.cause as any).message;
+          error.stack ||= (error.cause as any).stack;
+        }
+
+        devWebSocket?.send(
+          JSON.stringify({
+            type: "error",
+            error: { message: error.message, stack: error.stack },
+          }),
+        );
+      }
+
+      if (next) {
+        next(error);
+      } else {
+        res.socket?.destroySoon();
+        console.error(error);
       }
     }
-  } catch (err) {
-    controller.abort(err);
-  }
+  };
 }
 
 const bodyConsumedErrorStream = new ReadableStream({
