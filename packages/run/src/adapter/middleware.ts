@@ -4,7 +4,6 @@ import { IncomingMessage, ServerResponse } from "http";
 import type { TLSSocket } from "tls";
 
 import type { Fetch, Platform } from "../runtime";
-import { appendHeader, getSetCookie } from "./polyfill";
 
 export interface NodePlatformInfo {
   request: IncomingMessage;
@@ -92,9 +91,9 @@ export function copyResponseHeaders(
     }
   }
 
-  const setCookies = getSetCookie(headers);
+  const setCookies = headers.getSetCookie();
   if (setCookies?.length) {
-    appendHeader(response, "set-cookie", setCookies);
+    response.appendHeader("set-cookie", setCookies);
   }
 }
 

@@ -158,6 +158,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
     if (!config.skip_dev) {
       it("dev", async () => {
+        environment("development");
+
         const configFile = await cli.getViteConfig(dir);
 
         async function testBlock() {
@@ -287,14 +289,13 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
   }
 }
 
-const noop = () => {};
-const _log = console.log;
-function suppressLogs() {
+function environment(nodeEnv) {
+  const currentNodeEnv = process.env.NODE_ENV;
   beforeEach(() => {
-    console.log = noop;
+    process.env.NODE_ENV = nodeEnv;
   });
   afterEach(() => {
-    console.log = _log;
+    process.env.NODE_ENV = currentNodeEnv;
   });
 }
 
