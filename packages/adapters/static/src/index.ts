@@ -2,6 +2,7 @@ import type { Fetch } from "@marko/run";
 import baseAdapter from "@marko/run/adapter";
 import type { Adapter, AdapterConfig, Route } from "@marko/run/vite";
 import { getAvailablePort, loadEnv, spawnServer } from "@marko/run/vite";
+import compression from "compression";
 import fs from "fs/promises";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
@@ -9,6 +10,7 @@ import path from "path";
 import createStaticServe from "serve-static";
 import { Pool } from "undici";
 import { fileURLToPath } from "url";
+import zlib from "zlib";
 
 import createCrawler from "./crawler";
 
@@ -49,15 +51,19 @@ export default function staticAdapter(options: Options = {}): Adapter {
       );
     },
 
-    async startPreview(_entry, options) {
+    startPreview(_entry, options) {
       const { dir, port, envFile } = options;
-      envFile && (await loadEnv(envFile));
+      envFile && loadEnv(envFile);
 
+      const compress = compression({
+        flush: zlib.constants.Z_PARTIAL_FLUSH,
+        threshold: 500,
+      });
       const staticServe = createStaticServe(path.join(dir, "public"), {
         index: "index.html",
       });
-      const server = await createServer((req, res) =>
-        staticServe(req, res, noop),
+      const server = createServer((req, res) =>
+        compress(req as any, res as any, () => staticServe(req, res, noop)),
       );
 
       return new Promise((resolve) => {
