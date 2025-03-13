@@ -67,7 +67,7 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
     (trustProxy && getForwardedHeader(req, "host")) || req.headers.host;
 
   if (!host) {
-    if (process.env.NODE_ENV !== "production") {
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
       host = "localhost";
       console.warn(
         `Could not automatically determine the origin host, using 'localhost'. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`,
