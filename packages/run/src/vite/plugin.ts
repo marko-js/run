@@ -87,6 +87,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
+  let shouldEmptyOutDir = false;
+  let outputDir: string;
   let resolvedRoutesDir: string;
   let entryFilesDir: string;
   let entryFilesDirPosix: string;
@@ -341,11 +343,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         resolvedRoutesDir = path.resolve(root, routesDir);
-        entryFilesDir = path.join(
-          root,
-          config.build?.outDir || "dist",
-          ".marko-run",
-        );
+        outputDir = path.join(root, config.build?.outDir || "dist");
+        entryFilesDir = path.join(outputDir, ".marko-run");
         entryFilesDirPosix = normalizePath(entryFilesDir);
         relativeEntryFilesDirPosix = normalizePath(
           path.relative(root, entryFilesDir),
@@ -411,6 +410,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               })
             : undefined;
 
+        shouldEmptyOutDir = config.build?.emptyOutDir ?? true;
+
         let pluginConfig: UserConfig = {
           logLevel: isBuild ? "warn" : undefined,
           define: isBuild
@@ -432,9 +433,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                   printUnknownTargets: false,
                 })
               : undefined,
-            emptyOutDir: isSSRBuild, // Avoid server & client deleting files from each other.
             copyPublicDir: !isSSRBuild,
             ssrEmitAssets: false,
+            emptyOutDir: false,
             rollupOptions: {
               output: rollupOutputOptions,
             },
@@ -545,6 +546,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           .unwatch(typesDir + "/*");
       },
       async buildStart(_options) {
+        if (isSSRBuild && shouldEmptyOutDir) {
+          if (fs.existsSync(outputDir)) {
+            fs.rmSync(outputDir, { recursive: true });
+          }
+        }
+
         if (isBuild && !isSSRBuild) {
           // Routes and code should have been generated in the SSR build that ran previously
           try {
@@ -676,7 +683,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async closeBundle() {
         if (isBuild && !isSSRBuild) {
           if (fs.existsSync(entryFilesDir)) {
-            fs.rmdirSync(entryFilesDir, { recursive: true });
+            fs.rmSync(entryFilesDir, { recursive: true });
           }
 
           if (adapter?.buildEnd && routes) {
