@@ -20,7 +20,7 @@ export interface MatchedRoute {
 
 type MatchedRequest = IncomingMessage & { route: MatchedRoute };
 
-export const routerMiddleware = ensureRuntime(
+export const routerMiddleware = /*@__PURE__*/ ensureRuntime(
   (options?: NodeMiddlewareOptions) => {
     return createMiddleware(
       (request, platform) => globalThis.__marko_run__.fetch(request, platform),
@@ -41,7 +41,7 @@ export const invokeMiddleware = (options?: NodeMiddlewareOptions) => {
   );
 };
 
-export const matchMiddleware = ensureRuntime(() => {
+export const matchMiddleware = /*@__PURE__*/ ensureRuntime(() => {
   return (req, _res, next) => {
     const { url, method } = req as { url: string; method: string };
     const queryIndex = url.indexOf("?");
@@ -60,7 +60,7 @@ export const matchMiddleware = ensureRuntime(() => {
   };
 });
 
-export const importRouterMiddleware = ensureRuntime(() => {
+export const importRouterMiddleware = /*@__PURE__*/ ensureRuntime(() => {
   return (_req, _res, next) => {
     next?.();
   };

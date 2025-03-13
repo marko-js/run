@@ -79,7 +79,7 @@ export async function call<TRoute extends AnyRoute>(
 ): Promise<Response> {
   let response!: Response | null | void;
 
-  if (process.env.NODE_ENV !== "production") {
+  if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
     let nextCallCount = 0;
     let didThrow = false;
     try {

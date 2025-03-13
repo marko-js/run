@@ -13,7 +13,7 @@ declare global {
 }
 
 export default globalThis.__marko_run_middleware__ ??=
-  process.env.NODE_ENV === "production"
+  process.env.NODE_ENV && process.env.NODE_ENV !== "development"
     ? (factory) => factory
     : (() => {
         let devServer: ViteDevServer | undefined;
