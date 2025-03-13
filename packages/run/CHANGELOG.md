@@ -1,5 +1,15 @@
 # @marko/run
 
+## 0.6.0
+
+### Minor Changes
+
+- 3578493: Remove abort signal from request due to memory leaks. Move generated route files out of node_modules into output dir.
+
+### Patch Changes
+
+- @marko/run-explorer@1.0.0
+
 ## 0.5.17
 
 ### Patch Changes
