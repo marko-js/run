@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-explorer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Explore routes in your Marko Run project",
   "keywords": [
     "marko"
@@ -28,7 +28,7 @@
     "preview": "MR_EXPLORER=false marko-run preview"
   },
   "devDependencies": {
-    "@marko/run": "^0.6.0",
+    "@marko/run": "^0.6.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "cross-env": "^7.0.3",
@@ -41,7 +41,7 @@
     "vite": "^6.0.0"
   },
   "peerDependencies": {
-    "@marko/run": "^0.6.0"
+    "@marko/run": "^0.6.1"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
