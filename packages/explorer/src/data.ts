@@ -13,6 +13,7 @@ const cacheDir = path.join(__dirname, "../../run/.cache/explorer");
 const codeDir = path.join(cacheDir, "code");
 const dataFilePath = path.join(cacheDir, "data.json");
 
+type Verb = "get" | "post" | "put" | "delete" | "patch" | "head" | "options";
 export interface RoutesData {
   hasMiddleware: boolean;
   hasLayouts: boolean;
@@ -26,7 +27,7 @@ export interface RoutesData {
 export interface RouteData {
   id: string;
   key: string;
-  verbs: ("get" | "post" | "put" | "delete")[];
+  verbs: Verb[];
   path: string;
   params?: string[];
   layouts: RoutableFile[];
@@ -39,7 +40,7 @@ export interface RouteData {
 
 export interface RouteListItem {
   id: string;
-  verbs: ("get" | "post" | "put" | "delete")[];
+  verbs: Verb[];
   path: string;
   isSpecial: boolean;
   layouts: RoutableFile[];
@@ -54,7 +55,10 @@ const HttpVerbOrder = {
   get: 0,
   post: 1,
   put: 2,
-  delete: 3,
+  patch: 3,
+  delete: 4,
+  head: 5,
+  options: 6,
 };
 
 function getVerbs(route: Route) {

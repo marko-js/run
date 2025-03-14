@@ -27,7 +27,7 @@ import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export const defaultConfigFileBases = ["serve.config", "vite.config"];
+export const defaultConfigFileBases = ["vite.config"];
 export const defaultConfigFileExts = [".js", ".cjs", ".mjs", ".ts", ".mts"];
 
 export async function preview(

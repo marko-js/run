@@ -20,7 +20,7 @@
     }
   },
   "files": [
-    "dist",
+    "lib",
     "src"
   ],
   "scripts": {
