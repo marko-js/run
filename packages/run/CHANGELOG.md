@@ -1,5 +1,13 @@
 # @marko/run
 
+## 0.6.1
+
+### Patch Changes
+
+- dd4bc10: Fix gzip/size logging.
+- Updated dependencies [2170e27]
+  - @marko/run-explorer@1.0.1
+
 ## 0.6.0
 
 ### Minor Changes
