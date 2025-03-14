@@ -1,19 +1,24 @@
 import fs from "fs";
 import path from "path";
 
-for (const name of fs.readdirSync("packages")) {
-  const toggleFile = path.join("packages", name, "package.toggle.json");
-  if (!fs.existsSync(toggleFile)) continue;
+processDir("packages");
+processDir("packages/adapters");
 
-  const toggleData = readJSON(toggleFile);
-  const targetFile = path.join("packages", name, "package.json");
-  const targetData = readJSON(targetFile);
-  for (const key in toggleData) {
-    [targetData[key], toggleData[key]] = [toggleData[key], targetData[key]];
+function processDir(dir) {
+  for (const name of fs.readdirSync(dir)) {
+    const toggleFile = path.join(dir, name, "package.toggle.json");
+    if (!fs.existsSync(toggleFile)) continue;
+
+    const toggleData = readJSON(toggleFile);
+    const targetFile = path.join(dir, name, "package.json");
+    const targetData = readJSON(targetFile);
+    for (const key in toggleData) {
+      [targetData[key], toggleData[key]] = [toggleData[key], targetData[key]];
+    }
+
+    writeJSON(targetFile, targetData);
+    writeJSON(toggleFile, toggleData);
   }
-
-  writeJSON(targetFile, targetData);
-  writeJSON(toggleFile, toggleData);
 }
 
 function readJSON(filename) {
