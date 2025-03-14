@@ -204,29 +204,38 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (page && layouts.length) {
-            const relativePath = path.relative(
-              resolvedRoutesDir,
-              page.filePath,
-            );
-            const routeFileDir = path.join(entryFilesDir, relativePath, "..");
-            const routeFileRelativePathPosix = normalizePath(
-              path.relative(routeFileDir, root),
-            );
+          if (page) {
+            if (layouts.length) {
+              const relativePath = path.relative(
+                resolvedRoutesDir,
+                page.filePath,
+              );
+              const routeFileDir = path.join(entryFilesDir, relativePath, "..");
+              const routeFileRelativePathPosix = normalizePath(
+                path.relative(routeFileDir, root),
+              );
 
-            fs.mkdirSync(routeFileDir, { recursive: true });
+              fs.mkdirSync(routeFileDir, { recursive: true });
 
-            const pageNameIndex = page.name.indexOf("+page");
-            const pageNamePrefix =
-              pageNameIndex > 0 ? `${page.name.slice(0, pageNameIndex)}.` : "";
-
-            fs.writeFileSync(
-              path.join(routeFileDir, pageNamePrefix + "route.marko"),
-              renderRouteTemplate(route, (to) =>
-                path.posix.join(routeFileRelativePathPosix, to),
-              ),
-            );
+              const pageNameIndex = page.name.indexOf("+page");
+              const pageNamePrefix =
+                pageNameIndex > 0
+                  ? `${page.name.slice(0, pageNameIndex)}.`
+                  : "";
+              fs.writeFileSync(
+                (route.templateFilePath = path.join(
+                  routeFileDir,
+                  pageNamePrefix + "route.marko",
+                )),
+                renderRouteTemplate(route, (to) =>
+                  path.posix.join(routeFileRelativePathPosix, to),
+                ),
+              );
+            } else {
+              route.templateFilePath = page.filePath;
+            }
           }
+
           virtualFiles.set(
             path.posix.join(root, `${route.entryName}.js`),
             renderRouteEntry(route, relativeEntryFilesDirPosix),
@@ -234,23 +243,30 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         for (const route of Object.values(routes.special) as Route[]) {
           const { page, layouts, key } = route;
-          if (page && layouts.length) {
-            const relativePath = path.relative(
-              resolvedRoutesDir,
-              page.filePath,
-            );
-            const routeFileDir = path.join(entryFilesDir, relativePath, "..");
-            const routeFileRelativePathPosix = normalizePath(
-              path.relative(routeFileDir, root),
-            );
+          if (page) {
+            if (layouts.length) {
+              const relativePath = path.relative(
+                resolvedRoutesDir,
+                page.filePath,
+              );
+              const routeFileDir = path.join(entryFilesDir, relativePath, "..");
+              const routeFileRelativePathPosix = normalizePath(
+                path.relative(routeFileDir, root),
+              );
 
-            fs.mkdirSync(routeFileDir, { recursive: true });
-            fs.writeFileSync(
-              path.join(routeFileDir, `route.${key}.marko`),
-              renderRouteTemplate(route, (to) =>
-                path.posix.join(routeFileRelativePathPosix, to),
-              ),
-            );
+              fs.mkdirSync(routeFileDir, { recursive: true });
+              fs.writeFileSync(
+                (route.templateFilePath = path.join(
+                  routeFileDir,
+                  `route.${key}.marko`,
+                )),
+                renderRouteTemplate(route, (to) =>
+                  path.posix.join(routeFileRelativePathPosix, to),
+                ),
+              );
+            } else {
+              route.templateFilePath = page.filePath;
+            }
           }
         }
         if (routes.middleware.length) {
@@ -677,7 +693,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else if (process.env.MR_EXPLORER !== "true") {
-          logRoutesTable(routes, bundle, options);
+          logRoutesTable(routes, bundle);
         }
       },
       async closeBundle() {
