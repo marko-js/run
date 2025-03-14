@@ -87,6 +87,7 @@ export interface Route {
   meta?: RoutableFile;
   handler?: RoutableFile;
   page?: RoutableFile;
+  templateFilePath?: string;
   entryName: string;
 }
 

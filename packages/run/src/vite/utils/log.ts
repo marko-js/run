@@ -4,12 +4,7 @@ import { Blob } from "buffer";
 import Table, { HorizontalAlignment } from "cli-table3";
 import format from "human-format";
 import kleur from "kleur";
-import type {
-  NormalizedOutputOptions,
-  OutputAsset,
-  OutputBundle,
-  OutputChunk,
-} from "rollup";
+import type { OutputAsset, OutputBundle, OutputChunk } from "rollup";
 
 import type { BuiltRoutes, HttpVerb, Route } from "../types";
 import { getVerbs } from "./route";
@@ -30,15 +25,7 @@ function verbColor(verb: HttpVerb) {
     : kleur.gray;
 }
 
-export function logRoutesTable(
-  routes: BuiltRoutes,
-  bundle: OutputBundle,
-  options: NormalizedOutputOptions,
-) {
-  function getRouteChunkName(route: Route) {
-    return options.sanitizeFileName(`${route.entryName}.marko`);
-  }
-
+export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
 
@@ -83,9 +70,7 @@ export function logRoutesTable(
         if (route.page && (verb === "get" || verb === "head")) {
           entryType.push(kleur.yellow("page"));
           if (verb === "get") {
-            size = prettySize(
-              computeRouteSize(getRouteChunkName(route), bundle),
-            );
+            size = prettySize(computeRouteSize(route, bundle));
           }
         }
 
@@ -114,7 +99,7 @@ export function logRoutesTable(
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    row.push(prettySize(computeRouteSize(getRouteChunkName(route), bundle)));
+    row.push(prettySize(computeRouteSize(route, bundle)));
 
     table.push(row);
   }
@@ -123,12 +108,20 @@ export function logRoutesTable(
 }
 
 function computeRouteSize(
-  entryName: string,
+  route: Route,
   bundle: OutputBundle,
 ): [number, number] {
-  for (const chunk of Object.values(bundle)) {
-    if (chunk.type === "chunk" && chunk.isEntry && chunk.name === entryName) {
-      return computeChunkSize(chunk, bundle);
+  const facadeModuleId =
+    route.templateFilePath && `${route.templateFilePath}.html`;
+  if (facadeModuleId) {
+    for (const chunk of Object.values(bundle)) {
+      if (
+        chunk.type === "chunk" &&
+        chunk.isEntry &&
+        chunk.facadeModuleId === facadeModuleId
+      ) {
+        return computeChunkSize(chunk, bundle);
+      }
     }
   }
 
