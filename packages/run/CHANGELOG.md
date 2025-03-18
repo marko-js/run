@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.6.2
+
+### Patch Changes
+
+- 15f79b9: Ensure multi-route context params are supersets
+
 ## 0.6.1
 
 ### Patch Changes
