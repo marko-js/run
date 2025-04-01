@@ -18,7 +18,13 @@ export function pageResponse(
   template: any,
   input: Record<PropertyKey, unknown>,
 ): Response {
-  return new Response(template.render(input), pageResponseInit);
+  const renderResult = template.render(input);
+  return new Response(
+    typeof renderResult.toReadable === "function"
+      ? renderResult.toReadable()
+      : renderResult,
+    pageResponseInit,
+  );
 }
 
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
