@@ -1,4 +1,3 @@
-import { start as explorerStart } from "@marko/run-explorer";
 import type { Worker } from "cluster";
 import fs from "fs";
 import inspector from "inspector";
@@ -227,6 +226,8 @@ export default function adapter(): Adapter {
 async function startExplorer() {
   if (process.env.MR_EXPLORER !== "false") {
     const port = await getAvailablePort(1234);
-    return explorerStart(port);
+    const { start } = await import("@marko/run-explorer");
+
+    return start(port);
   }
 }
