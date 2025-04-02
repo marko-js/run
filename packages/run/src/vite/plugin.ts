@@ -7,13 +7,7 @@ import { glob } from "glob";
 import path from "path";
 import type { OutputOptions, PluginContext } from "rollup";
 import { fileURLToPath } from "url";
-import type {
-  ModuleNode,
-  Plugin,
-  ResolvedConfig,
-  UserConfig,
-  ViteDevServer,
-} from "vite";
+import type { ModuleNode, Plugin, ResolvedConfig, ViteDevServer } from "vite";
 import { buildErrorMessage, mergeConfig } from "vite";
 
 import { prepareError } from "../adapter/utils";
@@ -428,70 +422,67 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         shouldEmptyOutDir = config.build?.emptyOutDir ?? true;
 
-        let pluginConfig: UserConfig = {
-          logLevel: isBuild ? "warn" : undefined,
-          define: isBuild
-            ? {
-                "process.env.NODE_ENV": "'production'",
-              }
-            : undefined,
-          ssr: {
-            noExternal: /@marko\/run($|\/)/,
-          },
-          css: {
-            devSourcemap: true,
-          },
-          build: {
-            outDir,
-            assetsDir,
-            target: browserslistTarget?.length
-              ? resolveToEsbuildTarget(browserslistTarget, {
-                  printUnknownTargets: false,
-                })
-              : undefined,
-            copyPublicDir: !isSSRBuild,
-            ssrEmitAssets: false,
-            emptyOutDir: false,
-            rollupOptions: {
-              output: rollupOutputOptions,
-            },
-            modulePreload: { polyfill: false },
-            sourcemap: config.build?.sourcemap ?? (isBuild && !isSSRBuild),
-          },
-          optimizeDeps: {
-            entries: !config.optimizeDeps?.entries
-              ? [
-                  "src/pages/**/*+{page,layout}.marko",
-                  "!**/__snapshots__/**",
-                  `!**/__tests__/**`,
-                  `!**/coverage/**`,
-                ]
-              : undefined,
-          },
-          resolve: isBuild
-            ? {
-                mainFields: (isSSRBuild ? [] : ["browser"]).concat([
-                  "module",
-                  "jsnext:main",
-                  "jsnext",
-                  "main",
-                ]),
-                conditions: [
-                  isSSRBuild ? "node" : "browser",
-                  "import",
-                  "require",
-                  "production",
-                  "default",
-                ],
-              }
-            : undefined,
-        };
+        const pluginConfig = (await adapter?.viteConfig?.(config)) || {};
 
-        if (adapter?.viteConfig) {
-          const adapterConfig = await adapter.viteConfig(config);
-          if (adapterConfig) {
-            pluginConfig = mergeConfig(pluginConfig, adapterConfig);
-          }
+        pluginConfig.ssr ??= {};
+        pluginConfig.ssr.noExternal ??= /@marko\/run($|\/)/;
+
+        pluginConfig.css ??= {};
+        pluginConfig.css.devSourcemap ??= true;
+
+        pluginConfig.build ??= {};
+        pluginConfig.build.outDir ??= outDir;
+        pluginConfig.build.assetsDir ??= assetsDir;
+        pluginConfig.build.copyPublicDir ??= !isSSRBuild;
+        pluginConfig.build.ssrEmitAssets ??= false;
+        pluginConfig.build.emptyOutDir ??= false;
+        pluginConfig.build.rollupOptions ??= {};
+        pluginConfig.build.rollupOptions.output ??= rollupOutputOptions;
+        pluginConfig.build.sourcemap ??=
+          config.build?.sourcemap ?? (isBuild && !isSSRBuild);
+
+        pluginConfig.build.modulePreload ??= {};
+        if (typeof pluginConfig.build.modulePreload !== "boolean") {
+          pluginConfig.build.modulePreload.polyfill = false;
+        }
+
+        pluginConfig.optimizeDeps ??= {};
+        if (!config.optimizeDeps?.entries) {
+          pluginConfig.optimizeDeps.entries = [
+            "src/pages/**/*+{page,layout}.marko",
+            "!**/__snapshots__/**",
+            `!**/__tests__/**`,
+            `!**/coverage/**`,
+          ];
+        }
+
+        if (browserslistTarget?.length) {
+          pluginConfig.build.target ??= resolveToEsbuildTarget(
+            browserslistTarget,
+            {
+              printUnknownTargets: false,
+            },
+          );
+        }
+
+        if (isBuild) {
+          pluginConfig.logLevel ??= "warn";
+
+          pluginConfig.define ??= {};
+          pluginConfig.define["process.env.NODE_ENV"] ??= "'production'";
+
+          pluginConfig.resolve ??= {};
+          pluginConfig.resolve.mainFields ??= (
+            isSSRBuild ? [] : ["browser"]
+          ).concat(["module", "jsnext:main", "jsnext", "main"]);
+
+          pluginConfig.resolve.conditions ??= [
+            isSSRBuild ? "node" : "browser",
+            "import",
+            "require",
+            "production",
+            "default",
+          ];
         }
 
         return setExternalPluginOptions(pluginConfig, opts);
