@@ -1,3 +1,5 @@
+/// <reference types="marko" />
+
 import type {
   AnyRoute,
   Awaitable,
@@ -9,20 +11,15 @@ import type {
   RouteHandler,
 } from "./types";
 
+export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
+export const NotMatched: typeof MarkoRun.NotMatched = Symbol() as any;
+
+const serializedGlobals = { params: true, url: true };
+
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
-
-export function pageResponse(
-  template: any,
-  input: Record<PropertyKey, unknown>,
-): Response {
-  return new Response(template.render(input), pageResponseInit);
-}
-
-export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
-export const NotMatched: typeof MarkoRun.NotMatched = Symbol() as any;
 
 globalThis.MarkoRun ??= {
   NotHandled,
@@ -32,7 +29,37 @@ globalThis.MarkoRun ??= {
   },
 };
 
-const serializedGlobals = { params: true, url: true };
+type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
+
+let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
+  toReadable = (rendered as any).toReadable
+    ? (rendered) => rendered.toReadable!()
+    : (rendered) =>
+        new ReadableStream({
+          async start(ctrl) {
+            const encoder = new TextEncoder();
+            try {
+              for await (const chunk of rendered) {
+                ctrl.enqueue(encoder.encode(chunk));
+              }
+              ctrl.close();
+            } catch (err) {
+              ctrl.error(err);
+            }
+          },
+        });
+  return toReadable(rendered);
+};
+
+export function pageResponse(
+  template: Marko.Template,
+  input: Record<PropertyKey, unknown>,
+) {
+  return new Response(
+    toReadable(template.render(input) as Rendered),
+    pageResponseInit,
+  );
+}
 
 export function createContext<TRoute extends AnyRoute>(
   route: TRoute | undefined,
