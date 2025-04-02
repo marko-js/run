@@ -32,12 +32,21 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     viteConfig(config) {
       if (config.build?.ssr) {
         return {
-          resolve: {
-            dedupe: ["marko"],
-            conditions: options.edge ? ["worker"] : undefined,
-          },
           ssr: {
             target: options.edge ? "webworker" : "node",
+            resolve: {
+              dedupe: ["marko"],
+              conditions: options.edge
+                ? [
+                    "worker",
+                    "node",
+                    "import",
+                    "require",
+                    "production",
+                    "default",
+                  ]
+                : undefined,
+            },
             noExternal: true,
           },
         };
@@ -118,7 +127,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       if (options.edge) {
         const outDir = await ensureDir(path.join(netlifyDir, "edge-functions"));
         await bundleEdgeFunction(entry, outDir, esbuildOptionsFn);
-        await writeEdgeFunctionManifest(config.root);
       } else {
         const outDir = await ensureDir(path.join(netlifyDir, "functions"));
         await bundleRegularFunction(entry, outDir, esbuildOptionsFn);
@@ -126,7 +134,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       }
 
       for (const dir of ["assets"]) {
-        const sourceDir = path.join(distDir, dir);
+        const sourceDir = path.join(distDir, "public", dir);
         if (fs.existsSync(sourceDir)) {
           await fs.promises.cp(sourceDir, path.join(netlifyDir, dir), {
             recursive: true,
@@ -161,23 +169,6 @@ async function ensureDir(dir: string, clear?: boolean): Promise<string> {
     await fs.promises.mkdir(dir, { recursive: true });
   }
   return dir;
-}
-
-async function writeEdgeFunctionManifest(rootDir: string) {
-  const dir = await ensureDir(path.join(rootDir, ".netlify", "edge-functions"));
-  await fs.promises.writeFile(
-    path.join(dir, "manifest.json"),
-    `{
-  "functions": [
-    {
-      "function": "index",
-      "pattern": "^[^.]*$"
-    }
-  ],
-  "version": 1
-}`,
-    "utf-8",
-  );
 }
 
 async function writeFunctionRedirects(rootDir: string) {
