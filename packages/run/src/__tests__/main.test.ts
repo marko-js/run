@@ -143,6 +143,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     skip_preview?: boolean;
     assert_dev?: Assert;
     assert_preview?: Assert;
+    preview_args?: string[];
   };
 
   describe(fixture, () => {
@@ -187,6 +188,10 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             undefined,
             dir,
             configFile,
+            undefined,
+            undefined,
+            undefined,
+            config.preview_args,
           );
           await testPage(dir, path, steps, server);
         }
@@ -289,7 +294,7 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
   }
 }
 
-function environment(nodeEnv) {
+function environment(nodeEnv: any) {
   const currentNodeEnv = process.env.NODE_ENV;
   beforeEach(() => {
     process.env.NODE_ENV = nodeEnv;
