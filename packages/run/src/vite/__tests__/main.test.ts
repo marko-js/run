@@ -80,7 +80,7 @@ describe("router codegen", () => {
 
       if (error || !routes) {
         normalizeErrorStack((error ||= new Error("No routes generated")));
-        routerSnap = `throw ${JSON.stringify(prepareError(error))}`;
+        routerSnap = `throw ${JSON.stringify(prepareError(error)).replace(/\\\\/g, "/")}`;
       } else {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
