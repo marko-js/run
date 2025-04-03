@@ -9,7 +9,7 @@ import type { AddressInfo } from "net";
 import path from "path";
 import createStaticServe from "serve-static";
 import { Pool } from "undici";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import zlib from "zlib";
 
 import createCrawler from "./crawler";
@@ -103,7 +103,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       if (sourceEntries[0] === defaultEntry) {
         envFile && (await loadEnv(envFile));
-        const fetch: Fetch = (await import(builtEntries[0])).fetch;
+        const fetch: Fetch = (await import(pathToFileURL(builtEntries[0]).href))
+          .fetch;
         const crawler = createCrawler(
           async (request) => {
             const response = await fetch(request, {});

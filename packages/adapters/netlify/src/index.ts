@@ -70,8 +70,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
 
       const args = [
         "dev",
-        "--framework",
-        "#static",
         "--dir",
         "netlify",
         "--port",
@@ -81,9 +79,12 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         ...parseNetlifyArgs(options.args),
       ];
 
+      console.log(`Netlify command: netlify ${args.join(" ")}`);
+
       const proc = spawn("netlify", args, {
         cwd,
         env: { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" },
+        shell: true,
       });
       if (process.env.NODE_ENV !== "test") {
         proc.stdout.pipe(process.stdout);
@@ -114,11 +115,8 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
           options.minifyWhitespace = false;
         };
 
-      for (const dir of [
-        ".netlify/functions-serve",
-        ".netlify/edge-functions",
-      ]) {
-        const dirpath = path.join(config.root, dir);
+      for (const dir of ["functions-serve", "edge-functions"]) {
+        const dirpath = path.join(config.root, ".netlify", dir);
         if (existsSync(dirpath)) {
           fs.promises.rm(dirpath, { recursive: true, force: true });
         }
