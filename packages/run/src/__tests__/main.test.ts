@@ -144,15 +144,20 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     assert_dev?: Assert;
     assert_preview?: Assert;
     preview_args?: string[];
+    timeout?: number;
   };
 
-  describe(fixture, () => {
+  describe(fixture, function () {
     const path = config.path || "/";
     const steps = config.steps
       ? Array.isArray(config.steps)
         ? config.steps
         : [config.steps]
       : [];
+
+    if (config.timeout != null) {
+      this.timeout(config.timeout);
+    }
 
     //suppressLogs();
     setCWD(dir);

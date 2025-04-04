@@ -1,6 +1,6 @@
 {
   "exit": true,
-  "timeout": 60000,
+  "timeout": 20000,
   "extension": ["js", "ts", "marko"],
   "spec": ["packages/**/src/**/*.test.@(js|ts)"],
   "watchFiles": ["packages/**/src/**/*.@(ts|marko)"],
