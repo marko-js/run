@@ -1,5 +1,13 @@
 # @marko/run-adapter-static
 
+## 1.0.2
+
+### Patch Changes
+
+- d2c8499: Ensure page responses are encoded as ReadableStream, fix Netlify edge function builds, fix Windows issues
+- Updated dependencies [d2c8499]
+  - @marko/run@0.6.3
+
 ## 1.0.1
 
 ### Patch Changes
