@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.6.3
+
+### Patch Changes
+
+- d2c8499: Ensure page responses are encoded as ReadableStream, fix Netlify edge function builds, fix Windows issues
+
 ## 0.6.2
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "The Marko application framework.",
   "keywords": [
     "marko"
