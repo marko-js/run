@@ -79,8 +79,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
         ...parseNetlifyArgs(options.args),
       ];
 
-      console.log(`Netlify command: netlify ${args.join(" ")}`);
-
       const proc = spawn("netlify", args, {
         cwd,
         env: { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" },
