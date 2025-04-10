@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.6.4
+
+### Patch Changes
+
+- 4dc8a4c: Replace stream with render for 404 and 500 pages
+
 ## 0.6.3
 
 ### Patch Changes
