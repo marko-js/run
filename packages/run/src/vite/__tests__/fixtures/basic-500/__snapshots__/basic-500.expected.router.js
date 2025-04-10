@@ -1,5 +1,5 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
+import { NotHandled, NotMatched, createContext, pageResponse } from 'virtual:marko-run/runtime/internal';
 import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
 import page500 from './.marko/route.500.marko?marko-server-entry';
 
@@ -47,7 +47,7 @@ export async function invoke(route, request, platform, url) {
 		}
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return new Response(page500.stream(buildInput({ error })), page500ResponseInit);
+			return pageResponse(page500, buildInput({ error }), page500ResponseInit);
 		}
 		throw error;
 	}

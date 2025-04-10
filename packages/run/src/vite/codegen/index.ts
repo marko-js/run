@@ -302,12 +302,15 @@ export function renderRouter(
 ): string {
   const writer = createStringWriter();
 
+  const hasErrorPage = Boolean(routes.special[RoutableFileTypes.Error]);
+  const hasNotFoundPage = Boolean(routes.special[RoutableFileTypes.NotFound]);
+
   writer.writeLines(`// @marko/run/router`);
 
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from '${virtualFilePrefix}/runtime/internal';`,
+    `import { NotHandled, NotMatched, createContext${hasErrorPage || hasNotFoundPage ? ", pageResponse" : ""} } from '${virtualFilePrefix}/runtime/internal';`,
   );
 
   for (const route of routes.list) {
@@ -368,8 +371,6 @@ globalThis.__marko_run__ = { match, fetch, invoke };
       "const [context, buildInput] = createContext(route, request, platform, url);",
     );
 
-  const hasErrorPage = Boolean(routes.special[RoutableFileTypes.Error]);
-
   if (hasErrorPage) {
     writer.writeBlockStart("try {");
   }
@@ -390,7 +391,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     .writeBlockEnd("}")
     .writeBlockEnd("}");
 
-  if (routes.special[RoutableFileTypes.NotFound]) {
+  if (hasNotFoundPage) {
     imports.writeLines(
       `
 const page404ResponseInit = {
@@ -401,7 +402,7 @@ const page404ResponseInit = {
 
     writer.write(`    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return new Response(page404.stream(buildInput()), page404ResponseInit);
+      return pageResponse(page404, buildInput(), page404ResponseInit);
     }
 `);
   }
@@ -421,7 +422,7 @@ const page500ResponseInit = {
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
       .writeLines(
-        `return new Response(page500.stream(buildInput({ error })), page500ResponseInit);`,
+        `return pageResponse(page500, buildInput({ error }), page500ResponseInit);`,
       )
       .writeBlockEnd("}")
       .writeLines("throw error;")
