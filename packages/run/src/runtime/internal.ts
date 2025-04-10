@@ -34,20 +34,30 @@ type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   toReadable = (rendered as any).toReadable
     ? (rendered) => rendered.toReadable!()
-    : (rendered) =>
-        new ReadableStream({
+    : (rendered) => {
+        let cancelled = false;
+        return new ReadableStream({
           async start(ctrl) {
             const encoder = new TextEncoder();
             try {
               for await (const chunk of rendered) {
+                if (cancelled) {
+                  return;
+                }
                 ctrl.enqueue(encoder.encode(chunk));
               }
               ctrl.close();
             } catch (err) {
-              ctrl.error(err);
+              if (!cancelled) {
+                ctrl.error(err);
+              }
             }
           },
+          cancel() {
+            cancelled = true;
+          },
         });
+      };
   return toReadable(rendered);
 };
 
