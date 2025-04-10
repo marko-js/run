@@ -54,11 +54,9 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
 export function pageResponse(
   template: Marko.Template,
   input: Record<PropertyKey, unknown>,
+  init: ResponseInit = pageResponseInit,
 ) {
-  return new Response(
-    toReadable(template.render(input) as Rendered),
-    pageResponseInit,
-  );
+  return new Response(toReadable(template.render(input) as Rendered), init);
 }
 
 export function createContext<TRoute extends AnyRoute>(
