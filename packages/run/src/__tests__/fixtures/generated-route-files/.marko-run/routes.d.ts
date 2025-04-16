@@ -55,7 +55,7 @@ declare module "../src/routes/a.(,b,c),d.e/+page.marko" {
 
 declare module "../src/routes/+layout.marko" {
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('../src/routes/+layout.marko')>]: Marko.Body;
   }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };

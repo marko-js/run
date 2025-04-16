@@ -177,7 +177,7 @@ declare module "./my/+page.marko" {
 
 declare module "./+layout.marko" {
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('./+layout.marko')>]: Marko.Body;
   }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -191,7 +191,7 @@ declare module "./+layout.marko" {
 
 declare module "./_protected/_home/+layout.marko" {
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('./_protected/_home/+layout.marko')>]: Marko.Body;
   }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };

@@ -53,7 +53,7 @@ declare module "./aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko" {
 
 declare module "./+layout.marko" {
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('./+layout.marko')>]: Marko.Body;
   }
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };

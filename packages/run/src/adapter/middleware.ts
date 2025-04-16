@@ -174,8 +174,6 @@ export function createMiddleware(
         res.end();
       } else if (next) {
         next();
-      } else {
-        res.socket?.destroySoon();
       }
     } catch (err) {
       const error = err as Error;

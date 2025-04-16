@@ -45,6 +45,10 @@ export async function invoke(route, request, platform, url) {
 				if (error !== NotMatched) throw error;
 			}
 		}
+	
+    return new Response(null, {
+      status: 404,
+    });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
 			return pageResponse(page500, buildInput({ error }), page500ResponseInit);

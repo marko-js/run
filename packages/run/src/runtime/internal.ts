@@ -9,10 +9,15 @@ import type {
   NextFunction,
   Platform,
   RouteHandler,
+  RouteHandlerResult,
 } from "./types";
 
-export const NotHandled: typeof MarkoRun.NotHandled = Symbol() as any;
-export const NotMatched: typeof MarkoRun.NotMatched = Symbol() as any;
+export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
+  "marko-run not handled",
+) as any;
+export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
+  "marko-run not matched",
+) as any;
 
 const serializedGlobals = { params: true, url: true };
 
@@ -112,7 +117,7 @@ export async function call<TRoute extends AnyRoute>(
   next: NextFunction,
   context: MultiRouteContext<TRoute>,
 ): Promise<Response> {
-  let response!: Response | null | void;
+  let response!: RouteHandlerResult;
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
     let nextCallCount = 0;
@@ -156,8 +161,8 @@ export async function call<TRoute extends AnyRoute>(
     }
   }
 
-  if (response === null) {
-    throw NotMatched;
+  if (response === null || response === NotMatched || response === NotHandled) {
+    throw response || NotMatched;
   }
   return response || next();
 }

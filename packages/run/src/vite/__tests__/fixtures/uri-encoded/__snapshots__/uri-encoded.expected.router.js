@@ -60,6 +60,10 @@ export async function invoke(route, request, platform, url) {
 			if (error !== NotMatched) throw error;
 		}
 	}
+
+    return new Response(null, {
+      status: 404,
+    });
 }
 
 export async function fetch(request, platform) {

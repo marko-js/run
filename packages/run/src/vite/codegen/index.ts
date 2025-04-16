@@ -403,11 +403,14 @@ const page404ResponseInit = {
     writer.write(`    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return pageResponse(page404, buildInput(), page404ResponseInit);
-    }
-`);
+    }`);
   }
 
   writer.indent--;
+  writer.writeLines(`
+    return new Response(null, {
+      status: 404,
+    });`);
 
   if (hasErrorPage) {
     imports.writeLines(`
@@ -843,7 +846,7 @@ export async function renderRouteTypeInfo(
           routeType,
           `
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('${path}')>]: Marko.Body;
   }`,
         );
         break;

@@ -1,0 +1,7 @@
+{
+  "name": "netlify-adapter-page",
+  "version": "1.0.0",
+  "scripts": {
+    "copy-functions": "mkdir -p .netlify/edge-functions && yes | cp -rf dist/index.mjs .netlify/edge-functions/index.mjs"
+  }
+}
