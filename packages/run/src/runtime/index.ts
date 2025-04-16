@@ -45,6 +45,7 @@ declare global {
 
 export type {
   AppData,
+  ContentKeyFor,
   Context,
   DefineApp,
   Fetch,

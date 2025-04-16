@@ -37,10 +37,17 @@ export type HandlerLike<TRoute extends Route = AnyRoute> = Awaitable<
   OneOrMany<RouteHandler<TRoute>>
 >;
 
+export type RouteHandlerResult =
+  | Response
+  | typeof MarkoRun.NotHandled
+  | typeof MarkoRun.NotMatched
+  | null
+  | void;
+
 export type RouteHandler<TRoute extends Route = AnyRoute> = (
   context: MultiRouteContext<TRoute>,
   next: NextFunction,
-) => Awaitable<Response | null | void>;
+) => Awaitable<RouteHandlerResult>;
 
 export interface Route<
   Params extends ParamsObject = ParamsObject,

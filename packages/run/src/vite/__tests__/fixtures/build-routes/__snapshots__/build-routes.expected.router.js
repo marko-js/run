@@ -183,7 +183,10 @@ export async function invoke(route, request, platform, url) {
     
     if (context.request.headers.get('Accept')?.includes('text/html')) {
       return pageResponse(page404, buildInput(), page404ResponseInit);
-    }
+    }	
+    return new Response(null, {
+      status: 404,
+    });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
 			return pageResponse(page500, buildInput({ error }), page500ResponseInit);
