@@ -133,6 +133,10 @@ after(async () => {
 const FIXTURES = path.join(__dirname, "fixtures");
 
 for (const fixture of fs.readdirSync(FIXTURES)) {
+  if (fixture.startsWith(".")) {
+    continue;
+  }
+
   const dir = path.join(FIXTURES, fixture);
   const config = requireCwd(path.join(dir, "test.config.ts")) as {
     path?: string;

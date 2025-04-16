@@ -1,12 +1,6 @@
-import type { Context } from "@netlify/edge-functions";
-import type { HandlerContext, HandlerEvent } from "@netlify/functions";
+import type { Context as EdgeContext } from "@netlify/edge-functions";
+import type { Context as FunctionsContext } from "@netlify/functions";
 
-export interface NetlifyFunctionsPlatformInfo {
-  event: HandlerEvent;
-  context: HandlerContext;
-  ip: string;
-}
+export interface NetlifyFunctionsPlatformInfo extends FunctionsContext {}
 
-export interface NetlifyEdgePlatformInfo {
-  context: Context;
-}
+export interface NetlifyEdgePlatformInfo extends EdgeContext {}

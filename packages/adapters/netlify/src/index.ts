@@ -1,12 +1,5 @@
-import {
-  bundleEdgeFunction,
-  bundleRegularFunction,
-  type NetlifyBundlerOptions,
-} from "@hattip/bundler-netlify";
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
 import { spawn } from "child_process";
-import fs from "fs";
-import { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -65,25 +58,33 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       );
     },
 
-    async startPreview(_entry, options) {
-      const { port = 3000, cwd } = options;
+    async startPreview(_entry, previewOptions) {
+      const { port = 3000, cwd } = previewOptions;
 
       const args = [
         "dev",
         "--dir",
-        "netlify",
+        path.join(previewOptions.dir, "public"),
         "--port",
         port.toString(),
         "--cwd",
         cwd,
-        ...parseNetlifyArgs(options.args),
       ];
+
+      if (!options.edge) {
+        args.push("--functions", previewOptions.dir);
+      }
+
+      args.push(...parseNetlifyArgs(previewOptions.args));
 
       const proc = spawn("netlify", args, {
         cwd,
-        env: { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" },
+        env: options.edge
+          ? { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" }
+          : process.env,
         shell: true,
       });
+
       if (process.env.NODE_ENV !== "test") {
         proc.stdout.pipe(process.stdout);
       }
@@ -96,48 +97,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
           proc.kill();
         },
       };
-    },
-
-    async buildEnd(config, _routes, builtEntries, _sourceEntries) {
-      const entry = builtEntries[0];
-      const distDir = path.dirname(entry);
-      const netlifyDir = await ensureDir(
-        path.join(config.root, "netlify"),
-        true,
-      );
-      const esbuildOptionsFn: NetlifyBundlerOptions["manipulateEsbuildOptions"] =
-        (options) => {
-          options.minify = false;
-          options.minifyIdentifiers = false;
-          options.minifySyntax = false;
-          options.minifyWhitespace = false;
-        };
-
-      for (const dir of ["functions-serve", "edge-functions"]) {
-        const dirpath = path.join(config.root, ".netlify", dir);
-        if (existsSync(dirpath)) {
-          fs.promises.rm(dirpath, { recursive: true, force: true });
-        }
-      }
-
-      if (options.edge) {
-        const outDir = await ensureDir(path.join(netlifyDir, "edge-functions"));
-        await bundleEdgeFunction(entry, outDir, esbuildOptionsFn);
-      } else {
-        const outDir = await ensureDir(path.join(netlifyDir, "functions"));
-        await bundleRegularFunction(entry, outDir, esbuildOptionsFn);
-        await writeFunctionRedirects(config.root);
-      }
-
-      for (const dir of ["assets"]) {
-        const sourceDir = path.join(distDir, "public", dir);
-        if (fs.existsSync(sourceDir)) {
-          await fs.promises.cp(sourceDir, path.join(netlifyDir, dir), {
-            recursive: true,
-            force: true,
-          });
-        }
-      }
     },
 
     typeInfo(writer) {
@@ -154,28 +113,6 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
   };
 }
-
-async function ensureDir(dir: string, clear?: boolean): Promise<string> {
-  let exists = existsSync(dir);
-  if (exists && clear) {
-    await fs.promises.rm(dir, { force: true, recursive: true });
-    exists = false;
-  }
-  if (!exists) {
-    await fs.promises.mkdir(dir, { recursive: true });
-  }
-  return dir;
-}
-
-async function writeFunctionRedirects(rootDir: string) {
-  const dir = await ensureDir(path.join(rootDir, "netlify"));
-  await fs.promises.writeFile(
-    path.join(dir, "_redirects"),
-    "/*  /.netlify/functions/index  200\n",
-    "utf-8",
-  );
-}
-
 const devFlags = new RegExp(
   [
     "context=.+",

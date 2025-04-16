@@ -20,7 +20,22 @@ npm install @marko/run-adapter-netlify
 
 ## Usage
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
+For most applications, installing this adapter is all that is needed. Marko Run will automatically discover it and configure it to deploy to Netlify Functions.
+
+## Configuration
+
+Netlify applications require a [`netlify.toml`](https://docs.netlify.com/configure-builds/file-based-configuration/#sample-netlify-toml-file) to configure it. This example is a starting point for Marko Run apps deployed to Netlify Functions.
+
+```toml
+[build]
+  command = "marko-run build"
+  publish = "dist/public"
+  functions = "dist"
+```
+
+## Edge Functions
+
+This adapter can be configured to build for Netlify [Edge Functions](https://docs.netlify.com/edge-functions/overview/) in the application's Vite config.
 
 ```ts
 import { defineConfig } from "vite";
@@ -34,4 +49,13 @@ export default defineConfig({
     }),
   ],
 });
+```
+
+The netlify.toml will also need to specify the edge `edge_functions` directory instead of `functions`.
+
+```toml
+[build]
+  command = "marko-run build"
+  publish = "dist/public"
+  edge_functions = "dist"
 ```

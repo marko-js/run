@@ -1,0 +1,3 @@
+[build]
+publish = "dist/public"
+edge_functions = "dist"
