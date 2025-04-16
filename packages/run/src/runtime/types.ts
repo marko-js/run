@@ -1,3 +1,5 @@
+/// <reference types="marko" />
+
 export type Awaitable<T> = Promise<T> | T;
 type OneOrMany<T> = T | T[];
 type NoParams = {};
@@ -235,6 +237,20 @@ export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
     : <T extends HandlerLike<TRoute>>(handler: T) => T;
 
 export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
+
+type DefaultBodyContentKey = keyof Exclude<
+  Marko.Renderable,
+  Marko.Template<any, any> | Marko.Body<any, any> | string
+>;
+export type ContentKeyFor<T extends Marko.Template<any, any>> = T extends {
+  api: infer API;
+}
+  ? API extends "tags"
+    ? "content"
+    : API extends "class"
+      ? "renderBody"
+      : DefaultBodyContentKey
+  : DefaultBodyContentKey;
 export type PostPaths = AppData extends { postPaths: infer T } ? T : string;
 export type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
 export type GetableHref<T extends string> = ValidateHref<GetPaths, T>;

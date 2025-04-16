@@ -846,7 +846,7 @@ export async function renderRouteTypeInfo(
           routeType,
           `
   export interface Input {
-    renderBody: Marko.Body;
+    [Run.ContentKeyFor<typeof import('${path}')>]: Marko.Body;
   }`,
         );
         break;
