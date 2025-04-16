@@ -1,5 +1,16 @@
 # @marko/run-adapter-netlify
 
+## 2.0.0
+
+### Major Changes
+
+- a8580d7: Update Netlify adapter to latest, minor other fixes
+
+### Patch Changes
+
+- Updated dependencies [a8580d7]
+  - @marko/run@0.6.5
+
 ## 1.0.2
 
 ### Patch Changes

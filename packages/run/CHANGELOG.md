@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.6.5
+
+### Patch Changes
+
+- a8580d7: Update Netlify adapter to latest, minor other fixes
+
 ## 0.6.4
 
 ### Patch Changes
