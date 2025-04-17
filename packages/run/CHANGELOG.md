@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.6.6
+
+### Patch Changes
+
+- 4926e0a: Fix input type generated for layouts
+
 ## 0.6.5
 
 ### Patch Changes

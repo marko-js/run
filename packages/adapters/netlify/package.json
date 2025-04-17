@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-netlify",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Preview and deploy @marko/run apps to Netlify Functions/Edge Functions",
   "keywords": [
     "marko"
@@ -41,7 +41,7 @@
     "vite": "^6.0.0"
   },
   "peerDependencies": {
-    "@marko/run": "^0.6.5"
+    "@marko/run": "^0.6.6"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
