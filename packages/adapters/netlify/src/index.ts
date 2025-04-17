@@ -1,5 +1,5 @@
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
-import { spawn } from "child_process";
+import { execSync, spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -59,6 +59,8 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
 
     async startPreview(_entry, previewOptions) {
+      assertNetlifyCLI();
+
       const { port = 3000, cwd } = previewOptions;
 
       const args = [
@@ -138,4 +140,15 @@ const devFlags = new RegExp(
 
 function parseNetlifyArgs(args: string[]) {
   return args.filter((arg) => devFlags.test(arg));
+}
+
+function assertNetlifyCLI() {
+  try {
+    execSync("netlify --version");
+  } catch (error) {
+    console.warn(
+      `Netlfiy CLI not found. Please install it globally with \`npm install -g netlify-cli\``,
+    );
+    process.exit(1);
+  }
 }
