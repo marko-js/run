@@ -13,8 +13,8 @@
   },
   "devDependencies": {
     "@marko/compiler": "^5.39.4",
-    "@marko/run": "^0.6.5",
-    "@marko/run-adapter-netlify": "^2.0.0",
+    "@marko/run": "^0.6.6",
+    "@marko/run-adapter-netlify": "^2.0.1",
     "@types/compression": "^1.7.5",
     "@types/express": "^5.0.0",
     "@types/mocha": "^10.0.10",

@@ -1,5 +1,13 @@
 # @marko/run-adapter-netlify
 
+## 2.0.1
+
+### Patch Changes
+
+- 9c835da: Check if netlify CLI is installed before starting preview
+- Updated dependencies [4926e0a]
+  - @marko/run@0.6.6
+
 ## 2.0.0
 
 ### Major Changes
