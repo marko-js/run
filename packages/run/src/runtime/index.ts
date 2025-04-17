@@ -45,7 +45,6 @@ declare global {
 
 export type {
   AppData,
-  ContentKeyFor,
   Context,
   DefineApp,
   Fetch,
@@ -53,6 +52,7 @@ export type {
   HandlerTypeFn,
   InputObject,
   Invoke,
+  LayoutInput,
   Match,
   MultiRouteContext,
   NextFunction,

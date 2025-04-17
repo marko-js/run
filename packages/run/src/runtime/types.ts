@@ -236,21 +236,19 @@ export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
       ) => T
     : <T extends HandlerLike<TRoute>>(handler: T) => T;
 
-export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
-
-type DefaultBodyContentKey = keyof Exclude<
+type DefaultAPI = keyof Exclude<
   Marko.Renderable,
   Marko.Template<any, any> | Marko.Body<any, any> | string
->;
-export type ContentKeyFor<T extends Marko.Template<any, any>> = T extends {
-  api: infer API;
-}
-  ? API extends "tags"
-    ? "content"
-    : API extends "class"
-      ? "renderBody"
-      : DefaultBodyContentKey
-  : DefaultBodyContentKey;
+> extends "content"
+  ? "tags"
+  : "class";
+type TemplateAPI<T> = T extends { api: infer API } ? API : DefaultAPI;
+export type LayoutInput<T> =
+  TemplateAPI<T> extends "tags"
+    ? { content: Marko.Body }
+    : { renderBody: Marko.Body };
+
+export type GetPaths = AppData extends { getPaths: infer T } ? T : string;
 export type PostPaths = AppData extends { postPaths: infer T } ? T : string;
 export type GetablePath<T extends string> = ValidatePath<GetPaths, T>;
 export type GetableHref<T extends string> = ValidateHref<GetPaths, T>;

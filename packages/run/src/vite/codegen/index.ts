@@ -845,9 +845,7 @@ export async function renderRouteTypeInfo(
           path,
           routeType,
           `
-  export interface Input {
-    [Run.ContentKeyFor<typeof import('${path}')>]: Marko.Body;
-  }`,
+  export interface Input extends Run.LayoutInput<typeof import('${path}')> {}`,
         );
         break;
       case RoutableFileTypes.Error:

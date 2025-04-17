@@ -27,9 +27,7 @@ declare module "./+page.marko" {
 }
 
 declare module "./+layout.marko" {
-  export interface Input {
-    [Run.ContentKeyFor<typeof import('./+layout.marko')>]: Marko.Body;
-  }
+  export interface Input extends Run.LayoutInput<typeof import('./+layout.marko')> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
