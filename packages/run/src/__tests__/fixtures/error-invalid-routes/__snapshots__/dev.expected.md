@@ -7,8 +7,3 @@
     
 ```
 
-```diff
--    +    
-<vite-error-overlay />
-```
-
