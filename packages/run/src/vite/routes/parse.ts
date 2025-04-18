@@ -12,6 +12,16 @@ export interface Path {
   source: string;
 }
 
+const enum CharCodes {
+  Dynamic = 36, // $
+  GroupStart = 40, // (
+  GroupEnd = 41, // )
+  Alternate = 44, // ,
+  Directory = 46, // .
+  Pathless = 95, // _
+  Escape = 96, // `
+}
+
 export function parseFlatRoute(pattern: string): Path[] {
   if (!pattern) throw new Error("Empty pattern");
 
@@ -28,58 +38,70 @@ export function parseFlatRoute(pattern: string): Path[] {
 
   function parse(basePaths: Path[], group?: number): Path[] {
     const pathMap = new Map<string, Path>();
-    const delimiters = group ? ").," : ".,";
+    const delimiters = group ? "`).," : "`.,";
     let charCode: number;
     let segmentStart = i;
     let type: "_" | "$" | "$$" | undefined;
     let current: Path[] | undefined;
+    let escaped = "";
+    let escapeStart = 0;
 
     do {
-      /*
-        Char Codes
-          $: 36
-          (: 40
-          ): 41
-          ,: 44
-          .: 46
-          _: 95
-      */
       charCode = pattern.charCodeAt(i);
-      if (charCode === 41 && group) {
+      if (charCode === CharCodes.Escape) {
+        if (escapeStart) {
+          escaped +=
+            pattern.slice(segmentStart, escapeStart - 1) +
+            pattern.slice(escapeStart, i);
+          escapeStart = 0;
+          segmentStart = ++i;
+        } else {
+          escapeStart = i + 1;
+          i = pattern.indexOf("`", escapeStart);
+          if (i < 0) break;
+        }
+      } else if (charCode === CharCodes.GroupEnd && group) {
         break;
-      } else if (charCode === 44) {
+      } else if (charCode === CharCodes.Alternate) {
         if (!current) {
           segmentEnd(
             basePaths.map((path) => ({
               ...path,
               segments: path.segments.slice(),
             })),
-            "",
+            escaped,
             "_",
             pathMap,
           );
         } else {
-          segmentEnd(current, pattern.slice(segmentStart, i), type, pathMap);
+          segmentEnd(
+            current,
+            escaped + pattern.slice(segmentStart, i),
+            type,
+            pathMap,
+          );
         }
         current = undefined;
         type = undefined;
+        escaped = "";
         segmentStart = ++i;
-      } else if (charCode === 46) {
+      } else if (charCode === CharCodes.Directory) {
         if (current) {
-          segmentEnd(current, pattern.slice(segmentStart, i), type);
+          segmentEnd(current, escaped + pattern.slice(segmentStart, i), type);
         }
         type = undefined;
+        escaped = "";
         segmentStart = ++i;
-      } else if (charCode === 40) {
+      } else if (charCode === CharCodes.GroupStart) {
         const groupPaths = parse(current || basePaths, ++i);
         if (groupPaths.length) {
           current = groupPaths;
         }
         segmentStart = ++i;
       } else {
-        if (charCode === 95) {
+        if (charCode === CharCodes.Pathless) {
           type = "_";
-        } else if (charCode === 36) {
+        } else if (charCode === CharCodes.Dynamic) {
           type = pattern.charCodeAt(i + 1) === 36 ? "$$" : "$";
         }
 
@@ -98,7 +120,12 @@ export function parseFlatRoute(pattern: string): Path[] {
       }
     } while (i < len);
 
-    if (group && charCode !== 41) {
+    if (escapeStart) {
+      throw new Error(
+        `Invalid route pattern: unclosed escape '${pattern.slice(escapeStart)}' in '${pattern}'`,
+      );
+    }
+    if (group && charCode !== CharCodes.GroupEnd) {
       throw new Error(
         `Invalid route pattern: group was not closed '${pattern.slice(
           group,
@@ -112,12 +139,17 @@ export function parseFlatRoute(pattern: string): Path[] {
           ...path,
           segments: path.segments.slice(),
         })),
-        "",
-        "_",
+        escaped,
+        undefined,
         pathMap,
       );
     } else {
-      segmentEnd(current, pattern.slice(segmentStart, i), type, pathMap);
+      segmentEnd(
+        current,
+        escaped + pattern.slice(segmentStart, i),
+        type,
+        pathMap,
+      );
     }
 
     return [...pathMap.values()];
