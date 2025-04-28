@@ -1,6 +1,12 @@
 import type { Fetch } from "@marko/run";
 import baseAdapter from "@marko/run/adapter";
-import type { Adapter, AdapterConfig, Route } from "@marko/run/vite";
+import type {
+  Adapter,
+  AdapterConfig,
+  BuiltRoutes,
+  Options as MarkoRunOptions,
+  Route,
+} from "@marko/run/vite";
 import { getAvailablePort, loadEnv, spawnServer } from "@marko/run/vite";
 import compression from "compression";
 import fs from "fs/promises";
@@ -21,11 +27,11 @@ export interface Options {
   urls?: string[] | ((routes: Route[]) => string[] | Promise<string[]>);
 }
 
-function noop() {}
-
 export default function staticAdapter(options: Options = {}): Adapter {
   const { startDev } = baseAdapter();
   let adapterConfig!: AdapterConfig;
+  let markoRunOptions: MarkoRunOptions;
+  let builtRoutes: BuiltRoutes;
   return {
     name: "static-adapter",
 
@@ -33,10 +39,12 @@ export default function staticAdapter(options: Options = {}): Adapter {
       adapterConfig = config;
     },
 
-    async pluginOptions() {
-      return {
-        trailingSlashes: "RedirectWith",
-      };
+    pluginOptions(options) {
+      return (markoRunOptions = options);
+    },
+
+    routesGenerated(routes) {
+      builtRoutes = routes;
     },
 
     async getEntryFile() {
@@ -61,9 +69,27 @@ export default function staticAdapter(options: Options = {}): Adapter {
       });
       const staticServe = createStaticServe(path.join(dir, "public"), {
         index: "index.html",
+        extensions: ["html"],
+        redirect: false,
+        setHeaders(res, path) {
+          if (path === "/404") {
+            res.statusCode = 404;
+          }
+        },
       });
       const server = createServer((req, res) =>
-        compress(req as any, res as any, () => staticServe(req, res, noop)),
+        compress(req as any, res as any, () =>
+          staticServe(req, res, () => {
+            if (req.url === "/404") {
+              res.writeHead(404);
+            } else {
+              res.writeHead(302, undefined, {
+                location: "/404",
+              });
+            }
+            res.end();
+          }),
+        ),
       );
 
       return new Promise((resolve) => {
@@ -101,6 +127,10 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       const defaultEntry = await this.getEntryFile!();
 
+      const trailingSlash =
+        markoRunOptions.trailingSlashes === "RedirectWith" ||
+        markoRunOptions.trailingSlashes === "RewriteWith";
+
       if (sourceEntries[0] === defaultEntry) {
         envFile && (await loadEnv(envFile));
         const fetch: Fetch = (await import(pathToFileURL(builtEntries[0]).href))
@@ -112,6 +142,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             out: path.join(path.dirname(builtEntries[0]), "public"),
+            notFoundPath: builtRoutes.special["404"]
+              ? "404" + (trailingSlash ? "/" : "")
+              : undefined,
           },
         );
         await crawler.crawl(pathsToVisit);
@@ -146,6 +179,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             origin,
+            notFoundPath: builtRoutes.special["404"]
+              ? "404" + (trailingSlash ? "/" : "")
+              : undefined,
           },
         );
 

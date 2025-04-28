@@ -76,8 +76,10 @@ interface RouteData {
 }
 
 export default function markoRun(opts: Options = {}): Plugin[] {
-  // eslint-disable-next-line prefer-const
-  let { routesDir, adapter, ...markoVitePluginOptions } = opts;
+  let routesDir: NonNullable<(typeof opts)["routesDir"]>;
+  let adapter: NonNullable<(typeof opts)["adapter"]> | null;
+  let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
+  const { ...markoVitePluginOptions } = opts;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -284,7 +286,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
           renderRouter(routes, relativeEntryFilesDirPosix, {
-            trailingSlashes: opts.trailingSlashes || "RedirectWithout",
+            trailingSlashes,
           }),
         );
 
@@ -347,6 +349,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         routesDir = opts.routesDir || "src/routes";
+        trailingSlashes = opts.trailingSlashes || "RedirectWithout";
         store = new ReadOncePersistedStore(
           `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`,
         );
