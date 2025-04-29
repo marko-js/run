@@ -10,8 +10,8 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/foo": Routes["/foo"];
-			"/foo/bar": Routes["/foo/bar"];
+			"/foo": { verb: "get"; };
+			"/foo/bar": { verb: "get"; };
 		}
 	}> {}
 }
@@ -39,7 +39,7 @@ declare module "../src/routes/foo/bar+page.marko" {
 }
 
 declare module "../src/routes/+layout.marko" {
-  export interface Input extends Run.LayoutInput<typeof import('../src/routes/+layout.marko')> {}
+  export interface Input extends Run.LayoutInput<typeof import("../src/routes/+layout.marko")> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/foo" | "/foo/bar"];
@@ -48,9 +48,4 @@ declare module "../src/routes/+layout.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/foo": { verb: "get"; };
-	"/foo/bar": { verb: "get"; };
 }

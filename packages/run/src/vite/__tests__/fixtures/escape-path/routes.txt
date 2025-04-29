@@ -1,6 +1,6 @@
-/`a,b,c`
-  /$`$`id
-    /`e.html`
+/`a?b`
+  /$`$id`
+    /$foo
       +page.marko
-/(`e.f`,g`.`h)
-  +page.marko
+  /baz
+    +page.marko

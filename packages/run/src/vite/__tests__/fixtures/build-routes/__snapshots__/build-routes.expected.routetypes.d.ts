@@ -10,18 +10,18 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/_protected/_home"];
-			"/new": Routes["/_protected/_home/new"];
-			"/notes/:id": Routes["/_protected/_home/notes/$id"];
-			"/notes/:id/comments": Routes["/_protected/_home/notes/$id/comments"];
-			"/callback/oauth2": Routes["/callback/oauth2"];
-			"/my": Routes["/my"];
-			"/:match*": Routes["/$$match"];
+			"/": { verb: "get"; };
+			"/new": { verb: "get" | "post"; meta: typeof import("../src/routes/_protected/_home/new/+meta.json"); };
+			"/notes/$id": { verb: "get" | "post"; };
+			"/notes/$id/comments": { verb: "post"; meta: typeof import("../src/routes/_protected/_home/notes/$id/comments/+meta")["default"]; };
+			"/callback/oauth2": { verb: "get"; };
+			"/my": { verb: "get"; };
+			"/$$match": { verb: "get"; };
 		}
 	}> {}
 }
 
-declare module "./_protected/_home/new/+handler.post" {
+declare module "../src/routes/_protected/_home/new/+handler.post" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/new"];
@@ -32,10 +32,10 @@ declare module "./_protected/_home/new/+handler.post" {
   }
 }
 
-declare module "./_protected/_home/notes/$id/+handler.put_post_delete" {
+declare module "../src/routes/_protected/_home/notes/$id/+handler.put_post_delete" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/notes/:id"];
+    export type Route = Run.Routes["/notes/$id"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -43,10 +43,10 @@ declare module "./_protected/_home/notes/$id/+handler.put_post_delete" {
   }
 }
 
-declare module "./_protected/_home/notes/$id/comments/+handler.put_post_delete" {
+declare module "../src/routes/_protected/_home/notes/$id/comments/+handler.put_post_delete" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/notes/:id/comments"];
+    export type Route = Run.Routes["/notes/$id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -54,7 +54,7 @@ declare module "./_protected/_home/notes/$id/comments/+handler.put_post_delete" 
   }
 }
 
-declare module "./callback/oauth2/+handler.get" {
+declare module "../src/routes/callback/oauth2/+handler.get" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/callback/oauth2"];
@@ -65,7 +65,7 @@ declare module "./callback/oauth2/+handler.get" {
   }
 }
 
-declare module "./my/+handler.get_head" {
+declare module "../src/routes/my/+handler.get_head" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/my"];
@@ -76,10 +76,10 @@ declare module "./my/+handler.get_head" {
   }
 }
 
-declare module "./$$match/+handler.get" {
+declare module "../src/routes/$$match/+handler.get" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:match*"];
+    export type Route = Run.Routes["/$$match"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -87,10 +87,10 @@ declare module "./$$match/+handler.get" {
   }
 }
 
-declare module "./+middleware" {
+declare module "../src/routes/+middleware" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments" | "/callback/oauth2" | "/my" | "/:match*"];
+    export type Route = Run.Routes["/" | "/new" | "/notes/$id" | "/notes/$id/comments" | "/callback/oauth2" | "/my" | "/$$match"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -98,10 +98,10 @@ declare module "./+middleware" {
   }
 }
 
-declare module "./_protected/+middleware" {
+declare module "../src/routes/_protected/+middleware" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments"];
+    export type Route = Run.Routes["/" | "/new" | "/notes/$id" | "/notes/$id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -109,10 +109,10 @@ declare module "./_protected/+middleware" {
   }
 }
 
-declare module "./_protected/_home/+middleware" {
+declare module "../src/routes/_protected/_home/+middleware" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/notes/:id/comments"];
+    export type Route = Run.Routes["/" | "/new" | "/notes/$id" | "/notes/$id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -120,10 +120,10 @@ declare module "./_protected/_home/+middleware" {
   }
 }
 
-declare module "./_protected/_home/notes/$id/+middleware" {
+declare module "../src/routes/_protected/_home/notes/$id/+middleware" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/notes/:id" | "/notes/:id/comments"];
+    export type Route = Run.Routes["/notes/$id" | "/notes/$id/comments"];
     export type Context = Run.MultiRouteContext<Route>;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -131,7 +131,7 @@ declare module "./_protected/_home/notes/$id/+middleware" {
   }
 }
 
-declare module "./_protected/_home/+page.marko" {
+declare module "../src/routes/_protected/_home/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
@@ -142,7 +142,7 @@ declare module "./_protected/_home/+page.marko" {
   }
 }
 
-declare module "./_protected/_home/new/+page.marko" {
+declare module "../src/routes/_protected/_home/new/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/new"];
@@ -153,10 +153,10 @@ declare module "./_protected/_home/new/+page.marko" {
   }
 }
 
-declare module "./_protected/_home/notes/$id/+page.marko" {
+declare module "../src/routes/_protected/_home/notes/$id/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/notes/:id"];
+    export type Route = Run.Routes["/notes/$id"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -164,7 +164,7 @@ declare module "./_protected/_home/notes/$id/+page.marko" {
   }
 }
 
-declare module "./my/+page.marko" {
+declare module "../src/routes/my/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/my"];
@@ -175,11 +175,11 @@ declare module "./my/+page.marko" {
   }
 }
 
-declare module "./+layout.marko" {
-  export interface Input extends Run.LayoutInput<typeof import('./+layout.marko')> {}
+declare module "../src/routes/+layout.marko" {
+  export interface Input extends Run.LayoutInput<typeof import("../src/routes/+layout.marko")> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/new" | "/notes/:id" | "/my"];
+    export type Route = Run.Routes["/" | "/new" | "/notes/$id" | "/my"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -187,11 +187,11 @@ declare module "./+layout.marko" {
   }
 }
 
-declare module "./_protected/_home/+layout.marko" {
-  export interface Input extends Run.LayoutInput<typeof import('./_protected/_home/+layout.marko')> {}
+declare module "../src/routes/_protected/_home/+layout.marko" {
+  export interface Input extends Run.LayoutInput<typeof import("../src/routes/_protected/_home/+layout.marko")> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/new" | "/notes/:id"];
+    export type Route = Run.Routes["/" | "/new" | "/notes/$id"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -199,7 +199,7 @@ declare module "./_protected/_home/+layout.marko" {
   }
 }
 
-declare module "./+404.marko" {
+declare module "../src/routes/+404.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Route;
@@ -210,7 +210,7 @@ declare module "./+404.marko" {
   }
 }
 
-declare module "./+500.marko" {
+declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
@@ -222,14 +222,4 @@ declare module "./+500.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/_protected/_home": { verb: "get"; };
-	"/_protected/_home/new": { verb: "get" | "post"; meta: typeof import("./_protected/_home/new/+meta.json"); };
-	"/_protected/_home/notes/$id": { verb: "get" | "post"; };
-	"/_protected/_home/notes/$id/comments": { verb: "post"; meta: typeof import("./_protected/_home/notes/$id/comments/+meta")["default"]; };
-	"/callback/oauth2": { verb: "get"; };
-	"/my": { verb: "get"; };
-	"/$$match": { verb: "get"; };
 }

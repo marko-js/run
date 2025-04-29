@@ -14,7 +14,7 @@ import {
 import { httpVerbs } from "../constants";
 import { buildRoutes, type RouteSource } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
-import type { BuiltRoutes, HttpVerb } from "../types";
+import type { BuiltRoutes, HttpVerb, Route } from "../types";
 import { createDirectory } from "./utils/fakeFS";
 import { normalizeErrorStack } from "./utils/sanitize";
 
@@ -22,11 +22,6 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const snap = (mochaSnap as any).default as typeof mochaSnap;
 
 const FIXTURES = path.join(__dirname, "fixtures");
-
-const normalizePath =
-  path.sep === "\\"
-    ? (id: string) => id.replace(/\\/g, "/")
-    : (id: string) => id;
 
 describe("router codegen", () => {
   for (const fixture of fs.readdirSync(FIXTURES)) {
@@ -37,8 +32,9 @@ describe("router codegen", () => {
 
     it(fixture, async () => {
       const dir = path.join(FIXTURES, fixture);
-      const relativeEntryFilesDir = ".marko";
-      const entryFilesDir = path.join(dir, relativeEntryFilesDir);
+      const routesDir = path.join(dir, "src", "routes");
+      const typesDir = path.join(dir, ".marko-run");
+      const entryFilesDir = path.join(dir, "dist", ".marko-run");
       const sources: RouteSource[] = [];
 
       for (const file of await fs.promises.readdir(dir, {
@@ -53,8 +49,7 @@ describe("router codegen", () => {
             // Use this if you want to psuedo test on windows locally.
             // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
             sources.push({
-              walker: createTestWalker(createDirectory(src)),
-              importPrefix: "src/routes",
+              walker: createTestWalker(createDirectory(src), routesDir),
               basePath: match[1],
             });
           }
@@ -69,7 +64,7 @@ describe("router codegen", () => {
       let error: Error | undefined;
 
       try {
-        routes = await buildRoutes(sources);
+        routes = await buildRoutes(sources, entryFilesDir);
       } catch (err) {
         error = err as Error;
       }
@@ -85,7 +80,7 @@ describe("router codegen", () => {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
           routesSnap += "```js\n";
-          routesSnap += renderMiddleware(routes.middleware);
+          routesSnap += renderMiddleware(routes.middleware, dir);
           routesSnap += "```\n---\n\n";
         }
 
@@ -104,58 +99,36 @@ describe("router codegen", () => {
             );
             route.handler.verbs = verbs.length ? verbs : (httpVerbs as any);
           }
-          routesSnap += `## Route \`${route.key}\`\n`;
-          routesSnap += `### Paths\n`;
-          for (const path of route.paths) {
-            routesSnap += `  - \`${path.path}\`\n`;
-          }
-          if (route.page && route.layouts.length) {
-            const routeFileDir = path.join(
-              entryFilesDir,
-              route.page.filePath,
-              "..",
-            );
-            const routeFileRelativePathPosix = normalizePath(
-              path.relative(routeFileDir, dir),
-            );
+          routesSnap += `## Route \`\`${route.key}\`\`\n`;
+          routesSnap += `### Path: \`\`${route.path.path}\`\`\n`;
 
-            routesSnap += "### Template\n";
-            routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, (to) =>
-              path.posix.join(routeFileRelativePathPosix, to),
-            );
-            routesSnap += "```\n";
+          if (route.page) {
+            if (route.templateFilePath) {
+              routesSnap += "### Template\n";
+              routesSnap += "```marko\n";
+              routesSnap += renderRouteTemplate(route, dir);
+              routesSnap += "```\n";
+            }
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route, relativeEntryFilesDir);
+          routesSnap += renderRouteEntry(route, dir);
           routesSnap += "```\n";
           i++;
         }
 
-        for (const route of Object.values(routes.special)) {
+        for (const route of Object.values(routes.special) as Route[]) {
           if (route.page && route.layouts.length) {
-            const routeFileDir = path.join(
-              entryFilesDir,
-              route.page.filePath,
-              "..",
-            );
-            const routeFileRelativePathPosix = normalizePath(
-              path.relative(routeFileDir, dir),
-            );
-
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, (to) =>
-              path.posix.join(routeFileRelativePathPosix, to),
-            );
+            routesSnap += renderRouteTemplate(route, dir);
             routesSnap += "```\n";
           }
         }
 
-        routerSnap = renderRouter(routes, relativeEntryFilesDir);
-        typesSnap = await renderRouteTypeInfo(routes);
+        routerSnap = renderRouter(routes, dir);
+        typesSnap = await renderRouteTypeInfo(routes, typesDir);
       }
 
       await Promise.all(

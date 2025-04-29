@@ -12,7 +12,7 @@ declare module "@marko/run" {
 
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
+			"/": { verb: "get"; };
 		}
 	}> {}
 }
@@ -26,19 +26,4 @@ declare module "../src/routes/+page.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-declare module "../src/routes/+404.marko" {
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Route;
-    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
-    export type Handler = Run.HandlerLike<Route>;
-    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
-    export const route: Run.HandlerTypeFn<Route>;
-  }
-}
-
-type Routes = {
-	"/": { verb: "get"; };
 }

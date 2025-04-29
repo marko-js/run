@@ -9,7 +9,6 @@ export default class VDir {
   readonly parent: VDir | null;
   readonly source: Path | null;
   readonly path: string;
-  readonly fullPath: string;
   readonly segment: Segment;
   files: Map<RoutableFileType, RoutableFile> | undefined;
 
@@ -20,7 +19,6 @@ export default class VDir {
       this.parent = null;
       this.source = null;
       this.path = "/";
-      this.fullPath = "/";
       this.segment = {
         raw: "",
         name: "",
@@ -28,15 +26,8 @@ export default class VDir {
     } else {
       this.parent = parent;
       this.source = source!;
-      this.path =
-        parent.path + (parent.path === "/" ? segment.name : `/${segment.name}`);
-      this.fullPath =
-        parent.fullPath +
-        (parent.fullPath === "/" ? segment.name : `/${segment.name}`);
-      if (segment.param) {
-        this.fullPath += segment.param;
-      }
       this.segment = segment;
+      this.path = parent.path + (parent.path === "/" ? "" : "/") + segment.name;
     }
   }
 
@@ -50,18 +41,21 @@ export default class VDir {
     let sep = "";
     for (const { segment } of this) {
       const { type, name, param } = segment;
+
       if (name && type !== "_") {
-        value.id += sep + (type || name);
+        value.id += sep + name;
         value.path += sep + name;
         value.isEnd = type === "$$";
         if (param) {
-          value.path += param;
+          const unescapedParam =
+            param.charAt(0) === "`" ? param.slice(1, -1) : param;
           const index = type === "$$" ? null : value.segments.length;
           if (!value.params) {
-            value.params = { [param]: index };
+            value.params = { [unescapedParam]: index };
           } else if (!(param in value.params)) {
-            value.params[param] = index;
+            value.params[unescapedParam] = index;
           }
+          value.path += param;
         }
         value.segments.push(name);
         sep = "/";
@@ -100,18 +94,18 @@ export default class VDir {
       const existing = this.files.get(file.type)!;
       if (existing !== file) {
         throw new Error(
-          `Duplicate file type '${file.type}' added at path '${this.path}'. File '${file.importPath}' collides with '${existing.importPath}'.`,
+          `Duplicate file type ${file.type} added at path ${this.path}. File ${file.filePath} collides with ${existing.filePath}.`,
         );
       } else if (
         file.type === RoutableFileTypes.Page ||
         file.type === RoutableFileTypes.Handler
       ) {
         throw new Error(
-          `Ambiguous path definition: route '${this.path}' is defined multiple times by ${file.importPath}`,
+          `Ambiguous path definition: route ${this.path} is defined multiple times by ${file.filePath}`,
         );
       }
       throw new Error(
-        `Ambiguous path definition: file '${this.path}' is included multiple times by ${file.importPath}`,
+        `Ambiguous path definition: file ${this.path} is included multiple times by ${file.filePath}`,
       );
     }
   }
@@ -153,7 +147,7 @@ export default class VDir {
             }
           }
           throw new Error(
-            `Ambiguous directory structure: '${sourcePath}${path.source}' defines '${dir.path}' multiple times.`,
+            `Ambiguous directory structure: ${sourcePath}${path.source} defines ${dir.path} multiple times.`,
           );
         } else {
           unique.set(dir.path, dir);

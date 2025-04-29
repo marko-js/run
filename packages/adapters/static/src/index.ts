@@ -107,10 +107,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       const pathsToVisit: string[] = [];
       for (const route of routes.list) {
-        for (const path of route.paths) {
-          if (!path.params || !Object.keys(path.params).length) {
-            pathsToVisit.push(path.path);
-          }
+        if (!route.path.params || !Object.keys(route.path.params).length) {
+          pathsToVisit.push(route.path.path);
         }
       }
       if (typeof options.urls === "function") {

@@ -1,13 +1,12 @@
 # Routes
 
-## Route `/a%2Fb%2Fc/$%24id`
-### Paths
-  - `/a%2Fb%2Fc/$%24id`
+## Route ``a%2fb%3fc%23d+e_f&g/$/route``
+### Path: ``/a%2fb%3fc%23d+e:f&g/$`$id```
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.a_b_c.$_id.js
-import { pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import page from './src/routes/a%2Fb%2Fc/$%24id/+page.marko?marko-server-entry';
+// virtual:marko-run__marko-run__a%2fb%3fc%23d+e_f&g.$.route.js
+import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./src/routes/a%2Fb?c#d+e:f%26g/$%24id/+page.marko?marko-server-entry";
 
 export function get1(context, buildInput) {
 	return pageResponse(page, buildInput());

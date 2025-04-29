@@ -16,7 +16,8 @@ import type {
   Route,
   RouterOptions,
 } from "../types";
-import { getVerbs, hasVerb } from "../utils/route";
+import { normalizePath } from "../utils/fs";
+import { getRouteVirtualFileName, getVerbs, hasVerb } from "../utils/route";
 import type { Writer } from "./writer";
 import { createStringWriter } from "./writer";
 
@@ -29,36 +30,42 @@ interface RouteTrie {
   dynamic?: RouteTrie;
 }
 
-export function renderRouteTemplate(
-  route: Route,
-  getRelativePath: (path: string) => string,
-): string {
+function normalizedRelativePath(from: string, to: string): string {
+  const relativePath = normalizePath(path.relative(from, to));
+  return relativePath.startsWith(".") ? relativePath : "./" + relativePath;
+}
+
+export function renderRouteTemplate(route: Route, rootDir: string): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
+  if (!route.templateFilePath) {
+    throw new Error(`Route ${route.key} has no template file path`);
+  }
+
   return renderEntryTemplate(
-    route.entryName,
+    normalizedRelativePath(rootDir, route.templateFilePath),
     [...route.layouts, route.page].map((file) =>
-      getRelativePath(file.importPath),
+      normalizedRelativePath(
+        path.dirname(route.templateFilePath!),
+        file.filePath,
+      ),
     ),
     route.key === RoutableFileTypes.Error ? ["error"] : [],
   );
 }
 
-export function renderEntryTemplate(
+function renderEntryTemplate(
   name: string,
   files: string[],
   pageInputs: string[] = [],
 ): string {
-  if (!name) {
-    throw new Error(`Invalid argument - 'name' cannot be empty`);
-  }
   if (!files.length) {
     throw new Error(`Invalid argument - 'files' cannot be empty`);
   }
 
   const writer = createStringWriter();
-  writer.writeLines(`// ${name}.marko`);
+  writer.writeLines(`// ${name}`);
   writer.branch("imports");
   writer.writeLines("");
   writeEntryTemplateTag(writer, files, pageInputs);
@@ -76,7 +83,7 @@ function writeEntryTemplateTag(
     const isLast = !rest.length;
     const tag = isLast ? "Page" : `Layout${index}`;
 
-    writer.branch("imports").writeLines(`import ${tag} from '${file}';`);
+    writer.branch("imports").writeLines(`import ${tag} from "${file}";`);
 
     if (isLast) {
       const attributes = pageInputs.length
@@ -91,8 +98,8 @@ function writeEntryTemplateTag(
   }
 }
 
-export function renderRouteEntry(route: Route, entriesDir: string): string {
-  const { key, index, handler, page, middleware, meta, entryName } = route;
+export function renderRouteEntry(route: Route, rootDir: string): string {
+  const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
   if (!verbs) {
@@ -103,10 +110,9 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
 
   const writer = createStringWriter();
 
-  writer.writeLines(`// ${virtualFilePrefix}/${entryName}.js`);
+  writer.writeLines(`// ${virtualFilePrefix}${getRouteVirtualFileName(route)}`);
 
   const imports = writer.branch("imports");
-
   const runtimeImports = [];
 
   if (handler) {
@@ -129,7 +135,7 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
     imports.writeLines(
       `import { ${runtimeImports.join(
         ", ",
-      )} } from '${virtualFilePrefix}/runtime/internal';`,
+      )} } from "${virtualFilePrefix}/runtime/internal";`,
     );
   }
 
@@ -138,7 +144,7 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
     imports.writeLines(
       `import { ${names.join(
         ", ",
-      )} } from '${virtualFilePrefix}/${markoRunFilePrefix}middleware.js';`,
+      )} } from "${virtualFilePrefix}/${markoRunFilePrefix}middleware.js";`,
     );
   }
 
@@ -152,22 +158,18 @@ export function renderRouteEntry(route: Route, entriesDir: string): string {
       writer.writeLines(`const ${verb}Handler = normalize(${importName});`);
     }
     imports.writeLines(
-      `import { ${names.join(", ")} } from './${handler.importPath}';`,
+      `import { ${names.join(", ")} } from "${normalizedRelativePath(rootDir, handler.filePath)}";`,
     );
   }
-  if (page) {
-    const pageNameIndex = page.name.indexOf("+page");
-    const pageNamePrefix =
-      pageNameIndex > 0 ? `${page.name.slice(0, pageNameIndex)}.` : "";
 
-    const importPath = route.layouts.length
-      ? `./${path.posix.join(entriesDir, page.relativePath, "..", pageNamePrefix + "route.marko")}`
-      : `./${page.importPath}`;
-    imports.writeLines(`import page from '${importPath}${serverEntryQuery}';`);
+  if (page) {
+    imports.writeLines(
+      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath || page.filePath)}${serverEntryQuery}";`,
+    );
   }
   if (meta) {
     imports.writeLines(
-      `export { default as meta${index} } from './${meta.importPath}';`,
+      `export { default as meta${index} } from "${normalizedRelativePath(rootDir, meta.filePath)}";`,
     );
   }
 
@@ -295,7 +297,7 @@ function writeRouteEntryHandler(
 
 export function renderRouter(
   routes: BuiltRoutes,
-  entriesDir: string,
+  rootDir: string,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
@@ -310,7 +312,7 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext${hasErrorPage || hasNotFoundPage ? ", pageResponse" : ""} } from '${virtualFilePrefix}/runtime/internal';`,
+    `import { NotHandled, NotMatched, createContext${hasErrorPage || hasNotFoundPage ? ", pageResponse" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
   for (const route of routes.list) {
@@ -319,17 +321,12 @@ export function renderRouter(
     route.meta && names.push(`meta${route.index}`);
 
     imports.writeLines(
-      `import { ${names.join(", ")} } from '${virtualFilePrefix}/${
-        route.entryName
-      }.js';`,
+      `import { ${names.join(", ")} } from "${virtualFilePrefix}/${getRouteVirtualFileName(route)}";`,
     );
   }
   for (const route of Object.values(routes.special) as Route[]) {
-    const importPath = route.layouts.length
-      ? `./${path.posix.join(entriesDir, route.page!.relativePath, "..", `route.${route.key}.marko`)}`
-      : `./${route.page!.importPath}`;
     imports.writeLines(
-      `import page${route.key} from '${importPath}${serverEntryQuery}';`,
+      `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath || route.page!.filePath)}${serverEntryQuery}";`,
     );
   }
 
@@ -504,9 +501,7 @@ function writeRouterVerb(
     writer.writeLines(`const len = pathname.length;`);
     if (route) {
       writer.writeLines(
-        `if (len === 1) return ${renderMatch(verb, route, trie.path!)}; // ${
-          trie.path!.path
-        }`,
+        `if (len === 1) return ${renderMatch(verb, route, trie.path!)};`,
       );
     } else if (trie.static || dynamic) {
       writer.writeBlockStart(`if (len > 1) {`);
@@ -564,9 +559,7 @@ function writeRouterVerb(
           } else {
             writer.write(`if (${value} === '${decodedKey}') `, true);
           }
-          writer.write(
-            `return ${renderMatch(verb, route!, path!)}; // ${path!.path}\n`,
-          );
+          writer.write(`return ${renderMatch(verb, route!, path!)};\n`);
         }
 
         if (useSwitch) {
@@ -580,7 +573,7 @@ function writeRouterVerb(
             verb,
             dynamic.route,
             dynamic.path!,
-          )}; // ${dynamic.path!.path}`,
+          )};`,
         );
       }
     }
@@ -654,7 +647,7 @@ function writeRouterVerb(
         catchAll.route,
         catchAll.path,
         String(offset),
-      )}; // ${catchAll.path.path}`,
+      )};`,
     );
   } else if (level === 0) {
     writer.writeLines("return null;");
@@ -701,11 +694,13 @@ function renderMatch(
   const handler = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `meta${route.index}` : "{}";
-  const pathPattern = pathToURLPatternString(path.path);
-  return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${pathPattern}' }`;
+  return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${path.path}' }`;
 }
 
-export function renderMiddleware(middleware: RoutableFile[]): string {
+export function renderMiddleware(
+  middleware: RoutableFile[],
+  rootDir: string,
+): string {
   const writer = createStringWriter();
   writer.writeLines(
     `// ${virtualFilePrefix}/${markoRunFilePrefix}middleware.js`,
@@ -713,14 +708,16 @@ export function renderMiddleware(middleware: RoutableFile[]): string {
 
   const imports = writer.branch("imports");
   imports.writeLines(
-    `import { normalize } from '${virtualFilePrefix}/runtime/internal';`,
+    `import { normalize } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
   writer.writeLines("");
 
-  for (const { id, importPath } of middleware) {
+  for (const { id, filePath } of middleware) {
     const importName = `middleware${id}`;
-    imports.writeLines(`import ${importName} from './${importPath}';`);
+    imports.writeLines(
+      `import ${importName} from "${normalizedRelativePath(rootDir, filePath)}";`,
+    );
     writer.writeLines(`export const mware${id} = normalize(${importName});`);
   }
 
@@ -739,9 +736,13 @@ function stripTsExtension(path: string) {
   return path;
 }
 
+function decodePath(path: string) {
+  return path; //decodeURIComponent(path.replace(/%2F/g, "%252f"));
+}
+
 export async function renderRouteTypeInfo(
   routes: BuiltRoutes,
-  pathPrefix: string = ".",
+  outDir: string,
   adapter?: Adapter | null,
 ) {
   const writer = createStringWriter();
@@ -782,12 +783,36 @@ export async function renderRouteTypeInfo(
 
   for (const route of routes.list) {
     let routeType = "";
+    let routeDefinition = "";
 
-    for (const path of route.paths) {
-      const pathType = `"${pathToURLPatternString(path.path)}"`;
-      routeType += routeType ? " | " + pathType : pathType;
-      routesWriter.writeLines(`${pathType}: Routes["${route.key}"];`);
+    if (route.page || route.handler) {
+      const verbs = [];
+      if (route.page || route.handler?.verbs?.includes("get")) {
+        verbs.push(`"get"`);
+      }
+      if (route.handler?.verbs?.includes("post")) {
+        verbs.push(`"post"`);
+      }
+
+      routeDefinition = `{ verb: ${verbs.join(" | ")};`;
+
+      if (route.meta) {
+        const metaPath = stripTsExtension(
+          normalizedRelativePath(outDir, route.meta.filePath),
+        );
+        let metaType = `typeof import("${metaPath}")`;
+        if (/\.(ts|js|mjs)$/.test(route.meta.name)) {
+          metaType += `["default"]`;
+        }
+        routeDefinition += ` meta: ${metaType};`;
+      }
+
+      routeDefinition += " }";
     }
+
+    const pathType = `"${decodePath(route.path.path)}"`;
+    routeType += routeType ? " | " + pathType : pathType;
+    routesWriter.writeLines(`${pathType}: ${routeDefinition};`);
 
     for (const file of [route.handler, route.page]) {
       if (file) {
@@ -826,32 +851,34 @@ export async function renderRouteTypeInfo(
   const layoutWriter = writer.branch("layout");
 
   for (const [file, types] of routeTypes) {
-    const path = `${pathPrefix}/${file.relativePath}`;
+    const modulePath = stripTsExtension(
+      normalizedRelativePath(outDir, file.filePath),
+    );
     const routeType = `Run.Routes[${types.join(" | ")}]`;
 
     switch (file.type) {
       case RoutableFileTypes.Handler:
-        writeModuleDeclaration(handlerWriter, path, routeType);
+        writeModuleDeclaration(handlerWriter, modulePath, routeType);
         break;
       case RoutableFileTypes.Middleware:
-        writeModuleDeclaration(middlewareWriter, path, routeType);
+        writeModuleDeclaration(middlewareWriter, modulePath, routeType);
         break;
       case RoutableFileTypes.Page:
-        writeModuleDeclaration(pageWriter, path, routeType);
+        writeModuleDeclaration(pageWriter, modulePath, routeType);
         break;
       case RoutableFileTypes.Layout:
         writeModuleDeclaration(
           layoutWriter,
-          path,
+          modulePath,
           routeType,
           `
-  export interface Input extends Run.LayoutInput<typeof import('${path}')> {}`,
+  export interface Input extends Run.LayoutInput<typeof import("${modulePath}")> {}`,
         );
         break;
       case RoutableFileTypes.Error:
         writeModuleDeclaration(
           writer,
-          path,
+          modulePath,
           "globalThis.MarkoRun.Route",
           `
   export interface Input {
@@ -860,7 +887,7 @@ export async function renderRouteTypeInfo(
         );
         break;
       case RoutableFileTypes.NotFound:
-        writeModuleDeclaration(writer, path, "Run.Route");
+        writeModuleDeclaration(writer, modulePath, "Run.Route");
         break;
     }
   }
@@ -870,54 +897,23 @@ export async function renderRouteTypeInfo(
   pageWriter.join();
   layoutWriter.join();
 
-  writer.writeBlockStart(`\ntype Routes = {`);
-
-  for (const route of routes.list) {
-    const { meta, handler, page } = route;
-
-    if (page || handler) {
-      const verbs = [];
-      if (page || handler?.verbs?.includes("get")) {
-        verbs.push(`"get"`);
-      }
-      if (handler?.verbs?.includes("post")) {
-        verbs.push(`"post"`);
-      }
-
-      let routeType = `{ verb: ${verbs.join(" | ")};`;
-
-      if (meta) {
-        const metaPath = stripTsExtension(`${pathPrefix}/${meta.relativePath}`);
-        let metaType = `typeof import("${metaPath}")`;
-        if (/\.(ts|js|mjs)$/.test(meta.name)) {
-          metaType += `["default"]`;
-        }
-        routeType += ` meta: ${metaType};`;
-      }
-
-      writer.writeLines(`"${route.key}": ${routeType} };`);
-    }
-  }
-
-  writer.writeBlockEnd("}");
-
   return writer.end();
 }
 
 function writeModuleDeclaration(
   writer: Writer,
-  path: string,
+  name: string,
   routeType?: string,
   moduleTypes?: string,
 ) {
-  writer.writeLines("").write(`declare module "${stripTsExtension(path)}" {`);
+  writer.writeLines("").write(`declare module "${name}" {`);
 
   if (moduleTypes) {
     writer.write(moduleTypes);
   }
 
   if (routeType) {
-    const isMarko = path.endsWith(".marko");
+    const isMarko = name.endsWith(".marko");
     writer.write(`
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -933,13 +929,6 @@ function writeModuleDeclaration(
 
   writer.writeLines(`
 }`);
-}
-
-function pathToURLPatternString(path: string): string {
-  return path.replace(/\/\$(\$?)([^/]*)/g, (_, catchAll, name) => {
-    name = decodeURIComponent(name);
-    return catchAll ? `/:${name || "rest"}*` : `/:${name}`;
-  });
 }
 
 function createRouteTrie(routes: Route[]): RouteTrie {
@@ -974,9 +963,7 @@ function createRouteTrie(routes: Route[]): RouteTrie {
   }
 
   for (const route of routes) {
-    for (const path of route.paths) {
-      insert(path, route);
-    }
+    insert(route.path, route);
   }
 
   return root;

@@ -1,7 +1,7 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1, head1 } from 'virtual:marko-run/__marko-run__route.$campaignId.js';
-import { get2, head2 } from 'virtual:marko-run/__marko-run__route.$campaignId.$$rest.js';
+import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { get1, head1 } from "virtual:marko-run/__marko-run__$.route.js";
+import { get2, head2 } from "virtual:marko-run/__marko-run__$.$$.route.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -19,11 +19,11 @@ export function match(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: get1, params: { campaignId: s1 }, meta: {}, path: '/:campaignId' }; // /$campaignId
+					if (s1) return { handler: get1, params: { campaignId: s1 }, meta: {}, path: '/$campaignId' };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
-						return { handler: get2, params: { campaignId: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:campaignId/:rest*' }; // /$campaignId/$$rest
+						return { handler: get2, params: { campaignId: s1, rest: pathname.slice(i1) }, meta: {}, path: '/$campaignId/$$rest' };
 					}
 				}
 			}
@@ -36,11 +36,11 @@ export function match(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: head1, params: { campaignId: s1 }, meta: {}, path: '/:campaignId' }; // /$campaignId
+					if (s1) return { handler: head1, params: { campaignId: s1 }, meta: {}, path: '/$campaignId' };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
-						return { handler: head2, params: { campaignId: s1, rest: pathname.slice(i1) }, meta: {}, path: '/:campaignId/:rest*' }; // /$campaignId/$$rest
+						return { handler: head2, params: { campaignId: s1, rest: pathname.slice(i1) }, meta: {}, path: '/$campaignId/$$rest' };
 					}
 				}
 			}

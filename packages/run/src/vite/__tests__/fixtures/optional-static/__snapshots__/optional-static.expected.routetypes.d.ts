@@ -10,19 +10,19 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
-			"/foo": Routes["/foo"];
-			"/foo/bar": Routes["/foo/bar"];
-			"/foo/bar/baz": Routes["/foo/bar/baz"];
-			"/foo/baz": Routes["/foo/baz"];
-			"/bar": Routes["/bar"];
-			"/bar/baz": Routes["/bar/baz"];
-			"/baz": Routes["/baz"];
+			"/": { verb: "get"; };
+			"/foo": { verb: "get"; };
+			"/foo/bar": { verb: "get"; };
+			"/foo/bar/baz": { verb: "get"; };
+			"/foo/baz": { verb: "get"; };
+			"/bar": { verb: "get"; };
+			"/bar/baz": { verb: "get"; };
+			"/baz": { verb: "get"; };
 		}
 	}> {}
 }
 
-declare module "./foo,/bar,/,baz/+page.marko" {
+declare module "../src/routes/foo,/bar,/,baz/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/" | "/foo" | "/foo/bar" | "/foo/bar/baz" | "/foo/baz" | "/bar" | "/bar/baz" | "/baz"];
@@ -31,15 +31,4 @@ declare module "./foo,/bar,/,baz/+page.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/": { verb: "get"; };
-	"/foo": { verb: "get"; };
-	"/foo/bar": { verb: "get"; };
-	"/foo/bar/baz": { verb: "get"; };
-	"/foo/baz": { verb: "get"; };
-	"/bar": { verb: "get"; };
-	"/bar/baz": { verb: "get"; };
-	"/baz": { verb: "get"; };
 }

@@ -14,6 +14,7 @@ import { SpawnedServer, waitForServer } from "../vite/utils/server";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const snap = (mochaSnap as any).default as typeof mochaSnap;
+const root = process.cwd();
 
 // https://github.com/esbuild-kit/tsx/issues/113
 const { toString } = Function.prototype;
@@ -41,7 +42,7 @@ declare const __track__: (html: string) => void;
 export type Step = () => Promise<unknown> | unknown;
 export type Assert = (fn: () => Promise<void>) => Promise<void>;
 
-const requireCwd = createRequire(process.cwd());
+const requireCwd = createRequire(root);
 let browser: playwright.Browser;
 let context: playwright.BrowserContext;
 let changes: string[] = [];
@@ -60,25 +61,35 @@ before(async () => {
     context.exposeFunction("__track__", (html: string) => {
       const fragment = JSDOM.fragment(html);
 
-      for (const pre of fragment.querySelectorAll("pre")) {
-        if (!pre.children.length && pre.textContent) {
-          const match = /(^\s*Error:.+(?:\r?\n\s+)?)/.exec(pre.textContent);
-          if (match) {
-            pre.textContent = match[1] + "at [Normalized Error Stack]";
-          }
-        }
-      }
+      // for (const pre of fragment.querySelectorAll("pre")) {
+      //   if (!pre.children.length && pre.textContent) {
+      //     const match = /(^\s*at (.+?:\r?\n\s+)?)/.exec(pre.textContent);
+      //     if (match) {
+      //       pre.textContent = match[1] + "at [Normalized Error Stack]";
+      //     }
+      //   }
+      // }
 
-      const formatted = defaultSerializer(defaultNormalizer(fragment))
+      const formatted = defaultSerializer(defaultNormalizer(fragment));
+
+      const normalized = formatted
         .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
-        .replace(/:(\d{4,})/g, ":9999");
+        .replace(/:(\d{4,})/g, ":9999")
+        .replace(
+          /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
+          "$1 [Normalized Error Stack]",
+        )
+        .replaceAll(process.cwd(), "")
+        .replaceAll(root, "");
 
-      if (changes.at(-1) !== formatted) {
-        changes.push(formatted);
+      if (changes.at(-1) !== normalized) {
+        changes.push(normalized);
       }
     }),
-    context.addInitScript(function foo() {
+
+    context.addInitScript(async function foo() {
       const getRoot = () => document.getElementById("app");
+
       const observer = new MutationObserver(() => {
         const html = (getRoot() || document.body).innerHTML;
         if (html) {
@@ -104,7 +115,6 @@ before(async () => {
         );
       }
 
-      observe();
       function observe() {
         observer.observe(getRoot() || document, {
           subtree: true,
@@ -113,6 +123,8 @@ before(async () => {
           characterData: true,
         });
       }
+
+      observe();
     }),
   ]);
 });
