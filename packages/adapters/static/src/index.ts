@@ -1,6 +1,11 @@
 import type { Fetch } from "@marko/run";
 import baseAdapter from "@marko/run/adapter";
-import type { Adapter, AdapterConfig, Route } from "@marko/run/vite";
+import type {
+  Adapter,
+  AdapterConfig,
+  Options as MarkoRunOptions,
+  Route,
+} from "@marko/run/vite";
 import { getAvailablePort, loadEnv, spawnServer } from "@marko/run/vite";
 import compression from "compression";
 import fs from "fs/promises";
@@ -21,11 +26,11 @@ export interface Options {
   urls?: string[] | ((routes: Route[]) => string[] | Promise<string[]>);
 }
 
-function noop() {}
-
 export default function staticAdapter(options: Options = {}): Adapter {
+  console.log("Static Adapter");
   const { startDev } = baseAdapter();
   let adapterConfig!: AdapterConfig;
+  let markoRunOptions: MarkoRunOptions;
   return {
     name: "static-adapter",
 
@@ -33,25 +38,22 @@ export default function staticAdapter(options: Options = {}): Adapter {
       adapterConfig = config;
     },
 
-    async pluginOptions() {
-      return {
-        trailingSlashes: "RedirectWith",
-      };
+    pluginOptions(options) {
+      return (markoRunOptions = options);
     },
 
-    async getEntryFile() {
+    getEntryFile() {
       return defaultEntry;
     },
 
-    startDev(entry, config, options) {
-      return startDev!(
-        entry === defaultEntry ? undefined : entry,
-        config,
-        options,
-      );
+    startDev(event) {
+      return startDev!({
+        ...event,
+        entry: event.entry === defaultEntry ? undefined : event.entry,
+      });
     },
 
-    startPreview(_entry, options) {
+    startPreview({ options }) {
       const { dir, port, envFile } = options;
       envFile && loadEnv(envFile);
 
@@ -61,9 +63,27 @@ export default function staticAdapter(options: Options = {}): Adapter {
       });
       const staticServe = createStaticServe(path.join(dir, "public"), {
         index: "index.html",
+        extensions: ["html"],
+        redirect: false,
+        setHeaders(res, path) {
+          if (path === "/404") {
+            res.statusCode = 404;
+          }
+        },
       });
       const server = createServer((req, res) =>
-        compress(req as any, res as any, () => staticServe(req, res, noop)),
+        compress(req as any, res as any, () =>
+          staticServe(req, res, () => {
+            if (req.url === "/404") {
+              res.writeHead(404);
+            } else {
+              res.writeHead(302, undefined, {
+                location: "/404",
+              });
+            }
+            res.end();
+          }),
+        ),
       );
 
       return new Promise((resolve) => {
@@ -82,11 +102,11 @@ export default function staticAdapter(options: Options = {}): Adapter {
       });
     },
 
-    async buildEnd(_config, routes, builtEntries, sourceEntries) {
+    async buildEnd({ routes, builtEntries, sourceEntries }) {
       const { envFile } = adapterConfig;
 
       const pathsToVisit: string[] = [];
-      for (const route of routes) {
+      for (const route of routes.list) {
         for (const path of route.paths) {
           if (!path.params || !Object.keys(path.params).length) {
             pathsToVisit.push(path.path);
@@ -94,12 +114,16 @@ export default function staticAdapter(options: Options = {}): Adapter {
         }
       }
       if (typeof options.urls === "function") {
-        pathsToVisit.push(...(await options.urls(routes)));
+        pathsToVisit.push(...(await options.urls(routes.list)));
       } else if (options.urls) {
         pathsToVisit.push(...options.urls);
       }
 
       const defaultEntry = await this.getEntryFile!();
+
+      const trailingSlash =
+        markoRunOptions.trailingSlashes === "RedirectWith" ||
+        markoRunOptions.trailingSlashes === "RewriteWith";
 
       if (sourceEntries[0] === defaultEntry) {
         envFile && (await loadEnv(envFile));
@@ -112,6 +136,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             out: path.join(path.dirname(builtEntries[0]), "public"),
+            notFoundPath: routes.special["404"]
+              ? "404" + (trailingSlash ? "/" : "")
+              : undefined,
           },
         );
         await crawler.crawl(pathsToVisit);
@@ -146,6 +173,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             origin,
+            notFoundPath: routes.special["404"]
+              ? "404" + (trailingSlash ? "/" : "")
+              : undefined,
           },
         );
 

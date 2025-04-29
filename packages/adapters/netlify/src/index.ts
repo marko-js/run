@@ -50,15 +50,14 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       return defaultEntry;
     },
 
-    startDev(entry, config, options) {
-      return startDev!(
-        entry === defaultEntry ? undefined : entry,
-        config,
-        options,
-      );
+    startDev(event) {
+      return startDev!({
+        ...event,
+        entry: event.entry === defaultEntry ? undefined : event.entry,
+      });
     },
 
-    async startPreview(_entry, previewOptions) {
+    async startPreview({ options: previewOptions }) {
       assertNetlifyCLI();
 
       const { port = 3000, cwd } = previewOptions;

@@ -38,27 +38,27 @@ export interface Adapter {
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
   getEntryFile?(): Promise<string> | string;
-  startDev?(
-    entry: string | undefined,
-    config: InlineConfig,
-    options: StartDevOptions,
-  ): Promise<SpawnedServer> | SpawnedServer;
-  startPreview?(
-    entry: string | undefined,
-    options: StartPreviewOptions,
-  ): Promise<SpawnedServer> | SpawnedServer;
-  buildEnd?(
-    config: ResolvedConfig,
-    routes: Route[],
-    builtEntries: string[],
-    sourceEntries: string[],
-  ): Promise<void> | void;
+  startDev?(event: {
+    entry: string | undefined;
+    config: InlineConfig;
+    options: StartDevOptions;
+  }): Promise<SpawnedServer> | SpawnedServer;
+  startPreview?(event: {
+    entry: string | undefined;
+    options: StartPreviewOptions;
+  }): Promise<SpawnedServer> | SpawnedServer;
+  buildEnd?(event: {
+    config: ResolvedConfig;
+    routes: BuiltRoutes;
+    builtEntries: string[];
+    sourceEntries: string[];
+  }): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string;
-  routesGenerated?(
-    routes: BuiltRoutes,
-    virtualFiles: Map<string, string>,
-    data: RouteGenerationData,
-  ): Promise<void> | void;
+  routesGenerated?(event: {
+    routes: BuiltRoutes;
+    virtualFiles: Map<string, string>;
+    meta: RouteGenerationData;
+  }): Promise<void> | void;
 }
 
 export interface RouterOptions {

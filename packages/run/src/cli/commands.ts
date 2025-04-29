@@ -74,7 +74,7 @@ export async function preview(
   const dir = path.resolve(cwd, resolvedConfig.build.outDir);
   const entryFile = distEntry
     ? path.join(dir, distEntry)
-    : await findFileWithExt(dir, "index", [".mjs", ".js"]);
+    : findFileWithExt(dir, "index", [".mjs", ".js"]);
   if (envFile) {
     envFile = path.resolve(cwd, envFile);
   }
@@ -88,7 +88,10 @@ export async function preview(
     entry,
   };
 
-  return await adapter.startPreview(entryFile, options);
+  return await adapter.startPreview({
+    entry: entryFile,
+    options,
+  });
 }
 
 export async function dev(
@@ -148,7 +151,7 @@ export async function dev(
     envFile,
   };
 
-  return await adapter.startDev(entry, config, options);
+  return await adapter.startDev({ entry, config, options });
 }
 
 export async function build(

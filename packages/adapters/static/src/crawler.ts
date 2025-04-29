@@ -2,7 +2,6 @@ import fs from "fs";
 import { WritableStream as Parser } from "htmlparser2/lib/WritableStream";
 import nodePath from "path";
 
-const noop = () => {};
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
 const contentType = "text/html";
 
@@ -22,7 +21,8 @@ export default function createCrawler(
 ): Crawler {
   const origin = opts.origin || `http://localhost`;
   const out = nodePath.resolve(opts.out || "dist");
-  const notFoundPath = resolvePath(opts.notFoundPath || "/404/", origin)!;
+  const notFoundPath =
+    opts.notFoundPath && resolvePath(opts.notFoundPath, origin)!;
   let seen: Set<string>;
   let queue: Promise<void>[];
   let pending: Promise<any> | undefined;
@@ -40,10 +40,8 @@ export default function createCrawler(
       },
     });
 
-    const dirname = nodePath.join(out, path);
     const abortController = new AbortController();
-    let fsWriter: fs.WriteStream | undefined;
-
+    let pageWriter: fs.WriteStream | undefined;
     try {
       const url = new URL(path, origin);
       const req = new Request(url, {
@@ -67,14 +65,18 @@ export default function createCrawler(
           }
           break;
         case 404:
-          if (path !== notFoundPath) {
-            redirect = origin + notFoundPath;
-          } else if (!validContentType) {
+          if (!notFoundPath || !validContentType) {
             abortController.abort();
             return;
           }
+          if (path.endsWith("/")) {
+            path = path.slice(0, -1);
+          }
           break;
-        case 301: {
+        case 301:
+        case 302:
+        case 307:
+        case 308: {
           const location = res.headers.get("location") || "";
           redirect = resolvePathWithHash(location, origin);
 
@@ -98,31 +100,31 @@ export default function createCrawler(
         }
       }
 
-      await fs.promises.mkdir(dirname, { recursive: true }).catch(noop);
-      fsWriter = fs.createWriteStream(nodePath.join(dirname, "index.html"));
+      const htmlFilePath = nodePath.join(
+        out,
+        path.endsWith("/") ? path + "index.html" : path + ".html",
+      );
+
+      fs.mkdirSync(nodePath.dirname(htmlFilePath), { recursive: true });
+      pageWriter = fs.createWriteStream(htmlFilePath);
 
       if (redirect) {
-        abortController.abort();
-        fsWriter.write(
-          `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${redirect.replace(
-            /"/g,
-            "&#40;",
-          )}">`,
-        );
-      } else {
-        const writable = new WritableStream({
-          write(data) {
-            fsWriter!.write(data);
-            parser.write(data);
-          },
-        });
-
-        if (res.body) {
-          await res.body.pipeTo(writable);
+        if (path !== notFoundPath) {
+          const html = `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${redirect.replace(/"/g, "&#40;")}">`;
+          pageWriter.write(html);
         }
+      } else if (res.body) {
+        await res.body.pipeTo(
+          new WritableStream({
+            write(data) {
+              pageWriter!.write(data);
+              parser.write(data);
+            },
+          }),
+        );
       }
     } finally {
-      fsWriter?.end();
+      pageWriter?.end();
       parser.end();
     }
   }
@@ -135,8 +137,8 @@ export default function createCrawler(
 
       const startPaths = paths
         .map((path) => resolvePath(path, origin))
-        .filter(Boolean)
-        .concat(notFoundPath) as string[];
+        .concat(notFoundPath)
+        .filter(Boolean) as string[];
 
       seen = new Set(startPaths);
 
@@ -194,11 +196,6 @@ function resolveUrl(href: string, origin: string) {
   try {
     const url = new URL(href, origin);
     if (url.origin === origin) {
-      const { pathname } = url;
-      const lastChar = pathname.length - 1;
-      if (pathname[lastChar] !== "/") {
-        url.pathname += "/";
-      }
       return url;
     }
   } catch {
