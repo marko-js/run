@@ -81,14 +81,13 @@ export type Options = MarkoRunOptions & MarkoViteOptions;
 export interface Route {
   key: string;
   index: number;
-  paths: PathInfo[];
+  path: PathInfo;
   layouts: RoutableFile[];
   middleware: RoutableFile[];
   meta?: RoutableFile;
   handler?: RoutableFile;
   page?: RoutableFile;
   templateFilePath?: string;
-  entryName: string;
 }
 
 export interface PathInfo {
@@ -109,8 +108,6 @@ export interface RoutableFile {
   name: string;
   type: RoutableFileType;
   filePath: string;
-  relativePath: string;
-  importPath: string;
   verbs?: HttpVerb[];
 }
 

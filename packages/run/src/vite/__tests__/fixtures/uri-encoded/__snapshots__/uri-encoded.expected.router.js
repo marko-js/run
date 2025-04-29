@@ -1,6 +1,6 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1, head1 } from 'virtual:marko-run/__marko-run__route.a_b_c.$_id.js';
+import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { get1, head1 } from "virtual:marko-run/__marko-run__a%2fb%3fc%23d+e_f&g.$.route.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -17,11 +17,11 @@ export function match(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'a/b/c') {
-						const i2 = pathname.indexOf('/', 11) + 1;
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'a/b?c#d+e:f&g') {
+						const i2 = pathname.indexOf('/', 21) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(11, i2 ? -1 : len));
-							if (s2) return { handler: get1, params: { $id: s2 }, meta: {}, path: '/a%2Fb%2Fc/:$id' }; // /a%2Fb%2Fc/$%24id
+							const s2 = decodeURIComponent(pathname.slice(21, i2 ? -1 : len));
+							if (s2) return { handler: get1, params: { $id: s2 }, meta: {}, path: '/a%2fb%3fc%23d+e:f&g/$`$id`' };
 						}
 					}
 				}
@@ -34,11 +34,11 @@ export function match(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'a/b/c') {
-						const i2 = pathname.indexOf('/', 11) + 1;
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === 'a/b?c#d+e:f&g') {
+						const i2 = pathname.indexOf('/', 21) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(11, i2 ? -1 : len));
-							if (s2) return { handler: head1, params: { $id: s2 }, meta: {}, path: '/a%2Fb%2Fc/:$id' }; // /a%2Fb%2Fc/$%24id
+							const s2 = decodeURIComponent(pathname.slice(21, i2 ? -1 : len));
+							if (s2) return { handler: head1, params: { $id: s2 }, meta: {}, path: '/a%2fb%3fc%23d+e:f&g/$`$id`' };
 						}
 					}
 				}

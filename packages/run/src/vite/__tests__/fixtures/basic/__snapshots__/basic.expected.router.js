@@ -1,7 +1,7 @@
 // @marko/run/router
-import { NotHandled, NotMatched, createContext } from 'virtual:marko-run/runtime/internal';
-import { get1, head1 } from 'virtual:marko-run/__marko-run__route.js';
-import { get2, head2 } from 'virtual:marko-run/__marko-run__route.fOoBaR.js';
+import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { get1, head1 } from "virtual:marko-run/__marko-run__route.js";
+import { get2, head2 } from "virtual:marko-run/__marko-run__fOoBaR.route.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -15,20 +15,20 @@ export function match(method, pathname) {
 		case 'GET':
 		case 'get': {
 			const len = pathname.length;
-			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' }; // /
+			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === 'fOoBaR') return { handler: get2, params: {}, meta: {}, path: '/fOoBaR' }; // /fOoBaR
+				if (pathname.slice(1, i1 ? -1 : len) === 'fOoBaR') return { handler: get2, params: {}, meta: {}, path: '/fOoBaR' };
 			}
 			return null;
 		}
 		case 'HEAD':
 		case 'head': {
 			const len = pathname.length;
-			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' }; // /
+			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === 'fOoBaR') return { handler: head2, params: {}, meta: {}, path: '/fOoBaR' }; // /fOoBaR
+				if (pathname.slice(1, i1 ? -1 : len) === 'fOoBaR') return { handler: head2, params: {}, meta: {}, path: '/fOoBaR' };
 			}
 			return null;
 		}

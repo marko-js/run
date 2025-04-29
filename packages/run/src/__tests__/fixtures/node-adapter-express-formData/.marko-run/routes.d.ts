@@ -12,7 +12,7 @@ declare module "@marko/run" {
 
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
+			"/": { verb: "get" | "post"; };
 		}
 	}> {}
 }
@@ -37,8 +37,4 @@ declare module "../src/routes/+page.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/": { verb: "get" | "post"; };
 }

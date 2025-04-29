@@ -10,12 +10,12 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/_index"];
-			"/component": Routes["/_index/component"];
-			"/a": Routes["/a"];
-			"/a/b": Routes["/a/b"];
-			"/a/c": Routes["/a/c"];
-			"/d/e": Routes["/d/e"];
+			"/": { verb: "get"; };
+			"/component": { verb: "get"; };
+			"/a": { verb: "get"; };
+			"/a/b": { verb: "get"; };
+			"/a/c": { verb: "get"; };
+			"/d/e": { verb: "get"; };
 		}
 	}> {}
 }
@@ -54,7 +54,7 @@ declare module "../src/routes/a.(,b,c),d.e/+page.marko" {
 }
 
 declare module "../src/routes/+layout.marko" {
-  export interface Input extends Run.LayoutInput<typeof import('../src/routes/+layout.marko')> {}
+  export interface Input extends Run.LayoutInput<typeof import("../src/routes/+layout.marko")> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/" | "/component" | "/a" | "/a/b" | "/a/c" | "/d/e"];
@@ -88,13 +88,4 @@ declare module "../src/routes/+500.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/_index": { verb: "get"; };
-	"/_index/component": { verb: "get"; };
-	"/a": { verb: "get"; };
-	"/a/b": { verb: "get"; };
-	"/a/c": { verb: "get"; };
-	"/d/e": { verb: "get"; };
 }

@@ -1,4 +1,4 @@
-import { httpVerbs } from "../constants";
+import { httpVerbs, markoRunFilePrefix } from "../constants";
 import type { HttpVerb, Route } from "../types";
 
 const httpVerbOrder = httpVerbs.reduce(
@@ -26,4 +26,8 @@ export function hasVerb(route: Route, verb: HttpVerb): boolean {
     route.handler?.verbs?.includes(verb) ||
     (verb === "head" && hasVerb(route, "get"))
   );
+}
+
+export function getRouteVirtualFileName(route: Route): string {
+  return `${markoRunFilePrefix}${route.key.replace(/\//g, ".")}.js`;
 }

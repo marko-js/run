@@ -52,42 +52,43 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
   });
 
   for (const route of routes.list) {
-    for (const path of route.paths) {
-      const verbs = getVerbs(route, true);
-      let firstRow = true;
+    const verbs = getVerbs(route, true);
+    let firstRow = true;
 
-      for (const verb of verbs) {
-        const entryType: string[] = [];
-        let size = "";
-        let verbCell = verbColor(verb)(verb.toUpperCase());
+    for (const verb of verbs) {
+      const entryType: string[] = [];
+      let size = "";
+      const verbCell = verbColor(verb)(verb.toUpperCase());
 
-        if (verb === "get" && !verbs.includes("head")) {
-          verbCell += kleur.dim(`,${verbColor(verb)("HEAD")}`);
-        }
-        if (route.handler) {
-          entryType.push(kleur.blue("handler"));
-        }
-        if (route.page && (verb === "get" || verb === "head")) {
-          entryType.push(kleur.yellow("page"));
-          if (verb === "get") {
-            size = prettySize(computeRouteSize(route, bundle));
-          }
-        }
-
-        const row: any[] = [verbCell];
-
-        if (verbs.length === 1 || firstRow) {
-          row.push({ rowSpan: verbs.length, content: prettyPath(path.path) });
-          firstRow = false;
-        }
-
-        row.push(entryType.join(" -> "));
-        hasMiddleware && row.push(route.middleware.length || "");
-        hasMeta && row.push(route.meta ? "✓" : "");
-        row.push(size || "");
-
-        table.push(row);
+      // if (verb === "get" && !verbs.includes("head")) {
+      //   verbCell += kleur.dim(`,${verbColor(verb)("HEAD")}`);
+      // }
+      if (route.handler) {
+        entryType.push(kleur.blue("handler"));
       }
+      if (route.page && (verb === "get" || verb === "head")) {
+        entryType.push(kleur.yellow("page"));
+        if (verb === "get") {
+          size = prettySize(computeRouteSize(route, bundle));
+        }
+      }
+
+      const row: any[] = [verbCell];
+
+      if (verbs.length === 1 || firstRow) {
+        row.push({
+          rowSpan: verbs.length,
+          content: prettyPath(route.path.path),
+        });
+        firstRow = false;
+      }
+
+      row.push(entryType.join(" -> "));
+      hasMiddleware && row.push(route.middleware.length || "");
+      hasMeta && row.push(route.meta ? "✓" : "");
+      row.push(size || "");
+
+      table.push(row);
     }
   }
 
@@ -178,7 +179,9 @@ function prettySize([bytes, compBytes]: [number, number]): string {
 }
 
 function prettyPath(path: string) {
-  return path
-    .replace(/\/\$\$(.*)$/, (_, p) => "/" + kleur.bold(kleur.dim(`*${p}`))) // replace /$$ catch-alls
-    .replace(/\/\$([^/]+)/g, (_, p) => "/" + kleur.bold(kleur.dim(`:${p}`))); // replace parameters
+  return path.replace(
+    /\/(\$\$?)(`?)([^/`]+)\2/g,
+    (_, type, tick, key) =>
+      "/" + type + tick + kleur.bold(kleur.dim(key)) + tick,
+  );
 }

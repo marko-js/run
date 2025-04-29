@@ -165,13 +165,13 @@ export function parseFlatRoute(pattern: string): Path[] {
     if (raw) {
       segment = {
         raw,
-        name: raw,
+        name: normalizeSegment(raw),
         type,
       };
 
       if (type === "$" || type === "$$") {
         segment.name = type;
-        segment.param = raw.slice(type.length);
+        segment.param = normalizeParam(raw.slice(type.length));
       }
     }
 
@@ -210,4 +210,16 @@ export function parseFlatRoute(pattern: string): Path[] {
       }
     }
   }
+}
+
+function normalizeParam(segment: string) {
+  const normalized = normalizeSegment(segment);
+  return /^\$/.test(normalized) ? `\`${normalized}\`` : normalized;
+}
+
+function normalizeSegment(segment: string) {
+  return decodeURIComponent(segment).replace(
+    /[/?#]/g,
+    (char) => "%" + char.charCodeAt(0).toString(16),
+  );
 }
