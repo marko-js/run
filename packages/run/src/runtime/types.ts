@@ -22,6 +22,18 @@ export interface Context<TRoute extends Route = AnyRoute> {
   readonly meta: TRoute["meta"];
   readonly platform: Platform;
   readonly serializedGlobals: Record<string, boolean>;
+  readonly parent: Context | undefined;
+  render<T>(
+    template: Marko.Template<T>,
+    input: T,
+    init?: ResponseInit,
+  ): Response;
+  fetch(
+    resource: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response>;
+  redirect(to: string | URL, status?: number): Response;
+  back(fallback?: string | URL, status?: number): Response;
 }
 
 export type MultiRouteContext<

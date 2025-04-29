@@ -9,7 +9,7 @@
   </a>
 </nav>
 <h1>
-  rest=foo/
+  rest=foo
 </h1>
 ```
 

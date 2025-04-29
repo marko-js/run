@@ -5,15 +5,15 @@
 ### Handler
 ```js
 // virtual:marko-run__marko-run__route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get1(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get1(context) {
+	return context.render(page, {});
 }
 
-export function head1(context, buildInput) {
-	return stripResponseBody(get1(context, buildInput));
+export function head1(context) {
+	return stripResponseBody(get1(context));
 }
 ```
 ---
@@ -22,15 +22,15 @@ export function head1(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__foo.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get2(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get2(context) {
+	return context.render(page, {});
 }
 
-export function head2(context, buildInput) {
-	return stripResponseBody(get2(context, buildInput));
+export function head2(context) {
+	return stripResponseBody(get2(context));
 }
 ```
 ---
@@ -39,15 +39,15 @@ export function head2(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__foo.bar.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get3(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get3(context) {
+	return context.render(page, {});
 }
 
-export function head3(context, buildInput) {
-	return stripResponseBody(get3(context, buildInput));
+export function head3(context) {
+	return stripResponseBody(get3(context));
 }
 ```
 ---
@@ -56,15 +56,15 @@ export function head3(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__foo.bar.baz.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get4(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get4(context) {
+	return context.render(page, {});
 }
 
-export function head4(context, buildInput) {
-	return stripResponseBody(get4(context, buildInput));
+export function head4(context) {
+	return stripResponseBody(get4(context));
 }
 ```
 ---
@@ -73,15 +73,15 @@ export function head4(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__foo.baz.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get5(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get5(context) {
+	return context.render(page, {});
 }
 
-export function head5(context, buildInput) {
-	return stripResponseBody(get5(context, buildInput));
+export function head5(context) {
+	return stripResponseBody(get5(context));
 }
 ```
 ---
@@ -90,15 +90,15 @@ export function head5(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__bar.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get6(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get6(context) {
+	return context.render(page, {});
 }
 
-export function head6(context, buildInput) {
-	return stripResponseBody(get6(context, buildInput));
+export function head6(context) {
+	return stripResponseBody(get6(context));
 }
 ```
 ---
@@ -107,15 +107,15 @@ export function head6(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__bar.baz.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get7(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get7(context) {
+	return context.render(page, {});
 }
 
-export function head7(context, buildInput) {
-	return stripResponseBody(get7(context, buildInput));
+export function head7(context) {
+	return stripResponseBody(get7(context));
 }
 ```
 ---
@@ -124,14 +124,14 @@ export function head7(context, buildInput) {
 ### Handler
 ```js
 // virtual:marko-run__marko-run__baz.route.js
-import { pageResponse, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
 
-export function get8(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get8(context) {
+	return context.render(page, {});
 }
 
-export function head8(context, buildInput) {
-	return stripResponseBody(get8(context, buildInput));
+export function head8(context) {
+	return stripResponseBody(get8(context));
 }
 ```

@@ -124,9 +124,6 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   if (!page || verbs.some((verb) => verb !== "get" && verb !== "head")) {
     runtimeImports.push("noContent");
   }
-  if (page) {
-    runtimeImports.push("pageResponse");
-  }
   if (verbs.includes("head")) {
     runtimeImports.push("stripResponseBody");
   }
@@ -195,9 +192,7 @@ function writeRouteEntryHandler(
   writer.writeLines("");
 
   if (page && (verb === "get" || verb === "head")) {
-    writer.writeBlockStart(
-      `export function ${verb}${index}(context, buildInput) {`,
-    );
+    writer.writeBlockStart(`export function ${verb}${index}(context) {`);
   } else {
     writer.writeBlockStart(`export function ${verb}${index}(context) {`);
   }
@@ -210,7 +205,7 @@ function writeRouteEntryHandler(
       const name = `${verb}Handler`;
 
       continuations.writeLines(
-        `const ${currentName} = () => pageResponse(page, buildInput());`,
+        `const ${currentName} = () => context.render(page, {});`,
       );
 
       if (len) {
@@ -230,17 +225,15 @@ function writeRouteEntryHandler(
         hasBody = true;
       }
     } else if (verb === "head") {
-      writer.writeLines(
-        `return stripResponseBody(get${index}(context, buildInput));`,
-      );
+      writer.writeLines(`return stripResponseBody(get${index}(context));`);
       hasBody = true;
     } else if (len) {
       continuations.writeLines(
-        `const ${currentName} = () => pageResponse(page, buildInput());`,
+        `const ${currentName} = () => context.render(page, {});`,
       );
       nextName = currentName;
     } else {
-      writer.writeLines(`return pageResponse(page, buildInput());`);
+      writer.writeLines(`return context.render(page, {});`);
       hasBody = true;
     }
   } else if (handler?.verbs?.includes(verb)) {
@@ -312,7 +305,7 @@ export function renderRouter(
   const imports = writer.branch("imports");
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext${hasErrorPage || hasNotFoundPage ? ", pageResponse" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
   for (const route of routes.list) {
@@ -338,11 +331,12 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
-      `if (!pathname) {
-    pathname = '/';
-  } else if (pathname.charAt(0) !== '/') {
-    pathname = '/' + pathname;
-  }`,
+      `const last = pathname.length - 1;
+  return match_internal(method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname)
+};
+  
+function match_internal(method, pathname) {
+  const len = pathname.length;`,
     )
     .writeBlockStart(`switch (method) {`);
 
@@ -365,7 +359,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
       "export async function invoke(route, request, platform, url) {",
     )
     .writeLines(
-      "const [context, buildInput] = createContext(route, request, platform, url);",
+      "const context = createContext(route, request, platform, url);",
     );
 
   if (hasErrorPage) {
@@ -376,7 +370,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     .writeBlockStart("if (route) {")
     .writeBlockStart("try {")
     .writeLines(
-      "const response = await route.handler(context, buildInput);",
+      "const response = await route.handler(context);",
       "if (response) return response;",
     ).indent--;
   writer
@@ -399,7 +393,7 @@ const page404ResponseInit = {
 
     writer.write(`    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return pageResponse(page404, buildInput(), page404ResponseInit);
+      return context.render(page404, {}, page404ResponseInit);
     }`);
   }
 
@@ -422,7 +416,7 @@ const page500ResponseInit = {
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
       .writeLines(
-        `return pageResponse(page500, buildInput({ error }), page500ResponseInit);`,
+        `return context.render(page500, { error }, page500ResponseInit);`,
       )
       .writeBlockEnd("}")
       .writeLines("throw error;")
@@ -441,40 +435,42 @@ function renderFetch(writer: Writer, options: RouterOptions) {
 export async function fetch(request, platform) {
   try {
     const url = new URL(request.url);
-    let { pathname } = url;`);
+    const { pathname } = url;
+    const last = pathname.length - 1;
+    const hasTrailingSlash = last && pathname.charAt(last) === '/';
+    const normalizedPathname = hasTrailingSlash ? pathname.slice(0, last) : pathname;
+    const route = match_internal(request.method, normalizedPathname);`);
 
   switch (options.trailingSlashes) {
     case "RedirectWithout":
       writer.write(`
-    if (pathname !== '/' && pathname.endsWith('/')) {
-      url.pathname = pathname.slice(0, -1);
+    if (route && hasTrailingSlash) {
+      url.pathname = normalizedPathname
       return Response.redirect(url);
     }`);
       break;
     case "RedirectWith":
       writer.write(`
-    if (pathname !== '/' && !pathname.endsWith('/')) {
-      url.pathname = pathname + '/';
+    if (route && pathname !== '/' && !hasTrailingSlash) {
+      url.pathname += '/';
       return Response.redirect(url);
     }`);
       break;
     case "RewriteWithout":
       writer.write(`
-    if (pathname !== '/' && pathname.endsWith('/')) {
-      url.pathname = pathname = pathname.slice(0, -1);
+    if (route && hasTrailingSlash) {
+      url.pathname = normalizedPathname;
     }`);
       break;
     case "RewriteWith":
       writer.write(`
-    if (pathname !== '/' && !pathname.endsWith('/')) {
-      url.pathname = pathname = pathname + '/';
+    if (route && pathname !== '/' && !hasTrailingSlash) {
+      url.pathname += '/';
     }`);
       break;
   }
 
   writer.write(`   
-
-    const route = match(request.method, pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {
@@ -498,7 +494,6 @@ function writeRouterVerb(
   let closeCount = 0;
 
   if (level === 0) {
-    writer.writeLines(`const len = pathname.length;`);
     if (route) {
       writer.writeLines(
         `if (len === 1) return ${renderMatch(verb, route, trie.path!)};`,

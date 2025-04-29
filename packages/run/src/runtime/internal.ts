@@ -4,7 +4,6 @@ import type {
   AnyRoute,
   Awaitable,
   Context,
-  InputObject,
   MultiRouteContext,
   NextFunction,
   Platform,
@@ -18,6 +17,8 @@ export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
 export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
+
+const parentContextLookup = new WeakMap<Request, Context>();
 
 const serializedGlobals = { params: true, url: true };
 
@@ -66,50 +67,75 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   return toReadable(rendered);
 };
 
-export function pageResponse(
-  template: Marko.Template,
-  input: Record<PropertyKey, unknown>,
-  init: ResponseInit = pageResponseInit,
-) {
-  return new Response(toReadable(template.render(input) as Rendered), init);
-}
-
 export function createContext<TRoute extends AnyRoute>(
-  route: TRoute | undefined,
+  route: TRoute | null,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
-): [Context<TRoute>, (data?: InputObject) => InputObject] {
-  const context: Context<TRoute> = route
-    ? {
-        request,
-        url,
-        platform,
-        meta: route.meta,
-        params: route.params,
-        route: route.path,
-        serializedGlobals,
+): Context<TRoute> {
+  let meta: TRoute["meta"];
+  let params: TRoute["params"];
+  let path: TRoute["path"];
+  if (route) {
+    meta = route.meta;
+    params = route.params;
+    path = route.path;
+  } else {
+    meta = {};
+    params = {};
+    path = "";
+  }
+  return {
+    request,
+    url,
+    platform,
+    meta,
+    params,
+    route: path,
+    serializedGlobals,
+    parent: parentContextLookup.get(request),
+    async fetch(resource, init) {
+      let request: Request;
+      let url: URL;
+      if (resource instanceof Request) {
+        request = new Request(resource, init);
+        url = new URL(request.url);
+      } else {
+        url =
+          typeof resource === "string" ? new URL(resource, this.url) : resource;
+        request = new Request(url, init);
       }
-    : ({
-        request,
-        url,
-        platform,
-        meta: {},
-        params: {},
-        route: "",
-        serializedGlobals,
-      } as unknown as Context<TRoute>);
 
-  let input: InputObject | undefined;
-  return [
-    context,
-    (data) => {
-      input ??= {
-        $global: context,
-      };
-      return data ? Object.assign(input, data) : input;
+      parentContextLookup.set(request, this);
+      return (
+        (await globalThis.__marko_run__.fetch(request, this.platform)) ||
+        new Response(null, { status: 404 })
+      );
     },
-  ];
+    render(template, input, init = pageResponseInit) {
+      return new Response(
+        toReadable(
+          template.render({
+            ...input,
+            $global: this as unknown as Marko.Global,
+          }),
+        ),
+        init,
+      );
+    },
+    redirect(to, status) {
+      return Response.redirect(
+        typeof to === "string" ? new URL(to, this.url) : to,
+        status,
+      );
+    },
+    back(fallback = "/", status) {
+      return this.redirect(
+        this.request.headers.get("referer") || fallback,
+        status,
+      );
+    },
+  };
 }
 
 export async function call<TRoute extends AnyRoute>(
