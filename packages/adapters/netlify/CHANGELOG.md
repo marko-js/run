@@ -1,5 +1,12 @@
 # @marko/run-adapter-netlify
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [faadf30]
+  - @marko/run@0.7.0
+
 ## 2.0.1
 
 ### Patch Changes

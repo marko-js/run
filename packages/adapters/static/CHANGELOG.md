@@ -1,5 +1,16 @@
 # @marko/run-adapter-static
 
+## 2.0.0
+
+### Minor Changes
+
+- faadf30: Default trailing slash behavior to RedirectWithout, and respect in static adapter
+
+### Patch Changes
+
+- Updated dependencies [faadf30]
+  - @marko/run@0.7.0
+
 ## 1.0.2
 
 ### Patch Changes

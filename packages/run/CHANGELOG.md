@@ -1,5 +1,15 @@
 # @marko/run
 
+## 0.7.0
+
+### Minor Changes
+
+- faadf30: Default trailing slash behavior to RedirectWithout, and respect in static adapter
+
+### Patch Changes
+
+- @marko/run-explorer@2.0.0
+
 ## 0.6.6
 
 ### Patch Changes
