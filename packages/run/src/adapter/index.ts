@@ -48,7 +48,7 @@ export default function adapter(): Adapter {
       return defaultEntry;
     },
 
-    async startDev(entry, config, options) {
+    async startDev({ entry, config, options }) {
       const { port = 3000, envFile } = options;
 
       globalThis.__marko_run_vite_config__ = config;
@@ -139,7 +139,7 @@ export default function adapter(): Adapter {
       };
     },
 
-    async startPreview(entry, options) {
+    async startPreview({ entry, options }) {
       const { port = 3000, envFile } = options;
       const { nodeArgs } = parseNodeArgs(options.args);
       const args = [...nodeArgs, entry];
@@ -165,7 +165,7 @@ export default function adapter(): Adapter {
         : server;
     },
 
-    async routesGenerated(routes, virtualFiles, meta) {
+    async routesGenerated({ routes, virtualFiles, meta }) {
       if (process.env.MR_EXPLORER === "false") {
         return;
       }

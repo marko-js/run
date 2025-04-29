@@ -292,14 +292,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {
-          await adapter.routesGenerated(
+          await adapter.routesGenerated({
             routes,
-            new Map(virtualFiles.entries()),
-            {
+            virtualFiles: new Map(virtualFiles.entries()),
+            meta: {
               buildTime: times.routesBuild,
               renderTime: times.routesRender,
             },
-          );
+          });
           if (!isBuild) {
             await opts?.emitRoutes?.(routes.list);
           }
@@ -697,12 +697,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (adapter?.buildEnd && routes) {
-            await adapter.buildEnd(
-              resolvedConfig,
-              routes.list,
-              routeData.builtEntries,
-              routeData.sourceEntries,
-            );
+            await adapter.buildEnd({
+              routes,
+              config: resolvedConfig,
+              builtEntries: routeData.builtEntries,
+              sourceEntries: routeData.sourceEntries,
+            });
           }
         }
       },

@@ -3,7 +3,6 @@ import baseAdapter from "@marko/run/adapter";
 import type {
   Adapter,
   AdapterConfig,
-  BuiltRoutes,
   Options as MarkoRunOptions,
   Route,
 } from "@marko/run/vite";
@@ -28,10 +27,10 @@ export interface Options {
 }
 
 export default function staticAdapter(options: Options = {}): Adapter {
+  console.log("Static Adapter");
   const { startDev } = baseAdapter();
   let adapterConfig!: AdapterConfig;
   let markoRunOptions: MarkoRunOptions;
-  let builtRoutes: BuiltRoutes;
   return {
     name: "static-adapter",
 
@@ -43,23 +42,18 @@ export default function staticAdapter(options: Options = {}): Adapter {
       return (markoRunOptions = options);
     },
 
-    routesGenerated(routes) {
-      builtRoutes = routes;
-    },
-
-    async getEntryFile() {
+    getEntryFile() {
       return defaultEntry;
     },
 
-    startDev(entry, config, options) {
-      return startDev!(
-        entry === defaultEntry ? undefined : entry,
-        config,
-        options,
-      );
+    startDev(event) {
+      return startDev!({
+        ...event,
+        entry: event.entry === defaultEntry ? undefined : event.entry,
+      });
     },
 
-    startPreview(_entry, options) {
+    startPreview({ options }) {
       const { dir, port, envFile } = options;
       envFile && loadEnv(envFile);
 
@@ -108,11 +102,11 @@ export default function staticAdapter(options: Options = {}): Adapter {
       });
     },
 
-    async buildEnd(_config, routes, builtEntries, sourceEntries) {
+    async buildEnd({ routes, builtEntries, sourceEntries }) {
       const { envFile } = adapterConfig;
 
       const pathsToVisit: string[] = [];
-      for (const route of routes) {
+      for (const route of routes.list) {
         for (const path of route.paths) {
           if (!path.params || !Object.keys(path.params).length) {
             pathsToVisit.push(path.path);
@@ -120,7 +114,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
         }
       }
       if (typeof options.urls === "function") {
-        pathsToVisit.push(...(await options.urls(routes)));
+        pathsToVisit.push(...(await options.urls(routes.list)));
       } else if (options.urls) {
         pathsToVisit.push(...options.urls);
       }
@@ -142,7 +136,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             out: path.join(path.dirname(builtEntries[0]), "public"),
-            notFoundPath: builtRoutes.special["404"]
+            notFoundPath: routes.special["404"]
               ? "404" + (trailingSlash ? "/" : "")
               : undefined,
           },
@@ -179,7 +173,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
           },
           {
             origin,
-            notFoundPath: builtRoutes.special["404"]
+            notFoundPath: routes.special["404"]
               ? "404" + (trailingSlash ? "/" : "")
               : undefined,
           },
