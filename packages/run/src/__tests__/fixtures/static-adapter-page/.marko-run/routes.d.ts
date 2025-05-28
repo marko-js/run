@@ -8,8 +8,6 @@ import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
-	interface Platform extends {} {}
-
 	interface AppData extends Run.DefineApp<{
 		routes: {
 			"/": { verb: "get"; };

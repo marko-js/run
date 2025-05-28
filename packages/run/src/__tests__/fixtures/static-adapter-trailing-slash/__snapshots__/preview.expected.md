@@ -1,6 +1,10 @@
 # Loading
 
 ```html
-Page rendered
+<a
+  href="/other"
+>
+  Other Page
+</a>
 ```
 

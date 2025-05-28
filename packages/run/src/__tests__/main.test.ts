@@ -6,13 +6,13 @@ import mochaSnap from "mocha-snap";
 import { createRequire } from "module";
 import path from "path";
 import * as playwright from "playwright";
-import url from "url";
+import { fileURLToPath } from "url";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 
-const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const snap = (mochaSnap as any).default as typeof mochaSnap;
 const root = process.cwd();
 
@@ -164,7 +164,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   };
 
   describe(fixture, function () {
-    const path = config.path || "/";
+    const pathname = config.path || "/";
     const steps = config.steps
       ? Array.isArray(config.steps)
         ? config.steps
@@ -186,7 +186,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
         async function testBlock() {
           const server = await cli.dev(config.entry, dir, configFile);
-          await testPage(dir, path, steps, server);
+          await testPage(dir, pathname, steps, server);
         }
 
         if (config.assert_dev) {
@@ -214,7 +214,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             undefined,
             config.preview_args,
           );
-          await testPage(dir, path, steps, server);
+          await testPage(dir, pathname, steps, server);
         }
 
         if (config.assert_preview) {
@@ -229,12 +229,12 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
 async function testPage(
   dir: string,
-  path: string,
+  pathname: string,
   steps: Step[],
   server: SpawnedServer,
 ) {
   try {
-    const url = new URL(path, `http://localhost:${server.port}`);
+    const url = new URL(pathname, `http://localhost:${server.port}`);
 
     await waitForServer(server.port);
     await waitForPendingRequests(page, async () => {
@@ -261,7 +261,7 @@ async function testPage(
       });
     }
 
-    snap(snapshot, { ext: ".md", dir });
+    await snap(snapshot, { ext: ".md", dir });
   } finally {
     await server.close();
   }
