@@ -334,7 +334,7 @@ Without flat routes you would have a file structure like:
 routes/
   projects/
     $projectId/
-      $members/
+      members/
         +page.marko
       +layout.marko
   +layout.marko
@@ -413,6 +413,31 @@ routes/
 
 While both of these create a route which matches the paths, they have slightly different semantics. Using a pathless segment is the same as creating a pathless folder which allows you to isolate middleware and loayouts. Using an empty segement is the same as defining a file at the current location.
 
+### Escaping Control Characters
+
+To include a control character (`.,+()$_`) as a literal in a route path, it can be surrounded with graves (`` ` ``). For example to create a route to `/sitemap.xml`
+
+```
+routes/
+  `sitemap.xml`/
+    +handler.ts
+```
+
+or
+
+```
+routes/
+  sitemap`.`xml
+    +handler.ts
+```
+
+or
+
+```
+routes/
+  sitemap`.`xml+handler.ts
+```
+
 <!-- ### Match Ranking
 
 *TODO: Write some things* -->
@@ -468,6 +493,50 @@ Generally, when using an adapter, this runtime will be abstracted away.
 ```ts
 import * as Run from '@marko/run/router`;
 ```
+
+### Context
+
+Context is passed to `middleware` and `handler` functions as the first paramter and is available in Marko templates as `$global`. The context object contains information about the current request with the following properties
+
+- `route` - A string identifying the current route
+- `request` - Current WHATWG Request instance
+- `method` - HTTP method of the current request
+- `params` - `Record<string, string>` of the route parameters
+- `meta` - Meta data loaded from the current route's `+meta` file
+- `platform` - Additional data provided by the adapter
+- `parent` - When `context.fetch` is called the current context will become the parent of the new context created for the fetch request, otherwise this field will be undefined.
+
+- `fetch`
+
+```
+fetch(resource: string | URL | Request, init?: RequestInit): Promise<Response>;
+```
+
+Creates a response by making a new request to the router. This method has the same signature as native `fetch`.
+
+- `render`
+
+```
+render<T>(template: Marko.Template<T>, input: T, init?: ResponseInit): Response;
+```
+
+Creates a response that streams the given Marko template and sets the `Content-Type` header to `text/html`.
+
+- `redirect`
+
+```
+redirect(to: string | URL, status?: number): Response;
+```
+
+Creates a redirect response that will resolve relative paths.
+
+- `back`
+
+```
+back(fallback?: string | URL, status?: number): Response;
+```
+
+Creates a redirect response that uses the current request referer or an optional fallback.
 
 ### Emdedding in Existing Server
 

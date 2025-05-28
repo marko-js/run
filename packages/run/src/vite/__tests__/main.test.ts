@@ -75,7 +75,13 @@ describe("router codegen", () => {
 
       if (error || !routes) {
         normalizeErrorStack((error ||= new Error("No routes generated")));
-        routerSnap = `throw ${JSON.stringify(prepareError(error)).replace(/\\\\/g, "/")}`;
+        const preparedError = prepareError(error);
+        routerSnap = `throw ${JSON.stringify({
+          message: preparedError.message
+            .replaceAll(process.cwd(), "")
+            .replace(/\\/g, "/"),
+          stack: preparedError.stack,
+        })}`;
       } else {
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;

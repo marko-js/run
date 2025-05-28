@@ -55,6 +55,7 @@
     "@babel/types": "^7.26.0",
     "@marko/fixture-snapshots": "^2.2.1",
     "@marko/testing-library": "^6.2.0",
+    "@micro-frame/marko": "^1.10.4",
     "@types/debug": "^4.1.12",
     "@types/diff": "^7.0.0",
     "@types/glob": "^8.1.0",

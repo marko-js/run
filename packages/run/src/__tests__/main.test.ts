@@ -73,14 +73,20 @@ before(async () => {
       const formatted = defaultSerializer(defaultNormalizer(fragment));
 
       const normalized = formatted
+        .replaceAll(process.cwd(), "")
+        .replaceAll(root, "")
         .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
         .replace(/:(\d{4,})/g, ":9999")
+        .replace(
+          /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gs,
+          "",
+        )
+        .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gs, "")
         .replace(
           /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
           "$1 [Normalized Error Stack]",
         )
-        .replaceAll(process.cwd(), "")
-        .replaceAll(root, "");
+        .replace(/\\/g, "/");
 
       if (changes.at(-1) !== normalized) {
         changes.push(normalized);
@@ -161,6 +167,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     assert_preview?: Assert;
     preview_args?: string[];
     timeout?: number;
+    referer?: string | URL;
   };
 
   describe(fixture, function () {
@@ -186,7 +193,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
         async function testBlock() {
           const server = await cli.dev(config.entry, dir, configFile);
-          await testPage(dir, pathname, steps, server);
+          await testPage(dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_dev) {
@@ -214,7 +221,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             undefined,
             config.preview_args,
           );
-          await testPage(dir, pathname, steps, server);
+          await testPage(dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_preview) {
@@ -232,13 +239,21 @@ async function testPage(
   pathname: string,
   steps: Step[],
   server: SpawnedServer,
+  referer?: string | URL,
 ) {
   try {
     const url = new URL(pathname, `http://localhost:${server.port}`);
+    const referrerUrl = referer
+      ? referer instanceof URL
+        ? referer
+        : new URL(referer, url)
+      : undefined;
 
     await waitForServer(server.port);
     await waitForPendingRequests(page, async () => {
-      globalThis.response = await page.goto(url.href);
+      globalThis.response = await page.goto(url.href, {
+        referer: referrerUrl?.href,
+      });
     });
 
     await page.waitForLoadState("domcontentloaded");
