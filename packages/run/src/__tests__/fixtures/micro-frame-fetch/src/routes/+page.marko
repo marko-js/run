@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>@marko/run Test Fixture</title>
+  </head>
+  <body>
+    <div#app>
+      <micro-frame src="/other" fetch=$global.fetch>
+        <@loading>
+          Loading...
+        </@loading>
+        <@catch|err|>
+          ${err.message}
+        </@catch>
+      </micro-frame>
+    </div>
+  </body>
+</html>

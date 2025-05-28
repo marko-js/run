@@ -1,3 +1,3 @@
 export const GET: MarkoRun.Handler = (ctx) => {
-  return ctx.redirect("/other");
+  return ctx.back("/other");
 }
