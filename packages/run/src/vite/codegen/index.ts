@@ -398,10 +398,13 @@ const page404ResponseInit = {
   }
 
   writer.indent--;
-  writer.writeLines(`
+
+  if (routes.list.length) {
+    writer.writeLines(`
     return new Response(null, {
       status: 404,
     });`);
+  }
 
   if (hasErrorPage) {
     imports.writeLines(`

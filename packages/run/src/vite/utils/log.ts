@@ -105,6 +105,16 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     table.push(row);
   }
 
+  if (!table.length) {
+    table.push([
+      {
+        colSpan: 4,
+        hAlign: "center",
+        content: kleur.dim(kleur.white("No routes found")),
+      },
+    ]);
+  }
+
   console.log(table.toString());
 }
 

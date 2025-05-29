@@ -149,14 +149,31 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       //   });
       // }
       virtualFiles.clear();
-      routes = await buildRoutes(
-        {
-          walker: createFSWalker(resolvedRoutesDir),
-        },
-        entryFilesDir,
-      );
-      if (!routes.list.length) {
-        throw new Error("No routes generated");
+      if (fs.existsSync(resolvedRoutesDir)) {
+        routes = await buildRoutes(
+          {
+            walker: createFSWalker(resolvedRoutesDir),
+          },
+          entryFilesDir,
+        );
+
+        if (
+          !isBuild &&
+          !routes.list.length &&
+          !Object.keys(routes.special).length
+        ) {
+          console.warn(`No routes found in ${resolvedRoutesDir}`);
+        }
+      } else {
+        routes = {
+          list: [],
+          special: {},
+          middleware: [],
+        };
+
+        if (!isBuild) {
+          console.warn(`Routes directory ${resolvedRoutesDir} does not exist`);
+        }
       }
 
       for (const route of routes.list) {
@@ -602,7 +619,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           await renderVirtualFiles(this);
         }
         if (virtualFiles.has(id)) {
-          return virtualFiles.get(id)!;
+          const file = virtualFiles.get(id)!;
+
+          return file;
         } else if (
           !id.startsWith(entryFilesDirPosix) &&
           /[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)
