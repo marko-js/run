@@ -1,5 +1,18 @@
 # @marko/run
 
+## 0.7.0
+
+### Minor Changes
+
+- 3bdc18e: Add escaping character '`' to route paths
+Add context convenience methods: fetch, render, redirect, back
+Update static adapter to use `sirv` in preview mode
+- faadf30: Default trailing slash behavior to RedirectWithout, and respect in static adapter
+
+### Patch Changes
+
+- @marko/run-explorer@2.0.0
+
 ## 0.6.6
 
 ### Patch Changes
