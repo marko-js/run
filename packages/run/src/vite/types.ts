@@ -1,5 +1,5 @@
 import type { Options as MarkoViteOptions } from "@marko/vite";
-import type { InlineConfig, ResolvedConfig, UserConfig } from "vite";
+import type { InlineConfig, Plugin, ResolvedConfig, UserConfig } from "vite";
 
 import type {
   HttpVerb,
@@ -34,6 +34,10 @@ export interface StartPreviewOptions extends StartOptions {
 
 export interface Adapter {
   readonly name: string;
+  plugins?(event: {
+    root: string;
+    command: "dev" | "build";
+  }): Promise<Plugin[]> | Plugin[] | undefined;
   configure?(config: AdapterConfig): void;
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
