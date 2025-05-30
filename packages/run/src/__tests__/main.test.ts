@@ -332,6 +332,7 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
 
 function environment(nodeEnv: any) {
   const currentNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = nodeEnv;
   beforeEach(() => {
     process.env.NODE_ENV = nodeEnv;
   });
