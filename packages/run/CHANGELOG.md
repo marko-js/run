@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.1
+
+### Patch Changes
+
+- 5e3efe6: Add hook for adapters to inject extra plugins, no longer error if no file-routes are defined
+
 ## 0.7.0
 
 ### Minor Changes

@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@marko/compiler": "^5.39.3",
-    "@marko/run": "^0.7.0",
+    "@marko/run": "^0.7.1",
     "@marko/run-adapter-node": "^2.0.0",
     "@types/node": "^22.9.1",
     "prettier": "^3.3.3",
