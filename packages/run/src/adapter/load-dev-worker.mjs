@@ -14,11 +14,6 @@ process
   .send("ready");
 
 async function start(entry, config) {
-  if (config.plugins) {
-    const plugin = await import("@marko/run/vite");
-    config.plugins = plugin.default();
-  }
-
   globalThis.__marko_run_vite_config__ = config;
 
   let changed = false;
