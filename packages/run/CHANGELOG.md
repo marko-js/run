@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.2
+
+### Patch Changes
+
+- c4fa0ce: Add adapter hook to import additional runtime
+
 ## 0.7.1
 
 ### Patch Changes
