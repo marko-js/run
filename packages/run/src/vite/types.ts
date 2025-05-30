@@ -37,7 +37,7 @@ export interface Adapter {
   plugins?(event: {
     root: string;
     command: "dev" | "build";
-  }): Promise<Plugin[]> | Plugin[] | undefined;
+  }): Promise<Plugin[] | undefined> | Plugin[] | undefined;
   configure?(config: AdapterConfig): void;
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
@@ -58,6 +58,7 @@ export interface Adapter {
     sourceEntries: string[];
   }): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string;
+  runtimeInclude?(): Promise<string | undefined> | string | undefined;
   routesGenerated?(event: {
     routes: BuiltRoutes;
     virtualFiles: Map<string, string>;

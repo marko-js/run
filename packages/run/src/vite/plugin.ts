@@ -265,9 +265,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             renderMiddleware(routes.middleware, root),
           );
         }
+
+        const runtimeInclude = await adapter?.runtimeInclude?.();
+
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
-          renderRouter(routes, root, {
+          renderRouter(routes, root, runtimeInclude, {
             trailingSlashes,
           }),
         );
