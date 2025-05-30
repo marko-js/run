@@ -291,6 +291,7 @@ function writeRouteEntryHandler(
 export function renderRouter(
   routes: BuiltRoutes,
   rootDir: string,
+  runtimeInclude: string | undefined,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
@@ -303,6 +304,10 @@ export function renderRouter(
   writer.writeLines(`// @marko/run/router`);
 
   const imports = writer.branch("imports");
+
+  if (runtimeInclude) {
+    imports.writeLines(`import "${normalizePath(runtimeInclude)}";`);
+  }
 
   imports.writeLines(
     `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
