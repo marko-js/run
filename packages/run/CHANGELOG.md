@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.3
+
+### Patch Changes
+
+- 9cf2ea9: Resolve adapter plugins in dev worker
+
 ## 0.7.2
 
 ### Patch Changes
