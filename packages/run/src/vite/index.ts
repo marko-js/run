@@ -1,4 +1,4 @@
-export { default, getPackageData } from "./plugin";
+export { default, defaultConfigPlugin, getPackageData } from "./plugin";
 export type {
   Adapter,
   AdapterConfig,
