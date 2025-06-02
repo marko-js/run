@@ -3,26 +3,17 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import {
-  build as viteBuild,
-  type InlineConfig,
-  resolveConfig,
-  type ResolvedConfig,
-} from "vite";
+import { build as viteBuild, type InlineConfig, resolveConfig } from "vite";
 
-import type { Adapter } from "../vite";
+import { resolveAdapter } from "../adapter";
 import {
   default as plugin,
   defaultConfigPlugin,
   defaultPort,
   isPluginIncluded,
-  resolveAdapter as pluginResolveAdapter,
 } from "../vite/plugin";
 import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
-import {
-  getExternalPluginOptions,
-  setExternalAdapterOptions,
-} from "../vite/utils/config";
+import { setExternalAdapterOptions } from "../vite/utils/config";
 import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -274,9 +265,4 @@ export async function getViteConfig(
   }
 
   return path.join(__dirname, "default.config.mjs");
-}
-
-async function resolveAdapter(config: ResolvedConfig): Promise<Adapter | null> {
-  const options = getExternalPluginOptions(config);
-  return pluginResolveAdapter(config.root, options);
 }

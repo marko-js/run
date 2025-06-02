@@ -1,6 +1,7 @@
-import { getDevGlobal } from "@marko/run/adapter";
+import { getDevGlobal, resolveAdapter } from "@marko/run/adapter";
+import plugin, { defaultConfigPlugin } from "@marko/run/vite";
 import net from "net";
-import { createServer } from "vite";
+import { createServer, resolveConfig } from "vite";
 
 process
   .on("message", (message) => {
@@ -14,6 +15,29 @@ process
   .send("ready");
 
 async function start(entry, config) {
+  if (config.plugins?.length) {
+    const resolvedConfig = await resolveConfig(
+      {
+        root: config.root,
+        configFile: config.configFile,
+        logLevel: "silent",
+        plugins: [defaultConfigPlugin],
+      },
+      "serve",
+    );
+    const adapter = await resolveAdapter(resolvedConfig);
+    const plugins =
+      (adapter.plugins &&
+        (await adapter.plugins({ root: config.root, command: "dev" }))) ||
+      [];
+
+    if (plugins.some((plugin) => plugin.name === "marko-run-vite:pre")) {
+      plugins.push(...plugin());
+    }
+
+    config.plugins = plugins;
+  }
+
   globalThis.__marko_run_vite_config__ = config;
 
   let changed = false;

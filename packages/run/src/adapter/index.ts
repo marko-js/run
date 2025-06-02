@@ -4,8 +4,10 @@ import inspector from "inspector";
 import type { AddressInfo } from "net";
 import path from "path";
 import { fileURLToPath } from "url";
+import type { ResolvedConfig } from "vite";
 
 import type { Adapter, ExplorerData } from "../vite";
+import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 import {
   getAvailablePort,
   getInspectOptions,
@@ -35,10 +37,18 @@ import { Server } from "http";
 import parseNodeArgs from "parse-node-args";
 
 import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";
+import { getExternalPluginOptions } from "../vite/utils/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
 const loadDevWorker = path.join(__dirname, "load-dev-worker.mjs");
+
+export async function resolveAdapter(
+  config: ResolvedConfig,
+): Promise<Adapter | null> {
+  const options = getExternalPluginOptions(config);
+  return pluginResolveAdapter(config.root, options);
+}
 
 export default function adapter(): Adapter {
   return {
