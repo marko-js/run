@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.4
+
+### Patch Changes
+
+- 0b22d0b: Fix adapter runtime loading in dev mode
+
 ## 0.7.3
 
 ### Patch Changes

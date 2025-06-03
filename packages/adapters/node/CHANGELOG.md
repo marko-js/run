@@ -1,5 +1,13 @@
 # @marko/run-adapter-node
 
+## 2.0.1
+
+### Patch Changes
+
+- 0b22d0b: Fix adapter runtime loading in dev mode
+- Updated dependencies [0b22d0b]
+  - @marko/run@0.7.4
+
 ## 2.0.0
 
 ### Patch Changes
