@@ -1,5 +1,3 @@
-import "@marko/run/router";
-
 import type { RouteWithHandler } from "@marko/run";
 import {
   createMiddleware,

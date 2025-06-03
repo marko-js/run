@@ -12,6 +12,11 @@ declare global {
     | undefined;
 }
 
+// Prevent importing the router and subsequent runtime in dev mode without going through Vite's ssrLoadModule
+if (process.env.NODE_ENV && process.env.NODE_ENV !== "development") {
+  import("@marko/run/router");
+}
+
 export default globalThis.__marko_run_middleware__ ??=
   process.env.NODE_ENV && process.env.NODE_ENV !== "development"
     ? (factory) => factory
