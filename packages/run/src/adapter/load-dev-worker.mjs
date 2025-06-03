@@ -31,7 +31,7 @@ async function start(entry, config) {
         (await adapter.plugins({ root: config.root, command: "dev" }))) ||
       [];
 
-    if (plugins.some((plugin) => plugin.name === "marko-run-vite:pre")) {
+    if (config.plugins.some((plugin) => plugin.name === "marko-run-vite:pre")) {
       plugins.push(...plugin());
     }
 
