@@ -1,5 +1,11 @@
 # @marko/run-adapter-node
 
+## 2.0.2
+
+### Patch Changes
+
+- 4d9af62: Prevent router code from being code-split
+
 ## 2.0.1
 
 ### Patch Changes
