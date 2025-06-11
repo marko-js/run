@@ -24,7 +24,7 @@ const defaultEntry = path.join(__dirname, "default-entry");
 
 export interface Options {
   /**
-   * Marko Run will automatically discover routes based on your file system structure. This option provides additional entry points for site crawling other than those which are statically known.
+   * Marko Run will automatically discover routes based on your file system and look for any relative anchor links to crawl for more static pages. This option provides additional entry points for site crawling other than those which are statically known.
    *
    * Can be either:
    * - An array of URL strings to generate
