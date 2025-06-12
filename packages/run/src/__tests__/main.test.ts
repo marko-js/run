@@ -6,14 +6,15 @@ import mochaSnap from "mocha-snap";
 import { createRequire } from "module";
 import path from "path";
 import * as playwright from "playwright";
-import url from "url";
+import { fileURLToPath } from "url";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 
-const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const snap = (mochaSnap as any).default as typeof mochaSnap;
+const root = process.cwd();
 
 // https://github.com/esbuild-kit/tsx/issues/113
 const { toString } = Function.prototype;
@@ -41,7 +42,7 @@ declare const __track__: (html: string) => void;
 export type Step = () => Promise<unknown> | unknown;
 export type Assert = (fn: () => Promise<void>) => Promise<void>;
 
-const requireCwd = createRequire(process.cwd());
+const requireCwd = createRequire(root);
 let browser: playwright.Browser;
 let context: playwright.BrowserContext;
 let changes: string[] = [];
@@ -60,25 +61,41 @@ before(async () => {
     context.exposeFunction("__track__", (html: string) => {
       const fragment = JSDOM.fragment(html);
 
-      for (const pre of fragment.querySelectorAll("pre")) {
-        if (!pre.children.length && pre.textContent) {
-          const match = /(^\s*Error:.+(?:\r?\n\s+)?)/.exec(pre.textContent);
-          if (match) {
-            pre.textContent = match[1] + "at [Normalized Error Stack]";
-          }
-        }
-      }
+      // for (const pre of fragment.querySelectorAll("pre")) {
+      //   if (!pre.children.length && pre.textContent) {
+      //     const match = /(^\s*at (.+?:\r?\n\s+)?)/.exec(pre.textContent);
+      //     if (match) {
+      //       pre.textContent = match[1] + "at [Normalized Error Stack]";
+      //     }
+      //   }
+      // }
 
-      const formatted = defaultSerializer(defaultNormalizer(fragment))
+      const formatted = defaultSerializer(defaultNormalizer(fragment));
+
+      const normalized = formatted
+        .replaceAll(process.cwd(), "")
+        .replaceAll(root, "")
         .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
-        .replace(/:(\d{4,})/g, ":9999");
+        .replace(/:(\d{4,})/g, ":9999")
+        .replace(
+          /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gs,
+          "",
+        )
+        .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gs, "")
+        .replace(
+          /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
+          "$1 [Normalized Error Stack]",
+        )
+        .replace(/\\/g, "/");
 
-      if (changes.at(-1) !== formatted) {
-        changes.push(formatted);
+      if (changes.at(-1) !== normalized) {
+        changes.push(normalized);
       }
     }),
-    context.addInitScript(function foo() {
+
+    context.addInitScript(async function foo() {
       const getRoot = () => document.getElementById("app");
+
       const observer = new MutationObserver(() => {
         const html = (getRoot() || document.body).innerHTML;
         if (html) {
@@ -104,7 +121,6 @@ before(async () => {
         );
       }
 
-      observe();
       function observe() {
         observer.observe(getRoot() || document, {
           subtree: true,
@@ -113,6 +129,8 @@ before(async () => {
           characterData: true,
         });
       }
+
+      observe();
     }),
   ]);
 });
@@ -149,10 +167,11 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     assert_preview?: Assert;
     preview_args?: string[];
     timeout?: number;
+    referer?: string | URL;
   };
 
   describe(fixture, function () {
-    const path = config.path || "/";
+    const pathname = config.path || "/";
     const steps = config.steps
       ? Array.isArray(config.steps)
         ? config.steps
@@ -174,7 +193,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
         async function testBlock() {
           const server = await cli.dev(config.entry, dir, configFile);
-          await testPage(dir, path, steps, server);
+          await testPage(dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_dev) {
@@ -202,7 +221,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             undefined,
             config.preview_args,
           );
-          await testPage(dir, path, steps, server);
+          await testPage(dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_preview) {
@@ -217,16 +236,24 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
 async function testPage(
   dir: string,
-  path: string,
+  pathname: string,
   steps: Step[],
   server: SpawnedServer,
+  referer?: string | URL,
 ) {
   try {
-    const url = new URL(path, `http://localhost:${server.port}`);
+    const url = new URL(pathname, `http://localhost:${server.port}`);
+    const referrerUrl = referer
+      ? referer instanceof URL
+        ? referer
+        : new URL(referer, url)
+      : undefined;
 
     await waitForServer(server.port);
     await waitForPendingRequests(page, async () => {
-      globalThis.response = await page.goto(url.href);
+      globalThis.response = await page.goto(url.href, {
+        referer: referrerUrl?.href,
+      });
     });
 
     await page.waitForLoadState("domcontentloaded");
@@ -249,7 +276,7 @@ async function testPage(
       });
     }
 
-    snap(snapshot, { ext: ".md", dir });
+    await snap(snapshot, { ext: ".md", dir });
   } finally {
     await server.close();
   }
@@ -305,6 +332,7 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
 
 function environment(nodeEnv: any) {
   const currentNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = nodeEnv;
   beforeEach(() => {
     process.env.NODE_ENV = nodeEnv;
   });

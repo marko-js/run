@@ -11,3 +11,4 @@ dist
 .app
 coverage
 *.lcov
+.vscode

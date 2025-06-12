@@ -1,5 +1,5 @@
 import type { Options as MarkoViteOptions } from "@marko/vite";
-import type { InlineConfig, ResolvedConfig, UserConfig } from "vite";
+import type { InlineConfig, Plugin, ResolvedConfig, UserConfig } from "vite";
 
 import type {
   HttpVerb,
@@ -34,6 +34,10 @@ export interface StartPreviewOptions extends StartOptions {
 
 export interface Adapter {
   readonly name: string;
+  plugins?(event: {
+    root: string;
+    command: "dev" | "build";
+  }): Promise<Plugin[] | undefined> | Plugin[] | undefined;
   configure?(config: AdapterConfig): void;
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
   viteConfig?(config: UserConfig): Promise<UserConfig> | UserConfig | undefined;
@@ -54,6 +58,7 @@ export interface Adapter {
     sourceEntries: string[];
   }): Promise<void> | void;
   typeInfo?(writer: (data: string) => void): Promise<string> | string;
+  runtimeInclude?(): Promise<string | undefined> | string | undefined;
   routesGenerated?(event: {
     routes: BuiltRoutes;
     virtualFiles: Map<string, string>;
@@ -81,14 +86,13 @@ export type Options = MarkoRunOptions & MarkoViteOptions;
 export interface Route {
   key: string;
   index: number;
-  paths: PathInfo[];
+  path: PathInfo;
   layouts: RoutableFile[];
   middleware: RoutableFile[];
   meta?: RoutableFile;
   handler?: RoutableFile;
   page?: RoutableFile;
   templateFilePath?: string;
-  entryName: string;
 }
 
 export interface PathInfo {
@@ -109,8 +113,6 @@ export interface RoutableFile {
   name: string;
   type: RoutableFileType;
   filePath: string;
-  relativePath: string;
-  importPath: string;
   verbs?: HttpVerb[];
 }
 

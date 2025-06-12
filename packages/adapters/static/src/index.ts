@@ -12,7 +12,7 @@ import fs from "fs/promises";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
 import path from "path";
-import createStaticServe from "serve-static";
+import sirv from "sirv";
 import { Pool } from "undici";
 import { fileURLToPath, pathToFileURL } from "url";
 import zlib from "zlib";
@@ -50,7 +50,6 @@ export interface Options {
 }
 
 export default function staticAdapter(options: Options = {}): Adapter {
-  console.log("Static Adapter");
   const { startDev } = baseAdapter();
   let adapterConfig!: AdapterConfig;
   let markoRunOptions: MarkoRunOptions;
@@ -84,10 +83,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
         flush: zlib.constants.Z_PARTIAL_FLUSH,
         threshold: 500,
       });
-      const staticServe = createStaticServe(path.join(dir, "public"), {
-        index: "index.html",
+      const staticServe = sirv(path.join(dir, "public"), {
         extensions: ["html"],
-        redirect: false,
         setHeaders(res, path) {
           if (path === "/404") {
             res.statusCode = 404;
@@ -130,10 +127,8 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       const pathsToVisit: string[] = [];
       for (const route of routes.list) {
-        for (const path of route.paths) {
-          if (!path.params || !Object.keys(path.params).length) {
-            pathsToVisit.push(path.path);
-          }
+        if (!route.path.params || !Object.keys(route.path.params).length) {
+          pathsToVisit.push(route.path.path);
         }
       }
       if (typeof options.urls === "function") {
@@ -213,10 +208,6 @@ export default function staticAdapter(options: Options = {}): Adapter {
       for (const file of builtEntries) {
         await fs.rm(file, { maxRetries: 5 }).catch(() => {});
       }
-    },
-
-    typeInfo() {
-      return "{}";
     },
   };
 }

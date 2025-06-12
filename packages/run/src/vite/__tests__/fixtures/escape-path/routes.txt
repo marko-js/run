@@ -1,0 +1,6 @@
+/`a?b`
+  /$`$id`
+    /$foo
+      +page.marko
+  /baz
+    +page.marko

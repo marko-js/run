@@ -10,12 +10,12 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
+			"/": { verb: "get"; };
 		}
 	}> {}
 }
 
-declare module "./+page.marko" {
+declare module "../src/routes/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
@@ -26,8 +26,8 @@ declare module "./+page.marko" {
   }
 }
 
-declare module "./+layout.marko" {
-  export interface Input extends Run.LayoutInput<typeof import('./+layout.marko')> {}
+declare module "../src/routes/+layout.marko" {
+  export interface Input extends Run.LayoutInput<typeof import("../src/routes/+layout.marko")> {}
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/"];
@@ -38,7 +38,7 @@ declare module "./+layout.marko" {
   }
 }
 
-declare module "./+500.marko" {
+declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
@@ -50,8 +50,4 @@ declare module "./+500.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/": { verb: "get"; };
 }

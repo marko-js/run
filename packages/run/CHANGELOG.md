@@ -1,5 +1,42 @@
 # @marko/run
 
+## 0.7.4
+
+### Patch Changes
+
+- 0b22d0b: Fix adapter runtime loading in dev mode
+
+## 0.7.3
+
+### Patch Changes
+
+- 9cf2ea9: Resolve adapter plugins in dev worker
+
+## 0.7.2
+
+### Patch Changes
+
+- c4fa0ce: Add adapter hook to import additional runtime
+
+## 0.7.1
+
+### Patch Changes
+
+- 5e3efe6: Add hook for adapters to inject extra plugins, no longer error if no file-routes are defined
+
+## 0.7.0
+
+### Minor Changes
+
+- 3bdc18e: Add escaping character '`' to route paths
+Add context convenience methods: fetch, render, redirect, back
+Update static adapter to use `sirv` in preview mode
+- faadf30: Default trailing slash behavior to RedirectWithout, and respect in static adapter
+
+### Patch Changes
+
+- @marko/run-explorer@2.0.0
+
 ## 0.6.6
 
 ### Patch Changes

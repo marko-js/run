@@ -1,4 +1,6 @@
-import { markoRunFilePrefix, RoutableFileTypes } from "../constants";
+import path from "path";
+
+import { RoutableFileTypes } from "../constants";
 import type {
   BuiltRoutes,
   RoutableFile,
@@ -26,26 +28,19 @@ export function matchRoutableFile(filename: string) {
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
 }
 
-export function isSpecialType(
-  type: RoutableFileType,
-): type is keyof SpecialRoutes {
-  return (
-    type === RoutableFileTypes.NotFound || type === RoutableFileTypes.Error
-  );
-}
-
 export interface RouteSource {
   walker: Walker;
-  importPrefix?: string;
   basePath?: string;
 }
 
 export async function buildRoutes(
   sources: RouteSource | RouteSource[],
+  outDir: string,
 ): Promise<BuiltRoutes> {
   const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
   const routes: Route[] = [];
   const special: SpecialRoutes = {};
+  const seenKeys = new Map<string, number>();
 
   const middlewares = new Set<RoutableFile>();
   const unusedFiles = new Set<RoutableFile>();
@@ -57,7 +52,6 @@ export async function buildRoutes(
   const dirStack: string[] = [];
 
   let basePath: string;
-  let importPrefix: string;
   let activeDirs: VDir[];
   let isBaseDir: boolean;
 
@@ -65,7 +59,8 @@ export async function buildRoutes(
   let nextRouteIndex = 1;
 
   const walkOptions: WalkOptions = {
-    onEnter({ name }) {
+    onEnter(dir) {
+      let { name } = dir;
       const prevDirStackLength = dirStack.length;
 
       if (isBaseDir) {
@@ -79,7 +74,7 @@ export async function buildRoutes(
       }
 
       const previousDirs = activeDirs;
-      const paths = parseFlatRoute(name); // get paths for name
+      const paths = parseFlatRoute(name);
       activeDirs = VDir.addPaths(previousDirs, paths);
 
       return () => {
@@ -87,7 +82,8 @@ export async function buildRoutes(
         dirStack.length = prevDirStackLength;
       };
     },
-    onFile({ name, path }) {
+    onFile(file) {
+      const { name } = file;
       const match = name.match(routeableFileRegex);
       if (!match) {
         return;
@@ -95,9 +91,13 @@ export async function buildRoutes(
 
       const type = (match[1] || match[3]).toLowerCase() as RoutableFileType;
 
-      if (dirStack.length && isSpecialType(type)) {
+      if (
+        dirStack.length &&
+        (type === RoutableFileTypes.NotFound ||
+          type === RoutableFileTypes.Error)
+      ) {
         console.warn(
-          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${path}`,
+          `Special pages '${RoutableFileTypes.NotFound}' and '${RoutableFileTypes.Error}' are only considered in the root directory - ignoring ${file.path}`,
         );
         return;
       }
@@ -108,20 +108,16 @@ export async function buildRoutes(
         dirs = VDir.addPaths(activeDirs, paths);
       }
 
-      const dirPath = dirStack.join("/");
-      const relativePath = dirPath ? `${dirPath}/${name}` : name;
-      const file: RoutableFile = {
+      const routableFile: RoutableFile = {
         id: String(nextFileId++),
         name,
         type,
-        filePath: path,
-        relativePath,
-        importPath: `${importPrefix}/${relativePath}`,
+        filePath: file.path,
         verbs: type === RoutableFileTypes.Page ? ["get", "head"] : undefined,
       };
 
       for (const dir of dirs) {
-        dir.addFile(file);
+        dir.addFile(routableFile);
       }
     },
   };
@@ -131,9 +127,6 @@ export async function buildRoutes(
   }
 
   for (const source of sources) {
-    importPrefix = source.importPrefix
-      ? source.importPrefix.replace(/^\/+|\/+$/g, "")
-      : "";
     basePath = source.basePath || "";
     activeDirs = [root];
     isBaseDir = true;
@@ -157,7 +150,9 @@ export async function buildRoutes(
       layout = dir.files.get(RoutableFileTypes.Layout);
       const handler = dir.files.get(RoutableFileTypes.Handler);
       const page = dir.files.get(RoutableFileTypes.Page);
-      let hasSpecial = false;
+      const pathInfo = dir.pathInfo;
+
+      let layoutsUsed = false;
 
       if (middleware) {
         if (currentMiddleware.has(middleware)) {
@@ -175,11 +170,33 @@ export async function buildRoutes(
           unusedFiles.add(layout);
         }
       }
-      if (page || handler) {
-        const path = dir.pathInfo;
 
-        if (uniqueRoutes.has(path.id)) {
-          const existing = uniqueRoutes.get(path.id)!;
+      if (dir === root) {
+        for (const [type, file] of dir.files) {
+          if (
+            type === RoutableFileTypes.NotFound ||
+            type === RoutableFileTypes.Error
+          ) {
+            special[type] = {
+              index: nextRouteIndex++,
+              key: type,
+              path: dir.pathInfo,
+              middleware: [],
+              layouts: [...currentLayouts],
+              page: file,
+              templateFilePath: currentLayouts.size
+                ? path.join(outDir, `${type}.marko`)
+                : undefined,
+            };
+
+            layoutsUsed = true;
+          }
+        }
+      }
+
+      if (page || handler) {
+        if (uniqueRoutes.has(pathInfo.id)) {
+          const existing = uniqueRoutes.get(pathInfo.id)!;
           const route = routes[existing.index];
 
           const existingFiles = [route.handler, route.page]
@@ -188,70 +205,56 @@ export async function buildRoutes(
           const currentFiles = [handler, page]
             .filter(Boolean)
             .map((f) => f!.filePath);
-          throw new Error(`Duplicate routes for path '${
-            path.id
-          }' were defined. A route established by:
-      ${existingFiles.join(" and ")} via '${existing.dir.fullPath}'
-        collides with
-      ${currentFiles.join(" and ")} via '${dir.fullPath}'
-      `);
+          throw new Error(
+            `Duplicate routes for path ${
+              pathInfo.id
+            } were defined. A route established by: "${existingFiles.join(" and ")}" collides with "${currentFiles.join(" and ")}"`,
+          );
         }
 
-        uniqueRoutes.set(path.id, { dir, index: routes.length });
+        uniqueRoutes.set(pathInfo.id, { dir, index: routes.length });
+
+        let key = pathInfo.segments
+          .map(replaceInvalidFilenameChars)
+          .concat("route")
+          .join("/");
+        const keyCount = (seenKeys.get(key) || 0) + 1;
+        seenKeys.set(key, keyCount);
+        if (keyCount > 1) {
+          key += keyCount;
+        }
+
         routes.push({
           index: nextRouteIndex++,
-          key: dir.fullPath,
-          paths: [path],
+          key,
+          path: pathInfo,
           middleware: [...currentMiddleware],
           layouts: page ? [...currentLayouts] : [],
           meta: dir.files.get(RoutableFileTypes.Meta),
           page,
           handler,
-          entryName:
-            `${markoRunFilePrefix}route` +
-            (dir.path !== "/"
-              ? dir.fullPath
-                  .replace(/\//g, ".")
-                  .replace(/(%[A-Fa-f0-9]{2})+/g, "_")
-              : ""),
+          templateFilePath:
+            page && currentLayouts.size
+              ? path.join(outDir, key + ".marko")
+              : undefined,
         });
-      }
 
-      if (dir === root) {
-        for (const [type, file] of dir.files) {
-          if (isSpecialType(type)) {
-            hasSpecial = true;
-            special[type] = {
-              index: 0,
-              key: type,
-              paths: [],
-              middleware: [],
-              layouts: [...currentLayouts],
-              page: file,
-              entryName: `${markoRunFilePrefix}special.${type}`,
-            };
-          }
-        }
-      }
-
-      if (handler || page) {
+        layoutsUsed = !!page;
         for (const middleware of currentMiddleware) {
           middlewares.add(middleware);
           unusedFiles.delete(middleware);
         }
       }
 
-      if (page || hasSpecial) {
+      if (layoutsUsed) {
         for (const layout of currentLayouts) {
           unusedFiles.delete(layout);
         }
       }
     }
 
-    if (dir.dirs) {
-      for (const child of dir.dirs()) {
-        traverse(child);
-      }
+    for (const childDir of dir.dirs()) {
+      traverse(childDir);
     }
 
     if (middleware) {
@@ -261,4 +264,8 @@ export async function buildRoutes(
       currentLayouts.delete(layout);
     }
   }
+}
+
+export function replaceInvalidFilenameChars(str: string) {
+  return str.replace(/[<>:"/\\|?*]+/g, "_");
 }

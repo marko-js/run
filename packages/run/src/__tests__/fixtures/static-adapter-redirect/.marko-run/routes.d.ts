@@ -8,12 +8,11 @@ import type * as Run from "@marko/run";
 
 
 declare module "@marko/run" {
-	interface Platform extends {} {}
-
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
-			"/other": Routes["/other"];
+			"/": { verb: "get"; };
+			"/foo": { verb: "get"; };
+			"/other": { verb: "get"; };
 		}
 	}> {}
 }
@@ -29,6 +28,17 @@ declare module "../src/routes/+handler" {
   }
 }
 
+declare module "../src/routes/foo+page.marko" {
+  namespace MarkoRun {
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    export type Route = Run.Routes["/foo"];
+    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
+    export type Handler = Run.HandlerLike<Route>;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
+    export const route: Run.HandlerTypeFn<Route>;
+  }
+}
+
 declare module "../src/routes/other/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -38,9 +48,4 @@ declare module "../src/routes/other/+page.marko" {
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/": { verb: "get"; };
-	"/other": { verb: "get"; };
 }

@@ -3,51 +3,49 @@
 ## Middleware
 ```js
 // virtual:marko-run/__marko-run__middleware.js
-import { normalize } from 'virtual:marko-run/runtime/internal';
-import middleware3 from './src/routes/$id,a.d+middleware.marko';
+import { normalize } from "virtual:marko-run/runtime/internal";
+import middleware3 from "./src/routes/$id,a.d+middleware.marko";
 
 export const mware3 = normalize(middleware3);
 ```
 ---
 
-## Route `/`
-### Paths
-  - `/`
+## Route ``route``
+### Path: ``/``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.js
-import { pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
+// virtual:marko-run__marko-run__route.js
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
 
-export function get1(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get1(context) {
+	return context.render(page, {});
 }
 
-export function head1(context, buildInput) {
-	return stripResponseBody(get1(context, buildInput));
+export function head1(context) {
+	return stripResponseBody(get1(context));
 }
 ```
 ---
-## Route `/foo`
-### Paths
-  - `/foo`
+## Route ``foo/route``
+### Path: ``/foo``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.foo.js
-import { normalize, call, noContent, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { GET, POST } from './src/routes/foo,(a,b).(c,d)+handler.get_post.marko';
-import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
+// virtual:marko-run__marko-run__foo.route.js
+import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
+import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);
 
-export function get2(context, buildInput) {
-	const __page = () => pageResponse(page, buildInput());
+export function get2(context) {
+	const __page = () => context.render(page, {});
 	return call(getHandler, __page, context);
 }
 
-export function head2(context, buildInput) {
-	return stripResponseBody(get2(context, buildInput));
+export function head2(context) {
+	return stripResponseBody(get2(context));
 }
 
 export function post2(context) {
@@ -55,52 +53,49 @@ export function post2(context) {
 }
 ```
 ---
-## Route `/$id`
-### Paths
-  - `/$id`
+## Route ``$/route``
+### Path: ``/$id``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.$id.js
-import { call, pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { mware3 } from 'virtual:marko-run/__marko-run__middleware.js';
-import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
+// virtual:marko-run__marko-run__$.route.js
+import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
+import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
 
-export function get3(context, buildInput) {
-	const __page = () => pageResponse(page, buildInput());
+export function get3(context) {
+	const __page = () => context.render(page, {});
 	return call(mware3, __page, context);
 }
 
-export function head3(context, buildInput) {
-	return stripResponseBody(get3(context, buildInput));
+export function head3(context) {
+	return stripResponseBody(get3(context));
 }
 ```
 ---
-## Route `/$$rest`
-### Paths
-  - `/$$rest`
+## Route ``$$/route``
+### Path: ``/$$rest``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.$$rest.js
-import { pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import page from './src/routes/foo,$id,$$rest,+page.marko?marko-server-entry';
+// virtual:marko-run__marko-run__$$.route.js
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
 
-export function get4(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get4(context) {
+	return context.render(page, {});
 }
 
-export function head4(context, buildInput) {
-	return stripResponseBody(get4(context, buildInput));
+export function head4(context) {
+	return stripResponseBody(get4(context));
 }
 ```
 ---
-## Route `/a/c`
-### Paths
-  - `/a/c`
+## Route ``a/c/route``
+### Path: ``/a/c``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.a.c.js
-import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { GET, POST } from './src/routes/foo,(a,b).(c,d)+handler.get_post.marko';
+// virtual:marko-run__marko-run__a.c.route.js
+import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);
@@ -118,15 +113,14 @@ export function post5(context) {
 }
 ```
 ---
-## Route `/a/d`
-### Paths
-  - `/a/d`
+## Route ``a/d/route``
+### Path: ``/a/d``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.a.d.js
-import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { mware3 } from 'virtual:marko-run/__marko-run__middleware.js';
-import { GET, POST } from './src/routes/foo,(a,b).(c,d)+handler.get_post.marko';
+// virtual:marko-run__marko-run__a.d.route.js
+import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
+import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);
@@ -146,14 +140,13 @@ export function post6(context) {
 }
 ```
 ---
-## Route `/b/c`
-### Paths
-  - `/b/c`
+## Route ``b/c/route``
+### Path: ``/b/c``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.b.c.js
-import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { GET, POST } from './src/routes/foo,(a,b).(c,d)+handler.get_post.marko';
+// virtual:marko-run__marko-run__b.c.route.js
+import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);
@@ -171,14 +164,13 @@ export function post7(context) {
 }
 ```
 ---
-## Route `/b/d`
-### Paths
-  - `/b/d`
+## Route ``b/d/route``
+### Path: ``/b/d``
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.b.d.js
-import { normalize, call, noContent, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import { GET, POST } from './src/routes/foo,(a,b).(c,d)+handler.get_post.marko';
+// virtual:marko-run__marko-run__b.d.route.js
+import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);

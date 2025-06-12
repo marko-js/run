@@ -13,8 +13,8 @@
   },
   "devDependencies": {
     "@marko/compiler": "^5.39.4",
-    "@marko/run": "^0.6.6",
-    "@marko/run-adapter-static": "^1.0.2",
+    "@marko/run": "^0.7.4",
+    "@marko/run-adapter-static": "^2.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "prettier": "^3.3.3",

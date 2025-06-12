@@ -1,3 +1,5 @@
+import "@marko/run/router";
+
 import type { IncomingMessage } from "http";
 import type { Connect, ViteDevServer } from "vite";
 
@@ -16,32 +18,31 @@ export default globalThis.__marko_run_middleware__ ??=
   process.env.NODE_ENV && process.env.NODE_ENV !== "development"
     ? (factory) => factory
     : (() => {
-        let devServer: ViteDevServer | undefined;
+        let devServer: ViteDevServer;
         let errorMiddleware: Connect.ErrorHandleFunction | undefined;
-
-        const seenReqs = new WeakSet<IncomingMessage>();
-        const devServerPromise = import("@marko/run/adapter").then(
-          async (mod) => {
-            devServer = await mod.createViteDevServer(
-              globalThis.__marko_run_vite_config__,
-            );
-            errorMiddleware = mod.createErrorMiddleware(devServer);
-
-            void devServer!.ssrLoadModule("@marko/run/router").catch(() => {});
-            devMiddleware = (req, res, next) => {
-              if (seenReqs.has(req)) {
-                return next?.();
-              }
-              seenReqs.add(req);
-              devServer!.middlewares(req, res, next);
-            };
-          },
-        );
-
         let devMiddleware: NodeMiddleware = async (req, res, next) => {
-          await devServerPromise;
+          await initPromise;
           devMiddleware(req, res, next);
         };
+
+        const seenReqs = new WeakSet<IncomingMessage>();
+        const initPromise = (async () => {
+          const adapter = await import("@marko/run/adapter");
+          devServer = await adapter.createViteDevServer(
+            globalThis.__marko_run_vite_config__,
+          );
+
+          await devServer.ssrLoadModule("@marko/run/router");
+
+          errorMiddleware = adapter.createErrorMiddleware(devServer);
+          devMiddleware = (req, res, next) => {
+            if (seenReqs.has(req)) {
+              return next?.();
+            }
+            seenReqs.add(req);
+            devServer.middlewares(req, res, next);
+          };
+        })();
 
         return (factory) =>
           (...args) => {
@@ -64,7 +65,7 @@ export default globalThis.__marko_run_middleware__ ??=
                 }
 
                 try {
-                  await devServer!.ssrLoadModule("@marko/run/router");
+                  await devServer.ssrLoadModule("@marko/run/router");
                 } catch (err) {
                   handleError(err as Error);
                   return;

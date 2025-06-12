@@ -1,13 +1,12 @@
 # Routes
 
-## Route `/`
-### Paths
-  - `/`
+## Route ``route``
+### Path: ``/``
 ### Template
 ```marko
-// __marko-run__route.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/+page.marko';
+// ./dist/.marko-run/route.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/+page.marko";
 
 <Layout1>
 	<Page/>
@@ -15,16 +14,16 @@ import Page from '../src/routes/+page.marko';
 ```
 ### Handler
 ```js
-// virtual:marko-run/__marko-run__route.js
-import { pageResponse, stripResponseBody } from 'virtual:marko-run/runtime/internal';
-import page from './.marko/route.marko?marko-server-entry';
+// virtual:marko-run__marko-run__route.js
+import { stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/route.marko?marko-server-entry";
 
-export function get1(context, buildInput) {
-	return pageResponse(page, buildInput());
+export function get2(context) {
+	return context.render(page, {});
 }
 
-export function head1(context, buildInput) {
-	return stripResponseBody(get1(context, buildInput));
+export function head2(context) {
+	return stripResponseBody(get2(context));
 }
 ```
 
@@ -32,9 +31,9 @@ export function head1(context, buildInput) {
 ## Special `500`
 ### Template
 ```marko
-// __marko-run__special.500.marko
-import Layout1 from '../src/routes/+layout.marko';
-import Page from '../src/routes/+500.marko';
+// ./dist/.marko-run/500.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/+500.marko";
 
 <Layout1>
 	<Page error=input.error/>

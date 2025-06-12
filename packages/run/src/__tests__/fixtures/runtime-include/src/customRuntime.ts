@@ -1,0 +1,1 @@
+globalThis.__custom_runtime__ = true;

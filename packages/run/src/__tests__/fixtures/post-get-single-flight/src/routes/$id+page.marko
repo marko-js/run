@@ -1,0 +1,22 @@
+import db from '../db';
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>@marko/run Test Fixture</title>
+  </head>
+  <body>
+    <div#app>
+      <await(db.get($global.params.id))>
+        <@then|thing|>
+          Hello ${thing.name}
+        </>
+      </await>
+    </div>
+    <form method="post">
+      <input name="name" value="Marko Run" />
+      <button value="Submit">Submit</button>
+    </form>
+  </body>
+</html>

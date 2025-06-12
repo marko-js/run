@@ -22,6 +22,18 @@ export interface Context<TRoute extends Route = AnyRoute> {
   readonly meta: TRoute["meta"];
   readonly platform: Platform;
   readonly serializedGlobals: Record<string, boolean>;
+  readonly parent: Context | undefined;
+  render<T>(
+    template: Marko.Template<T>,
+    input: T,
+    init?: ResponseInit,
+  ): Response;
+  fetch(
+    resource: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response>;
+  redirect(to: string | URL, status?: number): Response;
+  back(fallback?: string | URL, status?: number): Response;
 }
 
 export type MultiRouteContext<
@@ -76,7 +88,7 @@ type DefinePaths<
   [K in keyof T]: K extends string
     ? T[K] extends { verb: infer V }
       ? V extends Verb
-        ? ConvertPath<K>
+        ? K
         : never
       : never
     : never;
@@ -129,13 +141,17 @@ export interface RuntimeModule {
 type Member<T, U> = T extends T ? (U extends T ? T : never) : never;
 
 type PathParamKeys<Path extends string> =
-  Path extends `${infer _}:${infer Param}/${infer Rest}`
-    ? [Param, ...PathParamKeys<Rest>]
-    : Path extends `${infer _}:${infer Param}*`
-      ? [Param]
-      : Path extends `${infer _}:${infer Param}`
-        ? [Param]
+  Path extends `${infer _}$${infer Param}/${infer Rest}`
+    ? [Unescape<Param>, ...PathParamKeys<Rest>]
+    : Path extends `${infer _}$$${infer Param}`
+      ? [Unescape<Param>]
+      : Path extends `${infer _}$${infer Param}`
+        ? [Unescape<Param>]
         : [];
+
+type Unescape<Escaped extends string> = Escaped extends `\`${infer Value}\``
+  ? Value
+  : Escaped;
 
 type PathParams<
   Path extends string,
@@ -175,15 +191,6 @@ type PathPattern<T extends string> =
       : T extends `${infer Left}/\${${string}}`
         ? PathPattern<`${Left}/${string}`>
         : T;
-
-export type ConvertPath<Path extends string> =
-  Path extends `${infer Left}/:${infer Param}/${infer Rest}`
-    ? ConvertPath<`${Left}/\${${Param}}/${Rest}`>
-    : Path extends `${infer Left}/:${infer Param}*`
-      ? `${Left}/\${${Param}...}`
-      : Path extends `${infer Left}/:${infer Param}`
-        ? `${Left}/\${${Param}}`
-        : Path;
 
 type ValidatePath<Paths extends string, Path extends string> =
   | Paths

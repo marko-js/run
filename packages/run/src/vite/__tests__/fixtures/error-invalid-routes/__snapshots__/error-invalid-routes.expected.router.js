@@ -1,1 +1,1 @@
-throw {"message":"Duplicate routes for path '/$' were defined. A route established by:\n      /$foo+page.marko via '/$foo'\n        collides with\n      /$bar+page.marko via '/$bar'\n      ","stack":"      at [Normalized Error Stack]","frame":""}
+throw {"message":"Duplicate routes for path /$ were defined. A route established by: \"/packages/run/src/vite/__tests__/fixtures/error-invalid-routes/src/routes/$foo+page.marko\" collides with \"/packages/run/src/vite/__tests__/fixtures/error-invalid-routes/src/routes/$bar+page.marko\"","stack":"    at [Normalized Error Stack]"}

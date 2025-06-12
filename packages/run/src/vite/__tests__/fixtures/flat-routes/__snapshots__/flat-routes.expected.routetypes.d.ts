@@ -10,19 +10,19 @@ import type * as Run from "@marko/run";
 declare module "@marko/run" {
 	interface AppData extends Run.DefineApp<{
 		routes: {
-			"/": Routes["/"];
-			"/foo": Routes["/foo"];
-			"/:id": Routes["/$id"];
-			"/:rest*": Routes["/$$rest"];
-			"/a/c": Routes["/a/c"];
-			"/a/d": Routes["/a/d"];
-			"/b/c": Routes["/b/c"];
-			"/b/d": Routes["/b/d"];
+			"/": { verb: "get"; };
+			"/foo": { verb: "get" | "post"; };
+			"/$id": { verb: "get"; };
+			"/$$rest": { verb: "get"; };
+			"/a/c": { verb: "get" | "post"; };
+			"/a/d": { verb: "get" | "post"; };
+			"/b/c": { verb: "get" | "post"; };
+			"/b/d": { verb: "get" | "post"; };
 		}
 	}> {}
 }
 
-declare module "./foo,(a,b).(c,d)+handler.get_post.marko" {
+declare module "../src/routes/foo,(a,b).(c,d)+handler.get_post.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/foo" | "/a/c" | "/a/d" | "/b/c" | "/b/d"];
@@ -33,10 +33,10 @@ declare module "./foo,(a,b).(c,d)+handler.get_post.marko" {
   }
 }
 
-declare module "./$id,a.d+middleware.marko" {
+declare module "../src/routes/$id,a.d+middleware.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/:id" | "/a/d"];
+    export type Route = Run.Routes["/$id" | "/a/d"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
@@ -44,24 +44,13 @@ declare module "./$id,a.d+middleware.marko" {
   }
 }
 
-declare module "./foo,$id,$$rest,+page.marko" {
+declare module "../src/routes/foo,$id,$$rest,+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/" | "/foo" | "/:id" | "/:rest*"];
+    export type Route = Run.Routes["/" | "/foo" | "/$id" | "/$$rest"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
-}
-
-type Routes = {
-	"/": { verb: "get"; };
-	"/foo": { verb: "get" | "post"; };
-	"/$id": { verb: "get"; };
-	"/$$rest": { verb: "get"; };
-	"/a/c": { verb: "get" | "post"; };
-	"/a/d": { verb: "get" | "post"; };
-	"/b/c": { verb: "get" | "post"; };
-	"/b/d": { verb: "get" | "post"; };
 }
