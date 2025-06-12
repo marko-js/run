@@ -23,6 +23,29 @@ const __dirname = fileURLToPath(path.dirname(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
 
 export interface Options {
+  /**
+   * Marko Run will automatically discover routes based on your file system and look for any relative anchor links to crawl for more static pages. This option provides additional entry points for site crawling other than those which are statically known.
+   *
+   * Can be either:
+   * - An array of URL strings to generate
+   * - A function that receives available routes and returns URL strings (or a Promise resolving to URL strings)
+   *
+   * ```typescript
+   * // Static array of URLs
+   * { urls: ['/home', '/about', '/contact'] }
+   *
+   * // Dynamic function based on routes
+   * { urls: (routes) => routes.map(({ path }) => path.path + ".md") }
+   *
+   * // Async function for dynamic URL generation
+   * {
+   *   async urls(routes) {
+   *     const data = await fetchData();
+   *     return data.map(item => `/posts/${item.id}`);
+   *   }
+   * }
+   * ```
+   */
   urls?: string[] | ((routes: Route[]) => string[] | Promise<string[]>);
 }
 
