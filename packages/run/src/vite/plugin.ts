@@ -437,10 +437,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         pluginConfig.optimizeDeps ??= {};
         if (!config.optimizeDeps?.entries) {
           pluginConfig.optimizeDeps.entries = [
-            "src/pages/**/*+{page,layout}.marko",
+            `${normalizePath(path.relative(root, routesDir))}/**/*+{page,layout}.marko`,
             "!**/__snapshots__/**",
-            `!**/__tests__/**`,
-            `!**/coverage/**`,
+            "!**/__tests__/**",
+            "!**/coverage/**",
           ];
         }
 
