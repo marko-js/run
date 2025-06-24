@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.5
+
+### Patch Changes
+
+- c3f2ad7: Use correct routes directory for optimizeDep entries glob
+
 ## 0.7.4
 
 ### Patch Changes
