@@ -28,18 +28,6 @@
     "@netlify/edge-functions": "^2.11.1",
     "@netlify/functions": "^3.0.4"
   },
-  "devDependencies": {
-    "@types/mocha": "^10.0.10",
-    "@types/node": "^22.9.1",
-    "cross-env": "^7.0.3",
-    "esbuild": "^0.25.1",
-    "mocha": "^10.8.2",
-    "mocha-snap": "^5.0.0",
-    "prettier": "^3.3.3",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.0"
-  },
   "peerDependencies": {
     "@marko/run": "^0.7.0"
   },
