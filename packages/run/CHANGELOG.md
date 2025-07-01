@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.7.6
+
+### Patch Changes
+
+- 4a5084f: Use mutable response for redirect method
+
 ## 0.7.5
 
 ### Patch Changes
