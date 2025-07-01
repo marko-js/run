@@ -123,11 +123,22 @@ export function createContext<TRoute extends AnyRoute>(
         init,
       );
     },
-    redirect(to, status) {
-      return Response.redirect(
-        typeof to === "string" ? new URL(to, this.url) : to,
+    redirect(to, status = 302) {
+      if (typeof status !== "number") {
+        throw new RangeError("Invalid status code 0");
+      } else if (
+        status < 301 ||
+        status > 308 ||
+        (status > 303 && status < 307)
+      ) {
+        throw new RangeError(`Invalid status code ${status}`);
+      }
+      return new Response(null, {
         status,
-      );
+        headers: {
+          location: (typeof to === "string" ? new URL(to, this.url) : to).href,
+        },
+      });
     },
     back(fallback = "/", status) {
       return this.redirect(
