@@ -76,6 +76,12 @@ interface RouteData {
   sourceEntries: string[];
 }
 
+declare module "vite" {
+  interface TransformResult {
+    exports?: string[];
+  }
+}
+
 export default function markoRun(opts: Options = {}): Plugin[] {
   let routesDir: NonNullable<(typeof opts)["routesDir"]>;
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
@@ -715,6 +721,9 @@ async function getExportsFromFileDev(
 ) {
   const result = await devServer.transformRequest(filePath, { ssr: true });
   if (result) {
+    if (result.exports) {
+      return result.exports;
+    }
     const ast = context.parse(result.code);
     return getViteSSRExportIdentifiers(ast);
   }
