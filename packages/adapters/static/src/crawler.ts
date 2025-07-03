@@ -1,5 +1,5 @@
 import fs from "fs";
-import { WritableStream as Parser } from "htmlparser2/lib/WritableStream";
+import { WritableStream as Parser } from "htmlparser2/WritableStream";
 import nodePath from "path";
 
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
