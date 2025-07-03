@@ -41,7 +41,7 @@ import type {
   PackageData,
   Route,
 } from "./types";
-import { getExportIdentifiers, getViteSSRExportIdentifiers } from "./utils/ast";
+import { getExportIdentifiers } from "./utils/ast";
 import {
   getExternalAdapterOptions,
   getExternalPluginOptions,
@@ -106,10 +106,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let routeData!: RouteData;
-  let getExportsFromFile: (
-    context: PluginContext,
-    filePath: string,
-  ) => Promise<string[]>;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
   const seenErrors = new Set<string>();
@@ -120,6 +116,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesBuild: 0,
     routesRender: 0,
   };
+
+  async function getExportsFromFile(context: PluginContext, filePath: string) {
+    if (devServer) {
+      const result = await devServer.transformRequest(filePath, { ssr: false });
+      return result ? getExportIdentifiers(context.parse(result.code)) : [];
+    }
+    const result = await context.load({
+      id: filePath,
+      resolveDependencies: false,
+    });
+    return result.exports || [];
+  }
 
   async function writeTypesFile(routes: BuiltRoutes) {
     if (
@@ -573,9 +581,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           renderVirtualFilesResult = Promise.resolve();
         } else {
           // Build routes and generate code
-          getExportsFromFile = isBuild
-            ? getExportsFromFileBuild
-            : getExportsFromFileDev.bind(null, devServer);
+          // getExportsFromFile = isBuild
+          //   ? getExportsFromFileBuild
+          //   : getExportsFromFileDev.bind(null, devServer);
         }
       },
       async resolveId(importee, importer) {
@@ -703,32 +711,33 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   ];
 }
 
-async function getExportsFromFileBuild(
-  context: PluginContext,
-  filePath: string,
-) {
-  const result = await context.load({
-    id: filePath,
-    resolveDependencies: false,
-  });
-  return result ? getExportIdentifiers(result.ast) : [];
-}
+// async function getExportsFromFileBuild(
+//   context: PluginContext,
+//   filePath: string,
+// ) {
+//   const result = await context.load({
+//     id: filePath,
+//     resolveDependencies: false,
+//   });
+//   return result ? getExportIdentifiers(result.ast) : [];
+// }
 
-async function getExportsFromFileDev(
-  devServer: ViteDevServer,
-  context: PluginContext,
-  filePath: string,
-) {
-  const result = await devServer.transformRequest(filePath, { ssr: true });
-  if (result) {
-    if (result.exports) {
-      return result.exports;
-    }
-    const ast = context.parse(result.code);
-    return getViteSSRExportIdentifiers(ast);
-  }
-  return [];
-}
+// async function getExportsFromFileDev(
+//   devServer: ViteDevServer,
+//   context: PluginContext,
+//   filePath: string,
+// ) {
+//   const result = await devServer.transformRequest(filePath, { ssr: true });
+//   // const x = await context._container.transform(filePath)
+//   if (result) {
+//     if (result.exports) {
+//       return result.exports;
+//     }
+//     const ast = context.parse(result.code);
+//     return getViteSSRExportIdentifiers(ast);
+//   }
+//   return [];
+// }
 
 async function globFileExists(root: string, pattern: string) {
   return (await glob(pattern, { root })).length > 0;
