@@ -1,5 +1,13 @@
 # @marko/run-adapter-static
 
+## 2.0.1
+
+### Patch Changes
+
+- 459f722: fix(adapter-static): updated marko/vite and add missing dependency on htmlparser2
+- Updated dependencies [459f722]
+  - @marko/run@0.7.7
+
 ## 2.0.0
 
 ### Minor Changes
