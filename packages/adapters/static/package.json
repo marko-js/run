@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-static",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Preview and deploy @marko/run apps as static files",
   "keywords": [
     "marko"
@@ -45,7 +45,7 @@
     "vite": "^6.0.0"
   },
   "peerDependencies": {
-    "@marko/run": "^0.7.0"
+    "@marko/run": "^0.7.7"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
