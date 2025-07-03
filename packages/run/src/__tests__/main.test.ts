@@ -78,10 +78,10 @@ before(async () => {
         .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
         .replace(/:(\d{4,})/g, ":9999")
         .replace(
-          /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gs,
+          /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gms,
           "",
         )
-        .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gs, "")
+        .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gms, "")
         .replace(
           /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
           "$1 [Normalized Error Stack]",
@@ -278,6 +278,8 @@ async function testPage(
 
     await snap(snapshot, { ext: ".md", dir });
   } finally {
+    // TODO: figure out why the dev server fails to close sometimes without this wait
+    await delay(50);
     await server.close();
   }
 }
@@ -370,4 +372,8 @@ function htmlSnapshot(html: string, prevHtml?: string) {
     return `\`\`\`diff\n${diff}\n\`\`\`\n\n`;
   }
   return `\`\`\`html\n${html}\n\`\`\`\n\n`;
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
