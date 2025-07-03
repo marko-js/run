@@ -26,10 +26,12 @@
   },
   "dependencies": {
     "compression": "^1.8.0",
+    "htmlparser2": "^10.0.0",
     "sirv": "^1.0.15",
     "undici": "^6.21.0"
   },
   "devDependencies": {
+    "@types/htmlparser2": "^3.10.7",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "@types/serve-static": "^1.15.7",
