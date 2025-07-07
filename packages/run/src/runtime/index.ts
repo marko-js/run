@@ -17,10 +17,8 @@ import type {
 } from "./types";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __marko_run__: RuntimeModule;
 
-  // eslint-disable-next-line no-var
   var __marko_run_vite_config__: InlineConfig | undefined;
 
   namespace MarkoRun {

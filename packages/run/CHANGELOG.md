@@ -1,5 +1,16 @@
 # @marko/run
 
+## 0.8.0
+
+### Minor Changes
+
+- 69edb49: Support Vite 7
+
+### Patch Changes
+
+- Updated dependencies [69edb49]
+  - @marko/run-explorer@2.0.1
+
 ## 0.7.7
 
 ### Patch Changes

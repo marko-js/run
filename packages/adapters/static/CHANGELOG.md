@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.2
+
+### Patch Changes
+
+- 69edb49: Update peer dependency
+
 ## 2.0.1
 
 ### Patch Changes

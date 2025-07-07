@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-netlify",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Preview and deploy @marko/run apps to Netlify Functions/Edge Functions",
   "keywords": [
     "marko"

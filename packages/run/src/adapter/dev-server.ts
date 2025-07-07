@@ -29,7 +29,6 @@ export interface MarkoRunDev {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __marko_run_dev__: MarkoRunDev | undefined;
 }
 

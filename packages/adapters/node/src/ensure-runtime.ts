@@ -6,7 +6,6 @@ import type { Connect, ViteDevServer } from "vite";
 import type { NodeMiddleware } from "./middleware";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __marko_run_middleware__:
     | (<T extends any[]>(
         factory: (...args: T) => NodeMiddleware,

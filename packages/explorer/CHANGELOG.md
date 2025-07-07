@@ -1,5 +1,11 @@
 # @marko/run-explorer
 
+## 2.0.1
+
+### Patch Changes
+
+- 69edb49: Update peer dependency
+
 ## 2.0.0
 
 ### Patch Changes
