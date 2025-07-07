@@ -1,5 +1,11 @@
 # @marko/run-adapter-node
 
+## 2.0.3
+
+### Patch Changes
+
+- 69edb49: Update peer dependency
+
 ## 2.0.2
 
 ### Patch Changes

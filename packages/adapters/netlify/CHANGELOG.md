@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.0.1
+
+### Patch Changes
+
+- 69edb49: Update peer dependency
+
 ## 3.0.0
 
 ### Patch Changes
