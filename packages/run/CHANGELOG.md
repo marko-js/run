@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.8.1
+
+### Patch Changes
+
+- db570ab: Fix error payload sent to client in dev mode
+
 ## 0.8.0
 
 ### Minor Changes
