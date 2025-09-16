@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@marko/compiler": "^5.39.4",
-    "@marko/run": "^0.8.0",
+    "@marko/run": "^0.8.1",
     "@marko/run-adapter-static": "^2.0.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
