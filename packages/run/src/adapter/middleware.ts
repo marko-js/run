@@ -187,7 +187,7 @@ export function createMiddleware(
         devWebSocket?.send(
           JSON.stringify({
             type: "error",
-            error: { message: error.message, stack: error.stack },
+            err: { message: error.message, stack: error.stack || "" },
           }),
         );
       }
