@@ -6,8 +6,8 @@ import format from "human-format";
 import kleur from "kleur";
 import type { OutputAsset, OutputBundle, OutputChunk } from "rollup";
 
-import type { BuiltRoutes, HttpVerb, Route } from "../types";
-import { getVerbs } from "./route";
+import type { BuiltRoutes, ExternalRoutes, HttpVerb, Route } from "../types";
+import { getUniqueSortedVerbs, getVerbs } from "./route";
 
 const HttpVerbColors = {
   get: kleur.green,
@@ -25,7 +25,11 @@ function verbColor(verb: HttpVerb) {
     : kleur.gray;
 }
 
-export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
+export function logRoutesTable(
+  routes: BuiltRoutes,
+  externalRoutes: ExternalRoutes[],
+  bundle: OutputBundle,
+) {
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
 
@@ -69,7 +73,7 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
       if (route.page && (verb === "get" || verb === "head")) {
         entryType.push(kleur.yellow("page"));
         if (verb === "get") {
-          size = prettySize(computeRouteSize(route, bundle));
+          size = prettySize(computeRouteSize(route.templateFilePath, bundle));
         }
       }
 
@@ -100,9 +104,42 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    row.push(prettySize(computeRouteSize(route, bundle)));
+    row.push(prettySize(computeRouteSize(route.templateFilePath, bundle)));
 
     table.push(row);
+  }
+
+  for (const external of externalRoutes) {
+    for (const route of external.routes) {
+      const verbs = getUniqueSortedVerbs(route.verbs);
+      let firstRow = true;
+
+      for (const verb of verbs) {
+        let size = "";
+        const verbCell = verbColor(verb)(verb.toUpperCase());
+
+        if (verb === "get") {
+          size = prettySize(computeRouteSize(route.entryFile, bundle));
+        }
+
+        const row: any[] = [verbCell];
+
+        if (verbs.length === 1 || firstRow) {
+          row.push({
+            rowSpan: verbs.length,
+            content: prettyPath(route.path),
+          });
+          firstRow = false;
+        }
+
+        row.push(kleur.magenta(external.name));
+        hasMiddleware && row.push("");
+        hasMeta && row.push("");
+        row.push(size || "");
+
+        table.push(row);
+      }
+    }
   }
 
   if (!table.length) {
@@ -119,17 +156,15 @@ export function logRoutesTable(routes: BuiltRoutes, bundle: OutputBundle) {
 }
 
 function computeRouteSize(
-  route: Route,
+  filePath: string | undefined,
   bundle: OutputBundle,
 ): [number, number] {
-  const facadeModuleId =
-    route.templateFilePath && `${route.templateFilePath}.html`;
-  if (facadeModuleId) {
+  if (filePath) {
     for (const chunk of Object.values(bundle)) {
       if (
         chunk.type === "chunk" &&
         chunk.isEntry &&
-        chunk.facadeModuleId === facadeModuleId
+        chunk.facadeModuleId === `${filePath}.html`
       ) {
         return computeChunkSize(chunk, bundle);
       }

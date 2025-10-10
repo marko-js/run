@@ -20,6 +20,12 @@ export function getVerbs(route: Route, noAutoHead?: boolean): HttpVerb[] {
   return [...verbs].sort((a, b) => httpVerbOrder[a] - httpVerbOrder[b]);
 }
 
+export function getUniqueSortedVerbs(verbs: HttpVerb[]): HttpVerb[] {
+  return [...new Set(verbs)].sort(
+    (a, b) => httpVerbOrder[a] - httpVerbOrder[b],
+  );
+}
+
 export function hasVerb(route: Route, verb: HttpVerb): boolean {
   return (
     (verb === "get" && !!route.page) ||

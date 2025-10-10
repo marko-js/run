@@ -6,7 +6,7 @@
 ```js
 // virtual:marko-run__marko-run__route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get1(context) {
 	return context.render(page, {});
@@ -23,7 +23,7 @@ export function head1(context) {
 ```js
 // virtual:marko-run__marko-run__foo.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get2(context) {
 	return context.render(page, {});
@@ -40,7 +40,7 @@ export function head2(context) {
 ```js
 // virtual:marko-run__marko-run__foo.bar.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get3(context) {
 	return context.render(page, {});
@@ -57,7 +57,7 @@ export function head3(context) {
 ```js
 // virtual:marko-run__marko-run__foo.bar.baz.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get4(context) {
 	return context.render(page, {});
@@ -74,7 +74,7 @@ export function head4(context) {
 ```js
 // virtual:marko-run__marko-run__foo.baz.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get5(context) {
 	return context.render(page, {});
@@ -91,7 +91,7 @@ export function head5(context) {
 ```js
 // virtual:marko-run__marko-run__bar.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get6(context) {
 	return context.render(page, {});
@@ -108,7 +108,7 @@ export function head6(context) {
 ```js
 // virtual:marko-run__marko-run__bar.baz.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get7(context) {
 	return context.render(page, {});
@@ -125,7 +125,7 @@ export function head7(context) {
 ```js
 // virtual:marko-run__marko-run__baz.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,/bar,/,baz/+page.marko?marko-server-entry";
+import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
 export function get8(context) {
 	return context.render(page, {});

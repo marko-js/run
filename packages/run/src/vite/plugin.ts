@@ -28,7 +28,6 @@ import {
   httpVerbs,
   markoRunFilePrefix,
   RoutableFileTypes,
-  serverEntryQuery,
   virtualFilePrefix,
 } from "./constants";
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
@@ -36,6 +35,7 @@ import { createFSWalker } from "./routes/walk";
 import type {
   Adapter,
   BuiltRoutes,
+  ExternalRoutes,
   HttpVerb,
   Options,
   PackageData,
@@ -105,11 +105,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let devEntryFilePosix: string;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
+  let entryTemplates: Set<string>;
+  let entryTemplateImporters: Set<string>;
   let routeData!: RouteData;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
-  const seenErrors = new Set<string>();
 
+  const externalRoutes = new Set<ExternalRoutes>();
+  const seenErrors = new Set<string>();
   const virtualFiles = new Map<string, string>();
 
   let times: TimeMetrics = {
@@ -190,17 +193,47 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       }
 
+      entryTemplates = new Set();
+      entryTemplateImporters = new Set();
+
       for (const route of routes.list) {
+        const routeEntryPath = route.templateFilePath || route.page?.filePath;
+        if (routeEntryPath) {
+          entryTemplates.add(normalizePath(routeEntryPath));
+        }
+        for (const middleware of route.middleware) {
+          entryTemplateImporters.add(normalizePath(middleware.filePath));
+        }
+        if (route.handler) {
+          entryTemplateImporters.add(normalizePath(route.handler.filePath));
+        }
+
         virtualFiles.set(
           path.posix.join(root, getRouteVirtualFileName(route)),
           "",
         );
+      }
+      for (const route of Object.values(routes.special) as Route[]) {
+        const routeEntryPath = route.templateFilePath || route.page?.filePath;
+        if (routeEntryPath) {
+          entryTemplates.add(normalizePath(routeEntryPath));
+        }
       }
 
       if (routes.middleware.length) {
         virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
       }
       virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+
+      for (const externalRoute of externalRoutes) {
+        for (const { entryFile } of externalRoute.routes) {
+          if (/\.marko(\?.*)?$/i.test(entryFile)) {
+            entryTemplates.add(normalizePath(entryFile));
+          } else {
+            entryTemplateImporters.add(normalizePath(entryFile));
+          }
+        }
+      }
 
       return routes;
     })());
@@ -320,6 +353,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     {
       name: `${PLUGIN_NAME_PREFIX}:pre`,
       enforce: "pre",
+      api: {
+        addExternalRoutes(routes: ExternalRoutes) {
+          externalRoutes.add(routes);
+          return () => {
+            externalRoutes.delete(routes);
+          };
+        },
+      },
       async config(config, env) {
         const externalPluginOptions = getExternalPluginOptions(config);
         if (externalPluginOptions) {
@@ -354,6 +395,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         );
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
+        markoVitePluginOptions.isEntry = (importee, importer) => {
+          return (
+            entryTemplates.has(importee) || entryTemplateImporters.has(importer)
+          );
+        };
+
         resolvedRoutesDir = path.resolve(root, routesDir);
         outputDir = path.join(root, config.build?.outDir || "dist");
         entryFilesDir = path.join(outputDir, ".marko-run");
@@ -587,6 +634,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async resolveId(importee, importer) {
+        let virtualFilePath: string | undefined;
+
         if (importee === "@marko/run/router") {
           return normalizePath(path.resolve(root, ROUTER_FILENAME));
         } else if (
@@ -596,11 +645,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           if (!importee.startsWith(root)) {
             importee = path.resolve(root, "." + importee);
           }
-          return normalizePath(importee);
-        }
-
-        let virtualFilePath: string | undefined;
-        if (importee.startsWith(virtualFilePrefix)) {
+        } else if (importee.startsWith(virtualFilePrefix)) {
           virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
           importee = path.resolve(root, virtualFilePath);
         } else if (
@@ -618,7 +663,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (!buildVirtualFilesResult) {
           await buildVirtualFiles();
         }
-
         if (virtualFiles.has(importee)) {
           return importee;
         } else if (virtualFilePath) {
@@ -629,9 +673,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async load(id) {
-        if (id.endsWith(serverEntryQuery)) {
-          id = id.slice(0, -serverEntryQuery.length);
-        }
         if (!renderVirtualFilesResult) {
           await renderVirtualFiles(this);
         }
@@ -688,7 +729,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else if (process.env.MR_EXPLORER !== "true") {
-          logRoutesTable(routes, bundle);
+          logRoutesTable(routes, [...externalRoutes], bundle);
         }
       },
       async closeBundle() {
@@ -805,10 +846,26 @@ function getEntryFileName(file: string | undefined | null) {
   return match ? match[2] || "index" : undefined;
 }
 
+function getPlugin(config: ResolvedConfig):
+  | Plugin<{
+      addExternalRoutes(routes: ExternalRoutes): () => void;
+    }>
+  | undefined {
+  return config.plugins.find(
+    (plugin) => plugin.name === `${PLUGIN_NAME_PREFIX}:pre`,
+  );
+}
+
 export function isPluginIncluded(config: ResolvedConfig) {
-  return config.plugins.some((plugin) => {
-    return plugin.name === `${PLUGIN_NAME_PREFIX}:pre`;
-  });
+  return !!getPlugin(config);
+}
+
+export function getApi(config: ResolvedConfig) {
+  const plugin = getPlugin(config);
+  if (!plugin) {
+    throw new Error("Marko Run vite plugin not found");
+  }
+  return plugin.api!;
 }
 
 function getImporters(

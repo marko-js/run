@@ -36,7 +36,7 @@ import Page from "../../src/routes/_protected/_home/+page.marko";
 // virtual:marko-run__marko-run__route.js
 import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
-import page from "./dist/.marko-run/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/route.marko";
 
 export function get3(context) {
 	const __page = () => context.render(page, {});
@@ -71,7 +71,7 @@ import Page from "../../../src/routes/_protected/_home/new/+page.marko";
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import { POST } from "./src/routes/_protected/_home/new/+handler.post.ts";
-import page from "./dist/.marko-run/new/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/new/route.marko";
 export { default as meta4 } from "./src/routes/_protected/_home/new/+meta.json";
 
 const postHandler = normalize(POST);
@@ -116,7 +116,7 @@ import Page from "../../../../src/routes/_protected/_home/notes/$id/+page.marko"
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__middleware.js";
 import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts";
-import page from "./dist/.marko-run/notes/$/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/notes/$/route.marko";
 
 const putHandler = normalize(PUT);
 const postHandler = normalize(POST);
@@ -237,7 +237,7 @@ import Page from "../../../src/routes/my/+page.marko";
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, HEAD } from "./src/routes/my/+handler.get_head.ts";
-import page from "./dist/.marko-run/my/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/my/route.marko";
 
 const getHandler = normalize(GET);
 const headHandler = normalize(HEAD);

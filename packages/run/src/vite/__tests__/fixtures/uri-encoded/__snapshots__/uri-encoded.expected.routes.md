@@ -6,7 +6,7 @@
 ```js
 // virtual:marko-run__marko-run__a%2fb%3fc%23d+e_f&g.$.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/a%2Fb?c#d+e:f%26g/$%24id/+page.marko?marko-server-entry";
+import page from "./src/routes/a%2Fb?c#d+e:f%26g/$%24id/+page.marko";
 
 export function get1(context) {
 	return context.render(page, {});

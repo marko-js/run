@@ -139,3 +139,12 @@ export interface ExplorerData {
   routes: Record<string, Route>;
   files: Record<string, string>;
 }
+
+export interface ExternalRoutes {
+  name: string;
+  routes: {
+    path: string;
+    entryFile: string;
+    verbs: HttpVerb[];
+  }[];
+}

@@ -28,7 +28,7 @@ import Page from "../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/aaa/$/route.marko";
 
 const getHandler = normalize(GET);
 
@@ -61,7 +61,7 @@ import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/bbb/$/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/aaa/$/bbb/$/route.marko";
 
 const getHandler = normalize(GET);
 
@@ -94,7 +94,7 @@ import Page from "../../../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/bbb/$/ccc/$/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/aaa/$/bbb/$/ccc/$/route.marko";
 
 const getHandler = normalize(GET);
 
@@ -127,7 +127,7 @@ import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/ccc/$/route.marko?marko-server-entry";
+import page from "./dist/.marko-run/aaa/$/ccc/$/route.marko";
 
 const getHandler = normalize(GET);
 
