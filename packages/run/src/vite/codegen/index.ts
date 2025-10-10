@@ -4,7 +4,6 @@ import {
   httpVerbs,
   markoRunFilePrefix,
   RoutableFileTypes,
-  serverEntryQuery,
   virtualFilePrefix,
 } from "../constants";
 import type {
@@ -161,7 +160,7 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   if (page) {
     imports.writeLines(
-      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath || page.filePath)}${serverEntryQuery}";`,
+      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath || page.filePath)}";`,
     );
   }
   if (meta) {
@@ -324,7 +323,7 @@ export function renderRouter(
   }
   for (const route of Object.values(routes.special) as Route[]) {
     imports.writeLines(
-      `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath || route.page!.filePath)}${serverEntryQuery}";`,
+      `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath || route.page!.filePath)}";`,
     );
   }
 

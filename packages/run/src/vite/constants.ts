@@ -15,10 +15,6 @@ export const httpVerbs = [
   "options",
 ] as const;
 
-// These need to match the Marko Vite plugin
-export const serverEntryQuery = "?marko-server-entry";
-export const browserEntryQuery = "?marko-browser-entry";
-
 export const RoutableFileTypes = {
   Page: "page",
   Layout: "layout",

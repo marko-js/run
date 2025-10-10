@@ -16,7 +16,7 @@ export const mware3 = normalize(middleware3);
 ```js
 // virtual:marko-run__marko-run__route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
+import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
 export function get1(context) {
 	return context.render(page, {});
@@ -34,7 +34,7 @@ export function head1(context) {
 // virtual:marko-run__marko-run__foo.route.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
-import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
+import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
 const getHandler = normalize(GET);
 const postHandler = normalize(POST);
@@ -60,7 +60,7 @@ export function post2(context) {
 // virtual:marko-run__marko-run__$.route.js
 import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
-import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
+import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
 export function get3(context) {
 	const __page = () => context.render(page, {});
@@ -78,7 +78,7 @@ export function head3(context) {
 ```js
 // virtual:marko-run__marko-run__$$.route.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,$id,$$rest,+page.marko?marko-server-entry";
+import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
 export function get4(context) {
 	return context.render(page, {});
