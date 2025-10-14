@@ -1,5 +1,11 @@
 # @marko/run-explorer
 
+## 2.0.2
+
+### Patch Changes
+
+- e05ccf6: Update marko run peer dependency
+
 ## 2.0.1
 
 ### Patch Changes

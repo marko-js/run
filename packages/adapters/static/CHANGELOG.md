@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.3
+
+### Patch Changes
+
+- e05ccf6: Update marko run peer dependency
+
 ## 2.0.2
 
 ### Patch Changes
