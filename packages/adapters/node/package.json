@@ -26,7 +26,7 @@
     "test": ""
   },
   "peerDependencies": {
-    "@marko/run": "^0.7.4||^0.8"
+    "@marko/run": "^0.7.4||^0.8||^0.9"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
