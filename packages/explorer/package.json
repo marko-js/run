@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-explorer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Explore routes in your Marko Run project",
   "keywords": [
     "marko"

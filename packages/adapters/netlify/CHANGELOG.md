@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.0.2
+
+### Patch Changes
+
+- e05ccf6: Update marko run peer dependency
+
 ## 3.0.1
 
 ### Patch Changes

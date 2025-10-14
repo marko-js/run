@@ -1,5 +1,11 @@
 # @marko/run-adapter-node
 
+## 2.0.4
+
+### Patch Changes
+
+- e05ccf6: Update marko run peer dependency
+
 ## 2.0.3
 
 ### Patch Changes
