@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.0
+
+### Minor Changes
+
+- a3d03d1: (breaking) Only use known marko files from routes as server entries. Add api for other vite plugins to inform about external routes.
+
 ## 0.8.1
 
 ### Patch Changes
