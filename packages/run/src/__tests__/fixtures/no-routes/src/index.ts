@@ -8,7 +8,7 @@ process.env.TRUST_PROXY = "1";
 
 express()
   .use(compressionMiddleware())
-  .use("/assets", express.static("assets"))
+  .use("/assets", express.static("dist/public/assets"))
   .use(routerMiddleware())
   .use((req, res, next) => {
     if (req.url === '/') {

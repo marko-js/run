@@ -64,6 +64,7 @@ export interface Adapter {
     virtualFiles: Map<string, string>;
     meta: RouteGenerationData;
   }): Promise<void> | void;
+  isEntryTemplate?(event: { template: string; importer: string }): boolean;
 }
 
 export interface RouterOptions {

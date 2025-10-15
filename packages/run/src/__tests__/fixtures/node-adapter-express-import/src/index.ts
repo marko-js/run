@@ -7,7 +7,7 @@ let router: NodeMiddleware | undefined;
 express()
   .use(importRouterMiddleware())
   .use(compressionMiddleware())
-  .use("/assets", express.static("assets"))
+  .use("/assets", express.static("dist/public/assets"))
   .use(async (req, res, next) => {
     if (!router) {
       // This router middleware is imported dynamically to test that the `importRouterMiddleware` middleware

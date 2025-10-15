@@ -397,7 +397,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         markoVitePluginOptions.isEntry = (importee, importer) => {
           return (
-            entryTemplates.has(importee) || entryTemplateImporters.has(importer)
+            entryTemplates.has(importee) ||
+            entryTemplateImporters.has(importer) ||
+            adapter?.isEntryTemplate?.({ template: importee, importer }) ||
+            false
           );
         };
 

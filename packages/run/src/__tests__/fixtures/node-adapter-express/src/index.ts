@@ -12,7 +12,7 @@ process.env.TRUST_PROXY = "1";
 
 express()
   .use(compressionMiddleware())
-  .use("/assets", express.static("assets"))
+  .use("/assets", express.static("dist/public/assets"))
   .use((req, _res, next) => {
     req.headers['x-forwarded-proto'] = 'https';
     req.headers['x-forwarded-host'] = 'markojs.com';

@@ -4,6 +4,6 @@ import express from "express";
 
 express()
   .use(compressionMiddleware())
-  .use("/assets", express.static("assets"))
+  .use("/assets", express.static("dist/public/assets"))
   .use(routerMiddleware())
   .listen(process.env.PORT);
