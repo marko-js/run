@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.1
+
+### Patch Changes
+
+- a6d1220: Add isEntryTemplate method to adapters which allows them to filter which marko templates can be entries
+
 ## 0.9.0
 
 ### Minor Changes
