@@ -10,13 +10,13 @@ export const mware2 = normalize(middleware2);
 ```
 ---
 
-## Route ``aaa/$/route``
+## Route ``aaa.$``
 ### Path: ``/aaa/$aId``
 ### Template
 ```marko
-// ./dist/.marko-run/aaa/$/route.marko
-import Layout1 from "../../../../src/routes/+layout.marko";
-import Page from "../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
+// ./dist/.marko-run/aaa.$.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
 
 <Layout1>
 	<Page/>
@@ -24,11 +24,11 @@ import Page from "../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__aaa.$.route.js
+// virtual:marko-run__marko-run__aaa.$.js
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/route.marko";
+import page from "./dist/.marko-run/aaa.$.marko";
 
 const getHandler = normalize(GET);
 
@@ -43,13 +43,13 @@ export function head1(context) {
 }
 ```
 ---
-## Route ``aaa/$/bbb/$/route``
+## Route ``aaa.$.bbb.$``
 ### Path: ``/aaa/$aId/bbb/$bId``
 ### Template
 ```marko
-// ./dist/.marko-run/aaa/$/bbb/$/route.marko
-import Layout1 from "../../../../../../src/routes/+layout.marko";
-import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
+// ./dist/.marko-run/aaa.$.bbb.$.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
 
 <Layout1>
 	<Page/>
@@ -57,11 +57,11 @@ import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__aaa.$.bbb.$.route.js
+// virtual:marko-run__marko-run__aaa.$.bbb.$.js
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/bbb/$/route.marko";
+import page from "./dist/.marko-run/aaa.$.bbb.$.marko";
 
 const getHandler = normalize(GET);
 
@@ -76,13 +76,13 @@ export function head2(context) {
 }
 ```
 ---
-## Route ``aaa/$/bbb/$/ccc/$/route``
+## Route ``aaa.$.bbb.$.ccc.$``
 ### Path: ``/aaa/$aId/bbb/$bId/ccc/$cId``
 ### Template
 ```marko
-// ./dist/.marko-run/aaa/$/bbb/$/ccc/$/route.marko
-import Layout1 from "../../../../../../../../src/routes/+layout.marko";
-import Page from "../../../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
+// ./dist/.marko-run/aaa.$.bbb.$.ccc.$.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
 
 <Layout1>
 	<Page/>
@@ -90,11 +90,11 @@ import Page from "../../../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__aaa.$.bbb.$.ccc.$.route.js
+// virtual:marko-run__marko-run__aaa.$.bbb.$.ccc.$.js
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/bbb/$/ccc/$/route.marko";
+import page from "./dist/.marko-run/aaa.$.bbb.$.ccc.$.marko";
 
 const getHandler = normalize(GET);
 
@@ -109,13 +109,13 @@ export function head3(context) {
 }
 ```
 ---
-## Route ``aaa/$/ccc/$/route``
+## Route ``aaa.$.ccc.$``
 ### Path: ``/aaa/$aId/ccc/$cId``
 ### Template
 ```marko
-// ./dist/.marko-run/aaa/$/ccc/$/route.marko
-import Layout1 from "../../../../../../src/routes/+layout.marko";
-import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
+// ./dist/.marko-run/aaa.$.ccc.$.marko
+import Layout1 from "../../src/routes/+layout.marko";
+import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko";
 
 <Layout1>
 	<Page/>
@@ -123,11 +123,11 @@ import Page from "../../../../../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__aaa.$.ccc.$.route.js
+// virtual:marko-run__marko-run__aaa.$.ccc.$.js
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get.ts";
-import page from "./dist/.marko-run/aaa/$/ccc/$/route.marko";
+import page from "./dist/.marko-run/aaa.$.ccc.$.marko";
 
 const getHandler = normalize(GET);
 

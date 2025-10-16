@@ -397,7 +397,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         markoVitePluginOptions.basePathVar = opts.basePathVar;
         markoVitePluginOptions.isEntry = (importee, importer) => {
           return (
-            entryTemplates.has(importee) || entryTemplateImporters.has(importer)
+            entryTemplates.has(importee) ||
+            entryTemplateImporters.has(importer) ||
+            adapter?.isEntryTemplate?.({ template: importee, importer }) ||
+            false
           );
         };
 
@@ -422,25 +425,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           const defaultRollupOutputOptions: OutputOptions = {
-            assetFileNames({ name }) {
-              if (name && name.indexOf("_marko-virtual_id_") < 0) {
-                return `${assetsDir}/${
-                  getEntryFileName(name) || "[name]"
-                }-[hash].[ext]`;
-              }
-              return `${assetsDir}/_[hash].[ext]`;
-            },
+            assetFileNames: `${assetsDir}/[name]-[hash].[ext]`,
             entryFileNames(info) {
-              let name = getEntryFileName(info.facadeModuleId);
-              if (!name) {
-                for (const id of info.moduleIds) {
-                  name = getEntryFileName(id);
-                  if (name) {
-                    break;
-                  }
-                }
-              }
-              return `${assetsDir}/${name || "[name]"}-[hash].js`;
+              return `${assetsDir}/${getEntryFileName(info.name) || "[name]"}-[hash].js`;
             },
             chunkFileNames: isSSRBuild
               ? `_[hash].js`
@@ -728,7 +715,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           store.write(routeData);
 
           await opts?.emitRoutes?.(routes.list);
-        } else if (process.env.MR_EXPLORER !== "true") {
+        } else {
           logRoutesTable(routes, [...externalRoutes], bundle);
         }
       },
@@ -840,10 +827,10 @@ export async function resolveAdapter(
   return module.default();
 }
 
-const markoEntryFileRegex = /__marko-run__([^.]+)(?:\.(.+))?\.marko\.([^.]+)$/;
+const markoEntryFileRegex = /([^/\\]+)\.marko$/;
 function getEntryFileName(file: string | undefined | null) {
   const match = file && markoEntryFileRegex.exec(file);
-  return match ? match[2] || "index" : undefined;
+  return match ? match[1] : undefined;
 }
 
 function getPlugin(config: ResolvedConfig):

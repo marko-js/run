@@ -40,7 +40,7 @@ export async function buildRoutes(
   const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
   const routes: Route[] = [];
   const special: SpecialRoutes = {};
-  const seenKeys = new Map<string, number>();
+  const seenKeys = new Set<string>();
 
   const middlewares = new Set<RoutableFile>();
   const unusedFiles = new Set<RoutableFile>();
@@ -214,15 +214,16 @@ export async function buildRoutes(
 
         uniqueRoutes.set(pathInfo.id, { dir, index: routes.length });
 
-        let key = pathInfo.segments
-          .map(replaceInvalidFilenameChars)
-          .concat("route")
-          .join("/");
-        const keyCount = (seenKeys.get(key) || 0) + 1;
-        seenKeys.set(key, keyCount);
-        if (keyCount > 1) {
-          key += keyCount;
+        const keyBase =
+          pathInfo.segments.map(replaceInvalidFilenameChars).join(".") ||
+          "index";
+
+        let count = 2;
+        let key = keyBase;
+        while (seenKeys.has(key)) {
+          key = keyBase + count++;
         }
+        seenKeys.add(key);
 
         routes.push({
           index: nextRouteIndex++,
@@ -266,6 +267,6 @@ export async function buildRoutes(
   }
 }
 
-export function replaceInvalidFilenameChars(str: string) {
-  return str.replace(/[<>:"/\\|?*]+/g, "_");
+function replaceInvalidFilenameChars(str: string) {
+  return str.replace(/[<>:"/\\|?*_]+/g, "-");
 }

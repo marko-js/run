@@ -1,12 +1,12 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get3, head3 } from "virtual:marko-run/__marko-run__route.js";
-import { get4, head4, post4, meta4 } from "virtual:marko-run/__marko-run__new.route.js";
-import { get5, head5, post5, put5, delete5 } from "virtual:marko-run/__marko-run__notes.$.route.js";
-import { post6, put6, delete6, meta6 } from "virtual:marko-run/__marko-run__notes.$.comments.route.js";
-import { get7, head7 } from "virtual:marko-run/__marko-run__callback.oauth2.route.js";
-import { get8, head8 } from "virtual:marko-run/__marko-run__my.route.js";
-import { get9, head9 } from "virtual:marko-run/__marko-run__$$.route.js";
+import { get3, head3 } from "virtual:marko-run/__marko-run__index.js";
+import { get4, head4, post4, meta4 } from "virtual:marko-run/__marko-run__new.js";
+import { get5, head5, post5, put5, delete5 } from "virtual:marko-run/__marko-run__notes.$.js";
+import { post6, put6, delete6, meta6 } from "virtual:marko-run/__marko-run__notes.$.comments.js";
+import { get7, head7 } from "virtual:marko-run/__marko-run__callback.oauth2.js";
+import { get8, head8 } from "virtual:marko-run/__marko-run__my.js";
+import { get9, head9 } from "virtual:marko-run/__marko-run__$$.js";
 import page404 from "./dist/.marko-run/404.marko";
 import page500 from "./dist/.marko-run/500.marko";
 

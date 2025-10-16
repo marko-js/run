@@ -1,10 +1,10 @@
 # Routes
 
-## Route ``route``
+## Route ``index``
 ### Path: ``/``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__route.js
+// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -17,11 +17,11 @@ export function head1(context) {
 }
 ```
 ---
-## Route ``foo/route``
+## Route ``foo``
 ### Path: ``/foo``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.route.js
+// virtual:marko-run__marko-run__foo.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -34,11 +34,11 @@ export function head2(context) {
 }
 ```
 ---
-## Route ``foo/bar/route``
+## Route ``foo.bar``
 ### Path: ``/foo/bar``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.bar.route.js
+// virtual:marko-run__marko-run__foo.bar.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -51,11 +51,11 @@ export function head3(context) {
 }
 ```
 ---
-## Route ``foo/bar/baz/route``
+## Route ``foo.bar.baz``
 ### Path: ``/foo/bar/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.bar.baz.route.js
+// virtual:marko-run__marko-run__foo.bar.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -68,11 +68,11 @@ export function head4(context) {
 }
 ```
 ---
-## Route ``foo/baz/route``
+## Route ``foo.baz``
 ### Path: ``/foo/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.baz.route.js
+// virtual:marko-run__marko-run__foo.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -85,11 +85,11 @@ export function head5(context) {
 }
 ```
 ---
-## Route ``bar/route``
+## Route ``bar``
 ### Path: ``/bar``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__bar.route.js
+// virtual:marko-run__marko-run__bar.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -102,11 +102,11 @@ export function head6(context) {
 }
 ```
 ---
-## Route ``bar/baz/route``
+## Route ``bar.baz``
 ### Path: ``/bar/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__bar.baz.route.js
+// virtual:marko-run__marko-run__bar.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -119,11 +119,11 @@ export function head7(context) {
 }
 ```
 ---
-## Route ``baz/route``
+## Route ``baz``
 ### Path: ``/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__baz.route.js
+// virtual:marko-run__marko-run__baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 

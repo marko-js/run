@@ -14,7 +14,8 @@ export default defineConfig({
         routes: [{
           path: '/',
           entryFile: path.join(process.cwd(), 'src', 'other-routes', 'page.marko'),
-          verbs: ['get']
+          templates: [],
+          verbs: ['*']
         }]
       })
     }

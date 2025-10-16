@@ -10,11 +10,11 @@ export const mware3 = normalize(middleware3);
 ```
 ---
 
-## Route ``route``
+## Route ``index``
 ### Path: ``/``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__route.js
+// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
@@ -27,11 +27,11 @@ export function head1(context) {
 }
 ```
 ---
-## Route ``foo/route``
+## Route ``foo``
 ### Path: ``/foo``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.route.js
+// virtual:marko-run__marko-run__foo.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 import page from "./src/routes/foo,$id,$$rest,+page.marko";
@@ -53,11 +53,11 @@ export function post2(context) {
 }
 ```
 ---
-## Route ``$/route``
+## Route ``$``
 ### Path: ``/$id``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__$.route.js
+// virtual:marko-run__marko-run__$.js
 import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import page from "./src/routes/foo,$id,$$rest,+page.marko";
@@ -72,11 +72,11 @@ export function head3(context) {
 }
 ```
 ---
-## Route ``$$/route``
+## Route ``$$``
 ### Path: ``/$$rest``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__$$.route.js
+// virtual:marko-run__marko-run__$$.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,$id,$$rest,+page.marko";
 
@@ -89,11 +89,11 @@ export function head4(context) {
 }
 ```
 ---
-## Route ``a/c/route``
+## Route ``a.c``
 ### Path: ``/a/c``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__a.c.route.js
+// virtual:marko-run__marko-run__a.c.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
@@ -113,11 +113,11 @@ export function post5(context) {
 }
 ```
 ---
-## Route ``a/d/route``
+## Route ``a.d``
 ### Path: ``/a/d``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__a.d.route.js
+// virtual:marko-run__marko-run__a.d.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
@@ -140,11 +140,11 @@ export function post6(context) {
 }
 ```
 ---
-## Route ``b/c/route``
+## Route ``b.c``
 ### Path: ``/b/c``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__b.c.route.js
+// virtual:marko-run__marko-run__b.c.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 
@@ -164,11 +164,11 @@ export function post7(context) {
 }
 ```
 ---
-## Route ``b/d/route``
+## Route ``b.d``
 ### Path: ``/b/d``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__b.d.route.js
+// virtual:marko-run__marko-run__b.d.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.get_post.marko";
 

@@ -11,7 +11,7 @@ declare module "http" {
 
 express()
   .use(compressionMiddleware())
-  .use("/assets", express.static("assets"))
+  .use("/assets", express.static("dist/public/assets"))
   .use(matchMiddleware())
   .use((req, res, next) => {
     if (req.route) {

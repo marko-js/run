@@ -73,7 +73,11 @@ export function logRoutesTable(
       if (route.page && (verb === "get" || verb === "head")) {
         entryType.push(kleur.yellow("page"));
         if (verb === "get") {
-          size = prettySize(computeRouteSize(route.templateFilePath, bundle));
+          const routeSize = computeRouteSize(
+            route.templateFilePath,
+            bundle,
+          ) || [0, 0];
+          size = prettySize(routeSize);
         }
       }
 
@@ -104,7 +108,10 @@ export function logRoutesTable(
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    row.push(prettySize(computeRouteSize(route.templateFilePath, bundle)));
+    const routeSize = computeRouteSize(route.templateFilePath, bundle) || [
+      0, 0,
+    ];
+    row.push(prettySize(routeSize));
 
     table.push(row);
   }
@@ -117,14 +124,14 @@ export function logRoutesTable(
       for (const verb of verbs) {
         let size = "";
         const verbCell = verbColor(verb)(verb.toUpperCase());
-
-        if (verb === "get") {
-          size = prettySize(computeRouteSize(route.entryFile, bundle));
-        }
-
         const row: any[] = [verbCell];
 
         if (verbs.length === 1 || firstRow) {
+          const routeSize = computeRouteSize(route.entryFile, bundle);
+          if (routeSize) {
+            size = prettySize(routeSize);
+          }
+
           row.push({
             rowSpan: verbs.length,
             content: prettyPath(route.path),
@@ -158,7 +165,7 @@ export function logRoutesTable(
 function computeRouteSize(
   filePath: string | undefined,
   bundle: OutputBundle,
-): [number, number] {
+): [number, number] | undefined {
   if (filePath) {
     for (const chunk of Object.values(bundle)) {
       if (
@@ -170,8 +177,6 @@ function computeRouteSize(
       }
     }
   }
-
-  return [0, 0];
 }
 
 function gzipSize(source: string | Uint8Array): number {

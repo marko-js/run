@@ -1,9 +1,6 @@
-import getValue from './util';
-
 class {
   declare state: { count: number };
   onCreate() {
-    getValue();
     this.state = { count: 0 };
   }
   handleIncrement() {
