@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.2
+
+### Patch Changes
+
+- 10b2f07: Fix rollup output options not being merged correctly when defined by adapter
+
 ## 0.9.1
 
 ### Patch Changes
