@@ -424,29 +424,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             outDir = path.join(outDir, CLIENT_OUT_DIR);
           }
 
-          const defaultRollupOutputOptions: OutputOptions = {
-            assetFileNames: `${assetsDir}/[name]-[hash].[ext]`,
-            entryFileNames(info) {
-              return `${assetsDir}/${getEntryFileName(info.name) || "[name]"}-[hash].js`;
+          rollupOutputOptions = mergeOutputOptions(
+            {
+              assetFileNames: `${assetsDir}/[name]-[hash].[ext]`,
+              entryFileNames(info) {
+                return `${assetsDir}/${getEntryFileName(info.name) || "[name]"}-[hash].js`;
+              },
+              chunkFileNames: isSSRBuild
+                ? `_[hash].js`
+                : `${assetsDir}/_[hash].js`,
             },
-            chunkFileNames: isSSRBuild
-              ? `_[hash].js`
-              : `${assetsDir}/_[hash].js`,
-          };
-
-          if (!rollupOutputOptions) {
-            rollupOutputOptions = defaultRollupOutputOptions;
-          } else if (!Array.isArray(rollupOutputOptions)) {
-            rollupOutputOptions = {
-              ...defaultRollupOutputOptions,
-              ...rollupOutputOptions,
-            };
-          } else {
-            rollupOutputOptions = rollupOutputOptions.map((options) => ({
-              ...defaultRollupOutputOptions,
-              ...options,
-            }));
-          }
+            rollupOutputOptions,
+          );
         }
 
         const browserslistTarget =
@@ -473,7 +462,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         pluginConfig.build.ssrEmitAssets ??= false;
         pluginConfig.build.emptyOutDir ??= false;
         pluginConfig.build.rollupOptions ??= {};
-        pluginConfig.build.rollupOptions.output ??= rollupOutputOptions;
+        if (rollupOutputOptions) {
+          pluginConfig.build.rollupOptions.output = mergeOutputOptions(
+            rollupOutputOptions,
+            pluginConfig.build.rollupOptions.output,
+          );
+        }
         pluginConfig.build.sourcemap ??=
           config.build?.sourcemap ?? (isBuild && !isSSRBuild);
 
@@ -737,6 +731,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
     },
   ];
+}
+
+function mergeOutputOptions(
+  defaults: OutputOptions | OutputOptions[],
+  existing: OutputOptions | OutputOptions[] | undefined,
+): OutputOptions | OutputOptions[] {
+  if (!existing) {
+    return defaults;
+  } else if (Array.isArray(existing)) {
+    return existing.map((options) => ({
+      ...defaults,
+      ...options,
+    }));
+  }
+  return {
+    ...defaults,
+    ...existing,
+  };
 }
 
 // async function getExportsFromFileBuild(
