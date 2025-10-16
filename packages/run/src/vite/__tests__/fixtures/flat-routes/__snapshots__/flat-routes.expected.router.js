@@ -1,13 +1,13 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__route.js";
-import { get2, head2, post2 } from "virtual:marko-run/__marko-run__foo.route.js";
-import { get3, head3 } from "virtual:marko-run/__marko-run__$.route.js";
-import { get4, head4 } from "virtual:marko-run/__marko-run__$$.route.js";
-import { get5, head5, post5 } from "virtual:marko-run/__marko-run__a.c.route.js";
-import { get6, head6, post6 } from "virtual:marko-run/__marko-run__a.d.route.js";
-import { get7, head7, post7 } from "virtual:marko-run/__marko-run__b.c.route.js";
-import { get8, head8, post8 } from "virtual:marko-run/__marko-run__b.d.route.js";
+import { get1, head1 } from "virtual:marko-run/__marko-run__index.js";
+import { get2, head2, post2 } from "virtual:marko-run/__marko-run__foo.js";
+import { get3, head3 } from "virtual:marko-run/__marko-run__$.js";
+import { get4, head4 } from "virtual:marko-run/__marko-run__$$.js";
+import { get5, head5, post5 } from "virtual:marko-run/__marko-run__a.c.js";
+import { get6, head6, post6 } from "virtual:marko-run/__marko-run__a.d.js";
+import { get7, head7, post7 } from "virtual:marko-run/__marko-run__b.c.js";
+import { get8, head8, post8 } from "virtual:marko-run/__marko-run__b.d.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     

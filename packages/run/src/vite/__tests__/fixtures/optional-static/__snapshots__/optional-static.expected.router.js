@@ -1,13 +1,13 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__route.js";
-import { get2, head2 } from "virtual:marko-run/__marko-run__foo.route.js";
-import { get3, head3 } from "virtual:marko-run/__marko-run__foo.bar.route.js";
-import { get4, head4 } from "virtual:marko-run/__marko-run__foo.bar.baz.route.js";
-import { get5, head5 } from "virtual:marko-run/__marko-run__foo.baz.route.js";
-import { get6, head6 } from "virtual:marko-run/__marko-run__bar.route.js";
-import { get7, head7 } from "virtual:marko-run/__marko-run__bar.baz.route.js";
-import { get8, head8 } from "virtual:marko-run/__marko-run__baz.route.js";
+import { get1, head1 } from "virtual:marko-run/__marko-run__index.js";
+import { get2, head2 } from "virtual:marko-run/__marko-run__foo.js";
+import { get3, head3 } from "virtual:marko-run/__marko-run__foo.bar.js";
+import { get4, head4 } from "virtual:marko-run/__marko-run__foo.bar.baz.js";
+import { get5, head5 } from "virtual:marko-run/__marko-run__foo.baz.js";
+import { get6, head6 } from "virtual:marko-run/__marko-run__bar.js";
+import { get7, head7 } from "virtual:marko-run/__marko-run__bar.baz.js";
+import { get8, head8 } from "virtual:marko-run/__marko-run__baz.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     

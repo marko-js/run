@@ -1,7 +1,7 @@
 // @marko/run/router
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__a%3fb.$.$.route.js";
-import { get2, head2 } from "virtual:marko-run/__marko-run__a%3fb.baz.route.js";
+import { get1, head1 } from "virtual:marko-run/__marko-run__a%3fb.$.$.js";
+import { get2, head2 } from "virtual:marko-run/__marko-run__a%3fb.baz.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     

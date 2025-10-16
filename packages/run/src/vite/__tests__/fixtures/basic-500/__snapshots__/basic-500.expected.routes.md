@@ -1,10 +1,10 @@
 # Routes
 
-## Route ``route``
+## Route ``index``
 ### Path: ``/``
 ### Template
 ```marko
-// ./dist/.marko-run/route.marko
+// ./dist/.marko-run/index.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
@@ -14,9 +14,9 @@ import Page from "../../src/routes/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__route.js
+// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./dist/.marko-run/route.marko";
+import page from "./dist/.marko-run/index.marko";
 
 export function get2(context) {
 	return context.render(page, {});
