@@ -715,7 +715,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           store.write(routeData);
 
           await opts?.emitRoutes?.(routes.list);
-        } else if (process.env.MR_EXPLORER !== "true") {
+        } else {
           logRoutesTable(routes, [...externalRoutes], bundle);
         }
       },

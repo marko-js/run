@@ -176,7 +176,7 @@ export default function adapter(): Adapter {
     },
 
     async routesGenerated({ routes, virtualFiles, meta }) {
-      if (process.env.MR_EXPLORER === "false") {
+      if (process.env.MR_EXPLORER !== "1") {
         return;
       }
 
@@ -234,7 +234,7 @@ export default function adapter(): Adapter {
 }
 
 async function startExplorer() {
-  if (process.env.MR_EXPLORER !== "false") {
+  if (process.env.MR_EXPLORER === "1") {
     const port = await getAvailablePort(1234);
     const { start } = await import("@marko/run-explorer");
 
