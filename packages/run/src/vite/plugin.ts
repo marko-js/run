@@ -110,6 +110,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let routeData!: RouteData;
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
+  let runtimeInclude: string | undefined;
 
   const externalRoutes = new Set<ExternalRoutes>();
   const seenErrors = new Set<string>();
@@ -313,7 +314,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
 
-        const runtimeInclude = await adapter?.runtimeInclude?.();
+        runtimeInclude = await adapter?.runtimeInclude?.();
 
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
@@ -553,13 +554,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             const routableFileType = matchRoutableFile(
               path.parse(filename).base,
             );
-            if (filename.startsWith(resolvedRoutesDir) && routableFileType) {
+            if (
+              (filename.startsWith(resolvedRoutesDir) && routableFileType) ||
+              filename === runtimeInclude
+            ) {
               if (
                 type === "add" ||
                 type === "unlink" ||
                 (type === "change" &&
                   (routableFileType === RoutableFileTypes.Handler ||
-                    routableFileType === RoutableFileTypes.Middleware))
+                    routableFileType === RoutableFileTypes.Middleware ||
+                    filename === runtimeInclude))
               ) {
                 buildVirtualFilesResult = undefined;
                 renderVirtualFilesResult = undefined;
