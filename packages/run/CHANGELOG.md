@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.3
+
+### Patch Changes
+
+- b246743: Fix: allow adapter defined runtime changes trigger to update in dev mode
+
 ## 0.9.2
 
 ### Patch Changes
