@@ -1,0 +1,7 @@
+export const GET = (() => {
+  return new Response("# Hello World", {
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+}) satisfies MarkoRun.Handler;

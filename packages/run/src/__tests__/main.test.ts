@@ -255,25 +255,32 @@ async function testPage(
         referer: referrerUrl?.href,
       });
     });
-
     await page.waitForLoadState("domcontentloaded");
 
     let snapshot = `# Loading\n\n`;
     let prevHtml: string | undefined;
-    await forEachChange((html) => {
-      snapshot += htmlSnapshot(html, prevHtml);
-      prevHtml = html;
-    });
-
-    for (const [i, step] of steps.entries()) {
-      await waitForPendingRequests(page, step);
-      snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
-
-      let prevHtml: string | undefined;
+    if (
+      (await globalThis.response?.headerValue("content-type"))?.includes(
+        "text/html",
+      )
+    ) {
       await forEachChange((html) => {
         snapshot += htmlSnapshot(html, prevHtml);
         prevHtml = html;
       });
+
+      for (const [i, step] of steps.entries()) {
+        await waitForPendingRequests(page, step);
+        snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
+
+        let prevHtml: string | undefined;
+        await forEachChange((html) => {
+          snapshot += htmlSnapshot(html, prevHtml);
+          prevHtml = html;
+        });
+      }
+    } else {
+      snapshot += `\`\`\`\n${await page.locator("pre").innerHTML()}\n\`\`\`\n\n`;
     }
 
     await snap(snapshot, { ext: ".md", dir });
