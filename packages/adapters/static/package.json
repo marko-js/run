@@ -1,6 +1,6 @@
 {
   "name": "@marko/run-adapter-static",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Preview and deploy @marko/run apps as static files",
   "keywords": [
     "marko"
