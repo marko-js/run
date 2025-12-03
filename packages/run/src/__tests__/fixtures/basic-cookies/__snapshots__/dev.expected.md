@@ -5,5 +5,5 @@
 ```
 
 # Step 0
-()=>readCookies()
+response,page
 

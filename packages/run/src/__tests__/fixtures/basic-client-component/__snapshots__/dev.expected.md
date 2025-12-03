@@ -7,7 +7,7 @@
 ```
 
 # Step 0
-await page.click("button")
+page
 
 ```html
 <button>
@@ -16,7 +16,7 @@ await page.click("button")
 ```
 
 # Step 1
-await page.click("button")
+page
 
 ```html
 <button>
@@ -25,7 +25,7 @@ await page.click("button")
 ```
 
 # Step 2
-await page.click("button")
+page
 
 ```html
 <button>

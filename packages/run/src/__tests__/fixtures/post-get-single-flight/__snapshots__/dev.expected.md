@@ -5,7 +5,7 @@ Hello Unknown
 ```
 
 # Step 0
-await page.locator("button").click()
+page
 
 ```html
 Hello Marko Run

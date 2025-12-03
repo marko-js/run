@@ -1,5 +1,7 @@
+import { StepContext } from "../../main.test";
+
 export const steps = [click, click, click];
 
-async function click() {
+async function click({ page }: StepContext) {
   await page.click("button");
 }

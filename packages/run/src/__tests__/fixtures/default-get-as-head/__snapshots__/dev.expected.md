@@ -5,5 +5,5 @@ page: GET /
 ```
 
 # Step 0
-()=>requestHead()
+page
 

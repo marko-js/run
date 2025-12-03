@@ -1,9 +1,11 @@
 import assert from "assert";
 
-export const entry = 'src/index.ts';
-export const steps = [() => submitPost()]
+import { StepContext } from "../../main.test";
 
-async function submitPost() {
+export const entry = 'src/index.ts';
+export const steps = [submitPost]
+
+async function submitPost({ page }: StepContext) {
   const expected = new FormData();
   expected.append("foo", "a");
   expected.append("bar", "b");
