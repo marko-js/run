@@ -2,14 +2,14 @@ import assert from "assert";
 
 import { Step } from "../../main.test";
 
-export const steps = [
-  assertNoBody("HEAD"),
-  assertBody("POST"),
-  assertBody("PUT"),
-  assertBody("DELETE"),
-  assertBody("PATCH"),
-  assertBody("OPTIONS"),
-] as Step[];
+export const steps: Step[] = [
+  (ctx) => assertNoBody("HEAD")(ctx),
+  (ctx) => assertBody("POST")(ctx),
+  (ctx) => assertBody("PUT")(ctx),
+  (ctx) => assertBody("DELETE")(ctx),
+  (ctx) => assertBody("PATCH")(ctx),
+  (ctx) => assertBody("OPTIONS")(ctx),
+];
 
 function assertBody(method: string): Step {
   return async ({ page }) => {

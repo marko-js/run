@@ -5,20 +5,20 @@ page: GET /
 ```
 
 # Step 0
-page
+ctx=>assertNoBody("HEAD")(ctx)
 
 # Step 1
-page
+ctx=>assertBody("POST")(ctx)
 
 # Step 2
-page
+ctx=>assertBody("PUT")(ctx)
 
 # Step 3
-page
+ctx=>assertBody("DELETE")(ctx)
 
 # Step 4
-page
+ctx=>assertBody("PATCH")(ctx)
 
 # Step 5
-page
+ctx=>assertBody("OPTIONS")(ctx)
 

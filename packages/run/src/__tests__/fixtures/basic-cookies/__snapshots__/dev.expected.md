@@ -5,5 +5,5 @@
 ```
 
 # Step 0
-response,page
+ctx=>readCookies(ctx)
 

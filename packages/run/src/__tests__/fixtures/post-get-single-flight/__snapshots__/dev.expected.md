@@ -5,7 +5,7 @@ Hello Unknown
 ```
 
 # Step 0
-page
+ctx=>clickSubmit(ctx)
 
 ```html
 Hello Marko Run

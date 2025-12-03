@@ -1,6 +1,10 @@
-import { StepContext } from "../../main.test";
+import { Step, StepContext } from "../../main.test";
 
-export const steps = [click, click, click];
+export const steps: Step[] = [
+  (ctx) => click(ctx),
+  (ctx) => click(ctx),
+  (ctx) => click(ctx),
+];
 export const preview_args = ["--offline", "--no-open"];
 export const skip_preview = process.env.CI === "true";
 

@@ -7,7 +7,7 @@
 ```
 
 # Step 0
-page
+ctx=>click(ctx)
 
 ```html
 <button>
@@ -16,7 +16,7 @@ page
 ```
 
 # Step 1
-page
+ctx=>click(ctx)
 
 ```html
 <button>
@@ -25,7 +25,7 @@ page
 ```
 
 # Step 2
-page
+ctx=>click(ctx)
 
 ```html
 <button>
