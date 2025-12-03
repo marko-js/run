@@ -5,7 +5,7 @@ Hello Unknown
 ```
 
 # Step 0
-await page.locator("button").click()
+ctx=>clickSubmit(ctx)
 
 ```html
 Hello Marko Run

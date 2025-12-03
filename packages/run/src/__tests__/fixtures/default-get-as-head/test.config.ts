@@ -1,10 +1,12 @@
 import assert from "assert";
 
+import { StepContext } from "../../main.test";
+
 export const steps = [
-  () => requestHead(),
+  requestHead,
 ]
 
-async function requestHead() {
+async function requestHead({ page }: StepContext) {
   const url = new URL(page.url());
   const response = await page.request.fetch(url.href, { method: 'HEAD' });
   const headers = response.headers();

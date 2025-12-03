@@ -23,8 +23,6 @@ Function.prototype.toString = function () {
 };
 
 declare global {
-  const page: playwright.Page;
-  const response: playwright.Response;
   namespace NodeJS {
     interface Global {
       page: playwright.Page;
@@ -32,15 +30,17 @@ declare global {
   }
 }
 
-declare namespace globalThis {
-  let page: playwright.Page;
-  let response: playwright.Response | null;
-}
-
 declare const __track__: (html: string) => void;
 
-export type Step = () => Promise<unknown> | unknown;
-export type Assert = (fn: () => Promise<void>) => Promise<void>;
+export type StepContext = {
+  page: playwright.Page;
+  response: playwright.Response;
+};
+export type Step = (context: StepContext) => Promise<unknown> | unknown;
+export type Assert = (
+  page: playwright.Page,
+  fn: () => Promise<void>,
+) => Promise<void>;
 
 const requireCwd = createRequire(root);
 let browser: playwright.Browser;
@@ -135,15 +135,6 @@ before(async () => {
   ]);
 });
 
-beforeEach(async () => {
-  globalThis.page = await context.newPage();
-});
-
-afterEach(async () => {
-  await page.close();
-  globalThis.response = null;
-});
-
 after(async () => {
   await browser.close();
 });
@@ -171,6 +162,17 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   };
 
   describe(fixture, function () {
+    let page: playwright.Page;
+
+    beforeEach(async () => {
+      changes = [];
+      page = await context.newPage();
+    });
+
+    afterEach(async () => {
+      await page.close();
+    });
+
     const pathname = config.path || "/";
     const steps = config.steps
       ? Array.isArray(config.steps)
@@ -193,11 +195,11 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
         async function testBlock() {
           const server = await cli.dev(config.entry, dir, configFile);
-          await testPage(dir, pathname, steps, server, config.referer);
+          await testPage(page, dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_dev) {
-          await config.assert_dev(testBlock);
+          await config.assert_dev(page, testBlock);
         } else {
           await testBlock();
         }
@@ -221,11 +223,11 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
             undefined,
             config.preview_args,
           );
-          await testPage(dir, pathname, steps, server, config.referer);
+          await testPage(page, dir, pathname, steps, server, config.referer);
         }
 
         if (config.assert_preview) {
-          await config.assert_preview(testBlock);
+          await config.assert_preview(page, testBlock);
         } else {
           await testBlock();
         }
@@ -235,6 +237,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 }
 
 async function testPage(
+  page: playwright.Page,
   dir: string,
   pathname: string,
   steps: Step[],
@@ -249,31 +252,35 @@ async function testPage(
         : new URL(referer, url)
       : undefined;
 
+    const stepContext = { page } as StepContext;
     await waitForServer(server.port);
-    await waitForPendingRequests(page, async () => {
-      globalThis.response = await page.goto(url.href, {
+    await waitForPendingRequests(stepContext, async () => {
+      stepContext.response = (await page.goto(url.href, {
         referer: referrerUrl?.href,
-      });
+      }))!;
     });
-
     await page.waitForLoadState("domcontentloaded");
-
     let snapshot = `# Loading\n\n`;
     let prevHtml: string | undefined;
-    await forEachChange((html) => {
-      snapshot += htmlSnapshot(html, prevHtml);
-      prevHtml = html;
-    });
-
-    for (const [i, step] of steps.entries()) {
-      await waitForPendingRequests(page, step);
-      snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
-
-      let prevHtml: string | undefined;
+    const contentType = await stepContext.response?.headerValue("content-type");
+    if (!contentType || contentType.includes("text/html")) {
       await forEachChange((html) => {
         snapshot += htmlSnapshot(html, prevHtml);
         prevHtml = html;
       });
+
+      for (const [i, step] of steps.entries()) {
+        await waitForPendingRequests(stepContext, step);
+        snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
+
+        let prevHtml: string | undefined;
+        await forEachChange((html) => {
+          snapshot += htmlSnapshot(html, prevHtml);
+          prevHtml = html;
+        });
+      }
+    } else {
+      snapshot += `\`\`\`\n${await page.locator("pre").innerHTML()}\n\`\`\`\n\n`;
     }
 
     await snap(snapshot, { ext: ".md", dir });
@@ -304,8 +311,9 @@ async function forEachChange<F extends (html: string, i: number) => unknown>(
  * Utility to run a function against the current page and wait until every
  * in flight network request has completed before continuing.
  */
-async function waitForPendingRequests(page: playwright.Page, step: Step) {
+async function waitForPendingRequests(context: StepContext, step: Step) {
   let remaining = 0;
+  const { page } = context;
   let resolve!: () => void;
   const addOne = () => remaining++;
   const finishOne = async () => {
@@ -322,7 +330,7 @@ async function waitForPendingRequests(page: playwright.Page, step: Step) {
 
   try {
     addOne();
-    await step();
+    await step(context);
     finishOne();
     await pending;
   } finally {

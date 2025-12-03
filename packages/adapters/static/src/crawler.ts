@@ -3,7 +3,6 @@ import { WritableStream as Parser } from "htmlparser2/WritableStream";
 import nodePath from "path";
 
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
-const contentType = "text/html";
 
 export interface Options {
   out?: string;
@@ -47,25 +46,33 @@ export default function createCrawler(
       const req = new Request(url, {
         method: "GET",
         signal: abortController.signal as any,
-        headers: { accept: contentType },
+        headers: { accept: "text/html" },
       });
 
       const res = await makeRequest(req);
-      const validContentType = !!res.headers
+      const htmlContentType = !!res.headers
         .get("content-type")
-        ?.includes(contentType);
+        ?.includes("text/html");
 
       let redirect: string | undefined;
 
+      let filePath = nodePath.join(
+        out,
+        path.endsWith("/") ? path + "index.html" : path + ".html",
+      );
       switch (res.status) {
         case 200:
-          if (!validContentType) {
-            abortController.abort();
-            return;
+          if (!htmlContentType) {
+            if (/\.\w+$/.test(path)) {
+              filePath = nodePath.join(out, path);
+            } else {
+              abortController.abort();
+              return;
+            }
           }
           break;
         case 404:
-          if (!notFoundPath || !validContentType) {
+          if (!notFoundPath || !htmlContentType) {
             abortController.abort();
             return;
           }
@@ -100,13 +107,8 @@ export default function createCrawler(
         }
       }
 
-      const htmlFilePath = nodePath.join(
-        out,
-        path.endsWith("/") ? path + "index.html" : path + ".html",
-      );
-
-      fs.mkdirSync(nodePath.dirname(htmlFilePath), { recursive: true });
-      pageWriter = fs.createWriteStream(htmlFilePath);
+      fs.mkdirSync(nodePath.dirname(filePath), { recursive: true });
+      pageWriter = fs.createWriteStream(filePath);
 
       if (redirect) {
         if (path !== notFoundPath) {

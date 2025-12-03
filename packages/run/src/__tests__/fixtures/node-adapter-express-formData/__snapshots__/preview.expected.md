@@ -5,5 +5,5 @@ Page rendered
 ```
 
 # Step 0
-()=>submitPost()
+ctx=>submitPost(ctx)
 

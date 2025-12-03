@@ -1,7 +1,13 @@
-export const entry = 'src/index.ts';
+import { Step, StepContext } from "../../main.test";
 
-export const steps = [click, click, click];
+export const entry = "src/index.ts";
 
-async function click() {
+export const steps: Step[] = [
+  (ctx) => click(ctx),
+  (ctx) => click(ctx),
+  (ctx) => click(ctx),
+];
+
+async function click({ page }: StepContext) {
   await page.click("button");
 }
