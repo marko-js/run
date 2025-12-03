@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.4
+
+### Patch Changes
+
+- 7820bbd: Static adapter crawls non-html files
+
 ## 2.0.3
 
 ### Patch Changes
