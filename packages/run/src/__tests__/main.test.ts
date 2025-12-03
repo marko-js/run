@@ -165,6 +165,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     let page: playwright.Page;
 
     beforeEach(async () => {
+      changes = [];
       page = await context.newPage();
     });
 
