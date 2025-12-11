@@ -4,7 +4,6 @@
 ### Path: ``/``
 ### Template
 ```marko
-// ./dist/.marko-run/index.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
@@ -14,7 +13,6 @@ import Page from "../../src/routes/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./dist/.marko-run/index.marko";
 
@@ -31,7 +29,6 @@ export function head2(context) {
 ## Special `500`
 ### Template
 ```marko
-// ./dist/.marko-run/500.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+500.marko";
 

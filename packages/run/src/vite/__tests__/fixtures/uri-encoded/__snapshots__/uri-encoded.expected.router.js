@@ -1,4 +1,3 @@
-// @marko/run/router
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
 import { get1, head1 } from "virtual:marko-run/__marko-run__a%2fb%3fc%23d+e-f&g.$.js";
 

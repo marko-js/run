@@ -21,7 +21,7 @@ declare module "@marko/run" {
 	}> {}
 }
 
-declare module "../src/routes/_protected/_home/new/+handler.post" {
+declare module "../src/routes/_protected/_home/new/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/new"];
@@ -32,7 +32,7 @@ declare module "../src/routes/_protected/_home/new/+handler.post" {
   }
 }
 
-declare module "../src/routes/_protected/_home/notes/$id/+handler.put_post_delete" {
+declare module "../src/routes/_protected/_home/notes/$id/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/notes/$id"];
@@ -43,7 +43,7 @@ declare module "../src/routes/_protected/_home/notes/$id/+handler.put_post_delet
   }
 }
 
-declare module "../src/routes/_protected/_home/notes/$id/comments/+handler.put_post_delete" {
+declare module "../src/routes/_protected/_home/notes/$id/comments/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/notes/$id/comments"];
@@ -54,7 +54,7 @@ declare module "../src/routes/_protected/_home/notes/$id/comments/+handler.put_p
   }
 }
 
-declare module "../src/routes/callback/oauth2/+handler.get" {
+declare module "../src/routes/callback/oauth2/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/callback/oauth2"];
@@ -65,7 +65,7 @@ declare module "../src/routes/callback/oauth2/+handler.get" {
   }
 }
 
-declare module "../src/routes/my/+handler.get_head" {
+declare module "../src/routes/my/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/my"];
@@ -76,7 +76,7 @@ declare module "../src/routes/my/+handler.get_head" {
   }
 }
 
-declare module "../src/routes/$$match/+handler.get" {
+declare module "../src/routes/$$match/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/$$match"];

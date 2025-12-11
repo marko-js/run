@@ -184,7 +184,7 @@ function gzipSize(source: string | Uint8Array): number {
 }
 
 function byteSize(source: string | Uint8Array): number {
-  return new Blob([source]).size;
+  return new Blob([source as any]).size;
 }
 
 function computeChunkSize(

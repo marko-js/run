@@ -4,7 +4,6 @@
 ### Path: ``/``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/+page.marko";
 
@@ -21,7 +20,6 @@ export function head1(context) {
 ### Path: ``/+routes``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__+routes.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/+page.marko";
 

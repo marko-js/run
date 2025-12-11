@@ -4,4 +4,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [marko({ adapter: adapter({ urls: ["/foo"] }) })],
+  server: {
+    hmr: false
+  }
 });

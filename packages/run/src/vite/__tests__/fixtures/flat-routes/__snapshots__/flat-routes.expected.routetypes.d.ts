@@ -22,7 +22,7 @@ declare module "@marko/run" {
 	}> {}
 }
 
-declare module "../src/routes/foo,(a,b).(c,d)+handler.get_post.marko" {
+declare module "../src/routes/foo,(a,b).(c,d)+handler.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/foo" | "/a/c" | "/a/d" | "/b/c" | "/b/d"];

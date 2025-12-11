@@ -34,7 +34,7 @@ function normalizedRelativePath(from: string, to: string): string {
   return relativePath.startsWith(".") ? relativePath : "./" + relativePath;
 }
 
-export function renderRouteTemplate(route: Route, rootDir: string): string {
+export function renderRouteTemplate(route: Route): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
@@ -42,8 +42,11 @@ export function renderRouteTemplate(route: Route, rootDir: string): string {
     throw new Error(`Route ${route.key} has no template file path`);
   }
 
-  return renderEntryTemplate(
-    normalizedRelativePath(rootDir, route.templateFilePath),
+  const writer = createStringWriter();
+  writer.branch("imports");
+  writer.writeLines("");
+  writeEntryTemplateTag(
+    writer,
     [...route.layouts, route.page].map((file) =>
       normalizedRelativePath(
         path.dirname(route.templateFilePath!),
@@ -52,22 +55,6 @@ export function renderRouteTemplate(route: Route, rootDir: string): string {
     ),
     route.key === RoutableFileTypes.Error ? ["error"] : [],
   );
-}
-
-function renderEntryTemplate(
-  name: string,
-  files: string[],
-  pageInputs: string[] = [],
-): string {
-  if (!files.length) {
-    throw new Error(`Invalid argument - 'files' cannot be empty`);
-  }
-
-  const writer = createStringWriter();
-  writer.writeLines(`// ${name}`);
-  writer.branch("imports");
-  writer.writeLines("");
-  writeEntryTemplateTag(writer, files, pageInputs);
 
   return writer.end();
 }
@@ -108,9 +95,6 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   }
 
   const writer = createStringWriter();
-
-  writer.writeLines(`// ${virtualFilePrefix}${getRouteVirtualFileName(route)}`);
-
   const imports = writer.branch("imports");
   const runtimeImports = [];
 
@@ -290,7 +274,7 @@ function writeRouteEntryHandler(
 export function renderRouter(
   routes: BuiltRoutes,
   rootDir: string,
-  runtimeInclude: string | undefined,
+  runtimeInclude?: string,
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
@@ -299,8 +283,6 @@ export function renderRouter(
 
   const hasErrorPage = Boolean(routes.special[RoutableFileTypes.Error]);
   const hasNotFoundPage = Boolean(routes.special[RoutableFileTypes.NotFound]);
-
-  writer.writeLines(`// @marko/run/router`);
 
   const imports = writer.branch("imports");
 
@@ -704,10 +686,6 @@ export function renderMiddleware(
   rootDir: string,
 ): string {
   const writer = createStringWriter();
-  writer.writeLines(
-    `// ${virtualFilePrefix}/${markoRunFilePrefix}middleware.js`,
-  );
-
   const imports = writer.branch("imports");
   imports.writeLines(
     `import { normalize } from "${virtualFilePrefix}/runtime/internal";`,
@@ -736,10 +714,6 @@ function stripTsExtension(path: string) {
     }
   }
   return path;
-}
-
-function decodePath(path: string) {
-  return path; //decodeURIComponent(path.replace(/%2F/g, "%252f"));
 }
 
 export async function renderRouteTypeInfo(
@@ -812,7 +786,7 @@ export async function renderRouteTypeInfo(
       routeDefinition += " }";
     }
 
-    const pathType = `"${decodePath(route.path.path)}"`;
+    const pathType = `"${route.path.path}"`;
     routeType += routeType ? " | " + pathType : pathType;
     routesWriter.writeLines(`${pathType}: ${routeDefinition};`);
 

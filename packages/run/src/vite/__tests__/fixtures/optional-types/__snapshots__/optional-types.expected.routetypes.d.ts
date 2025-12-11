@@ -18,7 +18,7 @@ declare module "@marko/run" {
 	}> {}
 }
 
-declare module "../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.get" {
+declare module "../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = Run.Routes["/aaa/$aId" | "/aaa/$aId/bbb/$bId" | "/aaa/$aId/bbb/$bId/ccc/$cId" | "/aaa/$aId/ccc/$cId"];

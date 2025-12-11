@@ -45,9 +45,12 @@ export async function spawnServer(
     env: { ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` },
   });
 
-  const close = () => {
+  const close = async () => {
     proc.unref();
     proc.kill();
+    if (!(await waitForExit(proc, 500))) {
+      proc.kill("SIGKILL");
+    }
   };
 
   try {
@@ -106,6 +109,17 @@ export async function spawnServerWorker(
     cluster.settings.exec = originalExec;
     cluster.settings.execArgv = originalArgs;
   }
+}
+
+async function waitForExit(proc: ChildProcess, wait: number = 0) {
+  if (proc.exitCode !== null) return;
+
+  return await new Promise<number | null>((resolve) => {
+    (proc.once("exit", resolve), proc.once("close", resolve));
+    if (wait) {
+      setTimeout(resolve, wait, null);
+    }
+  });
 }
 
 export async function waitForError(

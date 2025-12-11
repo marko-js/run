@@ -1,25 +1,32 @@
+import { sep } from "path";
+
 import type { TestFileTree } from "../../routes/walk";
 
-export function createDirectory(content: string): TestFileTree {
+export function createDirectory(
+  content: string,
+  baseDir: string = "",
+  onData?: (file: string, data: string) => void,
+): TestFileTree {
   const matchLine = /(.*)\r?\n?/g;
-
-  let current: TestFileTree = ["", []];
-  const stack = [current];
 
   let match = matchLine.exec(content);
   let lineNo = 1;
   let indent: number | undefined;
+  let current: TestFileTree = [baseDir, []];
+  const stack = [current];
+  const dirStack = [baseDir];
 
   while (match && match.index < content.length) {
     const line = match[1]
       .replace(/\t/, "  ")
-      .match(/^(\s*)([/]?)([^\s/].*)\s*/);
+      .match(/^(\s*)([/]?)([^\s/]\S*)(.*)?$/);
     if (line) {
       indent ??= line[1].length;
 
       const depth = Math.ceil((line[1].length - indent) / 2) + 1;
       const isDir = line[2] === "/";
-      const name = line[3];
+      const name = line[3]?.trim();
+      const data = line[4]?.trim();
 
       if (depth > stack.length || depth < 0) {
         throw new Error(
@@ -27,6 +34,7 @@ export function createDirectory(content: string): TestFileTree {
         );
       } else if (depth < stack.length) {
         stack.length = depth;
+        dirStack.length = depth;
         current = stack[depth - 1];
       }
 
@@ -36,8 +44,12 @@ export function createDirectory(content: string): TestFileTree {
           current[1].push(dir);
         }
         stack.push(dir);
+        dirStack.push(name);
         current = dir;
       } else {
+        if (onData && data) {
+          onData(`${dirStack.join(sep)}/${name}`, data);
+        }
         current[1].push(name);
       }
     }

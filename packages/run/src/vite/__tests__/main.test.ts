@@ -3,6 +3,7 @@ import mochaSnap from "mocha-snap";
 import path from "path";
 import url from "url";
 
+import type { RoutableFile } from "../../../dist/vite";
 import { prepareError } from "../../adapter/utils";
 import {
   renderMiddleware,
@@ -36,6 +37,13 @@ describe("router codegen", () => {
       const typesDir = path.join(dir, ".marko-run");
       const entryFilesDir = path.join(dir, "dist", ".marko-run");
       const sources: RouteSource[] = [];
+      const jsonData = new Map<string, Record<string, unknown>>();
+
+      function getFileData<T extends Record<string, unknown>>(
+        file: RoutableFile,
+      ) {
+        return jsonData.get(file.filePath) as T;
+      }
 
       for (const file of await fs.promises.readdir(dir, {
         recursive: false,
@@ -46,10 +54,12 @@ describe("router codegen", () => {
           if (match) {
             const filename = path.join(dir, file.name);
             const src = await fs.promises.readFile(filename, "utf-8");
-            // Use this if you want to psuedo test on windows locally.
-            // const src = (await fs.promises.readFile(filename, "utf-8")).replace(/\n/g, "\r\n");
             sources.push({
-              walker: createTestWalker(createDirectory(src), routesDir),
+              walker: createTestWalker(
+                createDirectory(src, routesDir, (filePath, data) =>
+                  jsonData.set(filePath, JSON.parse(data)),
+                ),
+              ),
               basePath: match[1],
             });
           }
@@ -96,15 +106,15 @@ describe("router codegen", () => {
             routesSnap += "---\n";
           }
           if (route.handler) {
-            const match = route.handler.name.match(
-              /\+handler(?:\.(.+))?\.[^.]+/,
+            const handlerData = getFileData<{ verbs: HttpVerb[] }>(
+              route.handler,
             );
-            const meta = match ? match[1] : "";
-            const verbs = (meta.toLowerCase().split("_") as HttpVerb[]).filter(
-              (v) => httpVerbs.includes(v),
+            const verbs = handlerData?.verbs.filter((v) =>
+              httpVerbs.includes(v),
             );
-            route.handler.verbs = verbs.length ? verbs : (httpVerbs as any);
+            route.handler.verbs = verbs?.length ? verbs : (httpVerbs as any);
           }
+
           routesSnap += `## Route \`\`${route.key}\`\`\n`;
           routesSnap += `### Path: \`\`${route.path.path}\`\`\n`;
 
@@ -112,7 +122,7 @@ describe("router codegen", () => {
             if (route.templateFilePath) {
               routesSnap += "### Template\n";
               routesSnap += "```marko\n";
-              routesSnap += renderRouteTemplate(route, dir);
+              routesSnap += renderRouteTemplate(route);
               routesSnap += "```\n";
             }
           }
@@ -128,7 +138,7 @@ describe("router codegen", () => {
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, dir);
+            routesSnap += renderRouteTemplate(route);
             routesSnap += "```\n";
           }
         }

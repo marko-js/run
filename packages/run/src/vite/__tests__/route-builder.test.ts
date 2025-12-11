@@ -10,7 +10,7 @@ type PathParams = Pick<PathInfo, "path" | "params">;
 function buildTestRoutes(content: string) {
   return buildRoutes(
     {
-      walker: createTestWalker(createDirectory(content), "src/routes"),
+      walker: createTestWalker(createDirectory(content, "src/routes")),
     },
     "/dist/.marko-run",
   );

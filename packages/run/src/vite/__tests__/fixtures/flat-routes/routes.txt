@@ -1,3 +1,3 @@
 foo,$id,$$rest,+page.marko
-foo,(a,b).(c,d)+handler.get_post.marko
+foo,(a,b).(c,d)+handler.marko { "verbs": ["get", "post"] }
 $id,a.d+middleware.marko

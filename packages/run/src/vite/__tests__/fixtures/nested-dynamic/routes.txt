@@ -1,7 +1,7 @@
 /foo
   /$fooId
     /bar
-      /$bar Id
+      /$bar_Id
         /baz
           /$1bazId
             /$qux-Id
