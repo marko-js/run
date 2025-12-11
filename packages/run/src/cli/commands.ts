@@ -248,6 +248,7 @@ export async function getViteConfig(
   dir: string,
   configFile?: string,
   bases: string[] = defaultConfigFileBases,
+  fallback: string = path.join(__dirname, "default.config.mjs"),
 ): Promise<string> {
   if (configFile) {
     const configFilePath = path.join(dir, configFile);
@@ -264,5 +265,5 @@ export async function getViteConfig(
     }
   }
 
-  return path.join(__dirname, "default.config.mjs");
+  return fallback;
 }

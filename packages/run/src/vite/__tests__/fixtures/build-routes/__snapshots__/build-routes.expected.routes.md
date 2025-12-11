@@ -2,7 +2,6 @@
 
 ## Middleware
 ```js
-// virtual:marko-run/__marko-run__middleware.js
 import { normalize } from "virtual:marko-run/runtime/internal";
 import middleware4 from "./src/routes/+middleware.ts";
 import middleware5 from "./src/routes/_protected/+middleware.ts";
@@ -20,7 +19,6 @@ export const mware13 = normalize(middleware13);
 ### Path: ``/``
 ### Template
 ```marko
-// ./dist/.marko-run/index.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Layout2 from "../../src/routes/_protected/_home/+layout.marko";
 import Page from "../../src/routes/_protected/_home/+page.marko";
@@ -33,7 +31,6 @@ import Page from "../../src/routes/_protected/_home/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__index.js
 import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import page from "./dist/.marko-run/index.marko";
@@ -54,7 +51,6 @@ export function head3(context) {
 ### Path: ``/new``
 ### Template
 ```marko
-// ./dist/.marko-run/new.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Layout2 from "../../src/routes/_protected/_home/+layout.marko";
 import Page from "../../src/routes/_protected/_home/new/+page.marko";
@@ -67,10 +63,9 @@ import Page from "../../src/routes/_protected/_home/new/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__new.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
-import { POST } from "./src/routes/_protected/_home/new/+handler.post.ts";
+import { POST } from "./src/routes/_protected/_home/new/+handler.ts";
 import page from "./dist/.marko-run/new.marko";
 export { default as meta4 } from "./src/routes/_protected/_home/new/+meta.json";
 
@@ -99,7 +94,6 @@ export function post4(context) {
 ### Path: ``/notes/$id``
 ### Template
 ```marko
-// ./dist/.marko-run/notes.$.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Layout2 from "../../src/routes/_protected/_home/+layout.marko";
 import Page from "../../src/routes/_protected/_home/notes/$id/+page.marko";
@@ -112,10 +106,9 @@ import Page from "../../src/routes/_protected/_home/notes/$id/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__notes.$.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__middleware.js";
-import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/+handler.put_post_delete.ts";
+import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/+handler.ts";
 import page from "./dist/.marko-run/notes.$.marko";
 
 const putHandler = normalize(PUT);
@@ -163,10 +156,9 @@ export function delete5(context) {
 ### Path: ``/notes/$id/comments``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__notes.$.comments.js
 import { normalize, call, noContent } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__middleware.js";
-import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/comments/+handler.put_post_delete.ts";
+import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/comments/+handler.ts";
 export { default as meta6 } from "./src/routes/_protected/_home/notes/$id/comments/+meta.ts";
 
 const putHandler = normalize(PUT);
@@ -202,10 +194,9 @@ export function delete6(context) {
 ### Path: ``/callback/oauth2``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__callback.oauth2.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
-import { GET } from "./src/routes/callback/oauth2/+handler.get.ts";
+import { GET } from "./src/routes/callback/oauth2/+handler.ts";
 
 const getHandler = normalize(GET);
 
@@ -223,7 +214,6 @@ export function head7(context) {
 ### Path: ``/my``
 ### Template
 ```marko
-// ./dist/.marko-run/my.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/my/+page.marko";
 
@@ -233,10 +223,9 @@ import Page from "../../src/routes/my/+page.marko";
 ```
 ### Handler
 ```js
-// virtual:marko-run__marko-run__my.js
 import { normalize, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
-import { GET, HEAD } from "./src/routes/my/+handler.get_head.ts";
+import { GET, HEAD } from "./src/routes/my/+handler.ts";
 import page from "./dist/.marko-run/my.marko";
 
 const getHandler = normalize(GET);
@@ -259,10 +248,9 @@ export function head8(context) {
 ### Path: ``/$$match``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__$$.js
 import { normalize, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
-import { GET } from "./src/routes/$$match/+handler.get.ts";
+import { GET } from "./src/routes/$$match/+handler.ts";
 
 const getHandler = normalize(GET);
 
@@ -280,7 +268,6 @@ export function head9(context) {
 ## Special `404`
 ### Template
 ```marko
-// ./dist/.marko-run/404.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+404.marko";
 
@@ -293,7 +280,6 @@ import Page from "../../src/routes/+404.marko";
 ## Special `500`
 ### Template
 ```marko
-// ./dist/.marko-run/500.marko
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+500.marko";
 

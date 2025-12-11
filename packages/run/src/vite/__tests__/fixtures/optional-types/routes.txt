@@ -1,5 +1,5 @@
 /aaa.$aId.(,bbb.$bId).(,ccc.$cId)
   +page.marko
-  +handler.get.ts
+  +handler.ts { "verbs": ["get"] }
 +layout.marko
 +middleware.ts

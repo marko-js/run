@@ -1,11 +1,9 @@
+import marko from "@marko/run/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  plugins: [marko()],
   server: {
-    port: 12345,
-    hmr: false
+    hmr: false,
   },
-  preview: {
-    port: 23456
-  }
 });

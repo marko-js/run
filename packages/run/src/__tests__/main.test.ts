@@ -140,6 +140,7 @@ after(async () => {
 });
 
 const FIXTURES = path.join(__dirname, "fixtures");
+const baseViteConfigFile = path.join(__dirname, "default.config.ts");
 
 for (const fixture of fs.readdirSync(FIXTURES)) {
   if (fixture.startsWith(".")) {
@@ -191,7 +192,12 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
       it("dev", async () => {
         environment("development");
 
-        const configFile = await cli.getViteConfig(dir);
+        const configFile = await cli.getViteConfig(
+          dir,
+          undefined,
+          undefined,
+          baseViteConfigFile,
+        );
 
         async function testBlock() {
           const server = await cli.dev(config.entry, dir, configFile);
@@ -208,7 +214,12 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
     if (!config.skip_preview) {
       it("preview", async () => {
-        const configFile = await cli.getViteConfig(dir);
+        const configFile = await cli.getViteConfig(
+          dir,
+          undefined,
+          undefined,
+          baseViteConfigFile,
+        );
 
         async function testBlock() {
           process.env.BROWSER = "none";
@@ -259,7 +270,7 @@ async function testPage(
         referer: referrerUrl?.href,
       }))!;
     });
-    await page.waitForLoadState("domcontentloaded");
+    // await page.waitForLoadState("domcontentloaded");
     let snapshot = `# Loading\n\n`;
     let prevHtml: string | undefined;
     const contentType = await stepContext.response?.headerValue("content-type");

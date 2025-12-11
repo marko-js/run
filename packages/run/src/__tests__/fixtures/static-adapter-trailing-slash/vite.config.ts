@@ -7,4 +7,7 @@ export default defineConfig({
     adapter: adapter(),
     trailingSlashes: "RedirectWith"
   })],
+  server: {
+    hmr: false
+  }
 });

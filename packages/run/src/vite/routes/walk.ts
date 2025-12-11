@@ -67,7 +67,7 @@ export function createFSWalker(dir: string): Walker {
 
 export type TestFileTree = [string, (string | TestFileTree)[]];
 
-export function createTestWalker(dir: TestFileTree, root: string): Walker {
+export function createTestWalker(dir: TestFileTree): Walker {
   return async function walkFS({
     onEnter,
     onFile,
@@ -105,6 +105,6 @@ export function createTestWalker(dir: TestFileTree, root: string): Walker {
       }
     }
 
-    await walk(dir, path.join(root, dir[0]), maxDepth);
+    await walk(dir, dir[0], maxDepth);
   };
 }

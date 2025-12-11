@@ -275,7 +275,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             });
             fs.writeFileSync(
               route.templateFilePath,
-              renderRouteTemplate(route, root),
+              renderRouteTemplate(route),
             );
           }
 
@@ -291,7 +291,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             });
             fs.writeFileSync(
               route.templateFilePath,
-              renderRouteTemplate(route, root),
+              renderRouteTemplate(route),
             );
           }
         }

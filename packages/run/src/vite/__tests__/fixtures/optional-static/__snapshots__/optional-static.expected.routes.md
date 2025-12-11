@@ -4,7 +4,6 @@
 ### Path: ``/``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__index.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -21,7 +20,6 @@ export function head1(context) {
 ### Path: ``/foo``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -38,7 +36,6 @@ export function head2(context) {
 ### Path: ``/foo/bar``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.bar.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -55,7 +52,6 @@ export function head3(context) {
 ### Path: ``/foo/bar/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.bar.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -72,7 +68,6 @@ export function head4(context) {
 ### Path: ``/foo/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__foo.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -89,7 +84,6 @@ export function head5(context) {
 ### Path: ``/bar``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__bar.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -106,7 +100,6 @@ export function head6(context) {
 ### Path: ``/bar/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__bar.baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 
@@ -123,7 +116,6 @@ export function head7(context) {
 ### Path: ``/baz``
 ### Handler
 ```js
-// virtual:marko-run__marko-run__baz.js
 import { stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./src/routes/foo,/bar,/,baz/+page.marko";
 

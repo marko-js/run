@@ -1,15 +1,15 @@
 /_protected
   /_home
     /new
-      +handler.post.ts
+      +handler.ts { "verbs": ["post"] }
       +page.marko
       +meta.json
     /notes
       /$id
         /comments
-          +handler.put_post_delete.ts
+          +handler.ts { "verbs": ["put", "post", "delete"] }
           +meta.ts
-        +handler.put_post_delete.ts
+        +handler.ts { "verbs": ["put", "post", "delete"] }
         +middleware.ts
         +page.marko
     +layout.marko
@@ -18,12 +18,12 @@
   +middleware.ts
 /callback
   /oauth2
-    +handler.get.ts
+    +handler.ts { "verbs": ["get"] }
 /my
-  +handler.get_head.ts
+  +handler.ts { "verbs": ["get", "head"] }
   +page.marko
 /$$match
-  +handler.get.ts
+  +handler.ts { "verbs": ["get"] }
 +404.marko
 +500.marko
 +layout.marko
