@@ -121,6 +121,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesRender: 0,
   };
 
+  async function loadModule(context: PluginContext, id: string) {
+    if ("transformRequest" in context.environment) {
+      await context.environment.transformRequest(id);
+      return context.getModuleInfo(id);
+    }
+    return await context.load({ id });
+  }
+
   async function getExportsFromFile(context: PluginContext, filePath: string) {
     if (devServer) {
       const result = await devServer.transformRequest(filePath, { ssr: false });
@@ -131,6 +139,20 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       resolveDependencies: false,
     });
     return result.exports || [];
+  }
+
+  let routeMarkoApiCache: Map<Route, string | undefined> | undefined;
+  async function getMarkoApiForRoute(context: PluginContext, route: Route) {
+    routeMarkoApiCache ??= new Map();
+    if (!routeMarkoApiCache.has(route)) {
+      const markoAPI =
+        route.templateFilePath &&
+        ((await loadModule(context, normalizePath(route.layouts[0].filePath)))
+          ?.meta?.markoAPI as string | undefined);
+      routeMarkoApiCache.set(route, markoAPI);
+      return markoAPI;
+    }
+    return routeMarkoApiCache.get(route);
   }
 
   async function writeTypesFile(routes: BuiltRoutes) {
@@ -275,7 +297,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             });
             fs.writeFileSync(
               route.templateFilePath,
-              renderRouteTemplate(route),
+              renderRouteTemplate(
+                route,
+                await getMarkoApiForRoute(context, route),
+              ),
             );
           }
 
@@ -291,7 +316,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             });
             fs.writeFileSync(
               route.templateFilePath,
-              renderRouteTemplate(route),
+              renderRouteTemplate(
+                route,
+                await getMarkoApiForRoute(context, route),
+              ),
             );
           }
         }
@@ -568,6 +596,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               ) {
                 buildVirtualFilesResult = undefined;
                 renderVirtualFilesResult = undefined;
+                routeMarkoApiCache = undefined;
 
                 const module = devServer.moduleGraph.getModuleById(filename);
                 const importers = module && getImporters(module, filename);
@@ -663,9 +692,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           await renderVirtualFiles(this);
         }
         if (virtualFiles.has(id)) {
-          const file = virtualFiles.get(id)!;
-
-          return file;
+          return virtualFiles.get(id)!;
         } else if (
           !id.startsWith(entryFilesDirPosix) &&
           /[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)
@@ -755,34 +782,6 @@ function mergeOutputOptions(
     ...existing,
   };
 }
-
-// async function getExportsFromFileBuild(
-//   context: PluginContext,
-//   filePath: string,
-// ) {
-//   const result = await context.load({
-//     id: filePath,
-//     resolveDependencies: false,
-//   });
-//   return result ? getExportIdentifiers(result.ast) : [];
-// }
-
-// async function getExportsFromFileDev(
-//   devServer: ViteDevServer,
-//   context: PluginContext,
-//   filePath: string,
-// ) {
-//   const result = await devServer.transformRequest(filePath, { ssr: true });
-//   // const x = await context._container.transform(filePath)
-//   if (result) {
-//     if (result.exports) {
-//       return result.exports;
-//     }
-//     const ast = context.parse(result.code);
-//     return getViteSSRExportIdentifiers(ast);
-//   }
-//   return [];
-// }
 
 async function globFileExists(root: string, pattern: string) {
   return (await glob(pattern, { root })).length > 0;
