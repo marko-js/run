@@ -1,3 +1,4 @@
 [build]
+base = "packages/run/src/__tests__/fixtures/netlify-adapter-edge"
 publish = "dist/public"
 edge_functions = "dist"

@@ -1,6 +1,5 @@
 import zlib from "node:zlib";
 
-import { Blob } from "buffer";
 import Table, { HorizontalAlignment } from "cli-table3";
 import format from "human-format";
 import kleur from "kleur";
@@ -184,7 +183,7 @@ function gzipSize(source: string | Uint8Array): number {
 }
 
 function byteSize(source: string | Uint8Array): number {
-  return new Blob([source as any]).size;
+  return new Blob([source as BlobPart]).size;
 }
 
 function computeChunkSize(
