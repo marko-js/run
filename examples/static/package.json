@@ -9,17 +9,16 @@
     "preview": "marko-run preview"
   },
   "dependencies": {
-    "marko": "^5.37.4"
+    "marko": "^5.38.2"
   },
   "devDependencies": {
-    "@marko/compiler": "^5.39.4",
     "@marko/run": "^0.9.3",
     "@marko/run-adapter-static": "^2.0.4",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.9.1",
-    "prettier": "^3.3.3",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.0"
+    "@types/node": "^25.0.1",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7"
   }
 }

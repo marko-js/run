@@ -48,7 +48,7 @@ export function createDirectory(
         current = dir;
       } else {
         if (onData && data) {
-          onData(`${dirStack.join(sep)}/${name}`, data);
+          onData(`${dirStack.join(sep)}${sep}${name}`, data);
         }
         current[1].push(name);
       }
