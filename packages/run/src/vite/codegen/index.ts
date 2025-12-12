@@ -34,7 +34,7 @@ function normalizedRelativePath(from: string, to: string): string {
   return relativePath.startsWith(".") ? relativePath : "./" + relativePath;
 }
 
-export function renderRouteTemplate(route: Route): string {
+export function renderRouteTemplate(route: Route, markoApi?: string): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
@@ -43,6 +43,9 @@ export function renderRouteTemplate(route: Route): string {
   }
 
   const writer = createStringWriter();
+  if (markoApi) {
+    writer.writeLines(`<!-- use ${markoApi} -->\n`);
+  }
   writer.branch("imports");
   writer.writeLines("");
   writeEntryTemplateTag(

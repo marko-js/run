@@ -52,7 +52,7 @@
     "husky": "^9.1.7",
     "jsdom": "^25.0.1",
     "lint-staged": "^15.2.11",
-    "marko": "^5.37.40",
+    "marko": "^5.38.2",
     "micromatch": "^4.0.8",
     "mocha": "^10.8.2",
     "mocha-snap": "^5.0.0",

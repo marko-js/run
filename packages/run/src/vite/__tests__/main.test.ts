@@ -120,9 +120,10 @@ describe("router codegen", () => {
 
           if (route.page) {
             if (route.templateFilePath) {
+              const layoutData = getFileData<{ api: string }>(route.layouts[0]);
               routesSnap += "### Template\n";
               routesSnap += "```marko\n";
-              routesSnap += renderRouteTemplate(route);
+              routesSnap += renderRouteTemplate(route, layoutData?.api);
               routesSnap += "```\n";
             }
           }
