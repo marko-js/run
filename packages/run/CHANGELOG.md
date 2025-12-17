@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.4
+
+### Patch Changes
+
+- 87c1807: Use Marko API of top layout for route entry files
+
 ## 0.9.3
 
 ### Patch Changes
