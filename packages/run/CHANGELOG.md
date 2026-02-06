@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.5
+
+### Patch Changes
+
+- e20eba4: Remove dependency on @babel/types
+
 ## 0.9.4
 
 ### Patch Changes
