@@ -99,10 +99,13 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   const writer = createStringWriter();
   const imports = writer.branch("imports");
-  const runtimeImports = [];
+  const runtimeImports: string[] = [];
 
   if (handler) {
-    runtimeImports.push("normalize");
+    runtimeImports.push("normalizeHandler");
+  }
+  if (meta) {
+    runtimeImports.push("normalizeMeta");
   }
   if (handler || middleware.length) {
     runtimeImports.push("call");
@@ -138,7 +141,9 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
     for (const verb of handler.verbs) {
       const importName = verb.toUpperCase();
       names.push(importName);
-      writer.writeLines(`const ${verb}Handler = normalize(${importName});`);
+      writer.writeLines(
+        `const ${verb}Handler = normalizeHandler(${importName});`,
+      );
     }
     imports.writeLines(
       `import { ${names.join(", ")} } from "${normalizedRelativePath(rootDir, handler.filePath)}";`,
@@ -151,8 +156,23 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
     );
   }
   if (meta) {
+    const metaName = `meta${index}`;
+    const metaVerbsExports = verbs
+      .map((verb) => {
+        const name =
+          verb === "head" && !handler?.verbs?.includes(verb)
+            ? "GET"
+            : verb.toUpperCase();
+        return `${name}: ${verb}${index}_meta`;
+      })
+      .join(", ");
+
+    writer.writeLines("");
     imports.writeLines(
-      `export { default as meta${index} } from "${normalizedRelativePath(rootDir, meta.filePath)}";`,
+      `import ${metaName} from "${normalizedRelativePath(rootDir, meta.filePath)}";`,
+    );
+    writer.writeLines(
+      `export const { ${metaVerbsExports} } = normalizeMeta(${metaName});`,
     );
   }
 
@@ -299,11 +319,16 @@ export function renderRouter(
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
-    const names = verbs.map((verb) => `${verb}${route.index}`);
-    route.meta && names.push(`meta${route.index}`);
-
+    const routeImports: string[] = [];
+    for (const verb of verbs) {
+      const verbName = `${verb}${route.index}`;
+      routeImports.push(verbName);
+      if (route.meta) {
+        routeImports.push(`${verbName}_meta`);
+      }
+    }
     imports.writeLines(
-      `import { ${names.join(", ")} } from "${virtualFilePrefix}/${getRouteVirtualFileName(route)}";`,
+      `import { ${routeImports.join(", ")} } from "${virtualFilePrefix}/${getRouteVirtualFileName(route)}";`,
     );
   }
   for (const route of Object.values(routes.special) as Route[]) {
@@ -680,7 +705,7 @@ function renderMatch(
 ) {
   const handler = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
-  const meta = route.meta ? `meta${route.index}` : "{}";
+  const meta = route.meta ? `${verb}${route.index}_meta` : "{}";
   return `{ handler: ${handler}, params: ${params}, meta: ${meta}, path: '${path.path}' }`;
 }
 
@@ -691,7 +716,7 @@ export function renderMiddleware(
   const writer = createStringWriter();
   const imports = writer.branch("imports");
   imports.writeLines(
-    `import { normalize } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { normalizeHandler } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
   writer.writeLines("");
@@ -701,7 +726,9 @@ export function renderMiddleware(
     imports.writeLines(
       `import ${importName} from "${normalizedRelativePath(rootDir, filePath)}";`,
     );
-    writer.writeLines(`export const mware${id} = normalize(${importName});`);
+    writer.writeLines(
+      `export const mware${id} = normalizeHandler(${importName});`,
+    );
   }
 
   imports.join();
@@ -900,7 +927,12 @@ function writeModuleDeclaration(
     export type Context = Run.MultiRouteContext<Route>${
       isMarko ? " & Marko.Global" : ""
     };
-    export type Handler = Run.HandlerLike<Route>;
+    export type Handler = Run.HandlerLike<Route>;`);
+    for (const verb of httpVerbs) {
+      writer.write(`
+    export type ${verb.toUpperCase()} = Run.HandlerLike<Route, "${verb.toUpperCase()}">;`);
+    }
+    writer.write(`
     /** @deprecated use \`((context, next) => { ... }) satisfies MarkoRun.Handler\` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }`);

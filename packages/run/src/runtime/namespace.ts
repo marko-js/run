@@ -8,4 +8,5 @@ export type {
   PostableHref,
   PostablePath,
   PostPaths,
+  Verb,
 } from "./types";

@@ -2,13 +2,13 @@ import { InlineConfig } from "vite";
 
 import { NotHandled, NotMatched } from "./namespace";
 import type {
-  AnyContext,
-  AnyHandler,
   AnyRoute,
   GetableHref,
   GetablePath,
   GetPaths,
+  HandlerLike,
   HandlerTypeFn,
+  MultiRouteContext,
   Platform,
   PostableHref,
   PostablePath,
@@ -18,26 +18,32 @@ import type {
 
 declare global {
   var __marko_run__: RuntimeModule;
-
   var __marko_run_vite_config__: InlineConfig | undefined;
 
   namespace MarkoRun {
-    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
-    export const route: HandlerTypeFn;
     export {
-      AnyContext as Context,
       GetableHref,
       GetablePath,
       GetPaths,
-      AnyHandler as Handler,
       NotHandled,
       NotMatched,
       Platform,
       PostableHref,
       PostablePath,
       PostPaths,
-      AnyRoute as Route,
     };
+    export type Route = AnyRoute;
+    export type Context = MultiRouteContext<AnyRoute>;
+    export type Handler = HandlerLike<AnyRoute>;
+    export type GET = HandlerLike<AnyRoute, "GET">;
+    export type HEAD = HandlerLike<AnyRoute, "HEAD">;
+    export type POST = HandlerLike<AnyRoute, "POST">;
+    export type PUT = HandlerLike<AnyRoute, "PUT">;
+    export type DELETE = HandlerLike<AnyRoute, "DELETE">;
+    export type PATCH = HandlerLike<AnyRoute, "PATCH">;
+    export type OPTIONS = HandlerLike<AnyRoute, "OPTIONS">;
+    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
+    export const route: HandlerTypeFn;
   }
 }
 
@@ -61,4 +67,5 @@ export type {
   Routes,
   RouteWithHandler,
   RuntimeModule,
+  Verb,
 } from "./types";

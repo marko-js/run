@@ -1,0 +1,15 @@
+{
+  "pageTitle": "base-title",
+  "otherProp": "other",
+  "get": {
+    "prop": "value"
+  },
+  "GET": {
+    "pageTitle": "get-title",
+    "getOnly": true
+  },
+  "POST": {
+    "pageTitle": "post-title",
+    "postOnly": true
+  }
+}

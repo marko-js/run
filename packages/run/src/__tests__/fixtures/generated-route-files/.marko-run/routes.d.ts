@@ -26,6 +26,13 @@ declare module "../src/routes/_index/+page.marko" {
     export type Route = Run.Routes["/"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
@@ -37,6 +44,13 @@ declare module "../src/routes/_index/component/+page.marko" {
     export type Route = Run.Routes["/component"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
@@ -48,6 +62,13 @@ declare module "../src/routes/a.(,b,c),d.e/+page.marko" {
     export type Route = Run.Routes["/a" | "/a/b" | "/a/c" | "/d/e"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
@@ -60,6 +81,13 @@ declare module "../src/routes/+layout.marko" {
     export type Route = Run.Routes["/" | "/component" | "/a" | "/a/b" | "/a/c" | "/d/e"];
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
@@ -71,6 +99,13 @@ declare module "../src/routes/+404.marko" {
     export type Route = Run.Route;
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }
@@ -85,6 +120,13 @@ declare module "../src/routes/+500.marko" {
     export type Route = globalThis.MarkoRun.Route;
     export type Context = Run.MultiRouteContext<Route> & Marko.Global;
     export type Handler = Run.HandlerLike<Route>;
+    export type GET = Run.HandlerLike<Route, "GET">;
+    export type HEAD = Run.HandlerLike<Route, "HEAD">;
+    export type POST = Run.HandlerLike<Route, "POST">;
+    export type PUT = Run.HandlerLike<Route, "PUT">;
+    export type DELETE = Run.HandlerLike<Route, "DELETE">;
+    export type PATCH = Run.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
     /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
     export const route: Run.HandlerTypeFn<Route>;
   }

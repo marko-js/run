@@ -1,10 +1,18 @@
 /// <reference types="marko" />
 
-export type Awaitable<T> = Promise<T> | T;
+import type { HttpVerb } from "../vite";
+
 type OneOrMany<T> = T | T[];
 type NoParams = {};
 type AllKeys<T> = T extends T ? keyof T : never;
 type Simplify<T> = T extends unknown ? { [K in keyof T]: T[K] } : never;
+type IsObject<T> = T extends object
+  ? T extends any[]
+    ? 0
+    : T extends (...args: any[]) => any
+      ? 0
+      : 1
+  : 0;
 type SuperSet<T, U extends T> = T & {
   [K in AllKeys<U> as K extends keyof T ? never : K]?: never;
 };
@@ -12,14 +20,22 @@ type SuperSets<T, U extends T, K extends keyof T> = Omit<T, K> & {
   [P in K]: Simplify<SuperSet<T[P], U[P]>>;
 };
 
+export type Awaitable<T> = Promise<T> | T;
+
+export type Verb = Uppercase<HttpVerb>;
+
 export interface Platform {}
 
-export interface Context<TRoute extends Route = AnyRoute> {
+export interface Context<
+  TRoute extends Route = AnyRoute,
+  TVerb extends Verb = Verb,
+> {
   readonly url: URL;
   readonly request: Request;
+  readonly method: TVerb;
   readonly route: TRoute["path"];
   readonly params: TRoute["params"];
-  readonly meta: TRoute["meta"];
+  readonly meta: NormalizedMeta<TRoute["meta"], TVerb>;
   readonly platform: Platform;
   readonly serializedGlobals: Record<string, boolean>;
   readonly parent: Context | undefined;
@@ -38,18 +54,22 @@ export interface Context<TRoute extends Route = AnyRoute> {
 
 export type MultiRouteContext<
   TRoute extends Route,
+  TVerb extends Verb = Verb,
   _Preserved extends TRoute = TRoute,
 > = TRoute extends any
-  ? Context<Simplify<SuperSets<TRoute, _Preserved, "params">>>
+  ? TVerb extends any
+    ? Context<Simplify<SuperSets<TRoute, _Preserved, "params">>, TVerb>
+    : never
   : never;
 
 export type ParamsObject = Record<string, string>;
 export type InputObject = Record<PropertyKey, any>;
 export type NextFunction = () => Awaitable<Response>;
 
-export type HandlerLike<TRoute extends Route = AnyRoute> = Awaitable<
-  OneOrMany<RouteHandler<TRoute>>
->;
+export type HandlerLike<
+  TRoute extends Route = AnyRoute,
+  TVerb extends Verb = Verb,
+> = Awaitable<OneOrMany<RouteHandler<TRoute, TVerb>>>;
 
 export type RouteHandlerResult =
   | Response
@@ -58,14 +78,17 @@ export type RouteHandlerResult =
   | null
   | void;
 
-export type RouteHandler<TRoute extends Route = AnyRoute> = (
-  context: MultiRouteContext<TRoute>,
+export type RouteHandler<
+  TRoute extends Route = AnyRoute,
+  TVerb extends Verb = Verb,
+> = (
+  context: MultiRouteContext<TRoute, TVerb>,
   next: NextFunction,
 ) => Awaitable<RouteHandlerResult>;
 
 export interface Route<
   Params extends ParamsObject = ParamsObject,
-  Meta = unknown,
+  Meta = any,
   Path extends string = string,
 > {
   path: Path;
@@ -77,17 +100,17 @@ type DefineRoutes<T extends Record<string, { meta?: unknown }>> = {
   [K in keyof T]: K extends string
     ? T[K] extends { meta: infer Meta }
       ? Route<PathParams<K>, Meta, K>
-      : Route<PathParams<K>, unknown, K>
+      : Route<PathParams<K>, any, K>
     : never;
 };
 
 type DefinePaths<
   T extends Record<string, { verb: unknown }>,
-  Verb extends "get" | "post",
+  TVerb extends "get" | "post",
 > = {
   [K in keyof T]: K extends string
     ? T[K] extends { verb: infer V }
-      ? V extends Verb
+      ? V extends TVerb
         ? K
         : never
       : never
@@ -209,11 +232,23 @@ type ValidateHref<
       ? `${ValidatePath<Paths, P>}#${H}`
       : ValidatePath<Paths, Href>;
 
-export interface AppData {}
+type NormalizedMetaObject<T, TVerb extends Verb = Verb> =
+  IsObject<T> extends 1
+    ? TVerb extends keyof T
+      ? Simplify<Omit<T, Verb | keyof T[TVerb]> & T[TVerb]>
+      : Simplify<Omit<T, Verb>>
+    : never;
 
-type HasAppData = AppData extends { routes: any } ? 1 : 0;
-type AnyParams = 0 extends HasAppData ? ParamsObject : never;
-type AnyMeta = 0 extends HasAppData ? unknown : never;
+export type NormalizedMeta<T, TVerb extends Verb = Verb> =
+  IsObject<T> extends 1
+    ? { [K in TVerb]: NormalizedMetaObject<T, K> }[TVerb]
+    : T;
+
+export type NormalizedMetaLookup<T> = {
+  [K in Verb]: IsObject<T> extends 1 ? NormalizedMetaObject<T, K> : T;
+};
+
+export interface AppData {}
 
 export type Routes = AppData extends { routes: infer T }
   ? T
@@ -221,27 +256,19 @@ export type Routes = AppData extends { routes: infer T }
 
 export type AnyRoute = Routes[keyof Routes];
 
-export type AnyContext = MultiRouteContext<AnyRoute>;
-
-export type AnyHandler<
-  Params extends AnyParams = AnyParams,
-  Meta extends AnyMeta = AnyMeta,
-> = 0 extends HasAppData
-  ? HandlerLike<Route<Params, Meta>>
-  : HandlerLike<AnyRoute>;
-
-export type HandlerTypeFn<TRoute extends Route = AnyRoute> =
-  0 extends HasAppData
-    ? <
-        Params extends ParamsObject = ParamsObject,
-        Meta = unknown,
-        T extends HandlerLike<Route<Params, Meta>> = HandlerLike<
-          Route<Params, Meta>
-        >,
-      >(
-        handler: T,
-      ) => T
-    : <T extends HandlerLike<TRoute>>(handler: T) => T;
+export type HandlerTypeFn<TRoute extends Route = AnyRoute> = AppData extends {
+  routes: any;
+}
+  ? <
+      Params extends ParamsObject = ParamsObject,
+      Meta = any,
+      T extends HandlerLike<Route<Params, Meta>> = HandlerLike<
+        Route<Params, Meta>
+      >,
+    >(
+      handler: T,
+    ) => T
+  : <T extends HandlerLike<TRoute>>(handler: T) => T;
 
 type DefaultAPI = keyof Exclude<
   Marko.Renderable,

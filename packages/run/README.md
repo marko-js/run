@@ -133,7 +133,7 @@ Typically, these will be `.js` or `.ts` files depending on your project. Like pa
 <details>
   <summary>More Info</summary>
   
-  - Valid exports are functions named `GET`, `POST`, `PUT`, or `DELETE`.
+  - Valid exports are functions named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
   - Exports can be one of the following
     - Handler function (see below)
     - Array of handler functions - will be composed by calling them in order
@@ -207,7 +207,48 @@ These files are like layouts, but for handlers. Middleware files are called befo
 
 #### `+meta.*`
 
-These files represent static metadata to attach to the route. This metadata will be automatically provided on the route `context` when invoking a route.
+These files represent static metadata to attach to the route. This metadata will be automatically provided on the route `context` when invoking a route. When the file is a non-JSON file, the default export will be used.
+
+Meta data supports verb-specific overrides when it is an object (eg. a JSON file or `export default { ... }`). Top-level keys that match one of `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH` or `OPTIONS` will be merged in shallowly to the base object and override any existing values for routes of the method. These keys will also be exlcuded from the base object and ignored if not an object. For example given a `+meta.json` file:
+
+```json
+{
+  "name": "Default Name",
+  "POST": {
+    "name": "Post Name",
+    "postOnlyData": "foo"
+  },
+  "GET": {
+    "name": "Get Name"
+  },
+  "PUT": "Ignored"
+}
+```
+
+when making a POST request the value of `context.meta` will be
+
+```js
+{
+  name: "Post Name",
+  portOnlyData: "foo"
+}
+```
+
+and the value for a GET request will be
+
+```js
+{
+  name: "Get Name";
+}
+```
+
+all other methods, including PUT, will be the base object
+
+```js
+{
+  name: "Default Name";
+}
+```
 
 ### Special Files
 
@@ -650,6 +691,20 @@ express()
 `marko/run` provides a global namespace `MarkoRun` with the following types:
 
 **`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
+
+**`MarkoRun.GET`** - Handler type narrowed to GET requests
+
+**`MarkoRun.HEAD`** - Handler type narrowed to HEAD requests
+
+**`MarkoRun.POST`** - Handler type narrowed to POST requests
+
+**`MarkoRun.PUT`** - Handler type narrowed to PUT requests
+
+**`MarkoRun.DELETE`** - Handler type narrowed to DELETE requests
+
+**`MarkoRun.PATCH`** - Handler type narrowed to PATCH requests
+
+**`MarkoRun.OPTIONS`** - Handler type narrowed to OPTIONS requests
 
 **`MarkoRun.Route`** - Type of the route's params and metadata
 
