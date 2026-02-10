@@ -1,0 +1,11 @@
+export default {
+  pageTitle: "base-title",
+  otherProp: "other",
+  get: {
+    prop: "value"
+  },
+  POST: {
+    pageTitle: "post-title",
+    otherProp: "other",
+  }
+}

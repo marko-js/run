@@ -1,0 +1,8 @@
+/foo
+  /bar
+    +handler.ts  { "verbs": ["put", "post", "delete"] }
+    +meta.ts
+  /baz
+    +handler.ts  { "verbs": ["put", "post", "delete"] }
+    +page.marko
+    +meta.json

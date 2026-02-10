@@ -9,7 +9,9 @@ import type {
   Platform,
   RouteHandler,
   RouteHandlerResult,
+  Verb,
 } from "./types";
+export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
   "marko-run not handled",
@@ -87,6 +89,7 @@ export function createContext<TRoute extends AnyRoute>(
   }
   return {
     request,
+    method: request.method as Verb,
     url,
     platform,
     meta,
@@ -106,7 +109,7 @@ export function createContext<TRoute extends AnyRoute>(
         request = new Request(url, init);
       }
 
-      parentContextLookup.set(request, this);
+      parentContextLookup.set(request, this as any);
       return (
         (await globalThis.__marko_run__.fetch(request, this.platform)) ||
         new Response(null, { status: 404 })
@@ -219,7 +222,7 @@ export function compose(handlers: RouteHandler[]): RouteHandler {
   };
 }
 
-export function normalize(
+export function normalizeHandler(
   obj: RouteHandler | RouteHandler[] | Promise<RouteHandler | RouteHandler[]>,
 ): RouteHandler {
   if (typeof obj === "function") {

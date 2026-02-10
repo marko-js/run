@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
 import { get3, head3 } from "virtual:marko-run/__marko-run__index.js";
-import { get4, head4, post4, meta4 } from "virtual:marko-run/__marko-run__new.js";
+import { get4, get4_meta, head4, head4_meta, post4, post4_meta } from "virtual:marko-run/__marko-run__new.js";
 import { get5, head5, post5, put5, delete5 } from "virtual:marko-run/__marko-run__notes.$.js";
-import { post6, put6, delete6, meta6 } from "virtual:marko-run/__marko-run__notes.$.comments.js";
+import { post6, post6_meta, put6, put6_meta, delete6, delete6_meta } from "virtual:marko-run/__marko-run__notes.$.comments.js";
 import { get7, head7 } from "virtual:marko-run/__marko-run__callback.oauth2.js";
 import { get8, head8 } from "virtual:marko-run/__marko-run__my.js";
 import { get9, head9 } from "virtual:marko-run/__marko-run__$$.js";
@@ -35,7 +35,7 @@ function match_internal(method, pathname) {
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'new': return { handler: get4, params: {}, meta: meta4, path: '/new' };
+					case 'new': return { handler: get4, params: {}, meta: get4_meta, path: '/new' };
 					case 'my': return { handler: get8, params: {}, meta: {}, path: '/my' };
 				}
 			} else {
@@ -63,7 +63,7 @@ function match_internal(method, pathname) {
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'new': return { handler: head4, params: {}, meta: meta4, path: '/new' };
+					case 'new': return { handler: head4, params: {}, meta: head4_meta, path: '/new' };
 					case 'my': return { handler: head8, params: {}, meta: {}, path: '/my' };
 				}
 			} else {
@@ -90,7 +90,7 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len) === 'new') return { handler: post4, params: {}, meta: meta4, path: '/new' };
+					if (pathname.slice(1, i1 ? -1 : len) === 'new') return { handler: post4, params: {}, meta: post4_meta, path: '/new' };
 				} else {
 					if (pathname.slice(1, i1 - 1) === 'notes') {
 						const i2 = pathname.indexOf('/', 7) + 1;
@@ -102,7 +102,7 @@ function match_internal(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: post6, params: { id: s2 }, meta: meta6, path: '/notes/$id/comments' };
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: post6, params: { id: s2 }, meta: post6_meta, path: '/notes/$id/comments' };
 								}
 							}
 						}
@@ -126,7 +126,7 @@ function match_internal(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: put6, params: { id: s2 }, meta: meta6, path: '/notes/$id/comments' };
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: put6, params: { id: s2 }, meta: put6_meta, path: '/notes/$id/comments' };
 								}
 							}
 						}
@@ -150,7 +150,7 @@ function match_internal(method, pathname) {
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: delete6, params: { id: s2 }, meta: meta6, path: '/notes/$id/comments' };
+									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: delete6, params: { id: s2 }, meta: delete6_meta, path: '/notes/$id/comments' };
 								}
 							}
 						}

@@ -14,12 +14,13 @@ export type {
   Route,
   RouteGenerationData,
 } from "./types";
-export type { SpawnedServer } from "./utils/server";
+export { getMetaDataForVerb } from "./utils/meta-data";
 export {
   getAvailablePort,
   isPortInUse,
   loadEnv,
   parseEnv,
+  type SpawnedServer,
   spawnServer,
   spawnServerWorker,
 } from "./utils/server";
