@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.6
+
+### Patch Changes
+
+- 5b6c12f: Support verb-specific overrides for JSON and object meta data
+
 ## 0.9.5
 
 ### Patch Changes
