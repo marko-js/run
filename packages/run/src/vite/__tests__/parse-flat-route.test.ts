@@ -101,7 +101,7 @@ describe("parse-flat-route", () => {
     );
   });
 
-  it("should thow for ambiguous hoisting", () => {
+  it("should throw for ambiguous hoisting", () => {
     assert.throws(
       () => parseFlatRoute("(a,).(,a)"),
       (err: Error) => err.message.startsWith("Invalid route pattern"),

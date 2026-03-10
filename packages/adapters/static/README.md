@@ -1,7 +1,7 @@
 <h1 align="center">
   <!-- Logo -->
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
     <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
   </picture>
@@ -12,7 +12,7 @@
 
 Preview and deploy [@marko/run](../serve/README.md) apps as static files
 
-## Intallation
+## Installation
 
 ```sh
 npm install @marko/run-adapter-static

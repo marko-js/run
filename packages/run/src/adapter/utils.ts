@@ -1,11 +1,12 @@
 import kleur from "kleur";
-import supporsColor from "supports-color";
+import supportsColor from "supports-color";
 import type { Rollup } from "vite";
 
 type RollupError = Rollup.RollupError;
 
 function stripAnsi(string: string) {
   return string.replace(
+    /* cspell:disable-next-line */
     /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
     "",
   );
@@ -31,7 +32,7 @@ export function prepareError(err: Error | RollupError) {
 }
 
 export function logInfoBox(address: string, explorer?: string) {
-  const color = !!supporsColor.stdout;
+  const color = !!supportsColor.stdout;
 
   let message = kleur.bold("Marko Run");
   if (process.env.npm_package_version !== "") {

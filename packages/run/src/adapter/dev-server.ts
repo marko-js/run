@@ -25,7 +25,7 @@ export interface MarkoRunDev {
   readonly devServers: ReadonlySet<ViteDevServer>;
   addDevServer(devServer: ViteDevServer): void;
   clear(): void;
-  onClient(res: ServerResponse, callaback: (ws: WebSocket) => void): void;
+  onClient(res: ServerResponse, callback: (ws: WebSocket) => void): void;
 }
 
 declare global {

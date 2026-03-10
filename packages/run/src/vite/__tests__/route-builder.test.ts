@@ -115,7 +115,7 @@ describe("route-builder", () => {
     );
   });
 
-  it("should work for optional segements", async () => {
+  it("should work for optional segments", async () => {
     await fixture(
       `
         /a,b
@@ -130,7 +130,7 @@ describe("route-builder", () => {
     );
   });
 
-  it("should work for optional dynamic segements", async () => {
+  it("should work for optional dynamic segments", async () => {
     await fixture(
       `
         /$foo,

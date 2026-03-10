@@ -78,8 +78,8 @@ export default function adapter(): Adapter {
           );
 
           nextWorker
-            .on("message", (messsage) => {
-              if (messsage === "restart") {
+            .on("message", (message) => {
+              if (message === "restart") {
                 start();
               }
             })

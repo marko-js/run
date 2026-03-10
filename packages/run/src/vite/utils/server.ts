@@ -150,7 +150,7 @@ export async function waitForServer(
       await sleep(100);
     } else {
       throw new Error(
-        `Timeout while wating for server to start on port "${port}".`,
+        `Timeout while waiting for server to start on port "${port}".`,
       );
     }
   }

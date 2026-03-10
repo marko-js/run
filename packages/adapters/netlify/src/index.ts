@@ -146,7 +146,7 @@ function assertNetlifyCLI() {
     execSync("netlify --version");
   } catch (error) {
     console.warn(
-      `Netlfiy CLI not found. Please install it globally with \`npm install -g netlify-cli\``,
+      `Netlify CLI not found. Please install it globally with \`npm install -g netlify-cli\``,
     );
     process.exit(1);
   }
