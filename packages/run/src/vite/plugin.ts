@@ -813,12 +813,12 @@ export async function resolveAdapter(
   }
   const pkg = await getPackageData(root);
   if (pkg) {
-    let dependecies = pkg.dependencies ? Object.keys(pkg.dependencies) : [];
+    let dependencies = pkg.dependencies ? Object.keys(pkg.dependencies) : [];
     if (pkg.devDependencies) {
-      dependecies = dependecies.concat(Object.keys(pkg.devDependencies));
+      dependencies = dependencies.concat(Object.keys(pkg.devDependencies));
     }
 
-    for (const name of dependecies) {
+    for (const name of dependencies) {
       if (
         name.startsWith("@marko/run-adapter") ||
         name.indexOf("marko-run-adapter") !== -1
@@ -827,7 +827,7 @@ export async function resolveAdapter(
           const module = await import(/* @vite-ignore */ name);
           log &&
             debug(
-              `Using adapter ${name} listed in your package.json dependecies`,
+              `Using adapter ${name} listed in your package.json dependencies`,
             );
           return module.default();
         } catch (err) {

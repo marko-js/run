@@ -1,6 +1,6 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
     <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
   </picture>
@@ -102,7 +102,7 @@ export default defineConfig({
 });
 ```
 
-### Routeable Files
+### Routable Files
 
 The router only recognizes certain filenames which are all prefixed with `+` ([Why?](#What-about-markoserve)). The following filenames will be discovered in any directory inside your application’s [routes directory](#routes-directory).
 
@@ -209,7 +209,7 @@ These files are like layouts, but for handlers. Middleware files are called befo
 
 These files represent static metadata to attach to the route. This metadata will be automatically provided on the route `context` when invoking a route. When the file is a non-JSON file, the default export will be used.
 
-Meta data supports verb-specific overrides when it is an object (eg. a JSON file or `export default { ... }`). Top-level keys that match one of `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH` or `OPTIONS` will be merged in shallowly to the base object and override any existing values for routes of the method. These keys will also be exlcuded from the base object and ignored if not an object. For example given a `+meta.json` file:
+Meta data supports verb-specific overrides when it is an object (eg. a JSON file or `export default { ... }`). Top-level keys that match one of `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH` or `OPTIONS` will be merged in shallowly to the base object and override any existing values for routes of the method. These keys will also be excluded from the base object and ignored if not an object. For example given a `+meta.json` file:
 
 ```json
 {
@@ -363,9 +363,9 @@ Within the [routes directory](#routes-directory), the directory structure determ
 
 ### Flat Routes
 
-Flat routes let you define paths without needing additional folders. Instead the folder structure can be defined either in the file or folder name. This allows you to decouple your routes from your folder structure or co-locate them as needed. To define a flat route, use periods (`.`) to deliniate each path segment. This behaves exacly like creating a new folder and each segment will be parsed using the rules described above for static, dynamic and pathless routes.
+Flat routes let you define paths without needing additional folders. Instead the folder structure can be defined either in the file or folder name. This allows you to decouple your routes from your folder structure or co-locate them as needed. To define a flat route, use periods (`.`) to delineate each path segment. This behaves exactly like creating a new folder and each segment will be parsed using the rules described above for static, dynamic and pathless routes.
 
-Flat routes syntax can be used for both directories and routable files (eg. pages, handlers, middleware, etc.). For these files, anything preceeding the plus (`+`) will be treated as the flat route.
+Flat routes syntax can be used for both directories and routable files (eg. pages, handlers, middleware, etc.). For these files, anything preceding the plus (`+`) will be treated as the flat route.
 
 For example to define a page at `/projects/$projectId/members` with a root layout and a project layout:
 
@@ -412,7 +412,7 @@ routes/
 
 ### Multiple Paths, Groups and Optional Segments
 
-Along with descibing multiple segements, flat route syntax supports defining routes that match more than one path and segments that are optional. To describe a route that matches multiple paths, use a comma (`,`) and define each route.
+Along with describing multiple segments, flat route syntax supports defining routes that match more than one path and segments that are optional. To describe a route that matches multiple paths, use a comma (`,`) and define each route.
 
 For example the following page matches `/projects/$projectId/members` and `/projects/$projectId/people`
 
@@ -438,7 +438,7 @@ routes/
 
 This is a simple example of grouping but you can nest groups and make them as complicated as you want.
 
-The last concept is **optionallity**. By introducing an empty segment or pathless segment along with another value you can make that segment optional. For example, If we want a page that matches `/projects` and `/projects/home`, you can create a flat route that optionally matches `home`
+The last concept is **optionality**. By introducing an empty segment or pathless segment along with another value you can make that segment optional. For example, If we want a page that matches `/projects` and `/projects/home`, you can create a flat route that optionally matches `home`
 
 ```
 routes/
@@ -452,7 +452,7 @@ routes/
   projects.(home,_pathless)+page.marko
 ```
 
-While both of these create a route which matches the paths, they have slightly different semantics. Using a pathless segment is the same as creating a pathless folder which allows you to isolate middleware and loayouts. Using an empty segement is the same as defining a file at the current location.
+While both of these create a route which matches the paths, they have slightly different semantics. Using a pathless segment is the same as creating a pathless folder which allows you to isolate middleware and layouts. Using an empty segment is the same as defining a file at the current location.
 
 ### Escaping Control Characters
 
@@ -537,7 +537,7 @@ import * as Run from '@marko/run/router`;
 
 ### Context
 
-Context is passed to `middleware` and `handler` functions as the first paramter and is available in Marko templates as `$global`. The context object contains information about the current request with the following properties
+Context is passed to `middleware` and `handler` functions as the first parameter and is available in Marko templates as `$global`. The context object contains information about the current request with the following properties
 
 - `route` - A string identifying the current route
 - `request` - Current WHATWG Request instance
@@ -579,7 +579,7 @@ back(fallback?: string | URL, status?: number): Response;
 
 Creates a redirect response that uses the current request referer or an optional fallback.
 
-### Emdedding in Existing Server
+### Embedding in Existing Server
 
 ### `Run.fetch`
 
@@ -708,12 +708,12 @@ express()
 
 **`MarkoRun.Route`** - Type of the route's params and metadata
 
-**`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your applcation code
+**`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your application code
 
 ```ts
 declare module "@marko/run" {
   interface Context {
-    customPropery: MyCustomThing; // will be globally defined on MarkoRun.Context
+    customProperty: MyCustomThing; // will be globally defined on MarkoRun.Context
   }
 }
 ```
@@ -723,7 +723,7 @@ declare module "@marko/run" {
 ```ts
 declare module "@marko/run" {
   interface Platform {
-    customPropery: MyCustomThing; // will be globally defined on MarkoRun.Platform
+    customProperty: MyCustomThing; // will be globally defined on MarkoRun.Platform
   }
 }
 ```

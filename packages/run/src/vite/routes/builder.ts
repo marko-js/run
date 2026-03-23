@@ -14,17 +14,17 @@ import type { Walker, WalkOptions } from "./walk";
 
 const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
 const nonMarkoFiles = `(${RoutableFileTypes.Middleware}|${RoutableFileTypes.Handler}|${RoutableFileTypes.Meta})\\.(?:.*\\.)?(.+)`;
-const routeableFileRegex = new RegExp(
+const RoutableFileRegex = new RegExp(
   `[+](?:${markoFiles}|${nonMarkoFiles})$`,
   "i",
 );
 
 export function isRoutableFile(filename: string) {
-  return routeableFileRegex.test(filename);
+  return RoutableFileRegex.test(filename);
 }
 
 export function matchRoutableFile(filename: string) {
-  const match = filename.match(routeableFileRegex);
+  const match = filename.match(RoutableFileRegex);
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
 }
 
@@ -84,7 +84,7 @@ export async function buildRoutes(
     },
     onFile(file) {
       const { name } = file;
-      const match = name.match(routeableFileRegex);
+      const match = name.match(RoutableFileRegex);
       if (!match) {
         return;
       }

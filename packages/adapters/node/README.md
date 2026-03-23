@@ -1,7 +1,7 @@
 <h1 align="center">
   <!-- Logo -->
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-darkmode.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/marko-js/run/raw/main/assets/marko-run.png">
     <img alt="Marko Run Logo" src="https://github.com/marko-js/run/raw/main/assets/marko-run.png" width="400">
   </picture>
@@ -12,7 +12,7 @@
 
 Preview and deploy [@marko/run](../serve/README.md) apps on Connect-style servers
 
-## Intallation
+## Installation
 
 ```sh
 npm install @marko/run-adapter-node
@@ -38,7 +38,7 @@ export default defineConfig({
 
 ## Middleware
 
-This package provides two different middlwares. Both middleware handle converting Connect-style requests to [WHATWG requests](https://fetch.spec.whatwg.org/#request-class) and similarly writing [WHATWG responses](https://fetch.spec.whatwg.org/#response-class) back to the Connect response.
+This package provides two different middlewares. Both middleware handle converting Connect-style requests to [WHATWG requests](https://fetch.spec.whatwg.org/#request-class) and similarly writing [WHATWG responses](https://fetch.spec.whatwg.org/#response-class) back to the Connect response.
 
 ### Router Middleware
 
@@ -66,10 +66,10 @@ import { matchMiddleware } from "@marko/run-adapter-node/middleware";
 
 express()
   .use("/assets", express.static("assets"))
-  .use(matchMiddleware()) // register the match middlware
+  .use(matchMiddleware()) // register the match middleware
   // ...other middleware here
   .use((req, res, next) => {
-    // `req.route` will be populated if the match middlware found a route
+    // `req.route` will be populated if the match middleware found a route
     if (req.route) {
       // do something with `req.route.config` which will contain the route's meta data
     }

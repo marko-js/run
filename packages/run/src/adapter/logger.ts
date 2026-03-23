@@ -1,12 +1,12 @@
 import DraftLog from "draftlog";
 import { IncomingMessage, ServerResponse } from "http";
 import format from "human-format";
-import inpspector from "inspector";
+import inspector from "inspector";
 import kleur from "kleur";
 
 import type { NodeMiddleware } from "./middleware";
 
-if (!inpspector.url()) {
+if (!inspector.url()) {
   DraftLog.into(console);
   (DraftLog as any).defaults.canReWrite = false;
 }
