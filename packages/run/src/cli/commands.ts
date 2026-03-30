@@ -216,7 +216,7 @@ export async function build(
       target: "esnext",
       ...buildConfig.build,
       ssr: entry,
-      rollupOptions: {
+      rolldownOptions: {
         output: {
           entryFileNames: "index.mjs", // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
         },

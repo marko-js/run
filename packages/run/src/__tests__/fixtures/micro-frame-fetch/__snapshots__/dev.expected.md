@@ -10,14 +10,10 @@
 ```
 
 ```diff
-+  <div>
-    Other Page
-  </div>
-
-```
-
-```diff
 -  Loading...
++  <div>
+    Other Page!
+  </div>
 
 ```
 

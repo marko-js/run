@@ -9,27 +9,27 @@
 # Step 0
 ctx=>click(ctx)
 
-```html
-<button>
-  1
-</button>
+```diff
+-  0
++  1
+
 ```
 
 # Step 1
 ctx=>click(ctx)
 
-```html
-<button>
-  2
-</button>
+```diff
+-  1
++  2
+
 ```
 
 # Step 2
 ctx=>click(ctx)
 
-```html
-<button>
-  3
-</button>
+```diff
+-  2
++  3
+
 ```
 

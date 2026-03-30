@@ -3,7 +3,7 @@ import zlib from "node:zlib";
 import Table, { HorizontalAlignment } from "cli-table3";
 import format from "human-format";
 import kleur from "kleur";
-import type { OutputAsset, OutputBundle, OutputChunk } from "rollup";
+import type { OutputAsset, OutputBundle, OutputChunk } from "rolldown";
 
 import type { BuiltRoutes, ExternalRoutes, HttpVerb, Route } from "../types";
 import { getUniqueSortedVerbs, getVerbs } from "./route";

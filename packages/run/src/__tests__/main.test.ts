@@ -22,6 +22,7 @@ Function.prototype.toString = function () {
 };
 
 declare global {
+  const page: playwright.Page;
   namespace NodeJS {
     interface Global {
       page: playwright.Page;
@@ -29,7 +30,11 @@ declare global {
   }
 }
 
-declare const __track__: (html: string) => void;
+declare namespace globalThis {
+  let page: playwright.Page;
+}
+
+declare let __loading__: Promise<void> | undefined;
 
 export type StepContext = {
   page: playwright.Page;
@@ -44,7 +49,6 @@ export type Assert = (
 const requireCwd = createRequire(root);
 let browser: playwright.Browser;
 let context: playwright.BrowserContext;
-let changes: string[] = [];
 
 before(async () => {
   process.env.TRUST_PROXY = "1";
@@ -52,91 +56,129 @@ before(async () => {
   browser = await playwright.chromium.launch();
   context = await browser.newContext();
 
-  /**
-   * We add a mutation observer to track all mutations (batched)
-   * Then we report the list of mutations in a normalized way and snapshot it.
-   */
-  await Promise.all([
-    context.exposeFunction("__track__", (html: string) => {
-      const fragment = JSDOM.fragment(html);
+  await context.addInitScript(() => {
+    // needed for esbuild.
+    (window as any).__name = (v: any) => v;
+    __loading__ = undefined;
 
-      // for (const pre of fragment.querySelectorAll("pre")) {
-      //   if (!pre.children.length && pre.textContent) {
-      //     const match = /(^\s*at (.+?:\r?\n\s+)?)/.exec(pre.textContent);
-      //     if (match) {
-      //       pre.textContent = match[1] + "at [Normalized Error Stack]";
-      //     }
-      //   }
-      // }
+    const seen = new Set<string>();
+    let remaining = 0;
+    let resolve: undefined | (() => void);
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onError);
+    onMutate(document, (_, obs) => {
+      if (!document.body) return;
+      obs.disconnect();
+      trackAssets();
+      onMutate(document.body, trackAssets);
+    });
 
-      const formatted = defaultSerializer(defaultNormalizer(fragment));
-
-      const normalized = formatted
-        .replaceAll(process.cwd(), "")
-        .replaceAll(root, "")
-        .replace(/-[a-z0-9_]+(\.\w+)/gi, "-[hash]$1")
-        .replace(/:(\d{4,})/g, ":9999")
-        .replace(
-          /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gms,
-          "",
-        )
-        .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gms, "")
-        .replace(
-          /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
-          "$1 [Normalized Error Stack]",
-        )
-        .replace(/\\/g, "/");
-
-      if (changes.at(-1) !== normalized) {
-        changes.push(normalized);
-      }
-    }),
-
-    context.addInitScript(async function foo() {
-      const getRoot = () => document.getElementById("app");
-
-      const observer = new MutationObserver(() => {
-        const html = (getRoot() || document.body).innerHTML;
-        if (html) {
-          __track__(html);
-          observer.disconnect();
-          queueMicrotask(observe);
-        }
+    function onMutate(target: Node, fn: MutationCallback) {
+      new MutationObserver(fn).observe(target, {
+        childList: true,
+        subtree: true,
       });
+    }
+    function trackAssets() {
+      for (const el of document.querySelectorAll<
+        HTMLScriptElement | HTMLLinkElement
+      >("script[src],link[rel=stylesheet][href]")) {
+        const href = "src" in el ? el.src : el.href;
+        if (href && !seen.has(href)) {
+          const link = document.createElement("link");
+          __loading__ ||= new Promise((r) => (resolve = r));
+          seen.add(href);
+          remaining++;
 
-      let errorContainer: HTMLElement | null = null;
-      window.addEventListener("error", onError);
-      document.addEventListener("error", onError, true);
+          if ("src" in el) {
+            if (el.getAttribute("type") === "module") {
+              link.rel = "modulepreload";
+            } else {
+              link.rel = "preload";
+              link.as = "script";
+            }
+          } else {
+            link.rel = "preload";
+            link.as = "style";
+          }
 
-      function onError(evt: ErrorEvent) {
+          link.href = href;
+          link.onload = link.onerror = () => {
+            link.onload = link.onerror = null;
+            link.remove();
+            seen.delete(href);
+            if (!--remaining) {
+              resolve?.();
+              resolve = __loading__ = undefined;
+            }
+          };
+          document.head.append(link);
+        }
+      }
+    }
+    function onError(ev: ErrorEvent | PromiseRejectionEvent) {
+      const msg =
+        ev instanceof PromiseRejectionEvent
+          ? `${ev.reason}\n`
+          : `${ev.error || `Error loading ${(ev.target as any).outerHTML}`}\n`;
+      if (!msg.includes("WebSocket closed")) {
+        let errorContainer = document.getElementById("error");
         if (!errorContainer) {
           errorContainer = document.createElement("pre");
-          (getRoot() || document.body).appendChild(errorContainer);
+          errorContainer.id = "error";
+          (document.getElementById("app") || document.body).appendChild(
+            errorContainer,
+          );
         }
-
-        errorContainer.insertAdjacentText(
-          "beforeend",
-          `${evt.error || `Error loading ${(evt.target as any).outerHTML}`}\n`,
-        );
+        errorContainer.insertAdjacentText("beforeend", msg);
       }
-
-      function observe() {
-        observer.observe(getRoot() || document, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-          characterData: true,
-        });
-      }
-
-      observe();
-    }),
-  ]);
+    }
+  });
 });
 
 after(async () => {
   await browser.close();
 });
+
+async function getHTML() {
+  return defaultSerializer(
+    defaultNormalizer(
+      JSDOM.fragment(
+        await page.evaluate(async () => {
+          do {
+            await __loading__;
+            await new Promise((r) => {
+              requestAnimationFrame(() => {
+                const { port1, port2 } = new MessageChannel();
+                port1.onmessage = r;
+                port2.postMessage(0);
+              });
+            });
+          } while (__loading__);
+
+          return (
+            (document.getElementById("app") || document.body)?.innerHTML || ""
+          );
+        }),
+      ),
+    ),
+  )
+    .replaceAll(process.cwd(), "")
+    .replaceAll(root, "")
+    .replace(/-[a-z0-9_]+(\.\w+)/gi, "-[hash]$1")
+    .replace(/:(\d{4,})/g, ":9999")
+    .replace(
+      /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gms,
+      "",
+    )
+    .replace(/\s+<vite-error-overlay \/>/gms, "")
+    .replace(/\s+<style[^>]+marko-vite-preload.*?<\/style>/gms, "")
+    .replace(
+      /^(\s*at)\s[^\n]+\s*\n?(?:\s*at\s[^\n]+\s*\n?)*$/gm,
+      "$1 [Normalized Error Stack]",
+    )
+    .replace(/\\/g, "/");
+}
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const baseViteConfigFile = path.join(__dirname, "default.config.ts");
@@ -162,11 +204,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   };
 
   describe(fixture, function () {
-    let page: playwright.Page;
-
     beforeEach(async () => {
-      changes = [];
-      page = await context.newPage();
+      globalThis.page = await context.newPage();
     });
 
     afterEach(async () => {
@@ -264,33 +303,39 @@ async function testPage(
 
     const stepContext = { page } as StepContext;
     await waitForServer(server.port);
-    await waitForPendingRequests(stepContext, async () => {
-      stepContext.response = (await page.goto(url.href, {
-        referer: referrerUrl?.href,
-      }))!;
-    });
-    // await page.waitForLoadState("domcontentloaded");
-    let snapshot = `# Loading\n\n`;
-    let prevHtml: string | undefined;
+
+    stepContext.response = (await page.goto(url.href, {
+      referer: referrerUrl?.href,
+      waitUntil: "commit",
+    }))!;
+
+    let snapshot = "# Loading\n\n";
+    let prevHtml = "";
     const contentType = await stepContext.response?.headerValue("content-type");
     if (!contentType || contentType.includes("text/html")) {
-      await forEachChange((html) => {
-        snapshot += htmlSnapshot(html, prevHtml);
-        prevHtml = html;
-      });
+      await page.waitForSelector("body");
+      const initialHtml = await getHTML();
+      snapshot += htmlSnapshot(initialHtml, prevHtml);
+      prevHtml = initialHtml;
+
+      await stepContext.response.finished();
+      const finalHtml = await getHTML();
+      if (finalHtml !== prevHtml) {
+        snapshot += htmlSnapshot(finalHtml, prevHtml);
+        prevHtml = finalHtml;
+      }
 
       for (const [i, step] of steps.entries()) {
-        await waitForPendingRequests(stepContext, step);
         snapshot += `# Step ${i}\n${getStepString(step)}\n\n`;
-
-        let prevHtml: string | undefined;
-        await forEachChange((html) => {
-          snapshot += htmlSnapshot(html, prevHtml);
-          prevHtml = html;
-        });
+        await step(stepContext);
+        const html = await getHTML();
+        if (html === prevHtml) continue;
+        snapshot += htmlSnapshot(html, prevHtml);
+        prevHtml = html;
       }
     } else {
-      snapshot += `\`\`\`\n${await page.locator("pre").innerHTML()}\n\`\`\`\n\n`;
+      await stepContext.response.finished();
+      snapshot += `\`\`\`\n${await page.content()}\n\`\`\`\n\n`;
     }
 
     await snap(snapshot, { ext: ".md", dir });
@@ -298,55 +343,6 @@ async function testPage(
     // TODO: figure out why the dev server fails to close sometimes without this wait
     await delay(50);
     await server.close();
-  }
-}
-
-/**
- * Applies changes currently and ensures no new changes come in while processing.
- */
-async function forEachChange<F extends (html: string, i: number) => unknown>(
-  fn: F,
-) {
-  const len = changes.length;
-  await Promise.all(changes.map(fn));
-
-  if (len !== changes.length) {
-    throw new Error("A mutation occurred when the page should have been idle.");
-  }
-
-  changes = [];
-}
-
-/**
- * Utility to run a function against the current page and wait until every
- * in flight network request has completed before continuing.
- */
-async function waitForPendingRequests(context: StepContext, step: Step) {
-  let remaining = 0;
-  const { page } = context;
-  let resolve!: () => void;
-  const addOne = () => remaining++;
-  const finishOne = async () => {
-    remaining--;
-    // wait a tick to see if new requests start from this one.
-    await page.evaluate(() => {});
-    if (!remaining) resolve();
-  };
-  const pending = new Promise<void>((_resolve) => (resolve = _resolve));
-
-  page.on("request", addOne);
-  page.on("requestfinished", finishOne);
-  page.on("requestfailed", finishOne);
-
-  try {
-    addOne();
-    await step(context);
-    finishOne();
-    await pending;
-  } finally {
-    page.off("request", addOne);
-    page.off("requestfinished", finishOne);
-    page.off("requestfailed", finishOne);
   }
 }
 

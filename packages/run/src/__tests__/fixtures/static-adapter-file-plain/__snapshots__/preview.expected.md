@@ -1,6 +1,6 @@
 # Loading
 
 ```
-# Hello World
+<html><head><meta name="color-scheme" content="light dark"></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;"># Hello World</pre></body></html>
 ```
 
