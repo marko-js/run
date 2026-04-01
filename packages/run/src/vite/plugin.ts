@@ -856,7 +856,11 @@ function getEntryFileName(file: string | undefined | null) {
 }
 
 function cleanFileName(name: string) {
-  return name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9._-]+/g, "-");
+  return name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function getPlugin(config: ResolvedConfig):
