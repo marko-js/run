@@ -2,7 +2,7 @@
 
 ```html
 <img
-  src="/assets/im-[hash].svg"
+  src="/assets/im-ge-1-[hash].svg"
 />
 ```
 
