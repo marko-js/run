@@ -456,14 +456,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           rollupOutputOptions = mergeOutputOptions(
             {
               assetFileNames(info) {
-                const name = cleanFileName(info.names?.[0] ?? "asset");
-                return `${assetsDir}/${name}-[hash].[ext]`;
+                const name = info.names?.[0] && cleanFileName(info.names[0]);
+                return name
+                  ? `${assetsDir}/${name}-[hash].[ext]`
+                  : `${assetsDir}/_[hash].[ext]`;
               },
               entryFileNames(info) {
-                const name = cleanFileName(
-                  getEntryFileName(info.name) || info.name || "entry",
-                );
-                return `${assetsDir}/${name}-[hash].js`;
+                const raw = getEntryFileName(info.name) || info.name;
+                const name = raw && cleanFileName(raw);
+                return name
+                  ? `${assetsDir}/${name}-[hash].js`
+                  : `${assetsDir}/_[hash].js`;
               },
               chunkFileNames: isSSRBuild
                 ? `_[hash].js`
