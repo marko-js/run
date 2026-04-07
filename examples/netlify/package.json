@@ -9,7 +9,7 @@
     "preview": "marko-run preview"
   },
   "dependencies": {
-    "marko": "^5.38.34"
+    "marko": "^5.38.35"
   },
   "devDependencies": {
     "@marko/run": "^0.9.7",
@@ -17,9 +17,9 @@
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.5.2",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "vite": "^8.0.3"
+    "vite": "^8.0.7"
   }
 }
