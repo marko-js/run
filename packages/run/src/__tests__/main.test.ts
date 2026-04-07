@@ -74,7 +74,7 @@ before(async () => {
       const normalized = formatted
         .replaceAll(process.cwd(), "")
         .replaceAll(root, "")
-        .replace(/-[a-z0-9_-]+(\.\w+)/gi, "-[hash]$1")
+        .replace(/-[a-z0-9_]+(\.\w+)/gi, "-[hash]$1")
         .replace(/:(\d{4,})/g, ":9999")
         .replace(
           /\s+<script[^>]+(?:marko-vite-preload.*?<\/script>|src="\/@vite\/client".*?\/>)/gms,

@@ -455,9 +455,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           rollupOutputOptions = mergeOutputOptions(
             {
-              assetFileNames: `${assetsDir}/[name]-[hash].[ext]`,
+              assetFileNames(info) {
+                const name = info.names?.[0] && cleanFileName(info.names[0]);
+                return name
+                  ? `${assetsDir}/${name}-[hash].[ext]`
+                  : `${assetsDir}/_[hash].[ext]`;
+              },
               entryFileNames(info) {
-                return `${assetsDir}/${getEntryFileName(info.name) || "[name]"}-[hash].js`;
+                const raw = getEntryFileName(info.name) || info.name;
+                const name = raw && cleanFileName(raw);
+                return name
+                  ? `${assetsDir}/${name}-[hash].js`
+                  : `${assetsDir}/_[hash].js`;
               },
               chunkFileNames: isSSRBuild
                 ? `_[hash].js`
@@ -847,6 +856,14 @@ const markoEntryFileRegex = /([^/\\]+)\.marko$/;
 function getEntryFileName(file: string | undefined | null) {
   const match = file && markoEntryFileRegex.exec(file);
   return match ? match[1] : undefined;
+}
+
+function cleanFileName(name: string) {
+  return name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9._[\]-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function getPlugin(config: ResolvedConfig):
