@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.9.7
+
+### Patch Changes
+
+- 0ad5aef: Remove special characters from rollup output asset and entry file names
+
 ## 0.9.6
 
 ### Patch Changes
