@@ -103,13 +103,13 @@ export function copyResponseHeaders(
  */
 export function createMiddleware(
   fetch: Fetch<Platform>,
-  options?: NodeMiddlewareOptions,
+  options: NodeMiddlewareOptions = {},
 ): NodeMiddleware {
   const {
     origin = process.env.ORIGIN,
     trustProxy = process.env.TRUST_PROXY === "1",
     createPlatform = (platform) => platform,
-  } = (options ??= {});
+  } = options;
 
   return async (req, res, next) => {
     try {

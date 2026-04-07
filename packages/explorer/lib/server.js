@@ -1,8 +1,8 @@
 import { exec } from "child_process";
 import compression from "compression";
 import { createServer } from "http";
-import { dirname } from "path";
 import path from "path";
+import { dirname } from "path";
 import createStaticServe from "serve-static";
 import { fileURLToPath } from "url";
 import zlib from "zlib";

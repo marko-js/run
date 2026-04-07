@@ -16,14 +16,5 @@
 <pre>
       at [Normalized Error Stack]
 </pre>
-
-  
-
-    
-```
-
-```diff
--    +    
-<vite-error-overlay />
 ```
 

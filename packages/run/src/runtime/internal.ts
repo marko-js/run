@@ -98,16 +98,10 @@ export function createContext<TRoute extends AnyRoute>(
     serializedGlobals,
     parent: parentContextLookup.get(request),
     async fetch(resource, init) {
-      let request: Request;
-      let url: URL;
-      if (resource instanceof Request) {
-        request = new Request(resource, init);
-        url = new URL(request.url);
-      } else {
-        url =
-          typeof resource === "string" ? new URL(resource, this.url) : resource;
-        request = new Request(url, init);
-      }
+      const request = new Request(
+        typeof resource === "string" ? new URL(resource, this.url) : resource,
+        init,
+      );
 
       parentContextLookup.set(request, this as any);
       return (

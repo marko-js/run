@@ -7,10 +7,6 @@
 <div>
   +page: class
 </div>
-```
-
-```diff
--</div>+</div>
 route entry: tags
 ```
 

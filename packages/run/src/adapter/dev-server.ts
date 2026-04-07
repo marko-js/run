@@ -5,15 +5,13 @@ import {
   type Connect,
   createServer,
   type InlineConfig,
-  type Rollup,
+  type Rolldown,
   type ViteDevServer,
 } from "vite";
 
 import logger from "./logger";
 import { createMiddleware } from "./middleware";
 import { prepareError } from "./utils";
-
-type RollupError = Rollup.RollupError;
 
 interface DevErrorCallback {
   id: string;
@@ -154,7 +152,12 @@ export function getDevGlobal(): MarkoRunDev {
 export function createErrorMiddleware(
   devServer: ViteDevServer,
 ): Connect.ErrorHandleFunction {
-  return function errorMiddleware(error: RollupError, _req, res, _next) {
+  return function errorMiddleware(
+    error: Rolldown.RolldownError,
+    _req,
+    res,
+    _next,
+  ) {
     if (!error.id) {
       devServer.config.logger.error(
         buildErrorMessage(error, [

@@ -1,8 +1,8 @@
 import kleur from "kleur";
 import supportsColor from "supports-color";
-import type { Rollup } from "vite";
+import type { Rolldown } from "vite";
 
-type RollupError = Rollup.RollupError;
+type RolldownError = Rolldown.RolldownError;
 
 function stripAnsi(string: string) {
   return string.replace(
@@ -19,15 +19,15 @@ function cleanStack(stack: string) {
     .join("\n");
 }
 
-export function prepareError(err: Error | RollupError) {
+export function prepareError(err: Error | RolldownError) {
   return {
     message: stripAnsi(err.message),
     stack: stripAnsi(cleanStack(err.stack || "")),
-    id: (err as RollupError).id,
-    frame: stripAnsi((err as RollupError).frame || ""),
-    plugin: (err as RollupError).plugin,
-    pluginCode: (err as RollupError).pluginCode?.toString(),
-    loc: (err as RollupError).loc,
+    id: (err as RolldownError).id,
+    frame: stripAnsi((err as RolldownError).frame || ""),
+    plugin: (err as RolldownError).plugin,
+    pluginCode: (err as RolldownError).pluginCode?.toString(),
+    loc: (err as RolldownError).loc,
   };
 }
 

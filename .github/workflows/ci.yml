@@ -22,7 +22,7 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm i npm@11.6.0 -g && npm ci
       - name: Build
         run: npm run @ci:build
       - name: Lint Code
@@ -44,7 +44,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm i npm@11.6.0 -g && npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
       - name: Run tests
@@ -70,7 +70,7 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm i npm@11.6.0 -g && npm ci
       - name: Release
         id: changesets
         uses: changesets/action@v1

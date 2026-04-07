@@ -25,13 +25,13 @@
     "test": ""
   },
   "dependencies": {
-    "compression": "^1.8.0",
+    "compression": "^1.8.1",
     "htmlparser2": "^10.0.0",
     "sirv": "^1.0.15",
     "undici": "^6.21.0"
   },
   "peerDependencies": {
-    "@marko/run": "^0.7.7||^0.8||^0.9"
+    "@marko/run": "^0.7.7||^0.8||^0.9||^0.10"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"

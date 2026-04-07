@@ -5,7 +5,7 @@ import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
 import { glob } from "glob";
 import path from "path";
-import type { OutputOptions, PluginContext } from "rollup";
+import type { OutputOptions, PluginContext } from "rolldown";
 import { fileURLToPath } from "url";
 import {
   buildErrorMessage,
@@ -446,14 +446,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         devEntryFilePosix = normalizePath(devEntryFile);
         let outDir = config.build?.outDir || "dist";
         const assetsDir = config.build?.assetsDir || "assets";
-        let rollupOutputOptions = config.build?.rollupOptions?.output;
+        let rolldownOutputOptions = config.build?.rolldownOptions?.output;
 
         if (isBuild) {
           if (!isSSRBuild) {
             outDir = path.join(outDir, CLIENT_OUT_DIR);
           }
 
-          rollupOutputOptions = mergeOutputOptions(
+          rolldownOutputOptions = mergeOutputOptions(
             {
               assetFileNames(info) {
                 const name = info.names?.[0] && cleanFileName(info.names[0]);
@@ -472,16 +472,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ? `_[hash].js`
                 : `${assetsDir}/_[hash].js`,
             },
-            rollupOutputOptions,
+            rolldownOutputOptions,
           );
         }
-
-        const browserslistTarget =
-          isBuild && !config.build?.target
-            ? browserslist(undefined, {
-                path: root,
-              })
-            : undefined;
 
         shouldEmptyOutDir = config.build?.emptyOutDir ?? true;
 
@@ -499,11 +492,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         pluginConfig.build.copyPublicDir ??= !isSSRBuild;
         pluginConfig.build.ssrEmitAssets ??= false;
         pluginConfig.build.emptyOutDir ??= false;
-        pluginConfig.build.rollupOptions ??= {};
-        if (rollupOutputOptions) {
-          pluginConfig.build.rollupOptions.output = mergeOutputOptions(
-            rollupOutputOptions,
-            pluginConfig.build.rollupOptions.output,
+        pluginConfig.build.rolldownOptions ??= {};
+        if (rolldownOutputOptions) {
+          pluginConfig.build.rolldownOptions.output = mergeOutputOptions(
+            rolldownOutputOptions,
+            pluginConfig.build.rolldownOptions.output,
           );
         }
         pluginConfig.build.sourcemap ??=
@@ -524,13 +517,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           ];
         }
 
-        if (browserslistTarget?.length) {
-          pluginConfig.build.target ??= resolveToEsbuildTarget(
-            browserslistTarget,
-            {
-              printUnknownTargets: false,
-            },
-          );
+        if (isBuild && !config.build?.target) {
+          pluginConfig.build.target = getBrowserslistTargets(root);
         }
 
         if (isBuild) {
@@ -559,7 +547,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         resolvedConfig = config;
         const {
           ssr,
-          rollupOptions: { input },
+          rolldownOptions: { input },
         } = config.build;
         if (typeof ssr === "string") {
           ssrEntryFiles = [ssr];
@@ -916,3 +904,30 @@ export const defaultConfigPlugin: Plugin = {
     };
   },
 };
+
+function getBrowserslistTargets(path: string) {
+  const browserslistTarget = browserslist(undefined, { path });
+  if (browserslistTarget.length) {
+    const versions = new Map<string, number>();
+    for (const target of resolveToEsbuildTarget(browserslistTarget, {
+      printUnknownTargets: false,
+    })) {
+      const index = /\d/.exec(target)?.index;
+      if (index) {
+        const browser = target.slice(0, index);
+        const version = Number(target.slice(index));
+        const existingVersion = versions.get(browser);
+        if (!existingVersion || version < existingVersion) {
+          versions.set(browser, version);
+        }
+      }
+    }
+    if (versions.size) {
+      const targets = [];
+      for (const [browser, version] of versions) {
+        targets.push(browser + version);
+      }
+      return targets;
+    }
+  }
+}
