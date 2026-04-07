@@ -237,7 +237,6 @@ function writeRouteEntryHandler(
       continuations.writeLines(
         `const ${currentName} = () => context.render(page, {});`,
       );
-      nextName = currentName;
     } else {
       writer.writeLines(`return context.render(page, {});`);
       hasBody = true;

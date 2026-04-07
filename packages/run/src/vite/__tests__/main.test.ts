@@ -79,7 +79,7 @@ describe("router codegen", () => {
       }
 
       let routesSnap = "# Routes\n\n";
-      let routerSnap = "";
+      let routerSnap: string;
       let typesSnap = "";
 
       if (error || !routes) {
