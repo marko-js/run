@@ -1,5 +1,11 @@
 # @marko/run-adapter-node
 
+## 2.0.5
+
+### Patch Changes
+
+- 86eb3fe: Vite 8 support
+
 ## 2.0.4
 
 ### Patch Changes

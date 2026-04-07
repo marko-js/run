@@ -1,5 +1,16 @@
 # @marko/run
 
+## 0.10.0
+
+### Minor Changes
+
+- 86eb3fe: Vite 8 support
+
+### Patch Changes
+
+- Updated dependencies [86eb3fe]
+  - @marko/run-explorer@2.0.3
+
 ## 0.9.7
 
 ### Patch Changes

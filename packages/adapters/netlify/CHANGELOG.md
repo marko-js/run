@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.0.3
+
+### Patch Changes
+
+- 86eb3fe: Vite 8 support
+
 ## 3.0.2
 
 ### Patch Changes
