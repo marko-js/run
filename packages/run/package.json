@@ -33,12 +33,12 @@
   },
   "dependencies": {
     "@marko/run-explorer": "^2.0.2",
-    "@marko/vite": "^6.0.1",
-    "browserslist": "^4.28.1",
+    "@marko/vite": "^6.0.3",
+    "browserslist": "^4.28.2",
     "cli-table3": "^0.6.5",
     "compression": "^1.8.1",
     "debug": "^4.4.3",
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.1",
     "draftlog": "^1.0.13",
     "esbuild-plugin-browserslist": "^2.0.0",
     "glob": "^13.0.6",
@@ -48,7 +48,7 @@
     "sade": "^1.8.1",
     "serve-static": "^2.2.1",
     "supports-color": "^10.2.2",
-    "vite": "^8.0.3",
+    "vite": "^8.0.7",
     "warp10": "^2.1.0"
   },
   "peerDependencies": {
