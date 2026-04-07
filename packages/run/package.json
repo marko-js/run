@@ -1,6 +1,6 @@
 {
   "name": "@marko/run",
-  "version": "0.9.7",
+  "version": "0.10.0",
   "description": "The Marko application framework.",
   "keywords": [
     "marko"
@@ -32,7 +32,7 @@
     "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
   },
   "dependencies": {
-    "@marko/run-explorer": "^2.0.2",
+    "@marko/run-explorer": "^2.0.3",
     "@marko/vite": "^6.0.3",
     "browserslist": "^4.28.2",
     "cli-table3": "^0.6.5",
