@@ -1,5 +1,5 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get2, head2 } from "virtual:marko-run/__marko-run__index.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__index.js";
 import page500 from "./dist/.marko-run/500.marko";
 
 const page500ResponseInit = {
@@ -19,12 +19,12 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get2, params: {}, meta: {}, path: '/' };
+			if (len === 1) return { handler: get2, path: '/', params: {}, options: get2_options, meta: {} };
 			return null;
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head2, params: {}, meta: {}, path: '/' };
+			if (len === 1) return { handler: head2, path: '/', params: {}, options: head2_options, meta: {} };
 			return null;
 		}
 	}

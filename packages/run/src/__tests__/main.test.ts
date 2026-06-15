@@ -252,6 +252,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 
     if (!config.skip_preview) {
       it("preview", async () => {
+        environment("production");
+
         const configFile = await cli.getViteConfig(
           dir,
           undefined,

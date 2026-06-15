@@ -4,9 +4,8 @@ export type {
   GetableHref,
   GetablePath,
   GetPaths,
-  Platform,
   PostableHref,
   PostablePath,
   PostPaths,
-  Verb,
-} from "./types";
+} from "./legacy-types";
+export type { Platform, HttpVerb as Verb } from "./types";

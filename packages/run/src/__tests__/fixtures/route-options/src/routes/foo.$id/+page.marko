@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>@marko/run Test Fixture</title>
+  </head>
+  <body>
+    <div#app>
+      <pre>
+        ${JSON.stringify({
+          params: $global.params,
+          search: $global.search
+        }, undefined, 2)}
+      </pre>
+    </div>
+  </body>
+</html>

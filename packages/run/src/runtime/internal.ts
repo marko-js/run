@@ -1,16 +1,32 @@
 /// <reference types="marko" />
 
+import { URLSearchParams } from "node:url";
+
+import { parseFormData } from "@remix-run/form-data-parser";
+
+import { httpVerbs } from "../vite/constants";
 import type {
-  AnyRoute,
   Awaitable,
-  Context,
-  MultiRouteContext,
-  NextFunction,
-  Platform,
   RouteHandler,
   RouteHandlerResult,
-  Verb,
+} from "./legacy-types";
+import type {
+  Context,
+  HandlerFunction,
+  HandlerOptions,
+  HttpVerb,
+  HttpVerbOrAll,
+  NamespaceVerb,
+  NextFunction,
+  NormalizedHandler,
+  NormalizedHandlerOptions,
+  Platform,
+  RouteData,
+  RouteMatch,
+  Validator,
 } from "./types";
+import { href } from "./url-builder";
+
 export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
@@ -32,10 +48,20 @@ const pageResponseInit = {
 globalThis.MarkoRun ??= {
   NotHandled,
   NotMatched,
-  route(handler) {
-    return handler;
-  },
 };
+
+if (!globalThis.Run) {
+  const namespace: any = {
+    href,
+  } satisfies NamespaceVerb;
+  for (const v of [...httpVerbs, "all"]) {
+    const verb = v.toUpperCase() as HttpVerbOrAll;
+    const def = createDefineHandler();
+    (def as any as NamespaceVerb).href = href;
+    namespace[verb] = def;
+  }
+  globalThis.Run = namespace;
+}
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
@@ -69,32 +95,148 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   return toReadable(rendered);
 };
 
-export function createContext<TRoute extends AnyRoute>(
-  route: TRoute | null,
+function searchParamsToObject(params: URLSearchParams | FormData) {
+  const obj: Record<string, any> = {};
+  for (const [key, value] of params) {
+    const prev = obj[key];
+    obj[key] = prev
+      ? Array.isArray(prev)
+        ? [...prev, value] // push it on
+        : [prev, value]
+      : value;
+  }
+  return obj;
+}
+
+async function readBodyWithLimit(request: Request, maxBytes: number) {
+  if (maxBytes < 0) {
+    return await request.text();
+  }
+
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength !== null && Number(contentLength) > maxBytes) {
+    throw new Error("Request body too large");
+  }
+
+  if (!request.body) {
+    throw new Error("Missing request body");
+  }
+
+  const reader = request.body.getReader();
+  const bytes = new Uint8Array(maxBytes);
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (receivedBytes + value.byteLength > maxBytes) {
+        await reader.cancel();
+        throw new Error("Request body too large");
+      }
+
+      bytes.set(value, receivedBytes);
+      receivedBytes += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return new TextDecoder("utf-8", { fatal: true }).decode(
+    bytes.subarray(0, receivedBytes),
+  );
+}
+
+export function createContext(
+  route: RouteMatch | null,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
-): Context<TRoute> {
-  let meta: TRoute["meta"];
-  let params: TRoute["params"];
-  let path: TRoute["path"];
-  if (route) {
-    meta = route.meta;
-    params = route.params;
-    path = route.path;
-  } else {
-    meta = {};
-    params = {};
-    path = "";
-  }
-  return {
-    request,
-    method: request.method as Verb,
+): Context {
+  const context: Context = {
+    route: route?.path || "",
+    method: request.method as HttpVerb,
+    meta: route?.meta || {},
+    get params() {
+      const value = route
+        ? route.options.params
+          ? route.options.params(route.params as Record<string, any>)
+          : route.params
+        : {};
+      Object.defineProperty(context, "params", {
+        configurable: true,
+        enumerable: true,
+        value,
+      });
+      return value;
+    },
+    get search() {
+      const search = searchParamsToObject(url.searchParams);
+      const value = route?.options.search
+        ? route.options.search(search)
+        : search;
+      Object.defineProperty(context, "search", {
+        configurable: true,
+        enumerable: true,
+        value,
+      });
+      return value;
+    },
+    body:
+      route && request.body
+        ? async () => {
+            const contentType = request.headers.get("Content-Type");
+            let value: any;
+
+            if (contentType?.includes("application/json")) {
+              const { maxBytes, validator } = route.options.json;
+              const json =
+                maxBytes < 0
+                  ? await request.json()
+                  : JSON.parse(await readBodyWithLimit(request, maxBytes));
+              value = validator ? validator(json) : json;
+            } else {
+              const {
+                maxBytes,
+                maxParts,
+                maxFiles,
+                maxFileBytes,
+                onFile,
+                validator,
+              } = route.options.form;
+              const data = searchParamsToObject(
+                contentType?.includes("multipart/form-data")
+                  ? await parseFormData(
+                      request,
+                      {
+                        maxParts,
+                        maxFiles,
+                        maxFileSize: maxFileBytes,
+                        maxTotalSize: maxBytes,
+                      },
+                      onFile ? (file) => onFile!(context, file) : undefined,
+                    )
+                  : new URLSearchParams(
+                      await readBodyWithLimit(request, maxBytes),
+                    ),
+              );
+              value = validator ? validator(data) : validator;
+            }
+
+            Object.defineProperty(context, "body", {
+              configurable: true,
+              enumerable: true,
+              value,
+            });
+            return value;
+          }
+        : undefined,
+    data: {},
     url,
+    request,
     platform,
-    meta,
-    params,
-    route: path,
     serializedGlobals,
     parent: parentContextLookup.get(request),
     async fetch(resource, init) {
@@ -144,22 +286,40 @@ export function createContext<TRoute extends AnyRoute>(
       );
     },
   };
+  return context;
 }
 
-export async function call<TRoute extends AnyRoute>(
-  handler: RouteHandler<TRoute>,
+export function render<T>(
+  context: Context,
+  template: Marko.Template<T>,
+  input: T,
+  data?: RouteData,
+) {
+  if (data) {
+    Object.assign(context.data, data);
+  }
+  return context.render(template, input);
+}
+
+export async function call(
+  handler: HandlerFunction,
   next: NextFunction,
-  context: MultiRouteContext<TRoute>,
+  context: Context,
+  data?: RouteData,
 ): Promise<Response> {
   let response!: RouteHandlerResult;
+
+  if (data) {
+    Object.assign(context.data, data);
+  }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
     let nextCallCount = 0;
     let didThrow = false;
     try {
-      response = await handler(context, () => {
+      response = await handler(context, (d) => {
         nextCallCount++;
-        return next();
+        return next(d);
       });
     } catch (error) {
       didThrow = true;
@@ -201,18 +361,22 @@ export async function call<TRoute extends AnyRoute>(
   return response || next();
 }
 
-export function compose(handlers: RouteHandler[]): RouteHandler {
+export function compose(handlers: HandlerFunction[]): HandlerFunction {
   const len = handlers.length;
   if (!len) {
-    return (_context, next) => next();
+    return passthroughHandler;
   } else if (len === 1) {
     return handlers[0];
   }
   return (context, next) => {
     let i = 0;
-    return (function nextHandler() {
-      return i < len ? call(handlers[i++], nextHandler, context) : next();
-    })();
+    return (
+      function nextHandler(data) {
+        return i < len
+          ? call(handlers[i++], nextHandler, context, data)
+          : next(data);
+      } as NextFunction
+    )();
   };
 }
 
@@ -222,10 +386,10 @@ export function normalizeHandler(
   if (typeof obj === "function") {
     return obj;
   } else if (Array.isArray(obj)) {
-    return compose(obj);
+    return compose(obj as HandlerFunction[]);
   } else if (obj instanceof Promise) {
     const promise = obj.then((value) => {
-      fn = Array.isArray(value) ? compose(value) : value;
+      fn = Array.isArray(value) ? compose(value as HandlerFunction[]) : value;
     });
     let fn: RouteHandler = async (context, next) => {
       await promise;
@@ -234,6 +398,114 @@ export function normalizeHandler(
     return (context, next) => fn(context, next);
   }
   return passthrough;
+}
+
+function createDefineHandler() {
+  return (
+    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
+    handlers: undefined | HandlerFunction | HandlerFunction[],
+  ) => {
+    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
+
+    if (typeof optionsOrHandlers === "function") {
+      handler = optionsOrHandlers as any;
+      handler.options = {};
+    } else if (Array.isArray(optionsOrHandlers)) {
+      handler = compose(optionsOrHandlers) as any;
+      handler.options = {};
+    } else if (typeof handlers === "function") {
+      handler = handlers as any;
+      handler.options = optionsOrHandlers;
+    } else if (Array.isArray(handlers)) {
+      handler = compose(handlers) as any;
+      handler.options = optionsOrHandlers;
+    } else {
+      handler = passthroughHandler as any;
+      handler.options = optionsOrHandlers;
+    }
+
+    return handler;
+  };
+}
+
+export function normalizeValidator<T>(validator: Validator<T> | undefined) {
+  return validator && typeof validator !== "function"
+    ? (input: T) => {
+        const result = validator["~standard"].validate(input);
+        if (result instanceof Promise) {
+          throw new TypeError("Schema validation must be synchronous");
+        }
+        return result.issues
+          ? [input, result.issues]
+          : [result.value, undefined];
+      }
+    : validator;
+}
+
+const defaultMaxBytes = 1024 * 1024;
+const defaultMaxParts = 1000;
+const defaultMaxFiles = 20;
+
+export function mergeOptions(
+  ...fns: (
+    | NormalizedHandler<Context, "ALL", any, HandlerOptions>
+    | HandlerFunction
+  )[]
+) {
+  const merged: HandlerOptions = {};
+  for (const fn of fns) {
+    if (typeof fn === "function" && "options" in fn) {
+      const { options } = fn;
+      for (const k in options) {
+        const key = k as keyof typeof options;
+        const option = options[key];
+        if (typeof option === "object" && typeof merged[key] === "object") {
+          Object.assign(merged[key], option);
+        } else if (option) {
+          merged[key] = option as any;
+        }
+      }
+    }
+  }
+
+  const result = {
+    params: normalizeValidator(merged.params),
+    search: normalizeValidator(merged.search),
+  } as NormalizedHandlerOptions;
+
+  if (merged.json) {
+    const { maxBytes = defaultMaxBytes, validator } =
+      typeof merged.json === "function" || "~standard" in merged.json
+        ? { validator: merged.json }
+        : merged.json;
+    result.json = {
+      maxBytes,
+      validator: normalizeValidator(validator),
+    };
+  }
+
+  if (merged.form) {
+    const {
+      maxBytes,
+      maxFiles = defaultMaxFiles,
+      maxFileBytes = defaultMaxBytes,
+      maxParts = defaultMaxParts,
+      onFile,
+      validator,
+    } = typeof merged.form === "function" || "~standard" in merged.form
+      ? { validator: merged.form }
+      : merged.form;
+    result.form = {
+      maxBytes: maxBytes ?? maxFiles * maxFileBytes,
+      maxFileBytes,
+      maxFiles,
+      maxParts,
+      onFile,
+      validator: normalizeValidator(validator),
+    };
+  }
+
+  return result;
 }
 
 export function stripResponseBodySync(response: Response): Response {
@@ -249,6 +521,8 @@ export function stripResponseBody(
 }
 
 export function passthrough() {}
+
+const passthroughHandler: HandlerFunction = (_ctx, next) => next();
 
 export function noContent() {
   return new Response(null, {

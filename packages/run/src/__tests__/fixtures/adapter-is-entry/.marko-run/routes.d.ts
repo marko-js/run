@@ -4,12 +4,10 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type * as Run from "@marko/run";
+import type * as $ from "@marko/run";
 
 
 declare module "@marko/run" {
-	interface AppData extends Run.DefineApp<{
-		routes: {
-		}
+	interface App extends $.DefineRoutes<{
 	}> {}
 }

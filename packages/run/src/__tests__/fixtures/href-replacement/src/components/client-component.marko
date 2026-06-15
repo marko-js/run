@@ -1,0 +1,21 @@
+static const path = "/thing/$id";
+static const params = { id: 3 };
+static const options = { params: { id: 4 }, search: { q: "quz" }, hash: "here4" };
+
+class {
+  onCreate() {
+    this.state = {
+      page: 0
+    }
+  }
+  incrementPage() {
+    this.state.page++;
+  }
+}
+
+<button#clickable on-click("incrementPage")>${state.page}</button>
+
+<a href=Run.href("/thing/$id", { params: { id: 1 }, search: { q: "foo" }, hash: "here1" })>Static</a>
+<a href=Run.href("/thing/$id", { params: { id: 2 }, search: { q: "bar", page: state.page }, hash: "here2" })>Dynamic Search</a>
+<a href=Run.href("/thing/$id", { params, search: { q: "baz" }, hash: "here3" })>Opaque Params</a>
+<a href=Run.href(path, options)>Full Runtime</a>

@@ -4,31 +4,34 @@
 */
 
 import { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform } from "@marko/run/namespace";
-import type * as Run from "@marko/run";
+import type * as $ from "@marko/run";
 
 
 declare module "@marko/run" {
-	interface AppData extends Run.DefineApp<{
-		routes: {
-			"/$$rest": { verb: "get"; };
-		}
+	interface App extends $.DefineRoutes<{
+		"/$$rest": [P1];
 	}> {}
 }
 
+type P1 = $.Template<"P1", typeof import("../src/routes/$$rest/+page.marko")>;
 declare module "../src/routes/$$rest/+page.marko" {
+  const Run: $.Namespace<P1>;
+  namespace Run {
+    type Context = $.ContextForFile<P1> & Marko.Global;
+  }
+
+  /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = Run.Routes["/$$rest"];
-    export type Context = Run.MultiRouteContext<Route> & Marko.Global;
-    export type Handler = Run.HandlerLike<Route>;
-    export type GET = Run.HandlerLike<Route, "GET">;
-    export type HEAD = Run.HandlerLike<Route, "HEAD">;
-    export type POST = Run.HandlerLike<Route, "POST">;
-    export type PUT = Run.HandlerLike<Route, "PUT">;
-    export type DELETE = Run.HandlerLike<Route, "DELETE">;
-    export type PATCH = Run.HandlerLike<Route, "PATCH">;
-    export type OPTIONS = Run.HandlerLike<Route, "OPTIONS">;
-    /** @deprecated use `((context, next) => { ... }) satisfies MarkoRun.Handler` instead */
-    export const route: Run.HandlerTypeFn<Route>;
+    export type Route = $.Routes["/$$rest"];
+    export type Context = Run.Context;
+    export type Handler = $.HandlerLike<Route>;
+    export type GET = $.HandlerLike<Route, "GET">;
+    export type HEAD = $.HandlerLike<Route, "HEAD">;
+    export type POST = $.HandlerLike<Route, "POST">;
+    export type PUT = $.HandlerLike<Route, "PUT">;
+    export type DELETE = $.HandlerLike<Route, "DELETE">;
+    export type PATCH = $.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
   }
 }

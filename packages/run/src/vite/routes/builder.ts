@@ -184,9 +184,7 @@ export async function buildRoutes(
               middleware: [],
               layouts: [...currentLayouts],
               page: file,
-              templateFilePath: currentLayouts.size
-                ? path.join(outDir, `${type}.marko`)
-                : undefined,
+              templateFilePath: path.join(outDir, `${type}.marko`),
             };
 
             layoutsUsed = true;
@@ -234,10 +232,7 @@ export async function buildRoutes(
           meta: dir.files.get(RoutableFileTypes.Meta),
           page,
           handler,
-          templateFilePath:
-            page && currentLayouts.size
-              ? path.join(outDir, key + ".marko")
-              : undefined,
+          templateFilePath: page && path.join(outDir, key + ".marko"),
         });
 
         layoutsUsed = !!page;

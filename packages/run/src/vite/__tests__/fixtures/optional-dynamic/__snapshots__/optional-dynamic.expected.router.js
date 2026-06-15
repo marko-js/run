@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__$.$.js";
-import { get2, head2 } from "virtual:marko-run/__marko-run__$.$$.js";
-import { get3, head3 } from "virtual:marko-run/__marko-run__$.js";
-import { get4, head4 } from "virtual:marko-run/__marko-run__$$.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__$.$.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__$.$$.js";
+import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__$.js";
+import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__$$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -20,20 +20,20 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: get3, params: { bar: s1 }, meta: {}, path: '/$bar' };
+					if (s1) return { handler: get3, path: '/$bar', params: { bar: s1 }, options: get3_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: get1, params: { foo: s1, bar: s2 }, meta: {}, path: '/$foo/$bar' };
+							if (s2) return { handler: get1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: get1_options, meta: {} };
 						}
-						return { handler: get2, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/$foo/$$rest' };
+						return { handler: get2, path: '/$foo/$$rest', params: { foo: s1, rest: pathname.slice(i1) }, options: get2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: get4, params: { rest: pathname.slice(1) }, meta: {}, path: '/$$rest' };
+			return { handler: get4, path: '/$$rest', params: { rest: pathname.slice(1) }, options: get4_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
@@ -41,20 +41,20 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: head3, params: { bar: s1 }, meta: {}, path: '/$bar' };
+					if (s1) return { handler: head3, path: '/$bar', params: { bar: s1 }, options: head3_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: head1, params: { foo: s1, bar: s2 }, meta: {}, path: '/$foo/$bar' };
+							if (s2) return { handler: head1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: head1_options, meta: {} };
 						}
-						return { handler: head2, params: { foo: s1, rest: pathname.slice(i1) }, meta: {}, path: '/$foo/$$rest' };
+						return { handler: head2, path: '/$foo/$$rest', params: { foo: s1, rest: pathname.slice(i1) }, options: head2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: head4, params: { rest: pathname.slice(1) }, meta: {}, path: '/$$rest' };
+			return { handler: head4, path: '/$$rest', params: { rest: pathname.slice(1) }, options: head4_options, meta: {} };
 		}
 	}
 	return null;

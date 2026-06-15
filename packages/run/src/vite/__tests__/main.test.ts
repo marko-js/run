@@ -118,13 +118,13 @@ describe("router codegen", () => {
           routesSnap += `### Path: \`\`${route.path.path}\`\`\n`;
 
           if (route.page) {
-            if (route.templateFilePath) {
-              const layoutData = getFileData<{ api: string }>(route.layouts[0]);
-              routesSnap += "### Template\n";
-              routesSnap += "```marko\n";
-              routesSnap += renderRouteTemplate(route, layoutData?.api);
-              routesSnap += "```\n";
-            }
+            const layoutData = route.layouts.length
+              ? getFileData<{ api: string }>(route.layouts[0])
+              : undefined;
+            routesSnap += "### Template\n";
+            routesSnap += "```marko\n";
+            routesSnap += renderRouteTemplate(route, layoutData?.api);
+            routesSnap += "```\n";
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";

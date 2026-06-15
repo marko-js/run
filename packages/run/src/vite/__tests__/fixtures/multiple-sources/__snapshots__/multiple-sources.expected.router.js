@@ -1,6 +1,6 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__index.js";
-import { get2, head2 } from "virtual:marko-run/__marko-run__+routes.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__index.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__+routes.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -14,19 +14,19 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get1, params: {}, meta: {}, path: '/' };
+			if (len === 1) return { handler: get1, path: '/', params: {}, options: get1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === '+routes') return { handler: get2, params: {}, meta: {}, path: '/+routes' };
+				if (pathname.slice(1, i1 ? -1 : len) === '+routes') return { handler: get2, path: '/+routes', params: {}, options: get2_options, meta: {} };
 			}
 			return null;
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head1, params: {}, meta: {}, path: '/' };
+			if (len === 1) return { handler: head1, path: '/', params: {}, options: head1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === '+routes') return { handler: head2, params: {}, meta: {}, path: '/+routes' };
+				if (pathname.slice(1, i1 ? -1 : len) === '+routes') return { handler: head2, path: '/+routes', params: {}, options: head2_options, meta: {} };
 			}
 			return null;
 		}

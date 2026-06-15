@@ -1,6 +1,6 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { post1, post1_meta, put1, put1_meta, delete1, delete1_meta } from "virtual:marko-run/__marko-run__foo.bar.js";
-import { get2, get2_meta, head2, head2_meta, post2, post2_meta, put2, put2_meta, delete2, delete2_meta } from "virtual:marko-run/__marko-run__foo.baz.js";
+import { post1, post1_options, post1_meta, put1, put1_options, put1_meta, delete1, delete1_options, delete1_meta } from "virtual:marko-run/__marko-run__foo.bar.js";
+import { get2, get2_options, get2_meta, head2, head2_options, head2_meta, post2, post2_options, post2_meta, put2, put2_options, put2_meta, delete2, delete2_options, delete2_meta } from "virtual:marko-run/__marko-run__foo.baz.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -20,7 +20,7 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === 'foo') {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: get2, params: {}, meta: get2_meta, path: '/foo/baz' };
+							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: get2, path: '/foo/baz', params: {}, options: get2_options, meta: get2_meta };
 						}
 					}
 				}
@@ -35,7 +35,7 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === 'foo') {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: head2, params: {}, meta: head2_meta, path: '/foo/baz' };
+							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: head2, path: '/foo/baz', params: {}, options: head2_options, meta: head2_meta };
 						}
 					}
 				}
@@ -51,8 +51,8 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case 'bar': return { handler: post1, params: {}, meta: post1_meta, path: '/foo/bar' };
-								case 'baz': return { handler: post2, params: {}, meta: post2_meta, path: '/foo/baz' };
+								case 'bar': return { handler: post1, path: '/foo/bar', params: {}, options: post1_options, meta: post1_meta };
+								case 'baz': return { handler: post2, path: '/foo/baz', params: {}, options: post2_options, meta: post2_meta };
 							}
 						}
 					}
@@ -69,8 +69,8 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case 'bar': return { handler: put1, params: {}, meta: put1_meta, path: '/foo/bar' };
-								case 'baz': return { handler: put2, params: {}, meta: put2_meta, path: '/foo/baz' };
+								case 'bar': return { handler: put1, path: '/foo/bar', params: {}, options: put1_options, meta: put1_meta };
+								case 'baz': return { handler: put2, path: '/foo/baz', params: {}, options: put2_options, meta: put2_meta };
 							}
 						}
 					}
@@ -87,8 +87,8 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case 'bar': return { handler: delete1, params: {}, meta: delete1_meta, path: '/foo/bar' };
-								case 'baz': return { handler: delete2, params: {}, meta: delete2_meta, path: '/foo/baz' };
+								case 'bar': return { handler: delete1, path: '/foo/bar', params: {}, options: delete1_options, meta: delete1_meta };
+								case 'baz': return { handler: delete2, path: '/foo/baz', params: {}, options: delete2_options, meta: delete2_meta };
 							}
 						}
 					}
