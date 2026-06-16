@@ -10,13 +10,13 @@ import type {
   RouteHandler,
   RouteHandlerResult,
 } from "./legacy-types";
+import thenable from "./thenable";
 import type {
   Context,
   HandlerFunction,
   HandlerOptions,
   HttpVerb,
   HttpVerbOrAll,
-  NamespaceVerb,
   NextFunction,
   NormalizedHandler,
   NormalizedHandlerOptions,
@@ -50,18 +50,16 @@ globalThis.MarkoRun ??= {
   NotMatched,
 };
 
-if (!globalThis.Run) {
-  const namespace: any = {
-    href,
-  } satisfies NamespaceVerb;
-  for (const v of [...httpVerbs, "all"]) {
-    const verb = v.toUpperCase() as HttpVerbOrAll;
-    const def = createDefineHandler();
-    (def as any as NamespaceVerb).href = href;
-    namespace[verb] = def;
-  }
-  globalThis.Run = namespace;
-}
+globalThis.Run ??= {
+  href,
+  ALL: createDefineHandler("ALL"),
+  ...Object.fromEntries(
+    httpVerbs.map((v) => {
+      const verb = v.toUpperCase() as HttpVerb;
+      return [v.toUpperCase(), createDefineHandler(verb)];
+    }),
+  ),
+} as any;
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
@@ -149,6 +147,36 @@ async function readBodyWithLimit(request: Request, maxBytes: number) {
   );
 }
 
+async function readBody(route: RouteMatch, context: Context) {
+  const { request } = context;
+  const contentType = request.headers.get("Content-Type");
+  if (contentType?.includes("application/json")) {
+    const { maxBytes, validator } = route.options.json;
+    const json =
+      maxBytes < 0
+        ? await request.json()
+        : JSON.parse(await readBodyWithLimit(request, maxBytes));
+    return validator ? validator(json) : json;
+  }
+  const { maxBytes, maxParts, maxFiles, maxFileBytes, onFile, validator } =
+    route.options.form;
+  const data = searchParamsToObject(
+    contentType?.includes("multipart/form-data")
+      ? await parseFormData(
+          request,
+          {
+            maxParts,
+            maxFiles,
+            maxFileSize: maxFileBytes,
+            maxTotalSize: maxBytes,
+          },
+          onFile ? (file) => onFile!(context, file) : undefined,
+        )
+      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+  );
+  return validator && validator(data);
+}
+
 export function createContext(
   route: RouteMatch | null,
   request: Request,
@@ -186,52 +214,7 @@ export function createContext(
     },
     body:
       route && request.body
-        ? async () => {
-            const contentType = request.headers.get("Content-Type");
-            let value: any;
-
-            if (contentType?.includes("application/json")) {
-              const { maxBytes, validator } = route.options.json;
-              const json =
-                maxBytes < 0
-                  ? await request.json()
-                  : JSON.parse(await readBodyWithLimit(request, maxBytes));
-              value = validator ? validator(json) : json;
-            } else {
-              const {
-                maxBytes,
-                maxParts,
-                maxFiles,
-                maxFileBytes,
-                onFile,
-                validator,
-              } = route.options.form;
-              const data = searchParamsToObject(
-                contentType?.includes("multipart/form-data")
-                  ? await parseFormData(
-                      request,
-                      {
-                        maxParts,
-                        maxFiles,
-                        maxFileSize: maxFileBytes,
-                        maxTotalSize: maxBytes,
-                      },
-                      onFile ? (file) => onFile!(context, file) : undefined,
-                    )
-                  : new URLSearchParams(
-                      await readBodyWithLimit(request, maxBytes),
-                    ),
-              );
-              value = validator ? validator(data) : validator;
-            }
-
-            Object.defineProperty(context, "body", {
-              configurable: true,
-              enumerable: true,
-              value,
-            });
-            return value;
-          }
+        ? thenable(() => readBody(route, context))
         : undefined,
     data: {},
     url,
@@ -301,6 +284,8 @@ export function render<T>(
   return context.render(template, input);
 }
 
+const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
+
 export async function call(
   handler: HandlerFunction,
   next: NextFunction,
@@ -311,6 +296,21 @@ export async function call(
 
   if (data) {
     Object.assign(context.data, data);
+  }
+
+  let method = handlerMethod.get(handler);
+  if (method === undefined) {
+    handlerMethod.set(
+      handler,
+      (method =
+        "verb" in handler && handler.verb !== "ALL"
+          ? (handler.verb as HttpVerb)
+          : false),
+    );
+  }
+
+  if (method && method !== context.method) {
+    return next(data);
   }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
@@ -358,7 +358,7 @@ export async function call(
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
   }
-  return response || next();
+  return response || next(data);
 }
 
 export function compose(handlers: HandlerFunction[]): HandlerFunction {
@@ -400,7 +400,18 @@ export function normalizeHandler(
   return passthrough;
 }
 
-function createDefineHandler() {
+export function assertHandlerVerb(
+  verb: HttpVerbOrAll,
+  handler: HandlerFunction,
+) {
+  if ("verb" in handler && handler.verb !== verb) {
+    throw new Error(
+      `Expected verb ${verb} but handler was defined with Run.${handler.verb}`,
+    );
+  }
+}
+
+function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
   return (
     optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
     handlers: undefined | HandlerFunction | HandlerFunction[],
@@ -408,21 +419,27 @@ function createDefineHandler() {
     let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
 
     if (typeof optionsOrHandlers === "function") {
+      assertHandlerVerb(verb, optionsOrHandlers);
       handler = optionsOrHandlers as any;
-      handler.options = {};
+      handler.options ??= {};
     } else if (Array.isArray(optionsOrHandlers)) {
+      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
       handler = compose(optionsOrHandlers) as any;
-      handler.options = {};
+      handler.options = mergeOptions(...optionsOrHandlers);
     } else if (typeof handlers === "function") {
+      assertHandlerVerb(verb, handlers);
       handler = handlers as any;
-      handler.options = optionsOrHandlers;
+      handler.options = mergeOptions(handlers, optionsOrHandlers);
     } else if (Array.isArray(handlers)) {
+      for (const h of handlers) assertHandlerVerb(verb, h);
       handler = compose(handlers) as any;
-      handler.options = optionsOrHandlers;
+      handler.options = mergeOptions(...handlers, optionsOrHandlers);
     } else {
       handler = passthroughHandler as any;
       handler.options = optionsOrHandlers;
     }
+
+    handler.verb = verb;
 
     return handler;
   };
@@ -447,23 +464,29 @@ const defaultMaxParts = 1000;
 const defaultMaxFiles = 20;
 
 export function mergeOptions(
-  ...fns: (
+  ...arr: (
     | NormalizedHandler<Context, "ALL", any, HandlerOptions>
     | HandlerFunction
+    | HandlerOptions
   )[]
 ) {
   const merged: HandlerOptions = {};
-  for (const fn of fns) {
-    if (typeof fn === "function" && "options" in fn) {
-      const { options } = fn;
-      for (const k in options) {
-        const key = k as keyof typeof options;
-        const option = options[key];
-        if (typeof option === "object" && typeof merged[key] === "object") {
-          Object.assign(merged[key], option);
-        } else if (option) {
-          merged[key] = option as any;
-        }
+  for (const item of arr) {
+    let options: HandlerOptions;
+    if (typeof item === "object") {
+      options = item;
+    } else if ("options" in item) {
+      options = item.options;
+    } else {
+      continue;
+    }
+    for (const k in options) {
+      const key = k as keyof typeof options;
+      const option = options[key];
+      if (typeof option === "object" && typeof merged[key] === "object") {
+        Object.assign(merged[key], option);
+      } else if (option) {
+        merged[key] = option as any;
       }
     }
   }
