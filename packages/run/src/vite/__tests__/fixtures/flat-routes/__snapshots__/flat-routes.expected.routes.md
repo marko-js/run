@@ -44,7 +44,7 @@ import Page from "../../src/routes/foo,$id,$$rest,+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 import page from "./dist/.marko-run/foo.marko";
 
@@ -65,7 +65,8 @@ export function head2(context) {
 }
 
 export function post2(context) {
-	return call(postHandler, noContent, context);
+	const __page = (data) => render(context, page, {}, data);
+	return call(postHandler, __page, context);
 }
 ```
 ---

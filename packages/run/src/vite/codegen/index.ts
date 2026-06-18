@@ -123,7 +123,12 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   if (page) {
     runtimeImports.push("render");
   }
-  if (!page || verbs.some((verb) => verb !== "get" && verb !== "head")) {
+  if (
+    !page ||
+    verbs.some(
+      (verb) => !(verb === "get" || verb === "head" || verb === "post"),
+    )
+  ) {
     runtimeImports.push("noContent");
   }
   if (verbs.includes("head")) {
@@ -245,7 +250,7 @@ function writeRouteEntryHandler(
 
   const continuations = writer.branch("cont");
 
-  if (page && (verb === "get" || verb === "head")) {
+  if (page && (verb === "get" || verb === "head" || verb === "post")) {
     currentName = "__page";
     if (handler?.verbs?.includes(verb)) {
       const name = `${verb}Handler`;

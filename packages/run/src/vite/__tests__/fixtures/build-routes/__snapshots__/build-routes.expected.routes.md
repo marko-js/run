@@ -66,7 +66,7 @@ import Page from "../../src/routes/_protected/_home/new/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, normalizeMeta, call, mergeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, normalizeMeta, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import { POST } from "./src/routes/_protected/_home/new/+handler.ts";
 import page from "./dist/.marko-run/new.marko";
@@ -92,7 +92,8 @@ export function head4(context) {
 }
 
 export function post4(context) {
-	const __postHandler = (data) => call(postHandler, noContent, context, data);
+	const __page = (data) => render(context, page, {}, data);
+	const __postHandler = (data) => call(postHandler, __page, context, data);
 	const __mware7 = (data) => call(mware7, __postHandler, context, data);
 	const __mware5 = (data) => call(mware5, __mware7, context, data);
 	return call(mware4, __mware5, context);
@@ -143,7 +144,8 @@ export function head5(context) {
 }
 
 export function post5(context) {
-	const __postHandler = (data) => call(postHandler, noContent, context, data);
+	const __page = (data) => render(context, page, {}, data);
+	const __postHandler = (data) => call(postHandler, __page, context, data);
 	const __mware13 = (data) => call(mware13, __postHandler, context, data);
 	const __mware7 = (data) => call(mware7, __mware13, context, data);
 	const __mware5 = (data) => call(mware5, __mware7, context, data);

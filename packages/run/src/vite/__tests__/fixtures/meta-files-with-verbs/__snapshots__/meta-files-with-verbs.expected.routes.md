@@ -67,7 +67,8 @@ export function head2(context) {
 }
 
 export function post2(context) {
-	return call(postHandler, noContent, context);
+	const __page = (data) => render(context, page, {}, data);
+	return call(postHandler, __page, context);
 }
 
 export function put2(context) {

@@ -19,16 +19,14 @@ export type FormBodyValidatorOptions<Ctx> = {
   maxFileBytes?: number;
   onFile?(ctx: Ctx, file: Multipart): any;
 };
-
 interface Empty {}
-
-declare const MARKO_RUN_TYPES: unique symbol;
+declare const INVARIANT: unique symbol;
+declare const TYPES: unique symbol;
 declare global {
   interface Response {
-    readonly [MARKO_RUN_TYPES]: void;
+    readonly [TYPES]: void;
   }
 }
-
 export type Schema<I, O> =
   | [O, undefined]
   | [I, StandardSchemaV1.FailureResult["issues"]];
@@ -421,7 +419,7 @@ export type NormalizedHandler<
 type HandlerArray<Ctx, Return extends unknown[]> = {
   [K in keyof Return]:
     | {
-        [MARKO_RUN_TYPES]: {
+        [TYPES]: {
           options: any;
           data: any;
         };
@@ -429,7 +427,7 @@ type HandlerArray<Ctx, Return extends unknown[]> = {
     | HandlerFunction<Ctx, Return[K]>;
 };
 type HandlerValueOptions<H> = H extends {
-  [MARKO_RUN_TYPES]: {
+  [TYPES]: {
     options: infer O;
   };
 }
@@ -440,7 +438,7 @@ type ComposedHandlerOptions<Handlers extends readonly unknown[]> =
     [K in keyof Handlers]: HandlerValueOptions<Handlers[K]>;
   }>;
 type HandlerValueData<H> = H extends {
-  [MARKO_RUN_TYPES]: {
+  [TYPES]: {
     data: infer D;
   };
 }
@@ -805,12 +803,12 @@ type ContextForPath<
   : never;
 export type Typed<Original, Types> = ([Original] extends [
   {
-    readonly [MARKO_RUN_TYPES]: any;
+    readonly [TYPES]: any;
   },
 ]
-  ? Omit<Original, typeof MARKO_RUN_TYPES>
+  ? Omit<Original, typeof TYPES>
   : Original) & {
-  [MARKO_RUN_TYPES]: Types;
+  [TYPES]: Types;
 };
 type VerbsForPath<
   Path extends keyof AppPaths,
@@ -828,7 +826,9 @@ export type PathsForVerb<Verb extends HttpVerbOrAll = "ALL"> =
     : keyof AppPaths;
 export type ContextForFile<
   F extends File,
-  Verb extends HttpVerbOrAll = F["type"] extends "template" ? "GET" : "ALL",
+  Verb extends HttpVerbOrAll = F["type"] extends "template"
+    ? "GET" | "POST"
+    : "ALL",
 > = Union<{
   [Path in PathsForFile<F>]: Union<{
     [V in VerbsForPath<Path, Verb>]: V extends HttpVerb
@@ -978,6 +978,7 @@ export type NextFunction = <Data extends RouteData = Empty>(
     Response,
     {
       data: Data;
+      readonly [INVARIANT]: (data: Data) => void;
     }
   >
 >;
