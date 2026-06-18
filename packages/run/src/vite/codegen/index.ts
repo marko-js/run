@@ -831,6 +831,8 @@ export async function renderRouteTypeInfo(
     }
   }
 
+  headWriter.join();
+
   const fileInfoByType = new Map<
     RoutableFileType,
     Map<RoutableFile, RoutableFileInfo>
@@ -876,6 +878,11 @@ export async function renderRouteTypeInfo(
           info.id = `P${group.size + 1}`;
           info.typeName = "Template";
           break;
+        case RoutableFileTypes.Error:
+        case RoutableFileTypes.NotFound:
+          info.id = "";
+          info.typeName = "Template";
+          break;
         default:
           info.id = `F${fileIndex++}`;
           break;
@@ -912,16 +919,23 @@ export async function renderRouteTypeInfo(
     const fileGroup = fileInfoByType.get(fileType);
     if (!fileGroup) continue;
 
-    for (const info of fileGroup.values()) {
+    const hasModule = fileType !== RoutableFileTypes.Meta;
+    if (!hasModule) {
       writer.writeLines("");
+    }
 
-      if (info.typeName) {
+    for (const info of fileGroup.values()) {
+      if (hasModule) {
+        writer.writeLines("");
+      }
+
+      if (info.typeName && info.id) {
         writer.writeLines(
           `type ${info.id} = $.${info.typeName}<"${info.id}", typeof import("${info.modulePath}")>;`,
         );
       }
 
-      if (fileType === RoutableFileTypes.Meta) continue;
+      if (!hasModule) continue;
 
       writer.write(`declare module "${info.modulePath}" {`);
 
@@ -939,10 +953,11 @@ export async function renderRouteTypeInfo(
       }
 
       if (info.typeName) {
+        const id = info.id || "any";
         writer.write(`
-  const Run: $.Namespace<${info.id}>;
+  const Run: $.Namespace<${id}>;
   namespace Run {
-    type Context = $.ContextForFile<${info.id}>${info.typeName === "Template" ? " & Marko.Global" : ""};
+    type Context = $.ContextForFile<${id}>${info.typeName === "Template" ? " & Marko.Global" : ""};
   }\n`);
       }
 
@@ -972,8 +987,6 @@ export async function renderRouteTypeInfo(
 }`);
     }
   }
-
-  headWriter.join();
 
   return writer.end();
 }

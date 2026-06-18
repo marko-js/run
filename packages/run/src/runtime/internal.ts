@@ -310,7 +310,7 @@ export async function call(
   }
 
   if (method && method !== context.method) {
-    return next(data);
+    return next(data) as any;
   }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
@@ -358,7 +358,7 @@ export async function call(
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
   }
-  return response || next(data);
+  return response || (next(data) as any);
 }
 
 export function compose(handlers: HandlerFunction[]): HandlerFunction {

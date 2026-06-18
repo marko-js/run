@@ -19,7 +19,17 @@ export type FormBodyValidatorOptions<Ctx> = {
   maxFileBytes?: number;
   onFile?(ctx: Ctx, file: Multipart): any;
 };
-type Schema<I, O> =
+
+interface Empty {}
+
+declare const MARKO_RUN_TYPES: unique symbol;
+declare global {
+  interface Response {
+    readonly [MARKO_RUN_TYPES]: void;
+  }
+}
+
+export type Schema<I, O> =
   | [O, undefined]
   | [I, StandardSchemaV1.FailureResult["issues"]];
 type Validated<V, Default = unknown> =
@@ -99,7 +109,7 @@ type MergeTwo<A, B> =
       : B
     : IsPlainObject<B> extends true
       ? B
-      : {};
+      : Empty;
 type MergeTuple<T extends readonly any[]> = T extends readonly [
   infer A,
   infer B,
@@ -109,8 +119,8 @@ type MergeTuple<T extends readonly any[]> = T extends readonly [
   : T extends readonly [infer Only]
     ? IsPlainObject<Only> extends true
       ? Only
-      : {}
-    : {};
+      : Empty
+    : Empty;
 type MergeValidators<A, B> =
   IsPlainObject<A> extends true
     ? IsPlainObject<B> extends true
@@ -177,7 +187,9 @@ export type NormalizedMeta<Meta, Verb extends HttpVerb> =
       }[Verb]
     : Meta;
 export type NormalizedMetaLookup<T> = {
-  [K in HttpVerb]: IsPlainObject<T> extends 1 ? NormalizedMetaObject<T, K> : T;
+  [K in HttpVerb]: IsPlainObject<T> extends true
+    ? NormalizedMetaObject<T, K>
+    : T;
 };
 type NormalizedMetaFiles<
   Files extends readonly File[],
@@ -272,7 +284,7 @@ export interface Route<Def extends RouteDef = RouteDef, Data = any> {
   params: Def["params"];
   search: Def["search"];
   body: Fallback<Def["json"], Fallback<Def["form"], undefined>>;
-  data: Data extends [infer T extends RouteData] ? T : RouteData;
+  data: Data extends [infer T extends RouteData] ? T : Empty;
 }
 type RouteFileGroupVerb<Group extends RouteFileGroup> =
   | (Keys<Group["handler"]["exports"]> & HttpVerb)
@@ -280,7 +292,7 @@ type RouteFileGroupVerb<Group extends RouteFileGroup> =
 type RouteFileGroupMeta<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
-> = Fallback<MergeTuple<NormalizedMetaFiles<Group["meta"], Verb>>, {}>;
+> = Fallback<MergeTuple<NormalizedMetaFiles<Group["meta"], Verb>>, Empty>;
 type RouteFileGroupOptions<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
@@ -288,7 +300,7 @@ type RouteFileGroupOptions<
   MapTuple<
     TypesFromHandlerFiles<[...Group["middleware"], Group["handler"]], Verb>,
     "options",
-    {}
+    Empty
   >
 >;
 type RouteFileGroupData<
@@ -298,7 +310,7 @@ type RouteFileGroupData<
   MapTuple<
     TypesFromHandlerFiles<[...Group["middleware"], Group["handler"]], Verb>,
     "data",
-    {}
+    Empty
   >
 >;
 type TypesFromHandlerFiles<Files extends File[], Verb extends HttpVerb> = {
@@ -326,7 +338,7 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
   verbs: {
     [Verb in RouteFileGroupVerb<Group>]: {
       rawOptions: RouteFileGroupOptions<Group, Verb>;
-      options: Fallback<Validation<RouteFileGroupOptions<Group, Verb>>, {}>;
+      options: Fallback<Validation<RouteFileGroupOptions<Group, Verb>>, Empty>;
       data: RouteFileGroupData<Group, Verb>;
       def: RouteDef<
         Path,
@@ -337,36 +349,54 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
               [File in Group["partial"][number] as File["name"] &
                 string]: File["exports"];
             }
-          : {}
+          : Empty
       >;
     };
   };
 };
-type NextHandlerResult<Data> = Promise<
-  Typed<
-    Response,
-    {
-      data: Data;
-    }
-  >
->;
+
 export type DefinePaths<Groups extends Record<string, RouteFileGroup>> = {
   [Path in keyof Groups & string]: DefineRoute<Path, Groups[Path]>;
 };
-type HandlerFuncData<T> =
-  Awaited<T> extends Typed<
+type ExtractHandlerData<U> =
+  U extends Typed<
     {},
     {
       data: infer Data;
     }
   >
     ? Data
-    : {};
+    : never;
+type HandlerDataUnionKeys<U> = U extends unknown ? keyof U : never;
+type HandlerDataUnionValue<U, K extends PropertyKey> = U extends unknown
+  ? K extends keyof U
+    ? U[K]
+    : never
+  : never;
+type HandlerDataRequiredKeys<U> = {
+  [K in HandlerDataUnionKeys<U>]: [U] extends [
+    {
+      [P in K]-?: unknown;
+    },
+  ]
+    ? K
+    : never;
+}[HandlerDataUnionKeys<U>];
+type MergeHandlerData<U> = Simplify<
+  {
+    [K in HandlerDataRequiredKeys<U>]: HandlerDataUnionValue<U, K>;
+  } & {
+    [K in Exclude<
+      HandlerDataUnionKeys<U>,
+      HandlerDataRequiredKeys<U>
+    >]?: HandlerDataUnionValue<U, K>;
+  }
+>;
+type HandlerFuncData<T> = MergeHandlerData<ExtractHandlerData<Awaited<T>>>;
 export interface NormalizedHandlerFunction<
-  Ctx,
   Verb extends HttpVerbOrAll,
   Options,
-> extends HandlerFunction<Ctx, Promise<Response>> {
+> extends HandlerFunction<Context, Promise<Response>> {
   options: Options;
   verb: Verb;
 }
@@ -376,29 +406,30 @@ export type NormalizedHandler<
   Return,
   Options,
 > = Typed<
-  NormalizedHandlerFunction<Ctx, Verb, Options>,
+  NormalizedHandlerFunction<Verb, Options>,
   HandlerTypes<
     Ctx,
     Verb,
     Options,
-    Return extends readonly unknown[]
+    [Return] extends [readonly unknown[]]
       ? MergeTuple<{
           [I in keyof Return]: HandlerFuncData<Return[I]>;
         }>
       : HandlerFuncData<Return>
   >
 >;
-type HandlerArrayBrand = {
-  " ~types": {
-    options: any;
-    data: any;
-  };
-};
 type HandlerArray<Ctx, Return extends unknown[]> = {
-  [K in keyof Return]: HandlerArrayBrand | HandlerFunction<Ctx, Return[K]>;
+  [K in keyof Return]:
+    | {
+        [MARKO_RUN_TYPES]: {
+          options: any;
+          data: any;
+        };
+      }
+    | HandlerFunction<Ctx, Return[K]>;
 };
 type HandlerValueOptions<H> = H extends {
-  " ~types": {
+  [MARKO_RUN_TYPES]: {
     options: infer O;
   };
 }
@@ -409,14 +440,14 @@ type ComposedHandlerOptions<Handlers extends readonly unknown[]> =
     [K in keyof Handlers]: HandlerValueOptions<Handlers[K]>;
   }>;
 type HandlerValueData<H> = H extends {
-  " ~types": {
+  [MARKO_RUN_TYPES]: {
     data: infer D;
   };
 }
   ? D
   : H extends (...args: any[]) => infer R
     ? HandlerFuncData<R>
-    : {};
+    : Empty;
 type ComposedHandlerData<Handlers extends readonly unknown[]> = MergeTuple<{
   [K in keyof Handlers]: HandlerValueData<Handlers[K]>;
 }>;
@@ -435,7 +466,7 @@ type TypesFromHandlerFilesWithLocal<
   [I in keyof Files]: Files[I] extends {
     id: Id;
   }
-    ? HandlerTypes<Context, Verb, Options, {}>
+    ? HandlerTypes<Context, Verb, Options>
     : TypesFromHandlerFile<Files[I], Verb>;
 };
 type RouteFileGroupOptionsWithLocal<
@@ -452,7 +483,7 @@ type RouteFileGroupOptionsWithLocal<
       Options
     >,
     "options",
-    {}
+    Empty
   >
 >;
 type MergedRouteOptionsForFile<
@@ -464,7 +495,7 @@ type MergedRouteOptionsForFile<
   Validation<
     RouteFileGroupOptionsWithLocal<AppPaths[Path]["files"], Verb, Id, Options>
   >,
-  {}
+  Empty
 >;
 export interface RouteForFileDef<
   F extends File,
@@ -476,7 +507,7 @@ export interface RouteForFileDef<
   method: Verb;
   meta: Verb extends keyof AppPaths[Path]["verbs"]
     ? AppPaths[Path]["verbs"][Verb]["def"]["meta"]
-    : {};
+    : Empty;
   params: MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
     params: infer T;
   }
@@ -502,7 +533,7 @@ export interface RouteForFileDef<
     ? Partial<AppPaths[Path]["verbs"][Verb]["data"]>
     : GetUpstreamData<F, Path, Verb> extends [infer T extends RouteData]
       ? T
-      : RouteData;
+      : Empty;
 }
 type ContextForFileWithOptions<
   F extends File,
@@ -518,18 +549,14 @@ type ContextForFileWithOptions<
 export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   <const Handlers extends readonly unknown[], Return extends unknown[]>(
     handlers: HandlerArray<
-      ContextForFileWithOptions<F, Verb, {}> & {},
+      ContextForFileWithOptions<F, Verb, Empty> & {},
       Return
     > &
       Handlers,
   ): Typed<
-    NormalizedHandlerFunction<
-      ContextForFileWithOptions<F, Verb, {}> & {},
-      Verb,
-      ComposedHandlerOptions<Handlers>
-    >,
+    NormalizedHandlerFunction<Verb, ComposedHandlerOptions<Handlers>>,
     HandlerTypes<
-      ContextForFileWithOptions<F, Verb, {}> & {},
+      ContextForFileWithOptions<F, Verb, Empty> & {},
       Verb,
       ComposedHandlerOptions<Handlers>,
       ComposedHandlerData<Handlers>
@@ -538,14 +565,14 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   <
     const Options extends DefineHandlerOptions<
       Verb,
-      ContextForFileWithOptions<F, Verb, {}> & {}
+      ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
     const Handlers extends readonly unknown[],
     Return extends unknown[],
   >(
     options: Exact<
       Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, {}> & {}>
+      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
     handlers: HandlerArray<
       ContextForFileWithOptions<F, Verb, Options> & {},
@@ -554,7 +581,6 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
       Handlers,
   ): Typed<
     NormalizedHandlerFunction<
-      ContextForFileWithOptions<F, Verb, Options> & {},
       Verb,
       MergeHandlerOptions<ComposedHandlerOptions<Handlers>, Options>
     >,
@@ -567,11 +593,11 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   >;
   <Return>(
     handler: HandlerFunction<
-      ContextForFileWithOptions<F, Verb, {}> & {},
+      ContextForFileWithOptions<F, Verb, Empty> & {},
       Return
     >,
   ): NormalizedHandler<
-    ContextForFileWithOptions<F, Verb, {}> & {},
+    ContextForFileWithOptions<F, Verb, Empty> & {},
     Verb,
     Return,
     {}
@@ -579,12 +605,12 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   <
     const Options extends DefineHandlerOptions<
       Verb,
-      ContextForFileWithOptions<F, Verb, {}> & {}
+      ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
   >(
     options: Exact<
       Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, {}> & {}>
+      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
   ): NormalizedHandler<
     ContextForFileWithOptions<F, Verb, Options> & {},
@@ -595,13 +621,13 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   <
     const Options extends DefineHandlerOptions<
       Verb,
-      ContextForFileWithOptions<F, Verb, {}> & {}
+      ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
     Return,
   >(
     options: Exact<
       Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, {}> & {}>
+      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
     handler: HandlerFunction<
       ContextForFileWithOptions<F, Verb, Options> & {},
@@ -651,18 +677,19 @@ type GetUpstreamData<
                   V
                 >,
                 "data",
-                {}
+                Empty
               >
             >
-          : {};
+          : Empty;
       }>,
     ]
-  : {};
+  : Empty;
 type HandlerReturnValue =
   | void
   | undefined
   | null
   | Response
+  | Typed<Response, any>
   | typeof MarkoRun.NotHandled
   | typeof MarkoRun.NotMatched;
 type HandlerReturn = HandlerReturnValue | Promise<HandlerReturnValue>;
@@ -776,8 +803,14 @@ type ContextForPath<
       >
     >
   : never;
-export type Typed<Original, Types> = Original & {
-  [" ~types"]: Types;
+export type Typed<Original, Types> = ([Original] extends [
+  {
+    readonly [MARKO_RUN_TYPES]: any;
+  },
+]
+  ? Omit<Original, typeof MARKO_RUN_TYPES>
+  : Original) & {
+  [MARKO_RUN_TYPES]: Types;
 };
 type VerbsForPath<
   Path extends keyof AppPaths,
@@ -820,12 +853,12 @@ export interface HandlerTypes<
   Ctx = Context,
   Verb extends HttpVerbOrAll = HttpVerbOrAll,
   Options = HandlerOptions<Ctx>,
-  Data = RouteData,
+  Data = Empty,
 > {
   context: Ctx;
   verb: Verb;
   options: Options;
-  data: Data extends RouteData ? Data : {};
+  data: Data extends RouteData ? Data : Empty;
 }
 export type Middleware<Id extends ID, Mod> = File<Id, "middleware", Mod>;
 export type Handler<Id extends ID, Mod> = File<Id, "handler", Mod>;
@@ -851,7 +884,7 @@ export type Namespace<F extends File> = Typed<
       ? {
           [Verb in HttpVerb]: DefineHandler<F, Verb>;
         }
-      : {}) &
+      : Empty) &
     NamespaceVerb,
   {
     context: ContextForFile<F> & {};
@@ -938,9 +971,16 @@ export type GetContext<
         >
       ? FilterContextByVerb<Ctx, Verb>
       : never;
-export type NextFunction = <Data extends RouteData = RouteData>(
+export type NextFunction = <Data extends RouteData = Empty>(
   data?: Data,
-) => NextHandlerResult<Data>;
+) => Promise<
+  Typed<
+    Response,
+    {
+      data: Data;
+    }
+  >
+>;
 export interface App {}
 export interface RouteMatch<Ctx extends Context = Context> {
   handler: HandlerFunction<Ctx, Promise<Response>>;
@@ -968,17 +1008,16 @@ export interface RuntimeModule {
     ...args: Parameters<Invoke<TPlatform>>
   ): ReturnType<Invoke<TPlatform>>;
 }
-type DefaultAPI = keyof Exclude<
-  Marko.Renderable,
-  Marko.Template<any, any> | Marko.Body<any, any> | string
-> extends "content"
-  ? "tags"
-  : "class";
 type TemplateAPI<T> = T extends {
   api: infer API;
 }
   ? API
-  : DefaultAPI;
+  : keyof Exclude<
+        Marko.Renderable,
+        Marko.Template<any, any> | Marko.Body<any, any> | string
+      > extends "content"
+    ? "tags"
+    : "class";
 export type LayoutInput<F extends File> =
   TemplateAPI<F["module"]> extends "tags"
     ? {
@@ -987,18 +1026,16 @@ export type LayoutInput<F extends File> =
     : {
         renderBody: Marko.Body;
       };
-type GetProperty<Obj, Prop> = Prop extends keyof Obj ? Obj[Prop] : never;
 type GetRawSearchValidator<
   Path extends string,
   Verb extends HttpVerb = "GET",
 > = Path extends keyof AppPaths
   ? Verb extends keyof AppPaths[Path]["verbs"]
-    ? GetProperty<AppPaths[Path]["verbs"][Verb]["rawOptions"], "search">
+    ? "search" extends keyof AppPaths[Path]["verbs"][Verb]["rawOptions"]
+      ? AppPaths[Path]["verbs"][Verb]["rawOptions"]["search"]
+      : never
     : never
   : never;
-type ParamObject<T> = {
-  [K in keyof T]: string | number;
-};
 export type HrefParams<Path extends `${string}/$${string}`> = {
   [Param in PathParamKeys<Path>[number]]: Path extends `${string}/$$${Param}`
     ? string | number | (string | number)[]
@@ -1010,7 +1047,9 @@ export type HrefOptions<
   ? HrefParamsOptions<Path>
   : HrefBaseOptions<Path>;
 interface HrefBaseOptions<Path extends string> {
-  search?: ParamObject<Valid<GetRawSearchValidator<Path>>>;
+  search?: {
+    [K in keyof Valid<GetRawSearchValidator<Path>>]: string | number;
+  };
   hash?: string | number;
 }
 interface HrefParamsOptions<
@@ -1026,4 +1065,3 @@ export type Href<Verb extends HttpVerbOrAll = "ALL"> = {
       : [options?: HrefOptions<Path>]
   ): string;
 };
-export {};

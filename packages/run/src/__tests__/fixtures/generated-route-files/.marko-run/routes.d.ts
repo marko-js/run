@@ -112,6 +112,11 @@ declare module "../src/routes/a.(,b,c),d.e/+page.marko" {
 }
 
 declare module "../src/routes/+404.marko" {
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
   /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -132,6 +137,11 @@ declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
   /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };

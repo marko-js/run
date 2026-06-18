@@ -84,5 +84,4 @@ declare module "../src/routes/foo/baz/+page.marko" {
 }
 
 type D1 = $.Meta<"D1", typeof import("../src/routes/foo/bar/+meta")>;
-
 type D2 = $.Meta<"D2", typeof import("../src/routes/foo/baz/+meta.json")>;

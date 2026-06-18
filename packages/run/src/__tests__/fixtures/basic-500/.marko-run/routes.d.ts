@@ -87,6 +87,11 @@ declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
   /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };

@@ -20,9 +20,9 @@ export const RoutableFileTypes = {
   Handler: "handler",
   Layout: "layout",
   Page: "page",
-  Meta: "meta",
   NotFound: "404",
   Error: "500",
+  Meta: "meta",
 } as const;
 
 export type RoutableFileType = ValuesOf<typeof RoutableFileTypes>;

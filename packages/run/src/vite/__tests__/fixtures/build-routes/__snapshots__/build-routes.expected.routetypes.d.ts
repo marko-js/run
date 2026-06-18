@@ -389,11 +389,12 @@ declare module "../src/routes/my/+page.marko" {
   }
 }
 
-type D1 = $.Meta<"D1", typeof import("../src/routes/_protected/_home/new/+meta.json")>;
-
-type D2 = $.Meta<"D2", typeof import("../src/routes/_protected/_home/notes/$id/comments/+meta")>;
-
 declare module "../src/routes/+404.marko" {
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
   /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -414,6 +415,11 @@ declare module "../src/routes/+500.marko" {
   export interface Input {
     error: unknown;
   }
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
   /** @deprecated use `Run` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
@@ -429,3 +435,6 @@ declare module "../src/routes/+500.marko" {
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
   }
 }
+
+type D1 = $.Meta<"D1", typeof import("../src/routes/_protected/_home/new/+meta.json")>;
+type D2 = $.Meta<"D2", typeof import("../src/routes/_protected/_home/notes/$id/comments/+meta")>;
