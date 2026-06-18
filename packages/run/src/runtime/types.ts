@@ -220,13 +220,13 @@ interface File<
       ? Module["default"]
       : Module;
 }
-export type RouteData = Record<string, any>;
+
 export interface RouteDef<
   Path extends string = string,
   Verb extends HttpVerb = HttpVerb,
-  Meta = any,
-  Partials extends Record<string, any> = Record<string, any>,
-  Options = RouteOptionsContainer<Path, Verb>,
+  Meta = unknown,
+  Partials extends Record<string, unknown> = Record<string, unknown>,
+  Options = unknown,
 > {
   path: Path;
   method: Verb;
@@ -238,14 +238,14 @@ export interface RouteDef<
     },
   ]
     ? T
-    : Simplify<PathParams<Path>>;
+    : unknown;
   search: Options extends [
     {
       search: infer T;
     },
   ]
     ? T
-    : undefined;
+    : unknown;
   form: Verb extends HttpVerbWithBody
     ? Options extends [
         {
@@ -254,7 +254,7 @@ export interface RouteDef<
       ]
       ? Promise<T>
       : never
-    : undefined;
+    : never;
   json: Verb extends HttpVerbWithBody
     ? Options extends [
         {
@@ -263,7 +263,7 @@ export interface RouteDef<
       ]
       ? Promise<T>
       : never
-    : undefined;
+    : never;
 }
 type RouteOptionsContainer<
   Path extends string = string,
@@ -275,14 +275,19 @@ type RouteOptionsContainer<
         : never]["options"]
     : never,
 ];
-export interface Route<Def extends RouteDef = RouteDef, Data = any> {
+export interface Route<Def extends RouteDef = RouteDef, Data = unknown> {
   path: Def["path"];
   method: Def["method"];
   meta: Def["meta"];
   params: Def["params"];
   search: Def["search"];
-  body: Fallback<Def["json"], Fallback<Def["form"], undefined>>;
-  data: Data extends [infer T extends RouteData] ? T : Empty;
+  body: Fallback<
+    Def["json"],
+    Fallback<Def["form"], undefined | Promise<unknown>>
+  >;
+  data: Data extends [infer T extends Record<string, unknown>]
+    ? T
+    : Record<string, unknown>;
 }
 type RouteFileGroupVerb<Group extends RouteFileGroup> =
   | (Keys<Group["handler"]["exports"]> & HttpVerb)
@@ -347,12 +352,12 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
               [File in Group["partial"][number] as File["name"] &
                 string]: File["exports"];
             }
-          : Empty
+          : Record<string, unknown>,
+        RouteOptionsContainer<Path, Verb>
       >;
     };
   };
 };
-
 export type DefinePaths<Groups extends Record<string, RouteFileGroup>> = {
   [Path in keyof Groups & string]: DefineRoute<Path, Groups[Path]>;
 };
@@ -394,7 +399,7 @@ type HandlerFuncData<T> = MergeHandlerData<ExtractHandlerData<Awaited<T>>>;
 export interface NormalizedHandlerFunction<
   Verb extends HttpVerbOrAll,
   Options,
-> extends HandlerFunction<Context, Promise<Response>> {
+> extends HandlerFunction<Context<any>, Promise<Response>> {
   options: Options;
   verb: Verb;
 }
@@ -527,11 +532,11 @@ export interface RouteForFileDef<
         ? Promise<T>
         : undefined
     : undefined;
-  data: [F & 1] extends [0]
-    ? Partial<AppPaths[Path]["verbs"][Verb]["data"]>
-    : GetUpstreamData<F, Path, Verb> extends [infer T extends RouteData]
-      ? T
-      : Empty;
+  data: GetUpstreamData<F, Path, Verb> extends [
+    infer T extends Record<string, unknown>,
+  ]
+    ? T
+    : Record<string, unknown>;
 }
 type ContextForFileWithOptions<
   F extends File,
@@ -638,6 +643,19 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
     Options
   >;
 };
+
+export type GlobalDefineHandler<Verb extends HttpVerbOrAll> = {
+  <const Handlers extends readonly unknown[], Return extends unknown[]>(
+    handlers: HandlerArray<Context, Return> & Handlers,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Empty>,
+    HandlerTypes<Context, Verb, Empty, ComposedHandlerData<Handlers>>
+  >;
+  <Return>(
+    handler: HandlerFunction<Context, Return>,
+  ): NormalizedHandler<Context, Verb, Return, {}>;
+};
+
 type TakeUntil<
   Arr extends any[],
   Id extends ID,
@@ -810,6 +828,15 @@ export type Typed<Original, Types> = ([Original] extends [
   : Original) & {
   [TYPES]: Types;
 };
+
+type NextResponse<Data> = Typed<
+  Response,
+  {
+    data: Data;
+    readonly [INVARIANT]: (data: Data) => void;
+  }
+>;
+
 type VerbsForPath<
   Path extends keyof AppPaths,
   Verb extends HttpVerbOrAll = "ALL",
@@ -843,7 +870,6 @@ export type ContextForFile<
       : never;
   }>;
 }>;
-
 export type AppPaths = App extends {
   paths: infer Paths;
 }
@@ -858,7 +884,7 @@ export interface HandlerTypes<
   context: Ctx;
   verb: Verb;
   options: Options;
-  data: Data extends RouteData ? Data : Empty;
+  data: Data extends Record<string, unknown> ? Data : Empty;
 }
 export type Middleware<Id extends ID, Mod> = File<Id, "middleware", Mod>;
 export type Handler<Id extends ID, Mod> = File<Id, "handler", Mod>;
@@ -873,7 +899,7 @@ export type NamespaceVerb<Verb extends HttpVerbOrAll = "ALL"> = {
   href: Href<Verb>;
 };
 export type GlobalNamespace = {
-  [Verb in HttpVerbOrAll]: DefineHandler<any, Verb>;
+  [Verb in HttpVerbOrAll]: GlobalDefineHandler<Verb>;
 } & NamespaceVerb;
 export type Namespace<F extends File> = Typed<
   (F["type"] extends "middleware"
@@ -890,7 +916,6 @@ export type Namespace<F extends File> = Typed<
     context: ContextForFile<F> & {};
   }
 >;
-
 export type DefineRoutes<Paths = void> = {
   paths: [Paths] extends [Record<string, File[]>]
     ? DefinePaths<{
@@ -971,17 +996,13 @@ export type GetContext<
         >
       ? FilterContextByVerb<Ctx, Verb>
       : never;
-export type NextFunction = <Data extends RouteData = Empty>(
-  data?: Data,
-) => Promise<
-  Typed<
-    Response,
-    {
-      data: Data;
-      readonly [INVARIANT]: (data: Data) => void;
-    }
-  >
->;
+
+export type NextFunction = {
+  (): Promise<Response>;
+  <Data extends Record<string, unknown>>(
+    data: Data,
+  ): Promise<NextResponse<Data>>;
+};
 export interface App {}
 export interface RouteMatch<Ctx extends Context = Context> {
   handler: HandlerFunction<Ctx, Promise<Response>>;

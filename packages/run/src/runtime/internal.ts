@@ -21,7 +21,6 @@ import type {
   NormalizedHandler,
   NormalizedHandlerOptions,
   Platform,
-  RouteData,
   RouteMatch,
   Validator,
 } from "./types";
@@ -276,7 +275,7 @@ export function render<T>(
   context: Context,
   template: Marko.Template<T>,
   input: T,
-  data?: RouteData,
+  data?: Record<string, unknown>,
 ) {
   if (data) {
     Object.assign(context.data, data);
@@ -286,11 +285,13 @@ export function render<T>(
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
 
+type NextDataFunction = (data?: Record<string, unknown>) => Response;
+
 export async function call(
   handler: HandlerFunction,
   next: NextFunction,
   context: Context,
-  data?: RouteData,
+  data?: Record<string, unknown>,
 ): Promise<Response> {
   let response!: RouteHandlerResult;
 
@@ -310,17 +311,17 @@ export async function call(
   }
 
   if (method && method !== context.method) {
-    return next(data) as any;
+    return (next as any as NextDataFunction)(data);
   }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
     let nextCallCount = 0;
     let didThrow = false;
     try {
-      response = await handler(context, (d) => {
+      response = await handler(context, ((d) => {
         nextCallCount++;
         return next(d);
-      });
+      }) as NextFunction);
     } catch (error) {
       didThrow = true;
       if (error instanceof Response) {
@@ -358,7 +359,7 @@ export async function call(
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
   }
-  return response || (next(data) as any);
+  return response || (next as any as NextDataFunction)(data);
 }
 
 export function compose(handlers: HandlerFunction[]): HandlerFunction {
@@ -370,13 +371,11 @@ export function compose(handlers: HandlerFunction[]): HandlerFunction {
   }
   return (context, next) => {
     let i = 0;
-    return (
-      function nextHandler(data) {
-        return i < len
-          ? call(handlers[i++], nextHandler, context, data)
-          : next(data);
-      } as NextFunction
-    )();
+    return (function nextHandler(data) {
+      return i < len
+        ? call(handlers[i++], nextHandler, context, data)
+        : (next as any as NextDataFunction)(data);
+    })();
   };
 }
 
