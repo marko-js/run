@@ -169,9 +169,9 @@ type Unescape<Escaped extends string> = Escaped extends `\`${infer Value}\``
 type PathParams<
   Path extends string,
   Keys extends string[] = PathParamKeys<Path>,
-> = {
+> = Simplify<{
   [K in Keys[number]]: string;
-};
+}>;
 type NormalizedMetaObject<Meta, Verb extends HttpVerb> =
   IsPlainObject<Meta> extends true
     ? Verb extends keyof Meta
@@ -232,21 +232,25 @@ export interface RouteDef<
   method: Verb;
   meta: Meta;
   partials: Partials;
-  params: Options extends [
-    {
-      params: infer T;
-    },
-  ]
-    ? T
-    : unknown;
-  search: Options extends [
-    {
-      search: infer T;
-    },
-  ]
-    ? T
-    : unknown;
-  form: Verb extends HttpVerbWithBody
+  params: unknown extends Options
+    ? unknown
+    : Options extends [
+          {
+            params: infer T;
+          },
+        ]
+      ? T
+      : PathParams<Path>;
+  search: unknown extends Options
+    ? unknown
+    : Options extends [
+          {
+            search: infer T;
+          },
+        ]
+      ? T
+      : undefined;
+  form: HttpVerbWithBody extends Verb
     ? Options extends [
         {
           form: infer T;
@@ -254,8 +258,8 @@ export interface RouteDef<
       ]
       ? Promise<T>
       : never
-    : never;
-  json: Verb extends HttpVerbWithBody
+    : undefined;
+  json: HttpVerbWithBody extends Verb
     ? Options extends [
         {
           json: infer T;
@@ -263,7 +267,7 @@ export interface RouteDef<
       ]
       ? Promise<T>
       : never
-    : never;
+    : undefined;
 }
 type RouteOptionsContainer<
   Path extends string = string,
@@ -515,7 +519,7 @@ export interface RouteForFileDef<
     params: infer T;
   }
     ? T
-    : Simplify<PathParams<Path & string>>;
+    : PathParams<Path & string>;
   search: MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
     search: infer T;
   }
@@ -754,7 +758,11 @@ export interface Multipart extends globalThis.File {
 type Validation<T> = Simplify<{
   [K in "params" | "search" | "form" | "json" as K extends keyof T
     ? K
-    : never]: T extends Record<K, infer Value> ? Validated<Value, 1> : keyof T;
+    : never]: T extends Record<K, infer Value>
+    ? Value extends { validator: infer U }
+      ? Validated<U>
+      : Validated<Value>
+    : keyof T;
 }>;
 type RoutesForFile<F extends File> = {
   [K in keyof AppPaths as F["id"] extends AppPaths[K]["files"]["all"][number]["id"]
@@ -1031,7 +1039,7 @@ export interface RuntimeModule {
   ): ReturnType<Invoke<TPlatform>>;
 }
 type TemplateAPI<T> = T extends {
-  api: infer API;
+  "~api": infer API;
 }
   ? API
   : keyof Exclude<

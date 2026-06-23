@@ -385,10 +385,12 @@ export function normalizeHandler(
   if (typeof obj === "function") {
     return obj;
   } else if (Array.isArray(obj)) {
-    return compose(obj as HandlerFunction[]);
+    return compose(obj as HandlerFunction[]) as RouteHandler;
   } else if (obj instanceof Promise) {
     const promise = obj.then((value) => {
-      fn = Array.isArray(value) ? compose(value as HandlerFunction[]) : value;
+      fn = (
+        Array.isArray(value) ? compose(value as HandlerFunction[]) : value
+      ) as RouteHandler;
     });
     let fn: RouteHandler = async (context, next) => {
       await promise;
