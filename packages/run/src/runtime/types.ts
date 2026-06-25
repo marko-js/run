@@ -399,7 +399,10 @@ type MergeHandlerData<U> = Simplify<
     >]?: HandlerDataUnionValue<U, K>;
   }
 >;
-type HandlerFuncData<T> = MergeHandlerData<ExtractHandlerData<Awaited<T>>>;
+type HandlerFuncData<T> =
+  Awaited<T> extends Response | null
+    ? never
+    : MergeHandlerData<ExtractHandlerData<Awaited<T>>>;
 export interface NormalizedHandlerFunction<
   Verb extends HttpVerbOrAll,
   Options,
@@ -446,6 +449,13 @@ type ComposedHandlerOptions<Handlers extends readonly unknown[]> =
   MergeHandlerOptionsTuple<{
     [K in keyof Handlers]: HandlerValueOptions<Handlers[K]>;
   }>;
+
+type HandlerPassthrough<H> = [H] extends [never]
+  ? true
+  : H extends { [TYPES]: { passthrough: infer P } }
+    ? P
+    : true;
+
 type HandlerValueData<H> = H extends {
   [TYPES]: {
     data: infer D;
@@ -637,7 +647,7 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
       DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
     handler: HandlerFunction<
-      ContextForFileWithOptions<F, Verb, Options> & {},
+      NoInfer<ContextForFileWithOptions<F, Verb, Options>> & {},
       Return
     >,
   ): NormalizedHandler<
@@ -837,7 +847,7 @@ export type Typed<Original, Types> = ([Original] extends [
   [TYPES]: Types;
 };
 
-type NextResponse<Data> = Typed<
+type NextResponse<Data = Empty> = Typed<
   Response,
   {
     data: Data;
@@ -865,18 +875,27 @@ export type ContextForFile<
     ? "GET" | "POST"
     : "ALL",
 > = Union<{
-  [Path in PathsForFile<F>]: Union<{
-    [V in VerbsForPath<Path, Verb>]: V extends HttpVerb
-      ? Context<
-          Simplify<
-            Route<
-              AppPaths[Path]["verbs"][V]["def"],
-              GetUpstreamData<F, Path, V>
+  [Path in PathsForFile<F>]: Fallback<
+    Union<{
+      [V in VerbsForPath<Path, Verb> as F["type"] extends "template"
+        ? HandlerPassthrough<
+            AppPaths[Path]["files"]["handler"]["exports"][V]
+          > extends true
+          ? V
+          : never
+        : V]: V extends HttpVerb
+        ? Context<
+            Simplify<
+              Route<
+                AppPaths[Path]["verbs"][V]["def"],
+                GetUpstreamData<F, Path, V>
+              >
             >
           >
-        >
-      : never;
-  }>;
+        : never;
+    }>,
+    Context
+  >;
 }>;
 export type AppPaths = App extends {
   paths: infer Paths;
@@ -892,7 +911,12 @@ export interface HandlerTypes<
   context: Ctx;
   verb: Verb;
   options: Options;
-  data: Data extends Record<string, unknown> ? Data : Empty;
+  data: [Data] extends [never]
+    ? Empty
+    : Data extends Record<string, unknown>
+      ? Data
+      : Empty;
+  passthrough: [Data] extends [never] ? false : true;
 }
 export type Middleware<Id extends ID, Mod> = File<Id, "middleware", Mod>;
 export type Handler<Id extends ID, Mod> = File<Id, "handler", Mod>;
@@ -1006,7 +1030,7 @@ export type GetContext<
       : never;
 
 export type NextFunction = {
-  (): Promise<Response>;
+  (): Promise<NextResponse>;
   <Data extends Record<string, unknown>>(
     data: Data,
   ): Promise<NextResponse<Data>>;
