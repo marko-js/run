@@ -78,10 +78,18 @@ export default function vercelAdapter(options: Options = {}): Adapter {
       const args = ["dev", "--listen", port.toString()];
       args.push(...parseVercelArgs(previewOptions.args));
 
+      // Spawn through a shell only on Windows, where `vercel` is a `.cmd` shim
+      // that can't be spawned directly. On POSIX, spawning directly means
+      // `close()` terminates the CLI itself (not a shell wrapper) and avoids
+      // the shell re-parsing the argument values.
       const proc = spawn("vercel", args, {
         cwd,
         env: process.env,
-        shell: true,
+        shell: process.platform === "win32",
+      });
+
+      proc.on("error", (err) => {
+        console.error("Failed to start vercel preview server:", err);
       });
 
       if (process.env.NODE_ENV !== "test") {
