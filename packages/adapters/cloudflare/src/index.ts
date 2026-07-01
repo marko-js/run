@@ -94,10 +94,18 @@ export default function cloudflareAdapter(options: Options = {}): Adapter {
 
       args.push(...parseWranglerArgs(previewOptions.args));
 
+      // Spawn through a shell only on Windows, where `wrangler` is a `.cmd`
+      // shim that can't be spawned directly. On POSIX, spawning directly means
+      // `close()` terminates Wrangler itself (not a shell wrapper) and avoids
+      // the shell re-parsing the argument values.
       const proc = spawn("wrangler", args, {
         cwd,
         env: process.env,
-        shell: true,
+        shell: process.platform === "win32",
+      });
+
+      proc.on("error", (err) => {
+        console.error("Failed to start wrangler preview server:", err);
       });
 
       if (process.env.NODE_ENV !== "test") {
