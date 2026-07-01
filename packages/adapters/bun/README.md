@@ -51,8 +51,8 @@ The `Bun.serve` server instance is available on the `platform` argument of your 
 ```ts
 import type { BunPlatformInfo } from "@marko/run-adapter-bun";
 
-export const GET = (context, { platform }) => {
-  const server = platform as BunPlatformInfo;
+export const GET = (context) => {
+  const server = context.platform as BunPlatformInfo;
   const ip = server.requestIP(context.request);
   return new Response(`Hello from ${ip?.address ?? "somewhere"}!`);
 };

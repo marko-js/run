@@ -45,8 +45,10 @@ async function serveStatic(pathname: string): Promise<Response | null> {
   return new Response(file, { headers });
 }
 
+const portEnv = Number(process.env.PORT);
+
 Bun.serve({
-  port: Number(process.env.PORT) || 3000,
+  port: Number.isNaN(portEnv) ? 3000 : portEnv,
   async fetch(request, server) {
     // Let matched routes respond first; only fall back to static assets when
     // the router reports no match (the runtime returns a 404 response in that

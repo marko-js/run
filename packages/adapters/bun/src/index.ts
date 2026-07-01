@@ -62,6 +62,10 @@ export default function bunAdapter(): Adapter {
         shell: true,
       });
 
+      proc.on("error", (err) => {
+        console.error("Failed to start bun preview server:", err);
+      });
+
       if (process.env.NODE_ENV !== "test") {
         proc.stdout.pipe(process.stdout);
       }
@@ -86,10 +90,9 @@ export default function bunAdapter(): Adapter {
 function assertBunCLI() {
   try {
     execSync("bun --version");
-  } catch (error) {
-    console.warn(
-      `Bun not found. Please install it from https://bun.sh (\`curl -fsSL https://bun.sh/install | bash\`)`,
+  } catch {
+    throw new Error(
+      "Bun not found. Please install it from https://bun.sh (`curl -fsSL https://bun.sh/install | bash`).",
     );
-    process.exit(1);
   }
 }
