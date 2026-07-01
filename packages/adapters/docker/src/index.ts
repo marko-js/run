@@ -40,7 +40,11 @@ export default function dockerAdapter(options: Options = {}): Adapter {
       // server entry (`index.mjs`).
       const publicDir = path.resolve(config.root, config.build.outDir);
       const distDir = path.dirname(publicDir);
-      const relDist = path.relative(config.root, distDir) || ".";
+      // Normalize to POSIX separators so the generated Dockerfile is valid on
+      // Windows hosts too (the image is always Linux-based).
+      const relDist = (path.relative(config.root, distDir) || ".")
+        .split(path.sep)
+        .join("/");
 
       await writeIfAbsent(
         path.join(config.root, "Dockerfile"),
