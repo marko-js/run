@@ -20,6 +20,17 @@ npm install @marko/run-adapter-vercel
 
 That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config. See [Configuration](#configuration) if you want to build for the Edge runtime instead of the default Node.js Serverless runtime.
 
+## Previewing locally
+
+After building, `marko-run preview` serves the generated `.vercel/output` locally — static assets are served from disk and everything else is handled by the built function, mirroring how Vercel routes requests in production:
+
+```sh
+npm run build
+npm run preview
+```
+
+This runs entirely on your machine: no Vercel account, project link, or Vercel CLI is required.
+
 ## Deploying
 
 `marko-run build` produces a [Vercel Build Output API](https://vercel.com/docs/build-output-api/v3) directory at `.vercel/output`, which Vercel deploys directly.

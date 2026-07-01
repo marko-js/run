@@ -1,8 +1,9 @@
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
-import { execSync, spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+
+import { startPreviewServer } from "./preview";
 
 export type { VercelEdgePlatformInfo, VercelNodePlatformInfo } from "./types";
 
@@ -71,39 +72,12 @@ export default function vercelAdapter(options: Options = {}): Adapter {
     },
 
     async startPreview({ options: previewOptions }) {
-      assertVercelCLI();
-
       const { port = 3000, cwd } = previewOptions;
 
-      const args = ["dev", "--listen", port.toString()];
-      args.push(...parseVercelArgs(previewOptions.args));
-
-      // Spawn through a shell only on Windows, where `vercel` is a `.cmd` shim
-      // that can't be spawned directly. On POSIX, spawning directly means
-      // `close()` terminates the CLI itself (not a shell wrapper) and avoids
-      // the shell re-parsing the argument values.
-      const proc = spawn("vercel", args, {
-        cwd,
-        env: process.env,
-        shell: process.platform === "win32",
-      });
-
-      proc.on("error", (err) => {
-        console.error("Failed to start vercel preview server:", err);
-      });
-
-      if (process.env.NODE_ENV !== "test") {
-        proc.stdout.pipe(process.stdout);
-      }
-      proc.stderr.pipe(process.stderr);
-
-      return {
-        port,
-        close() {
-          proc.unref();
-          proc.kill();
-        },
-      };
+      // The build writes a Vercel Build Output API directory here; serve it
+      // directly (see `startPreviewServer` for why the Vercel CLI can't).
+      const outputDir = path.join(cwd, ".vercel", "output");
+      return startPreviewServer({ outputDir, port, edge });
     },
 
     async buildEnd({ config, builtEntries }) {
@@ -178,26 +152,6 @@ export default function vercelAdapter(options: Options = {}): Adapter {
       return "VercelNodePlatformInfo";
     },
   };
-}
-
-const devFlags = new RegExp(
-  ["debug", "env=.+", "build-env=.+", "yes", "token=.+", "scope=.+"]
-    .map((flag) => `--${flag}`)
-    .join("|"),
-);
-
-function parseVercelArgs(args: string[]) {
-  return args.filter((arg) => devFlags.test(arg));
-}
-
-function assertVercelCLI() {
-  try {
-    execSync("vercel --version");
-  } catch {
-    throw new Error(
-      "Vercel CLI not found. Please install it with `npm install -g vercel`.",
-    );
-  }
 }
 
 /** Recursively copy a directory (kept `fs.cp`-free for older Node support). */
