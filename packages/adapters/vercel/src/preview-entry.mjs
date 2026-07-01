@@ -73,5 +73,7 @@ import(pathToFileURL(funcEntry).href).then(({ default: middleware }) => {
         );
       }
     }),
-  ).listen(PORT);
+  ).listen(PORT, () => {
+    console.log(`Serving Vercel build output at http://localhost:${PORT}`);
+  });
 });
