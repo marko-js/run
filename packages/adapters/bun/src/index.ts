@@ -56,10 +56,14 @@ export default function bunAdapter(): Adapter {
       const { port = 3000, cwd, dir } = previewOptions;
       const entryFile = entry || path.join(dir, "index.mjs");
 
+      // Spawn through a shell only on Windows (needed when `bun` is a `.cmd`
+      // shim). On POSIX, spawning directly means `close()` terminates Bun
+      // itself (not a shell wrapper) and avoids the shell re-parsing the
+      // argument values.
       const proc = spawn("bun", ["run", entryFile], {
         cwd,
         env: { ...process.env, PORT: port.toString() },
-        shell: true,
+        shell: process.platform === "win32",
       });
 
       proc.on("error", (err) => {
