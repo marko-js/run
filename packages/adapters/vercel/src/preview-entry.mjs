@@ -44,36 +44,41 @@ const serveAssets = createStaticServe(`${staticDir}/assets`, {
   maxAge: "365 days",
 });
 
-import(pathToFileURL(funcEntry).href).then(({ default: middleware }) => {
-  createServer((req, res) =>
-    compress(req, res, () => {
-      if (req.url.startsWith("/assets/")) {
-        req.url = req.url.slice(7);
-        serveAssets(req, res, () => {
-          res.statusCode = 404;
-          res.end();
-        });
-      } else {
-        servePublic(req, res, () =>
-          // The function handles everything itself; `next` only runs when it
-          // declines the request (unmatched route) or bubbles an error.
-          middleware(req, res, (err) => {
-            if (res.writableEnded) {
-              return;
-            }
-            if (err) {
-              console.error(err);
-              res.statusCode = 500;
-              res.end("Internal Server Error");
-            } else {
-              res.statusCode = 404;
-              res.end("Not Found");
-            }
-          }),
-        );
-      }
-    }),
-  ).listen(PORT, () => {
-    console.log(`Serving Vercel build output at http://localhost:${PORT}`);
+import(pathToFileURL(funcEntry).href)
+  .then(({ default: middleware }) => {
+    createServer((req, res) =>
+      compress(req, res, () => {
+        if (req.url.startsWith("/assets/")) {
+          req.url = req.url.slice(7);
+          serveAssets(req, res, () => {
+            res.statusCode = 404;
+            res.end();
+          });
+        } else {
+          servePublic(req, res, () =>
+            // The function handles everything itself; `next` only runs when it
+            // declines the request (unmatched route) or bubbles an error.
+            middleware(req, res, (err) => {
+              if (res.writableEnded) {
+                return;
+              }
+              if (err) {
+                console.error(err);
+                res.statusCode = 500;
+                res.end("Internal Server Error");
+              } else {
+                res.statusCode = 404;
+                res.end("Not Found");
+              }
+            }),
+          );
+        }
+      }),
+    ).listen(PORT, () => {
+      console.log(`Serving Vercel build output at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to load Vercel function entry:", err);
+    process.exit(1);
   });
-});
