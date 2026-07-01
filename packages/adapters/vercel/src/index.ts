@@ -118,7 +118,7 @@ export default function vercelAdapter(options: Options = {}): Adapter {
 
       await fs.rm(outputDir, { recursive: true, force: true });
       await fs.mkdir(funcDir, { recursive: true });
-      await fs.cp(publicDir, staticDir, { recursive: true });
+      await copyDir(publicDir, staticDir);
 
       await fs.rename(serverEntry, path.join(funcDir, "index.js"));
       await fs.writeFile(
@@ -185,10 +185,24 @@ function parseVercelArgs(args: string[]) {
 function assertVercelCLI() {
   try {
     execSync("vercel --version");
-  } catch (error) {
-    console.warn(
-      `Vercel CLI not found. Please install it with \`npm install -g vercel\``,
+  } catch {
+    throw new Error(
+      "Vercel CLI not found. Please install it with `npm install -g vercel`.",
     );
-    process.exit(1);
+  }
+}
+
+/** Recursively copy a directory (kept `fs.cp`-free for older Node support). */
+async function copyDir(from: string, to: string) {
+  await fs.mkdir(to, { recursive: true });
+  const entries = await fs.readdir(from, { withFileTypes: true });
+  for (const entry of entries) {
+    const src = path.join(from, entry.name);
+    const dest = path.join(to, entry.name);
+    if (entry.isDirectory()) {
+      await copyDir(src, dest);
+    } else {
+      await fs.copyFile(src, dest);
+    }
   }
 }

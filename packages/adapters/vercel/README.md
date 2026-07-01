@@ -65,8 +65,8 @@ For Edge Functions it exposes the request context:
 ```ts
 import type { VercelEdgePlatformInfo } from "@marko/run-adapter-vercel";
 
-export const GET = (context, { platform }) => {
-  const { waitUntil } = platform as VercelEdgePlatformInfo;
+export const GET = (context) => {
+  const { waitUntil } = context.platform as VercelEdgePlatformInfo;
   waitUntil(logRequest());
   return new Response("Hello from the edge!");
 };
