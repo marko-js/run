@@ -18,29 +18,26 @@ Preview and deploy [@marko/run](../../run/README.md) apps to Vercel Functions/Ed
 npm install @marko/run-adapter-vercel
 ```
 
-## Usage
+That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config. See [Configuration](#configuration) if you want to build for the Edge runtime instead of the default Node.js Serverless runtime.
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
+## Deploying
 
-```ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite";
-import vercelAdapter from "@marko/run-adapter-vercel";
+`marko-run build` produces a [Vercel Build Output API](https://vercel.com/docs/build-output-api/v3) directory at `.vercel/output`, which Vercel deploys directly.
 
-export default defineConfig({
-  plugins: [
-    marko({
-      adapter: vercelAdapter(),
-    }),
-  ],
-});
+The simplest option is Vercel's Git integration: set your project's build command to `marko-run build` and Vercel picks up `.vercel/output` automatically — no output directory configuration required.
+
+To deploy from your machine with the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`), build and upload the prebuilt output:
+
+```sh
+npm run build
+npx vercel deploy --prebuilt
 ```
 
-Running `marko-run build` produces a [Vercel Build Output API](https://vercel.com/docs/build-output-api/v3) directory at `.vercel/output`, which Vercel uses directly when deploying. Set your project's build command to `marko-run build` and Vercel will pick it up — no output directory configuration required.
+Add `--prod` to deploy to production.
 
-## Edge Functions
+## Configuration
 
-This adapter can be configured to build for Vercel [Edge Functions](https://vercel.com/docs/functions/edge-functions) instead of the default Node.js Serverless Functions:
+Marko Run uses this adapter automatically, but you can register it in your Vite config (eg. `vite.config.js`) to pass options — for example, to build for Vercel [Edge Functions](https://vercel.com/docs/functions/edge-functions) instead of the default Node.js Serverless Functions:
 
 ```ts
 import { defineConfig } from "vite";
