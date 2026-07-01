@@ -18,31 +18,20 @@ Preview and deploy [@marko/run](../../run/README.md) apps on [Bun](https://bun.s
 npm install @marko/run-adapter-bun
 ```
 
-## Usage
+That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config.
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
-
-```ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite";
-import bunAdapter from "@marko/run-adapter-bun";
-
-export default defineConfig({
-  plugins: [
-    marko({
-      adapter: bunAdapter(),
-    }),
-  ],
-});
-```
-
-Running `marko-run build` produces a self-contained server entry at `dist/index.mjs` that uses `Bun.serve`. It handles your app's routes and serves the static assets in `dist/public` (the server listens on the `PORT` environment variable, defaulting to `3000`).
+`marko-run build` produces a self-contained server entry at `dist/index.mjs` that uses `Bun.serve`. It handles your app's routes and serves the static assets in `dist/public`, listening on the `PORT` environment variable (defaulting to `3000`).
 
 ## Running
 
+Build your app and run the server with the [Bun CLI](https://bun.sh):
+
 ```sh
+npm run build
 bun run dist/index.mjs
 ```
+
+Deploy the `dist` directory to any Bun host and run it the same way.
 
 ## Platform info
 
