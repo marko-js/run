@@ -57,10 +57,18 @@ export default function denoAdapter(): Adapter {
 
       const args = ["run", "--allow-net", "--allow-read", "--allow-env", entry];
 
+      // Spawn through a shell only on Windows (needed when `deno` is a `.cmd`
+      // shim). On POSIX, spawning directly means `close()` terminates Deno
+      // itself (not a shell wrapper) and avoids the shell re-parsing the
+      // argument values.
       const proc = spawn("deno", args, {
         cwd,
         env: { ...process.env, PORT: port.toString() },
-        shell: true,
+        shell: process.platform === "win32",
+      });
+
+      proc.on("error", (err) => {
+        console.error("Failed to start deno preview server:", err);
       });
 
       if (process.env.NODE_ENV !== "test") {
