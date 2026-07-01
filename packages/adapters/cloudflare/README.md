@@ -18,45 +18,30 @@ Preview and deploy [@marko/run](../../run/README.md) apps to Cloudflare Workers/
 npm install @marko/run-adapter-cloudflare
 ```
 
-## Usage
+That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config. See [Configuration](#configuration) if you want to build for Cloudflare Pages instead of the default Workers target.
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
-
-```ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite";
-import cloudflareAdapter from "@marko/run-adapter-cloudflare";
-
-export default defineConfig({
-  plugins: [
-    marko({
-      adapter: cloudflareAdapter(),
-    }),
-  ],
-});
-```
-
-The adapter builds for [Cloudflare Workers](https://developers.cloudflare.com/workers/) by default. `wrangler` is used to preview and deploy your app, so install it as a dev dependency:
+`wrangler` is used to preview and deploy your app; install it as a dev dependency:
 
 ```sh
 npm install -D wrangler
 ```
 
-## Workers (default)
+## Deploying
 
-Running `marko-run build` produces the following in your output directory (`dist` by default):
+Build your app and deploy the output with the [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/):
+
+```sh
+npm run build
+npx wrangler deploy -c dist/wrangler.json
+```
+
+`marko-run build` produces the following in your output directory (`dist` by default):
 
 - `_worker.js` — the bundled server entry
 - `public/` — your app's static assets
 - `wrangler.json` — a generated starter config (only written when no `wrangler.toml`/`wrangler.json`/`wrangler.jsonc` exists at your project root)
 
-Deploy with:
-
-```sh
-wrangler deploy --config dist/wrangler.json
-```
-
-To use your own bindings (KV, D1, R2, secrets, custom name, routes, etc.), add a Wrangler config at the root of your project. When present, the adapter will **not** generate one — point it at the build output yourself:
+To use your own bindings (KV, D1, R2, secrets, custom name, routes, etc.), add a Wrangler config at the root of your project. When present, the adapter will **not** generate one — point it at the build output yourself and deploy with `npx wrangler deploy`:
 
 ```jsonc
 // wrangler.jsonc
@@ -72,9 +57,9 @@ To use your own bindings (KV, D1, R2, secrets, custom name, routes, etc.), add a
 }
 ```
 
-## Pages
+## Configuration
 
-This adapter can target [Cloudflare Pages](https://developers.cloudflare.com/pages/) instead, building a [Pages Functions "advanced mode"](https://developers.cloudflare.com/pages/functions/advanced-mode/) `_worker.js`:
+Marko Run uses this adapter automatically, but you can register it in your Vite config (eg. `vite.config.js`) to pass options — for example, to target [Cloudflare Pages](https://developers.cloudflare.com/pages/) instead of the default [Workers](https://developers.cloudflare.com/workers/):
 
 ```ts
 import { defineConfig } from "vite";
@@ -90,10 +75,11 @@ export default defineConfig({
 });
 ```
 
-This emits `_worker.js` and a `_routes.json` into `dist/public`. Deploy the assets directory with:
+In `"pages"` mode the adapter builds a [Pages Functions "advanced mode"](https://developers.cloudflare.com/pages/functions/advanced-mode/) `_worker.js` and a `_routes.json` into `dist/public`. Deploy the assets directory instead:
 
 ```sh
-wrangler pages deploy dist/public
+npm run build
+npx wrangler pages deploy dist/public
 ```
 
 ## Platform info
