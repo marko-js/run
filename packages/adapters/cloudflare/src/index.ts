@@ -1,5 +1,7 @@
 import baseAdapter, { type Adapter } from "@marko/run/adapter";
+import { loadEnv } from "@marko/run/vite";
 import { execSync, spawn } from "child_process";
+import { existsSync } from "fs";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -68,16 +70,24 @@ export default function cloudflareAdapter(options: Options = {}): Adapter {
     async startPreview({ options: previewOptions }) {
       assertWranglerCLI();
 
-      const { port = 3000, cwd, dir } = previewOptions;
+      const { port = 3000, cwd, dir, envFile } = previewOptions;
+      if (envFile) {
+        await loadEnv(envFile);
+      }
+
       const publicDir = path.join(dir, "public");
+      // buildEnd only generates this when the project has no Wrangler config of
+      // its own; otherwise let Wrangler discover the project's config.
+      const generatedConfig = path.join(dir, "wrangler.json");
 
       const args =
         mode === "pages"
           ? ["pages", "dev", publicDir, "--port", port.toString()]
           : [
               "dev",
-              "--config",
-              path.join(dir, "wrangler.json"),
+              ...(existsSync(generatedConfig)
+                ? ["--config", generatedConfig]
+                : []),
               "--port",
               port.toString(),
             ];
@@ -229,10 +239,9 @@ function parseWranglerArgs(args: string[]) {
 function assertWranglerCLI() {
   try {
     execSync("wrangler --version");
-  } catch (error) {
-    console.warn(
-      `Wrangler CLI not found. Please install it with \`npm install -D wrangler\``,
+  } catch {
+    throw new Error(
+      "Wrangler CLI not found. Please install it with `npm install -D wrangler`.",
     );
-    process.exit(1);
   }
 }

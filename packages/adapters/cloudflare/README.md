@@ -103,8 +103,8 @@ The Worker environment, execution context and Cloudflare request properties are 
 ```ts
 import type { CloudflarePlatformInfo } from "@marko/run-adapter-cloudflare";
 
-export const GET = (context, { platform }) => {
-  const { env, ctx, cf } = platform as CloudflarePlatformInfo;
+export const GET = (context) => {
+  const { env, ctx, cf } = context.platform as CloudflarePlatformInfo;
   ctx.waitUntil(logRequest(cf));
   return new Response(`Hello from ${cf?.city ?? "the edge"}!`);
 };
