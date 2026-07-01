@@ -1,7 +1,7 @@
 {
   "name": "@marko/run-adapter-vercel",
   "version": "0.1.0",
-  "description": "Preview and deploy @marko/run apps to Vercel Functions/Edge Functions",
+  "description": "Preview and deploy @marko/run apps to Vercel Functions",
   "keywords": [
     "marko"
   ],

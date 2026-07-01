@@ -5,58 +5,28 @@ import { fileURLToPath } from "url";
 
 import { startPreviewServer } from "./preview";
 
-export type { VercelEdgePlatformInfo, VercelNodePlatformInfo } from "./types";
+export type { VercelNodePlatformInfo } from "./types";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
-const defaultEdgeEntry = path.join(__dirname, "default-edge-entry");
-const defaultNodeEntry = path.join(__dirname, "default-node-entry");
+const defaultEntry = path.join(__dirname, "default-node-entry");
 
 /** Used for the generated Node Serverless Function. */
 const NODE_RUNTIME = "nodejs20.x";
 
-export interface Options {
-  /**
-   * Build for Vercel's Edge runtime instead of the Node.js Serverless
-   * runtime. Edge Functions run on a web-standard runtime at the edge.
-   */
-  edge?: boolean;
-}
-
-export default function vercelAdapter(options: Options = {}): Adapter {
-  const { edge = false } = options;
+export default function vercelAdapter(): Adapter {
   const { startDev } = baseAdapter();
-  const defaultEntry = edge ? defaultEdgeEntry : defaultNodeEntry;
 
   return {
     name: "vercel-adapter",
 
     viteConfig(config) {
       if (config.build?.ssr) {
-        return edge
-          ? {
-              ssr: {
-                target: "webworker",
-                resolve: {
-                  dedupe: ["marko"],
-                  conditions: [
-                    "edge-light",
-                    "worker",
-                    "browser",
-                    "import",
-                    "require",
-                    "production",
-                    "default",
-                  ],
-                },
-                noExternal: true,
-              },
-            }
-          : {
-              ssr: {
-                target: "node",
-                noExternal: true,
-              },
-            };
+        return {
+          ssr: {
+            target: "node",
+            noExternal: true,
+          },
+        };
       }
     },
 
@@ -77,7 +47,7 @@ export default function vercelAdapter(options: Options = {}): Adapter {
       // The build writes a Vercel Build Output API directory here; serve it
       // directly (see `startPreviewServer` for why the Vercel CLI can't).
       const outputDir = path.join(cwd, ".vercel", "output");
-      return startPreviewServer({ outputDir, port, edge });
+      return startPreviewServer({ outputDir, port });
     },
 
     async buildEnd({ config, builtEntries }) {
@@ -110,14 +80,12 @@ export default function vercelAdapter(options: Options = {}): Adapter {
       await fs.writeFile(
         path.join(funcDir, ".vc-config.json"),
         JSON.stringify(
-          edge
-            ? { runtime: "edge", entrypoint: "index.js" }
-            : {
-                runtime: NODE_RUNTIME,
-                handler: "index.js",
-                launcherType: "Nodejs",
-                shouldAddHelpers: false,
-              },
+          {
+            runtime: NODE_RUNTIME,
+            handler: "index.js",
+            launcherType: "Nodejs",
+            shouldAddHelpers: false,
+          },
           null,
           2,
         ),
@@ -140,12 +108,6 @@ export default function vercelAdapter(options: Options = {}): Adapter {
     },
 
     typeInfo(writer) {
-      if (edge) {
-        writer(
-          `import type { VercelEdgePlatformInfo } from '@marko/run-adapter-vercel';`,
-        );
-        return "VercelEdgePlatformInfo";
-      }
       writer(
         `import type { VercelNodePlatformInfo } from '@marko/run-adapter-vercel';`,
       );

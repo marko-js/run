@@ -1,33 +1,22 @@
 import type { SpawnedServer } from "@marko/run/adapter";
-import { copyResponseHeaders, getOrigin } from "@marko/run/adapter/middleware";
 import fs from "fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import type { Socket } from "net";
 import path from "path";
 import { pathToFileURL } from "url";
 
-import type { VercelEdgePlatformInfo } from "./types";
-
-/** A Node.js request listener, as exported by the generated Node function. */
+/** A Node.js request listener, as exported by the generated function. */
 type NodeHandler = (
   req: IncomingMessage,
   res: ServerResponse,
   next: (err?: unknown) => void,
 ) => void | Promise<void>;
 
-/** A web `fetch`-style handler, as exported by the generated Edge function. */
-type EdgeHandler = (
-  request: Request,
-  context: VercelEdgePlatformInfo,
-) => Promise<Response> | Response;
-
 export interface PreviewServerOptions {
   /** The `.vercel/output` Build Output API directory produced by the build. */
   outputDir: string;
   /** Port to listen on. */
   port: number;
-  /** Whether the output targets the Edge runtime instead of Node.js. */
-  edge: boolean;
 }
 
 // Content types for the handful of extensions a static build emits. Kept as a
@@ -66,7 +55,6 @@ const contentTypes: Record<string, string> = {
 export async function startPreviewServer({
   outputDir,
   port,
-  edge,
 }: PreviewServerOptions): Promise<SpawnedServer> {
   const staticDir = path.join(outputDir, "static");
   const funcEntry = path.join(outputDir, "functions", "index.func", "index.js");
@@ -77,9 +65,8 @@ export async function startPreviewServer({
     );
   }
 
-  const handler: NodeHandler | EdgeHandler = (
-    await import(pathToFileURL(funcEntry).href)
-  ).default;
+  const handler: NodeHandler = (await import(pathToFileURL(funcEntry).href))
+    .default;
 
   const server = createServer((req, res) => {
     handleRequest(req, res).catch((err) => {
@@ -107,9 +94,22 @@ export async function startPreviewServer({
     if (staticFile) {
       return serveStaticFile(staticFile, res);
     }
-    return edge
-      ? invokeEdge(handler as EdgeHandler, req, res)
-      : invokeNode(handler as NodeHandler, req, res);
+
+    // The generated function handles everything itself; `next` only runs
+    // when it declines the request (unmatched route) or bubbles an error.
+    return handler(req, res, (err) => {
+      if (res.writableEnded) {
+        return;
+      }
+      if (err) {
+        console.error(err);
+        res.statusCode = 500;
+        res.end("Internal Server Error");
+      } else {
+        res.statusCode = 404;
+        res.end("Not Found");
+      }
+    });
   }
 
   await new Promise<void>((resolve, reject) => {
@@ -180,60 +180,4 @@ function serveStaticFile(filePath: string, res: ServerResponse) {
     res.on("close", resolve);
     stream.pipe(res);
   });
-}
-
-function invokeNode(
-  handler: NodeHandler,
-  req: IncomingMessage,
-  res: ServerResponse,
-) {
-  // The generated Node function handles everything itself; `next` only runs
-  // when it declines the request (unmatched route) or bubbles an error.
-  return handler(req, res, (err) => {
-    if (res.writableEnded) {
-      return;
-    }
-    if (err) {
-      console.error(err);
-      res.statusCode = 500;
-      res.end("Internal Server Error");
-    } else {
-      res.statusCode = 404;
-      res.end("Not Found");
-    }
-  });
-}
-
-async function invokeEdge(
-  handler: EdgeHandler,
-  req: IncomingMessage,
-  res: ServerResponse,
-) {
-  let body: BodyInit | undefined;
-  switch (req.method) {
-    case "POST":
-    case "PUT":
-    case "PATCH":
-      body = req as unknown as ReadableStream;
-      break;
-  }
-
-  const request = new Request(new URL(req.url!, getOrigin(req)), {
-    method: req.method,
-    headers: req.headers as Record<string, string>,
-    body,
-    // @ts-expect-error: Node requires this for streaming request bodies.
-    duplex: "half",
-  });
-
-  const response = await handler(request, { waitUntil() {} });
-
-  res.statusCode = response.status;
-  copyResponseHeaders(res, response.headers);
-  if (response.body) {
-    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
-      res.write(chunk);
-    }
-  }
-  res.end();
 }

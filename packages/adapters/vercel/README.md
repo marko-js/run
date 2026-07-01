@@ -10,7 +10,7 @@
 	<br/>
 </h1>
 
-Preview and deploy [@marko/run](../../run/README.md) apps to Vercel Functions/Edge Functions
+Preview and deploy [@marko/run](../../run/README.md) apps to [Vercel Functions](https://vercel.com/docs/functions)
 
 ## Installation
 
@@ -18,7 +18,7 @@ Preview and deploy [@marko/run](../../run/README.md) apps to Vercel Functions/Ed
 npm install @marko/run-adapter-vercel
 ```
 
-That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config. See [Configuration](#configuration) if you want to build for the Edge runtime instead of the default Node.js Serverless runtime.
+That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config. Builds target Vercel's Node.js runtime. (The Edge runtime is not supported — Vercel has [deprecated Edge Functions](https://vercel.com/docs/functions/runtimes/edge/edge-functions) in favor of the Node.js runtime.)
 
 ## Previewing locally
 
@@ -48,7 +48,7 @@ Add `--prod` to deploy to production.
 
 ## Configuration
 
-Marko Run uses this adapter automatically, but you can register it in your Vite config (eg. `vite.config.js`) to pass options — for example, to build for Vercel [Edge Functions](https://vercel.com/docs/functions/edge-functions) instead of the default Node.js Serverless Functions:
+Marko Run uses this adapter automatically, but you can also register it explicitly in your Vite config (eg. `vite.config.js`):
 
 ```ts
 import { defineConfig } from "vite";
@@ -58,7 +58,7 @@ import vercelAdapter from "@marko/run-adapter-vercel";
 export default defineConfig({
   plugins: [
     marko({
-      adapter: vercelAdapter({ edge: true }),
+      adapter: vercelAdapter(),
     }),
   ],
 });
@@ -66,18 +66,13 @@ export default defineConfig({
 
 ## Platform info
 
-The route handler `platform` argument differs by runtime.
-
-For Edge Functions it exposes the request context:
+The route handler `platform` argument exposes the underlying Node request and response objects:
 
 ```ts
-import type { VercelEdgePlatformInfo } from "@marko/run-adapter-vercel";
+import type { VercelNodePlatformInfo } from "@marko/run-adapter-vercel";
 
 export const GET = (context) => {
-  const { waitUntil } = context.platform as VercelEdgePlatformInfo;
-  waitUntil(logRequest());
-  return new Response("Hello from the edge!");
+  const { request, response } = context.platform as VercelNodePlatformInfo;
+  return new Response(`Hello from ${request.url}!`);
 };
 ```
-
-For Node.js Serverless Functions it exposes the underlying Node request and response objects (`VercelNodePlatformInfo`).
