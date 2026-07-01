@@ -44,7 +44,7 @@ await Promise.all([
   }),
   build({
     ...opts,
-    entryPoints: ["src/default-node-entry.ts"],
+    entryPoints: ["src/default-node-entry.ts", "src/preview-entry.mjs"],
     format: "esm",
     outExtension: { ".js": ".mjs" },
   }),

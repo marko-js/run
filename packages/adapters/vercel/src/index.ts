@@ -3,18 +3,17 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { startPreviewServer } from "./preview";
-
 export type { VercelNodePlatformInfo } from "./types";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-node-entry");
+const previewEntry = path.join(__dirname, "preview-entry.mjs");
 
 /** Used for the generated Node Serverless Function. */
 const NODE_RUNTIME = "nodejs20.x";
 
 export default function vercelAdapter(): Adapter {
-  const { startDev } = baseAdapter();
+  const { startDev, startPreview } = baseAdapter();
 
   return {
     name: "vercel-adapter",
@@ -41,13 +40,10 @@ export default function vercelAdapter(): Adapter {
       });
     },
 
-    async startPreview({ options: previewOptions }) {
-      const { port = 3000, cwd } = previewOptions;
-
-      // The build writes a Vercel Build Output API directory here; serve it
-      // directly (see `startPreviewServer` for why the Vercel CLI can't).
-      const outputDir = path.join(cwd, ".vercel", "output");
-      return startPreviewServer({ outputDir, port });
+    startPreview(event) {
+      // Ignore the entry the CLI resolved from the build dir — the build
+      // moved it into `.vercel/output`, which `preview-entry.mjs` serves.
+      return startPreview!({ ...event, entry: previewEntry });
     },
 
     async buildEnd({ config, builtEntries }) {
