@@ -76,14 +76,18 @@ async function serveStatic(pathname: string): Promise<Response | null> {
 const port = Number(Deno.env.get("PORT")) || 3000;
 
 Deno.serve({ port }, async (request, info) => {
+  // Let matched routes respond first; only fall back to static assets when the
+  // router reports no match (the runtime returns a 404 response in that case).
   const response = await fetch<DenoPlatformInfo>(request, info);
-  if (response) {
+  if (response && response.status !== 404) {
     return response;
   }
 
   const { pathname } = new URL(request.url);
-  return (
-    (await serveStatic(decodeURIComponent(pathname))) ||
-    new Response(null, { status: 404 })
-  );
+  const staticResponse = await serveStatic(decodeURIComponent(pathname));
+  if (staticResponse) {
+    return staticResponse;
+  }
+
+  return response || new Response(null, { status: 404 });
 });
