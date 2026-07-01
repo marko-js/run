@@ -18,38 +18,26 @@ Preview and deploy [@marko/run](../../run/README.md) apps to [Deno](https://deno
 npm install @marko/run-adapter-deno
 ```
 
-## Usage
+That's all the setup required — Marko Run automatically discovers an installed adapter and uses it, so you **don't** need to register it in your Vite config.
 
-In your application's Vite config file (eg. `vite.config.js`), import and register this adapter with the `@marko/run` Vite plugin:
-
-```ts
-import { defineConfig } from "vite";
-import marko from "@marko/run/vite";
-import denoAdapter from "@marko/run-adapter-deno";
-
-export default defineConfig({
-  plugins: [
-    marko({
-      adapter: denoAdapter(),
-    }),
-  ],
-});
-```
-
-Running `marko-run build` produces a self-contained server entry at `dist/index.js` that uses `Deno.serve`. It handles your app's routes and serves the static assets in `dist/public` (the server listens on the `PORT` environment variable, defaulting to `3000`).
-
-## Running
-
-```sh
-deno run --allow-net --allow-read --allow-env dist/index.js
-```
+`marko-run build` produces a self-contained server entry at `dist/index.js` that uses `Deno.serve`. It handles your app's routes and serves the static assets in `dist/public`, listening on the `PORT` environment variable (defaulting to `3000`).
 
 ## Deploying
 
-For [Deno Deploy](https://deno.com/deploy), point your project's entrypoint at `dist/index.js` and include the build output, or use [`deployctl`](https://docs.deno.com/deploy/manual/deployctl/):
+For [Deno Deploy](https://deno.com/deploy), build your app and deploy the output with [`deployctl`](https://docs.deno.com/deploy/manual/deployctl/):
 
 ```sh
+npm run build
 deployctl deploy --entrypoint=dist/index.js
+```
+
+## Running
+
+To run the built server on Deno anywhere:
+
+```sh
+npm run build
+deno run --allow-net --allow-read --allow-env dist/index.js
 ```
 
 ## Platform info
