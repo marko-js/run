@@ -108,10 +108,9 @@ export default function denoAdapter(): Adapter {
 function assertDenoCLI() {
   try {
     execSync("deno --version");
-  } catch (error) {
-    console.warn(
-      `Deno not found. Please install it from https://deno.com (\`curl -fsSL https://deno.land/install.sh | sh\`)`,
+  } catch {
+    throw new Error(
+      "Deno not found. Please install it from https://deno.com (`curl -fsSL https://deno.land/install.sh | sh`).",
     );
-    process.exit(1);
   }
 }

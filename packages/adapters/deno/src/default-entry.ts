@@ -73,7 +73,8 @@ async function serveStatic(pathname: string): Promise<Response | null> {
   }
 }
 
-const port = Number(Deno.env.get("PORT")) || 3000;
+const portEnv = Number(Deno.env.get("PORT"));
+const port = Number.isNaN(portEnv) ? 3000 : portEnv;
 
 Deno.serve({ port }, async (request, info) => {
   // Let matched routes respond first; only fall back to static assets when the

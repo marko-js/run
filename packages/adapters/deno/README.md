@@ -59,8 +59,8 @@ The `Deno.serve` request info — including the client's network address — is 
 ```ts
 import type { DenoPlatformInfo } from "@marko/run-adapter-deno";
 
-export const GET = (context, { platform }) => {
-  const { remoteAddr } = platform as DenoPlatformInfo;
+export const GET = (context) => {
+  const { remoteAddr } = context.platform as DenoPlatformInfo;
   return new Response(`Hello from ${remoteAddr.hostname}!`);
 };
 ```
