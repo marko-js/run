@@ -48,15 +48,20 @@ async function serveStatic(pathname: string): Promise<Response | null> {
 Bun.serve({
   port: Number(process.env.PORT) || 3000,
   async fetch(request, server) {
+    // Let matched routes respond first; only fall back to static assets when
+    // the router reports no match (the runtime returns a 404 response in that
+    // case).
     const response = await fetch<BunPlatformInfo>(request, server);
-    if (response) {
+    if (response && response.status !== 404) {
       return response;
     }
 
     const { pathname } = new URL(request.url);
-    return (
-      (await serveStatic(decodeURIComponent(pathname))) ||
-      new Response(null, { status: 404 })
-    );
+    const staticResponse = await serveStatic(decodeURIComponent(pathname));
+    if (staticResponse) {
+      return staticResponse;
+    }
+
+    return response || new Response(null, { status: 404 });
   },
 });
