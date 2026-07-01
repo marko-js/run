@@ -141,7 +141,13 @@ export async function handler(
   }
 
   const { pathname } = new URL(request.url);
-  const staticResult = await serveStatic(decodeURIComponent(pathname));
+  let decodedPathname: string;
+  try {
+    decodedPathname = decodeURIComponent(pathname);
+  } catch {
+    return { statusCode: 400, body: "" };
+  }
+  const staticResult = await serveStatic(decodedPathname);
   if (staticResult) {
     return staticResult;
   }

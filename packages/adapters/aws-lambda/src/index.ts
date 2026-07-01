@@ -152,8 +152,10 @@ function nodeRequestToEvent(
       headers[key] = Array.isArray(value) ? value.join(", ") : value;
     }
   }
+  // The preview server is plain HTTP; make sure the built request uses it too.
+  headers["x-forwarded-proto"] = "http";
   const cookies = req.headers.cookie
-    ? req.headers.cookie.split("; ")
+    ? req.headers.cookie.split(/;\s*/).filter(Boolean)
     : undefined;
 
   return {

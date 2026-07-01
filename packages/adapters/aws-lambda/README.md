@@ -59,8 +59,9 @@ The raw Lambda event and invocation context are available on the `platform` argu
 ```ts
 import type { AWSLambdaPlatformInfo } from "@marko/run-adapter-aws-lambda";
 
-export const GET = (context, { platform }) => {
-  const { event, context: lambdaContext } = platform as AWSLambdaPlatformInfo;
+export const GET = (context) => {
+  const { event, context: lambdaContext } =
+    context.platform as AWSLambdaPlatformInfo;
   return new Response(`Request id: ${lambdaContext.awsRequestId}`);
 };
 ```
