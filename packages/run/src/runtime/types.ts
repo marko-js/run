@@ -19,14 +19,8 @@ export type FormBodyValidatorOptions<Ctx> = {
   maxFileBytes?: number;
   onFile?(ctx: Ctx, file: Multipart): any;
 };
-interface Empty {}
-declare const INVARIANT: unique symbol;
-declare const TYPES: unique symbol;
-declare global {
-  interface Response {
-    readonly [TYPES]: void;
-  }
-}
+export interface Empty {}
+
 export type Schema<I, O> =
   | [O, undefined]
   | [I, StandardSchemaV1.FailureResult["issues"]];
@@ -431,7 +425,7 @@ export type NormalizedHandler<
 type HandlerArray<Ctx, Return extends unknown[]> = {
   [K in keyof Return]:
     | {
-        [TYPES]: {
+        [__run__.TYPES]: {
           options: any;
           data: any;
         };
@@ -439,7 +433,7 @@ type HandlerArray<Ctx, Return extends unknown[]> = {
     | HandlerFunction<Ctx, Return[K]>;
 };
 type HandlerValueOptions<H> = H extends {
-  [TYPES]: {
+  [__run__.TYPES]: {
     options: infer O;
   };
 }
@@ -452,12 +446,12 @@ type ComposedHandlerOptions<Handlers extends readonly unknown[]> =
 
 type HandlerPassthrough<H> = [H] extends [never]
   ? true
-  : H extends { [TYPES]: { passthrough: infer P } }
+  : H extends { [__run__.TYPES]: { passthrough: infer P } }
     ? P
     : true;
 
 type HandlerValueData<H> = H extends {
-  [TYPES]: {
+  [__run__.TYPES]: {
     data: infer D;
   };
 }
@@ -839,19 +833,19 @@ type ContextForPath<
   : never;
 export type Typed<Original, Types> = ([Original] extends [
   {
-    readonly [TYPES]: any;
+    readonly [__run__.TYPES]: any;
   },
 ]
-  ? Omit<Original, typeof TYPES>
+  ? Omit<Original, typeof __run__.TYPES>
   : Original) & {
-  [TYPES]: Types;
+  [__run__.TYPES]: Types;
 };
 
-type NextResponse<Data = Empty> = Typed<
+export type NextResponse<Data = Empty> = Typed<
   Response,
   {
     data: Data;
-    readonly [INVARIANT]: (data: Data) => void;
+    readonly [__run__.INVARIANT]: (data: Data) => void;
   }
 >;
 

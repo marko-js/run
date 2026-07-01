@@ -22,10 +22,19 @@ import type {
 declare global {
   var __marko_run__: RuntimeModule;
   var __marko_run_vite_config__: InlineConfig | undefined;
-
   var Run: GlobalNamespace;
+
+  namespace __run__ {
+    const INVARIANT: unique symbol;
+    const TYPES: unique symbol;
+  }
+
   namespace Run {
     type Context = GetContext;
+  }
+
+  interface Response {
+    readonly [__run__.TYPES]: void;
   }
 
   /** @deprecated use \`Run\` namespace instead */
@@ -69,6 +78,7 @@ export type {
   Context,
   ContextForFile,
   DefineRoutes,
+  Empty,
   Fetch,
   GetContext,
   Handler,
@@ -79,6 +89,7 @@ export type {
   Middleware,
   Namespace,
   NextFunction,
+  NextResponse,
   NormalizedHandler,
   PartialTemplate,
   Platform,
