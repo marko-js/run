@@ -1,5 +1,11 @@
 # @marko/run-explorer
 
+## 2.0.4
+
+### Patch Changes
+
+- 18ae9fe: Add first-class validation support, data loading pattern and typed url builder
+
 ## 2.0.3
 
 ### Patch Changes

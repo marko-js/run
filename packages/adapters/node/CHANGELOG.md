@@ -1,5 +1,11 @@
 # @marko/run-adapter-node
 
+## 2.0.6
+
+### Patch Changes
+
+- 18ae9fe: Add first-class validation support, data loading pattern and typed url builder
+
 ## 2.0.5
 
 ### Patch Changes
