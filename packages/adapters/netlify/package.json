@@ -29,7 +29,7 @@
     "@netlify/functions": "^5.1.5"
   },
   "peerDependencies": {
-    "@marko/run": "^0.7||^0.8||^0.9||^0.10"
+    "@marko/run": "^0.7||^0.8||^0.9||^0.10||^0.11"
   },
   "logo": {
     "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
