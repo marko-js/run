@@ -126,23 +126,32 @@ Layouts are like any other Marko component, with no extra constraints. Each layo
 
 #### `+handler.*`
 
-These files establish a route at the current directory path which can handle requests for `GET`, `POST`, `PUT`, and `DELETE` HTTP methods. <!-- TODO: what about HEAD? -->
+These files establish a route at the current directory path which can handle requests for any HTTP method — export functions named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, or `OPTIONS`.
 
-Typically, these will be `.js` or `.ts` files depending on your project. Like pages, only one handler may exist for any served path. A handler should export functions
+Typically, these will be `.js` or `.ts` files depending on your project. Like pages, only one handler may exist for any served path.
+
+Handlers can be plain functions, or created with the global [`Run` namespace's](#the-run-global-namespace) verb helpers (`Run.GET`, `Run.POST`, etc.) which add [request validation, typed bodies, and data loading](#validation-and-data-loading):
+
+```ts
+export const POST = Run.POST(async (context, next) => {
+  const { request, params, url, meta } = context;
+  return new Response("Successfully updated", { status: 200 });
+});
+```
 
 <details>
   <summary>More Info</summary>
   
-  - Valid exports are functions named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
+  - Valid exports are named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
   - Exports can be one of the following
-    - Handler function (see below)
+    - Handler function (see below) — plain, or created with the matching `Run` verb helper
     - Array of handler functions - will be composed by calling them in order
     - Promise that resolves to a handler function or array of handler functions 
   - Handler functions are synchronous or asynchronous functions that
     - Receives a `context` and `next` argument,
       - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-      - The `next` argument will call the page for `GET` requests where applicable or return a `204` response.
-    - Return a WHATWG response, throw a WHATWG response, and return undefined. If the function returns undefined the `next` argument with be automatically called and used as the response.
+      - The `next` argument will render the page for `GET`, `HEAD`, and `POST` requests where applicable or return a `204` response. Pass it an object to [make data available](#loading-data) to downstream handlers and the page.
+    - Return a WHATWG response, throw a WHATWG response, or return undefined. If the function returns undefined the `next` argument will be automatically called and used as the response.
 
         ```js
         export function POST(context, next) {
@@ -172,15 +181,16 @@ Typically, these will be `.js` or `.ts` files depending on your project. Like pa
 
 These files are like layouts, but for handlers. Middleware files are called before handlers and let you perform arbitrary work before and after.
 
-> **Note**: Unlike handlers, middleware run for all HTTP methods.
+> **Note**: Unlike handlers, middleware run for all HTTP methods. Middleware created with `Run.ALL(...)` also runs for every method, while middleware created with a specific verb helper (e.g. `Run.POST(...)`) is skipped for other methods.
 
 <details>
   <summary>More Info</summary>
   
   - Expects a `default` export that can be one of the following
-    - Handler function (see below)
+    - Handler function (see below) — plain, or created with `Run.ALL` or a `Run` verb helper
     - Array of handler functions - will be composed by calling them in order
-    - Promise that resolves to a handler function or array of handler functions 
+    - Promise that resolves to a handler function or array of handler functions
+    - Options-only, e.g. `Run.ALL({ search: ... })`, to attach [validation](#validation-and-data-loading) for every route below without adding behavior
   - Handler functions are synchronous or asynchronous functions that
     - Receives a `context` and `next` argument,
       - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
@@ -483,6 +493,118 @@ routes/
 
 *TODO: Write some things* -->
 
+## Validation and Data Loading
+
+Route handlers and middleware can be written as plain functions, but the global `Run` namespace — available in all route files without imports — provides verb helpers that add request validation, typed request bodies, and typed data loading.
+
+### Defining Handlers
+
+Each verb helper (`Run.GET`, `Run.HEAD`, `Run.POST`, `Run.PUT`, `Run.DELETE`, `Run.PATCH`, `Run.OPTIONS`, and `Run.ALL`) accepts:
+
+```ts
+Run.POST(handler); // a handler function
+Run.POST([mw, handler]); // an array of handlers, composed in order
+Run.POST(options, handler); // validation options plus a handler (or array)
+Run.POST(options); // options only — validates and passes through
+```
+
+In a `+handler` file, export the result under the matching verb name; in a `+middleware` file, use the default export. Handlers created for a specific verb only run for requests with that method.
+
+### Validating Params and Search
+
+The `params` and `search` options validate — and can transform — the route's path parameters and query string. A validator is either a function or a [Standard Schema](https://github.com/standard-schema/standard-schema) (Zod, Valibot, ArkType, etc.):
+
+```ts
+// +middleware.ts — applies to every route below it
+export default Run.ALL({
+  search(value) {
+    return { ...value, page: Number(value.page) || 0 };
+  },
+});
+```
+
+```ts
+// $id/+handler.ts
+export const GET = Run.GET(
+  {
+    params(value) {
+      return { id: Number(value.id) };
+    },
+  },
+  (context) => {
+    context.params.id; // number
+    context.search.page; // number
+  },
+);
+```
+
+`context.params` and `context.search` are computed lazily from the validators. Function validators replace the value with whatever they return. Standard Schema validators produce a `[value, issues]` tuple, where `issues` is `undefined` when validation succeeds. Schema validation must be synchronous.
+
+Options declared in middleware and handlers along a route are merged, so shared validation can live in a `+middleware` file.
+
+### Request Bodies
+
+`POST`, `PUT`, and `PATCH` handlers declare how request bodies are read with the `json` and `form` options. When either is configured, `context.body` is a promise for the parsed (and validated) body; otherwise `context.body` is `undefined`.
+
+```ts
+import * as v from "valibot";
+
+export const POST = Run.POST(
+  {
+    form: v.object({
+      name: v.string(),
+      age: v.pipe(v.string(), v.toNumber()),
+    }),
+  },
+  async (context) => {
+    const [data, issues] = await context.body;
+    if (issues) {
+      return Response.json({ issues }, { status: 400 });
+    }
+    return Response.json(data);
+  },
+);
+```
+
+- `json` handles `application/json` requests. It can be a validator, or an options object `{ validator?, maxBytes? }`.
+- `form` handles `application/x-www-form-urlencoded` and `multipart/form-data` requests. It can be a validator, or an options object `{ validator?, maxBytes?, maxParts?, maxFiles?, maxFileBytes?, onFile? }`. Repeated fields become arrays, and `onFile(context, file)` is called for each uploaded file in multipart requests.
+- Function validators resolve `context.body` to their return value; Standard Schema validators resolve it to a `[value, issues]` tuple; with no validator it resolves to the raw parsed body.
+- Requests exceeding the configured size limits are rejected.
+
+### Loading Data
+
+Handlers and middleware pass data to everything downstream — including pages and layouts — by calling `next` with an object:
+
+```ts
+// +handler.ts
+export const GET = Run.GET((context, next) => {
+  return next({ user: { name: "Marko" } });
+});
+```
+
+```marko
+// +page.marko
+<h1>Hello ${$global.data.user.name}</h1>
+```
+
+Data from each middleware and handler in the chain is merged into `context.data` (`$global.data` in templates) with full type inference. A handler that always returns its own `Response` never renders the page, so its verb is excluded from the template's typed context.
+
+When a route has both a page and a `POST` handler, the handler calling `next()` renders the page — so form submissions can respond with HTML directly.
+
+## Typed URLs
+
+`Run.href` builds URLs for your app's routes with type checking of the path, params, search, and hash:
+
+```marko
+<a href=Run.href("/projects/$projectId/members", {
+  params: { projectId: 42 },
+  search: { sort: "name" },
+  hash: "top",
+})>Members</a>
+```
+
+The path is typed against your application's routes, `params` is required exactly when the path has dynamic segments (catch-all `$$` params also accept arrays), and all values are URI-encoded. In client builds, the Vite plugin rewrites statically analyzable `Run.href(...)` calls at compile time, so most calls cost nothing at runtime.
+
 ## Vite Plugin
 
 This package’s Vite plugin discovers your route files, generates the routing code, and registers the `@marko/vite` plugin to compile your `.marko` files.
@@ -532,7 +654,7 @@ Generally, when using an adapter, this runtime will be abstracted away.
 <!-- TODO: Split fetch and match + invoke in two sections and explain why you might use one or the other  -->
 
 ```ts
-import * as Run from '@marko/run/router`;
+import * as Run from "@marko/run/router";
 ```
 
 ### Context
@@ -541,8 +663,12 @@ Context is passed to `middleware` and `handler` functions as the first parameter
 
 - `route` - A string identifying the current route
 - `request` - Current WHATWG Request instance
+- `url` - WHATWG URL instance of the current request
 - `method` - HTTP method of the current request
-- `params` - `Record<string, string>` of the route parameters
+- `params` - The route's path parameters, transformed by any [`params` validators](#validating-params-and-search)
+- `search` - The request's query string values, transformed by any [`search` validators](#validating-params-and-search)
+- `body` - Promise for the parsed request body when the route configures a [`json` or `form` option](#request-bodies), otherwise `undefined`
+- `data` - Data passed from upstream middleware and handlers via [`next(data)`](#loading-data)
 - `meta` - Meta data loaded from the current route's `+meta` file
 - `platform` - Additional data provided by the adapter
 - `parent` - When `context.fetch` is called the current context will become the parent of the new context created for the fetch request, otherwise this field will be undefined.
@@ -686,47 +812,31 @@ express()
 
 ## TypeScript
 
-### Global Namespace
+### The `Run` Global Namespace
 
-`marko/run` provides a global namespace `MarkoRun` with the following types:
+`@marko/run` provides a global namespace `Run`, available in route files without any imports. At runtime it exposes the [verb helpers](#defining-handlers) (`Run.GET`, `Run.POST`, ..., `Run.ALL`) and [`Run.href`](#typed-urls). In TypeScript it also provides:
 
-**`MarkoRun.Handler`** - Type that represents a handler function to be exported by a +handler or +middleware file
-
-**`MarkoRun.GET`** - Handler type narrowed to GET requests
-
-**`MarkoRun.HEAD`** - Handler type narrowed to HEAD requests
-
-**`MarkoRun.POST`** - Handler type narrowed to POST requests
-
-**`MarkoRun.PUT`** - Handler type narrowed to PUT requests
-
-**`MarkoRun.DELETE`** - Handler type narrowed to DELETE requests
-
-**`MarkoRun.PATCH`** - Handler type narrowed to PATCH requests
-
-**`MarkoRun.OPTIONS`** - Handler type narrowed to OPTIONS requests
-
-**`MarkoRun.Route`** - Type of the route's params and metadata
-
-**`MarkoRun.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your application code
+**`Run.Context`** - Type of the request context object in a handler and `$global` in your Marko files. This type can be extended using TypeScript's module and interface merging by declaring a `Context` interface on the `@marko/run` module within your application code
 
 ```ts
 declare module "@marko/run" {
   interface Context {
-    customProperty: MyCustomThing; // will be globally defined on MarkoRun.Context
+    customProperty: MyCustomThing; // will be globally defined on Run.Context
   }
 }
 ```
 
-**`MarkoRun.Platform`** - Type of the platform object provided by the adapter in use. This interface can be extended in that same way as `Context` (see above) by declaring a `Platform` interface:
+The platform object provided by the adapter in use can be typed the same way by declaring a `Platform` interface:
 
 ```ts
 declare module "@marko/run" {
   interface Platform {
-    customProperty: MyCustomThing; // will be globally defined on MarkoRun.Platform
+    customProperty: MyCustomThing; // will be available on `context.platform`
   }
 }
 ```
+
+> **Note** The previous `MarkoRun` global namespace and its types (`MarkoRun.Handler`, `MarkoRun.Context`, etc.) are deprecated — new code should use `Run`.
 
 ### Generated Types
 
@@ -734,21 +844,21 @@ If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in t
 
 > **Note** TypeScript will not include this file by default. You should use the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
 
-These types are replaced with more specific versions per routable file:
+With the generated types, the `Run` namespace is narrowed per routable file:
 
-**`MarkoRun.Handler`**
+**`Run.Context`**
 
-- Overrides context with specific MarkoRun.Context
-
-**`MarkoRun.Route`**
-
-- Adds specific parameters and meta types
+- Has the exact path params, meta, validated `search` and `body`, and upstream `data` types for the routes the file serves
 - In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see
-
-**`MarkoRun.Context`**
-
-- In middleware and layouts which are used in many routes, this type will be a union of all possible routes that the file will see.
 - When an adapter is used, it can provide types for the platform
+
+**`Run` verb helpers**
+
+- Validation options and handler return types are fully inferred, so `context.params`, `context.search`, `context.body`, and the data passed to `next(...)` flow through to downstream handlers, pages, and layouts
+
+**`Run.href`**
+
+- The path and its params are typed against every route your app serves
 
 ## Beta Roadmap
 
