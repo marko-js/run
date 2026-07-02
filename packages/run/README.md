@@ -130,7 +130,7 @@ These files establish a route at the current directory path which can handle req
 
 Typically, these will be `.js` or `.ts` files depending on your project. Like pages, only one handler may exist for any served path.
 
-Handlers can be plain functions, or created with the global [`Run` namespace's](#the-run-global-namespace) verb helpers (`Run.GET`, `Run.POST`, etc.) which add [request validation, typed bodies, and data loading](#validation-and-data-loading):
+Handlers are created with the global [`Run` namespace's](#the-run-global-namespace) verb helpers (`Run.GET`, `Run.POST`, etc.) which add [request validation, typed bodies, and data loading](#validation-and-data-loading):
 
 ```ts
 export const POST = Run.POST(async (context, next) => {
@@ -144,7 +144,7 @@ export const POST = Run.POST(async (context, next) => {
   
   - Valid exports are named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
   - Exports can be one of the following
-    - Handler function (see below) — plain, or created with the matching `Run` verb helper
+    - Handler function (see below) — created with the matching `Run` verb helper
     - Array of handler functions - will be composed by calling them in order
     - Promise that resolves to a handler function or array of handler functions 
   - Handler functions are synchronous or asynchronous functions that
@@ -187,7 +187,7 @@ These files are like layouts, but for handlers. Middleware files are called befo
   <summary>More Info</summary>
   
   - Expects a `default` export that can be one of the following
-    - Handler function (see below) — plain, or created with `Run.ALL` or a `Run` verb helper
+    - Handler function (see below) — created with `Run.ALL` or a `Run` verb helper
     - Array of handler functions - will be composed by calling them in order
     - Promise that resolves to a handler function or array of handler functions
     - Options-only, e.g. `Run.ALL({ search: ... })`, to attach [validation](#validation-and-data-loading) for every route below without adding behavior
@@ -495,7 +495,7 @@ routes/
 
 ## Validation and Data Loading
 
-Route handlers and middleware can be written as plain functions, but the global `Run` namespace — available in all route files without imports — provides verb helpers that add request validation, typed request bodies, and typed data loading.
+Route handler and middleware are written using the verb helpers defined on the global `Run` namespace which allows for typed request bodies, and typed data loading.
 
 ### Defining Handlers
 
@@ -667,7 +667,7 @@ Context is passed to `middleware` and `handler` functions as the first parameter
 - `method` - HTTP method of the current request
 - `params` - The route's path parameters, transformed by any [`params` validators](#validating-params-and-search)
 - `search` - The request's query string values, transformed by any [`search` validators](#validating-params-and-search)
-- `body` - Promise for the parsed request body when the route configures a [`json` or `form` option](#request-bodies), otherwise `undefined`. Standard Schema validators resolve it to a `[value, issues]` tuple, function validators to their return value, and with no validator it resolves to the raw parsed body
+- `body` - Promise for the parsed request body when the route configures a [`json` or `form` option](#request-bodies), otherwise `undefined`.
 - `data` - Data passed from upstream middleware and handlers via [`next(data)`](#loading-data)
 - `meta` - Meta data loaded from the current route's `+meta` file
 - `platform` - Additional data provided by the adapter
