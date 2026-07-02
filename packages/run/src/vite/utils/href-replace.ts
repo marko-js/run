@@ -64,9 +64,6 @@ export function findHrefReplacements(
 ): HrefReplacement[] {
   const replacements: HrefReplacement[] = [];
 
-  // If the module declares its own `Run` binding anywhere, a matched
-  // `Run.href(...)` may refer to that binding rather than the global
-  // namespace, so leave the module untouched.
   if (hasRunBinding(ast)) {
     return replacements;
   }
@@ -95,7 +92,6 @@ export function findHrefReplacements(
       return;
     }
 
-    // First arg: path string
     const pathString = tryStaticEval(args[0] as Expression)?.value;
 
     if (typeof pathString !== "string") {
@@ -106,8 +102,6 @@ export function findHrefReplacements(
       });
       return;
     }
-
-    // const pathString: string = pathResult.value;
 
     // No options — tier 0 (just the path string)
     if (args.length === 1) {

@@ -18,8 +18,6 @@ export function parsePathParts(path: string) {
       } else {
         lastEnd = path.indexOf("/", paramStart);
       }
-      // Param names use the unescaped form (`` $`name` `` → `name`) to match
-      // the keys of typed `params` options.
       const param = path.slice(paramStart, lastEnd < 0 ? undefined : lastEnd);
       parts[0].push(
         param.length > 1 &&

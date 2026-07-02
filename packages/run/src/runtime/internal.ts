@@ -95,9 +95,7 @@ function searchParamsToObject(params: URLSearchParams | FormData) {
   for (const [key, value] of params) {
     if (key in obj) {
       const prev = obj[key];
-      obj[key] = Array.isArray(prev)
-        ? [...prev, value] // push it on
-        : [prev, value];
+      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
     } else {
       obj[key] = value;
     }
@@ -206,8 +204,6 @@ class RuntimeContext implements Context {
     this.route = route?.path || "";
     this.method = request.method as HttpVerb;
     this.meta = route?.meta || {};
-    // `body` is only defined when the route configures a `json` or `form`
-    // option, matching the types where it is `undefined` otherwise.
     this.body =
       route && request.body && (route.options.json || route.options.form)
         ? thenable(() => readBody(route, this))
@@ -585,8 +581,6 @@ export function stripResponseBody(
 
 export function passthrough() {}
 
-// Each definition gets its own function object because `createDefineHandler`
-// assigns `options` and `verb` onto the handler it returns.
 function createPassthroughHandler(): HandlerFunction {
   return (_ctx, next) => next();
 }
