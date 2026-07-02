@@ -27,6 +27,39 @@ function apply(code: string) {
 }
 
 describe("href-replace", () => {
+  describe("shadowed Run bindings", () => {
+    it("does not rewrite when Run is a local variable", () => {
+      const code = `const Run = { href: (p) => p };\nexport const url = Run.href("/foo/bar");`;
+      assert.equal(apply(code), code);
+    });
+
+    it("does not rewrite when Run is imported", () => {
+      const code = `import Run from "./my-run";\nexport const url = Run.href("/foo/bar");`;
+      assert.equal(apply(code), code);
+    });
+
+    it("does not rewrite when Run is a function parameter", () => {
+      const code = `export function render(Run) {\n  return Run.href("/foo/bar");\n}`;
+      assert.equal(apply(code), code);
+    });
+  });
+
+  describe("template literal escaping", () => {
+    it("escapes backticks in static path segments", () => {
+      assert.equal(
+        apply('Run.href("/a`b/$id", { params: { id } })'),
+        "href_path`/a\\`b/${id}`",
+      );
+    });
+
+    it("escapes ${ sequences in static path segments", () => {
+      assert.equal(
+        apply('Run.href("/a${x/$id", { params: { id } })'),
+        "href_path`/a\\${x/${id}`",
+      );
+    });
+  });
+
   describe("tier 0: fully static", () => {
     it("simple string literal path", () => {
       assert.equal(apply(`Run.href("/foo/bar")`), `"/foo/bar"`);

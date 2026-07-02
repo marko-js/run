@@ -244,24 +244,28 @@ export interface RouteDef<
         ]
       ? T
       : undefined;
-  form: HttpVerbWithBody extends Verb
-    ? Options extends [
-        {
-          form: infer T;
-        },
-      ]
-      ? Promise<T>
-      : never
-    : undefined;
-  json: HttpVerbWithBody extends Verb
-    ? Options extends [
-        {
-          json: infer T;
-        },
-      ]
-      ? Promise<T>
-      : never
-    : undefined;
+  form: unknown extends Options
+    ? never
+    : Options extends [
+          {
+            form: infer T;
+          },
+        ]
+      ? Verb extends HttpVerbWithBody
+        ? Promise<T>
+        : undefined
+      : never;
+  json: unknown extends Options
+    ? never
+    : Options extends [
+          {
+            json: infer T;
+          },
+        ]
+      ? Verb extends HttpVerbWithBody
+        ? Promise<T>
+        : undefined
+      : never;
 }
 type RouteOptionsContainer<
   Path extends string = string,

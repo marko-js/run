@@ -911,7 +911,9 @@ export async function renderRouteTypeInfo(
       routeDefFiles += fileInfo.id;
     }
 
-    writer.writeLines(`"${route.path.path}": [${routeDefFiles}];`);
+    writer.writeLines(
+      `${JSON.stringify(route.path.path)}: [${routeDefFiles}];`,
+    );
   }
 
   for (const special of Object.values(routes.special)) {
@@ -972,7 +974,9 @@ export async function renderRouteTypeInfo(
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = ${
       info.routes.size
-        ? `$.Routes["${[...info.routes].map((route) => route.path.path).join('" | "')}"]`
+        ? `$.Routes[${[...info.routes]
+            .map((route) => JSON.stringify(route.path.path))
+            .join(" | ")}]`
         : "globalThis.MarkoRun.Route"
     };
     export type Context = ${

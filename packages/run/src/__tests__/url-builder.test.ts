@@ -84,6 +84,18 @@ describe("url-builder", () => {
       assert.equal(actual, "/docs#section");
     });
 
+    it("should append a numeric zero hash", () => {
+      const actual = href("/docs", { hash: 0 });
+      assert.equal(actual, "/docs#0");
+    });
+
+    it("should look up escaped param names by their unescaped key", () => {
+      const actual = href("/thing/$`$id`/$foo", {
+        params: { $id: "a", foo: "b" },
+      });
+      assert.equal(actual, "/thing/a/b");
+    });
+
     it("should combine params, search, and hash", () => {
       const opts = {
         params: { id: 5 },

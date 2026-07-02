@@ -64,6 +64,13 @@ export function findHrefReplacements(
 ): HrefReplacement[] {
   const replacements: HrefReplacement[] = [];
 
+  // If the module declares its own `Run` binding anywhere, a matched
+  // `Run.href(...)` may refer to that binding rather than the global
+  // namespace, so leave the module untouched.
+  if (hasRunBinding(ast)) {
+    return replacements;
+  }
+
   walk(ast, (node: Node) => {
     if (node.type !== "CallExpression") return;
 
@@ -232,6 +239,69 @@ export function findHrefReplacements(
   return replacements;
 }
 
+/**
+ * Detect whether any declaration in the module binds the name `Run` —
+ * imports, variable/function/class declarations, function params, or
+ * catch clause params.
+ */
+function hasRunBinding(ast: Program): boolean {
+  let found = false;
+
+  const checkPattern = (pattern: Node | null | undefined) => {
+    if (!pattern || found) return;
+    switch (pattern.type) {
+      case "Identifier":
+        if (pattern.name === "Run") found = true;
+        break;
+      case "ObjectPattern":
+        for (const prop of pattern.properties) {
+          checkPattern(
+            prop.type === "RestElement" ? prop.argument : prop.value,
+          );
+        }
+        break;
+      case "ArrayPattern":
+        for (const element of pattern.elements) checkPattern(element);
+        break;
+      case "AssignmentPattern":
+        checkPattern(pattern.left);
+        break;
+      case "RestElement":
+        checkPattern(pattern.argument);
+        break;
+    }
+  };
+
+  walk(ast, (node: Node) => {
+    if (found) return;
+    switch (node.type) {
+      case "VariableDeclarator":
+        checkPattern(node.id);
+        break;
+      case "FunctionDeclaration":
+      case "FunctionExpression":
+      case "ArrowFunctionExpression":
+        if ("id" in node) checkPattern(node.id);
+        for (const param of node.params) checkPattern(param);
+        break;
+      case "ClassDeclaration":
+      case "ClassExpression":
+        checkPattern(node.id);
+        break;
+      case "CatchClause":
+        checkPattern(node.param);
+        break;
+      case "ImportDefaultSpecifier":
+      case "ImportSpecifier":
+      case "ImportNamespaceSpecifier":
+        checkPattern(node.local);
+        break;
+    }
+  });
+
+  return found;
+}
+
 function walk(node: Node, visitor: (node: Node) => void) {
   if (!node || typeof node !== "object") return;
   if (node.type) {
@@ -285,7 +355,7 @@ function buildPathTemplate(
 ): string {
   let template = "";
   for (let i = 0; i < parsed.params.length; i++) {
-    template += parsed.segments[i];
+    template += escapeTemplateChunk(parsed.segments[i]);
     if (paramsMap) {
       const paramProp = paramsMap.get(parsed.params[i])!;
       const valueNode = paramProp.shorthand ? paramProp.key : paramProp.value;
@@ -295,9 +365,18 @@ function buildPathTemplate(
     }
   }
   if (parsed.segments.length > parsed.params.length) {
-    template += parsed.segments[parsed.segments.length - 1];
+    template += escapeTemplateChunk(
+      parsed.segments[parsed.segments.length - 1],
+    );
   }
   return template;
+}
+
+/**
+ * Escape a static path chunk so it can be embedded in a template literal.
+ */
+function escapeTemplateChunk(value: string): string {
+  return value.replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${");
 }
 
 function getStaticKey(prop: ObjectProperty): string | null {

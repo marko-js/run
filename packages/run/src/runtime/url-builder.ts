@@ -18,7 +18,16 @@ export function parsePathParts(path: string) {
       } else {
         lastEnd = path.indexOf("/", paramStart);
       }
-      parts[0].push(path.slice(paramStart, lastEnd < 0 ? undefined : lastEnd));
+      // Param names use the unescaped form (`` $`name` `` → `name`) to match
+      // the keys of typed `params` options.
+      const param = path.slice(paramStart, lastEnd < 0 ? undefined : lastEnd);
+      parts[0].push(
+        param.length > 1 &&
+          param.charAt(0) === "`" &&
+          param.charAt(param.length - 1) === "`"
+          ? param.slice(1, -1)
+          : param,
+      );
     }
     parts.push(lastEnd >= 0 ? path.slice(lastEnd) : "");
   }
@@ -31,7 +40,7 @@ function joinHref(path: string, options: HrefOptions<any>) {
     const query = "" + new URLSearchParams(options.search);
     if (query) result += "?" + query;
   }
-  if (options.hash) result += "#" + encode(options.hash);
+  if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
   return result;
 }
 

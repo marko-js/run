@@ -23,7 +23,15 @@ type SuperSets<T, U extends T, K extends keyof T> = Omit<T, K> & {
 type Union<T> = T[keyof T];
 
 type MigrateContext<T extends Route> = Context<
-  NewRoute<RouteDef<T["path"], T["method"], T["meta"]>>
+  NewRoute<
+    RouteDef<
+      T["path"],
+      T["method"],
+      T["meta"],
+      Record<string, unknown>,
+      [{ params: T["params"] }]
+    >
+  >
 >;
 
 export type Awaitable<T> = Promise<T> | T;

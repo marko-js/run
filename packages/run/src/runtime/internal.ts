@@ -93,12 +93,14 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
 function searchParamsToObject(params: URLSearchParams | FormData) {
   const obj: Record<string, any> = {};
   for (const [key, value] of params) {
-    const prev = obj[key];
-    obj[key] = prev
-      ? Array.isArray(prev)
+    if (key in obj) {
+      const prev = obj[key];
+      obj[key] = Array.isArray(prev)
         ? [...prev, value] // push it on
-        : [prev, value]
-      : value;
+        : [prev, value];
+    } else {
+      obj[key] = value;
+    }
   }
   return obj;
 }
@@ -148,15 +150,21 @@ async function readBody(route: RouteMatch, context: Context) {
   const { request } = context;
   const contentType = request.headers.get("Content-Type");
   if (contentType?.includes("application/json")) {
-    const { maxBytes, validator } = route.options.json;
+    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
     const json =
       maxBytes < 0
         ? await request.json()
         : JSON.parse(await readBodyWithLimit(request, maxBytes));
     return validator ? validator(json) : json;
   }
-  const { maxBytes, maxParts, maxFiles, maxFileBytes, onFile, validator } =
-    route.options.form;
+  const {
+    maxParts = defaultMaxParts,
+    maxFiles = defaultMaxFiles,
+    maxFileBytes = defaultMaxBytes,
+    maxBytes = maxFiles * maxFileBytes,
+    onFile,
+    validator,
+  } = route.options.form ?? {};
   const data = searchParamsToObject(
     contentType?.includes("multipart/form-data")
       ? await parseFormData(
@@ -171,7 +179,7 @@ async function readBody(route: RouteMatch, context: Context) {
         )
       : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
   );
-  return validator && validator(data);
+  return validator ? validator(data) : data;
 }
 
 class RuntimeContext implements Context {
@@ -269,7 +277,7 @@ class RuntimeContext implements Context {
 
   redirect(to: string | URL, status = 302) {
     if (typeof status !== "number") {
-      throw new RangeError("Invalid status code 0");
+      throw new RangeError(`Invalid status code ${status}`);
     } else if (status < 301 || status > 308 || (status > 303 && status < 307)) {
       throw new RangeError(`Invalid status code ${status}`);
     }
@@ -392,7 +400,7 @@ export async function call(
 export function compose(handlers: HandlerFunction[]): HandlerFunction {
   const len = handlers.length;
   if (!len) {
-    return passthroughHandler;
+    return createPassthroughHandler();
   } else if (len === 1) {
     return handlers[0];
   }
@@ -463,8 +471,8 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
       handler = compose(handlers) as any;
       handler.options = mergeOptions(...handlers, optionsOrHandlers);
     } else {
-      handler = passthroughHandler as any;
-      handler.options = optionsOrHandlers;
+      handler = createPassthroughHandler() as any;
+      handler.options = mergeOptions(optionsOrHandlers);
     }
 
     handler.verb = verb;
@@ -573,7 +581,11 @@ export function stripResponseBody(
 
 export function passthrough() {}
 
-const passthroughHandler: HandlerFunction = (_ctx, next) => next();
+// Each definition gets its own function object because `createDefineHandler`
+// assigns `options` and `verb` onto the handler it returns.
+function createPassthroughHandler(): HandlerFunction {
+  return (_ctx, next) => next();
+}
 
 export function noContent() {
   return new Response(null, {
