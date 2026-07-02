@@ -975,8 +975,8 @@ export interface Context<T extends Route = Route> {
   readonly url: URL;
   readonly request: Request;
   readonly platform: Platform;
-  readonly serializedGlobals: Record<string, boolean>;
   readonly parent: Context | undefined;
+  serializedGlobals: Record<string, boolean>;
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,
