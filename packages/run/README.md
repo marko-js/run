@@ -667,7 +667,7 @@ Context is passed to `middleware` and `handler` functions as the first parameter
 - `method` - HTTP method of the current request
 - `params` - The route's path parameters, transformed by any [`params` validators](#validating-params-and-search)
 - `search` - The request's query string values, transformed by any [`search` validators](#validating-params-and-search)
-- `body` - Promise for the parsed request body when the route configures a [`json` or `form` option](#request-bodies), otherwise `undefined`
+- `body` - Promise for the parsed request body when the route configures a [`json` or `form` option](#request-bodies), otherwise `undefined`. Standard Schema validators resolve it to a `[value, issues]` tuple, function validators to their return value, and with no validator it resolves to the raw parsed body
 - `data` - Data passed from upstream middleware and handlers via [`next(data)`](#loading-data)
 - `meta` - Meta data loaded from the current route's `+meta` file
 - `platform` - Additional data provided by the adapter
