@@ -227,60 +227,60 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
     setCWD(dir);
 
     if (!config.skip_dev) {
-      it("dev", async () => {
-        environment("development");
+      it("dev", () =>
+        withEnvironment("development", async () => {
+          const configFile = await cli.getViteConfig(
+            dir,
+            undefined,
+            undefined,
+            baseViteConfigFile,
+          );
 
-        const configFile = await cli.getViteConfig(
-          dir,
-          undefined,
-          undefined,
-          baseViteConfigFile,
-        );
+          async function testBlock() {
+            const server = await cli.dev(config.entry, dir, configFile);
+            await testPage(page, dir, pathname, steps, server, config.referer);
+          }
 
-        async function testBlock() {
-          const server = await cli.dev(config.entry, dir, configFile);
-          await testPage(page, dir, pathname, steps, server, config.referer);
-        }
-
-        if (config.assert_dev) {
-          await config.assert_dev(page, testBlock);
-        } else {
-          await testBlock();
-        }
-      });
+          if (config.assert_dev) {
+            await config.assert_dev(page, testBlock);
+          } else {
+            await testBlock();
+          }
+        }));
     }
 
     if (!config.skip_preview) {
-      it("preview", async () => {
-        const configFile = await cli.getViteConfig(
-          dir,
-          undefined,
-          undefined,
-          baseViteConfigFile,
-        );
-
-        async function testBlock() {
-          process.env.BROWSER = "none";
-          await cli.build(config.entry, dir, configFile);
-          const server = await cli.preview(
-            config.entry,
-            undefined,
+      it("preview", () =>
+        withEnvironment("production", async () => {
+          const configFile = await cli.getViteConfig(
             dir,
-            configFile,
             undefined,
             undefined,
-            undefined,
-            config.preview_args,
+            baseViteConfigFile,
           );
-          await testPage(page, dir, pathname, steps, server, config.referer);
-        }
 
-        if (config.assert_preview) {
-          await config.assert_preview(page, testBlock);
-        } else {
-          await testBlock();
-        }
-      });
+          async function testBlock() {
+            process.env.BROWSER = "none";
+            await cli.build(config.entry, dir, configFile);
+            const server = await cli.preview(
+              config.entry,
+              undefined,
+              dir,
+              configFile,
+              undefined,
+              undefined,
+              undefined,
+              config.preview_args,
+            );
+            await testPage(page, dir, pathname, steps, server, config.referer);
+          }
+
+          if (config.assert_preview) {
+            await config.assert_preview(page, testBlock);
+          } else {
+            await testBlock();
+          }
+        }));
     }
   });
 }
@@ -346,15 +346,14 @@ async function testPage(
   }
 }
 
-function environment(nodeEnv: any) {
+async function withEnvironment(nodeEnv: any, fn: () => Promise<void>) {
   const currentNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = nodeEnv;
-  beforeEach(() => {
-    process.env.NODE_ENV = nodeEnv;
-  });
-  afterEach(() => {
+  try {
+    await fn();
+  } finally {
     process.env.NODE_ENV = currentNodeEnv;
-  });
+  }
 }
 
 function setCWD(dir: string) {

@@ -13,11 +13,14 @@ import Page from "../../src/routes/+page.marko";
 ```
 ### Handler
 ```js
-import { stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./dist/.marko-run/index.marko";
 
+export const get2_options = {};
+export const head2_options = {};
+
 export function get2(context) {
-	return context.render(page, {});
+	return render(context, page, {});
 }
 
 export function head2(context) {

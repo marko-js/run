@@ -11,13 +11,22 @@ export const mware3 = normalizeHandler(middleware3);
 
 ## Route ``index``
 ### Path: ``/``
+### Template
+```marko
+import Page from "../../src/routes/foo,$id,$$rest,+page.marko";
+
+<Page/>
+```
 ### Handler
 ```js
-import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,$id,$$rest,+page.marko";
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/index.marko";
+
+export const get1_options = {};
+export const head1_options = {};
 
 export function get1(context) {
-	return context.render(page, {});
+	return render(context, page, {});
 }
 
 export function head1(context) {
@@ -27,17 +36,27 @@ export function head1(context) {
 ---
 ## Route ``foo``
 ### Path: ``/foo``
+### Template
+```marko
+import Page from "../../src/routes/foo,$id,$$rest,+page.marko";
+
+<Page/>
+```
 ### Handler
 ```js
-import { normalizeHandler, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
-import page from "./src/routes/foo,$id,$$rest,+page.marko";
+import page from "./dist/.marko-run/foo.marko";
 
 const getHandler = normalizeHandler(GET);
 const postHandler = normalizeHandler(POST);
 
+export const get2_options = mergeOptions(getHandler);
+export const head2_options = {};
+export const post2_options = mergeOptions(postHandler);
+
 export function get2(context) {
-	const __page = () => context.render(page, {});
+	const __page = (data) => render(context, page, {}, data);
 	return call(getHandler, __page, context);
 }
 
@@ -46,20 +65,30 @@ export function head2(context) {
 }
 
 export function post2(context) {
-	return call(postHandler, noContent, context);
+	const __page = (data) => render(context, page, {}, data);
+	return call(postHandler, __page, context);
 }
 ```
 ---
 ## Route ``$``
 ### Path: ``/$id``
+### Template
+```marko
+import Page from "../../src/routes/foo,$id,$$rest,+page.marko";
+
+<Page/>
+```
 ### Handler
 ```js
-import { call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
-import page from "./src/routes/foo,$id,$$rest,+page.marko";
+import page from "./dist/.marko-run/$.marko";
+
+export const get3_options = mergeOptions(mware3);
+export const head3_options = mergeOptions(mware3);
 
 export function get3(context) {
-	const __page = () => context.render(page, {});
+	const __page = (data) => render(context, page, {}, data);
 	return call(mware3, __page, context);
 }
 
@@ -70,13 +99,22 @@ export function head3(context) {
 ---
 ## Route ``$$``
 ### Path: ``/$$rest``
+### Template
+```marko
+import Page from "../../src/routes/foo,$id,$$rest,+page.marko";
+
+<Page/>
+```
 ### Handler
 ```js
-import { stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./src/routes/foo,$id,$$rest,+page.marko";
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/$$.marko";
+
+export const get4_options = {};
+export const head4_options = {};
 
 export function get4(context) {
-	return context.render(page, {});
+	return render(context, page, {});
 }
 
 export function head4(context) {
@@ -88,11 +126,15 @@ export function head4(context) {
 ### Path: ``/a/c``
 ### Handler
 ```js
-import { normalizeHandler, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
 const getHandler = normalizeHandler(GET);
 const postHandler = normalizeHandler(POST);
+
+export const get5_options = mergeOptions(getHandler);
+export const head5_options = {};
+export const post5_options = mergeOptions(postHandler);
 
 export function get5(context) {
 	return call(getHandler, noContent, context);
@@ -111,15 +153,19 @@ export function post5(context) {
 ### Path: ``/a/d``
 ### Handler
 ```js
-import { normalizeHandler, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
 const getHandler = normalizeHandler(GET);
 const postHandler = normalizeHandler(POST);
 
+export const get6_options = mergeOptions(mware3, getHandler);
+export const head6_options = mergeOptions(mware3);
+export const post6_options = mergeOptions(mware3, postHandler);
+
 export function get6(context) {
-	const __getHandler = () => call(getHandler, noContent, context);
+	const __getHandler = (data) => call(getHandler, noContent, context, data);
 	return call(mware3, __getHandler, context);
 }
 
@@ -128,7 +174,7 @@ export function head6(context) {
 }
 
 export function post6(context) {
-	const __postHandler = () => call(postHandler, noContent, context);
+	const __postHandler = (data) => call(postHandler, noContent, context, data);
 	return call(mware3, __postHandler, context);
 }
 ```
@@ -137,11 +183,15 @@ export function post6(context) {
 ### Path: ``/b/c``
 ### Handler
 ```js
-import { normalizeHandler, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
 const getHandler = normalizeHandler(GET);
 const postHandler = normalizeHandler(POST);
+
+export const get7_options = mergeOptions(getHandler);
+export const head7_options = {};
+export const post7_options = mergeOptions(postHandler);
 
 export function get7(context) {
 	return call(getHandler, noContent, context);
@@ -160,11 +210,15 @@ export function post7(context) {
 ### Path: ``/b/d``
 ### Handler
 ```js
-import { normalizeHandler, call, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
 const getHandler = normalizeHandler(GET);
 const postHandler = normalizeHandler(POST);
+
+export const get8_options = mergeOptions(getHandler);
+export const head8_options = {};
+export const post8_options = mergeOptions(postHandler);
 
 export function get8(context) {
 	return call(getHandler, noContent, context);

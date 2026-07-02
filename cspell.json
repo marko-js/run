@@ -35,7 +35,9 @@
     "routetypes",
     "jsnext",
     "vdir",
-    "Broutes"
+    "Broutes",
+    "Freadme",
+    "quasis"
   ],
   "ignoreRegExpList": [],
   "files": ["*", "src/**/*"],

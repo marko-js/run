@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__aaa.$.js";
-import { get2, head2 } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.js";
-import { get3, head3 } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.ccc.$.js";
-import { get4, head4 } from "virtual:marko-run/__marko-run__aaa.$.ccc.$.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__aaa.$.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.js";
+import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.ccc.$.js";
+import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__aaa.$.ccc.$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -23,7 +23,7 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
-							if (s2) return { handler: get1, params: { aId: s2 }, meta: {}, path: '/aaa/$aId' };
+							if (s2) return { handler: get1, path: '/aaa/$aId', params: { aId: s2 }, options: get1_options, meta: {} };
 						} else {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
 							if (s2) {
@@ -34,7 +34,7 @@ function match_internal(method, pathname) {
 											const i4 = pathname.indexOf('/', i3) + 1;
 											if (!i4 || i4 === len) {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: get2, params: { aId: s2, bId: s4 }, meta: {}, path: '/aaa/$aId/bbb/$bId' };
+												if (s4) return { handler: get2, path: '/aaa/$aId/bbb/$bId', params: { aId: s2, bId: s4 }, options: get2_options, meta: {} };
 											} else {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
 												if (s4) {
@@ -44,7 +44,7 @@ function match_internal(method, pathname) {
 															const i6 = pathname.indexOf('/', i5) + 1;
 															if (!i6 || i6 === len) {
 																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
-																if (s6) return { handler: get3, params: { aId: s2, bId: s4, cId: s6 }, meta: {}, path: '/aaa/$aId/bbb/$bId/ccc/$cId' };
+																if (s6) return { handler: get3, path: '/aaa/$aId/bbb/$bId/ccc/$cId', params: { aId: s2, bId: s4, cId: s6 }, options: get3_options, meta: {} };
 															}
 														}
 													}
@@ -55,7 +55,7 @@ function match_internal(method, pathname) {
 											const i4 = pathname.indexOf('/', i3) + 1;
 											if (!i4 || i4 === len) {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: get4, params: { aId: s2, cId: s4 }, meta: {}, path: '/aaa/$aId/ccc/$cId' };
+												if (s4) return { handler: get4, path: '/aaa/$aId/ccc/$cId', params: { aId: s2, cId: s4 }, options: get4_options, meta: {} };
 											}
 										} break;
 									}
@@ -76,7 +76,7 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
-							if (s2) return { handler: head1, params: { aId: s2 }, meta: {}, path: '/aaa/$aId' };
+							if (s2) return { handler: head1, path: '/aaa/$aId', params: { aId: s2 }, options: head1_options, meta: {} };
 						} else {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
 							if (s2) {
@@ -87,7 +87,7 @@ function match_internal(method, pathname) {
 											const i4 = pathname.indexOf('/', i3) + 1;
 											if (!i4 || i4 === len) {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: head2, params: { aId: s2, bId: s4 }, meta: {}, path: '/aaa/$aId/bbb/$bId' };
+												if (s4) return { handler: head2, path: '/aaa/$aId/bbb/$bId', params: { aId: s2, bId: s4 }, options: head2_options, meta: {} };
 											} else {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
 												if (s4) {
@@ -97,7 +97,7 @@ function match_internal(method, pathname) {
 															const i6 = pathname.indexOf('/', i5) + 1;
 															if (!i6 || i6 === len) {
 																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
-																if (s6) return { handler: head3, params: { aId: s2, bId: s4, cId: s6 }, meta: {}, path: '/aaa/$aId/bbb/$bId/ccc/$cId' };
+																if (s6) return { handler: head3, path: '/aaa/$aId/bbb/$bId/ccc/$cId', params: { aId: s2, bId: s4, cId: s6 }, options: head3_options, meta: {} };
 															}
 														}
 													}
@@ -108,7 +108,7 @@ function match_internal(method, pathname) {
 											const i4 = pathname.indexOf('/', i3) + 1;
 											if (!i4 || i4 === len) {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: head4, params: { aId: s2, cId: s4 }, meta: {}, path: '/aaa/$aId/ccc/$cId' };
+												if (s4) return { handler: head4, path: '/aaa/$aId/ccc/$cId', params: { aId: s2, cId: s4 }, options: head4_options, meta: {} };
 											}
 										} break;
 									}

@@ -1,16 +1,31 @@
 /// <reference types="marko" />
 
+import { URLSearchParams } from "node:url";
+
+import { parseFormData } from "@remix-run/form-data-parser";
+
+import { httpVerbs } from "../vite/constants";
 import type {
-  AnyRoute,
   Awaitable,
-  Context,
-  MultiRouteContext,
-  NextFunction,
-  Platform,
   RouteHandler,
   RouteHandlerResult,
-  Verb,
+} from "./legacy-types";
+import thenable from "./thenable";
+import type {
+  Context,
+  HandlerFunction,
+  HandlerOptions,
+  HttpVerb,
+  HttpVerbOrAll,
+  NextFunction,
+  NormalizedHandler,
+  NormalizedHandlerOptions,
+  Platform,
+  RouteMatch,
+  Validator,
 } from "./types";
+import { href } from "./url-builder";
+
 export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
@@ -22,8 +37,6 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
 
 const parentContextLookup = new WeakMap<Request, Context>();
 
-const serializedGlobals = { params: true, url: true };
-
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
@@ -32,10 +45,18 @@ const pageResponseInit = {
 globalThis.MarkoRun ??= {
   NotHandled,
   NotMatched,
-  route(handler) {
-    return handler;
-  },
 };
+
+globalThis.Run ??= {
+  href,
+  ALL: createDefineHandler("ALL"),
+  ...Object.fromEntries(
+    httpVerbs.map((v) => {
+      const verb = v.toUpperCase() as HttpVerb;
+      return [v.toUpperCase(), createDefineHandler(verb)];
+    }),
+  ),
+} as any;
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
@@ -69,98 +90,273 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   return toReadable(rendered);
 };
 
-export function createContext<TRoute extends AnyRoute>(
-  route: TRoute | null,
+function searchParamsToObject(params: URLSearchParams | FormData) {
+  const obj: Record<string, any> = {};
+  for (const [key, value] of params) {
+    if (key in obj) {
+      const prev = obj[key];
+      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
+    } else {
+      obj[key] = value;
+    }
+  }
+  return obj;
+}
+
+async function readBodyWithLimit(request: Request, maxBytes: number) {
+  if (maxBytes < 0) {
+    return await request.text();
+  }
+
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength !== null && Number(contentLength) > maxBytes) {
+    throw new Error("Request body too large");
+  }
+
+  if (!request.body) {
+    throw new Error("Missing request body");
+  }
+
+  const reader = request.body.getReader();
+  const bytes = new Uint8Array(maxBytes);
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (receivedBytes + value.byteLength > maxBytes) {
+        await reader.cancel();
+        throw new Error("Request body too large");
+      }
+
+      bytes.set(value, receivedBytes);
+      receivedBytes += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return new TextDecoder("utf-8", { fatal: true }).decode(
+    bytes.subarray(0, receivedBytes),
+  );
+}
+
+async function readBody(route: RouteMatch, context: Context) {
+  const { request } = context;
+  const contentType = request.headers.get("Content-Type");
+  if (contentType?.includes("application/json")) {
+    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
+    const json =
+      maxBytes < 0
+        ? await request.json()
+        : JSON.parse(await readBodyWithLimit(request, maxBytes));
+    return validator ? validator(json) : json;
+  }
+  const {
+    maxParts = defaultMaxParts,
+    maxFiles = defaultMaxFiles,
+    maxFileBytes = defaultMaxBytes,
+    maxBytes = maxFiles * maxFileBytes,
+    onFile,
+    validator,
+  } = route.options.form ?? {};
+  const data = searchParamsToObject(
+    contentType?.includes("multipart/form-data")
+      ? await parseFormData(
+          request,
+          {
+            maxParts,
+            maxFiles,
+            maxFileSize: maxFileBytes,
+            maxTotalSize: maxBytes,
+          },
+          onFile ? (file) => onFile!(context, file) : undefined,
+        )
+      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+  );
+  return validator ? validator(data) : data;
+}
+
+class RuntimeContext implements Context {
+  readonly route: Context["route"];
+  readonly method: Context["method"];
+  readonly meta: Context["meta"];
+  readonly body: Context["body"];
+  readonly data: Context["data"];
+  readonly url: Context["url"];
+  readonly request: Context["request"];
+  readonly platform: Context["platform"];
+  readonly parent: Context["parent"];
+  serializedGlobals: Context["serializedGlobals"];
+
+  private readonly _route;
+
+  constructor(
+    route: RouteMatch | null,
+    request: Request,
+    platform: Platform,
+    url: URL,
+  ) {
+    this._route = route;
+    this.route = route?.path || "";
+    this.method = request.method as HttpVerb;
+    this.meta = route?.meta || {};
+    this.body =
+      route && request.body && (route.options.json || route.options.form)
+        ? thenable(() => readBody(route, this))
+        : undefined;
+    this.data = {};
+    this.url = url;
+    this.request = request;
+    this.platform = platform;
+    this.parent = parentContextLookup.get(request);
+    this.serializedGlobals = {
+      params: true,
+      url: true,
+    };
+  }
+
+  get params() {
+    const value = this._route
+      ? this._route.options.params
+        ? this._route.options.params(this._route.params as Record<string, any>)
+        : this._route.params
+      : {};
+    Object.defineProperty(this, "params", {
+      configurable: true,
+      enumerable: true,
+      value,
+    });
+    return value;
+  }
+
+  get search() {
+    const search = searchParamsToObject(this.url.searchParams);
+    const value = this._route?.options.search
+      ? this._route.options.search(search)
+      : search;
+    Object.defineProperty(this, "search", {
+      configurable: true,
+      enumerable: true,
+      value,
+    });
+    return value;
+  }
+
+  async fetch(resource: string | URL | Request, init?: RequestInit) {
+    const request = new Request(
+      typeof resource === "string" ? new URL(resource, this.url) : resource,
+      init,
+    );
+
+    parentContextLookup.set(request, this as any);
+    return (
+      (await globalThis.__marko_run__.fetch(request, this.platform)) ||
+      new Response(null, { status: 404 })
+    );
+  }
+
+  render<T>(
+    template: Marko.Template<T>,
+    input: T,
+    init: ResponseInit = pageResponseInit,
+  ) {
+    return new Response(
+      toReadable(
+        template.render({
+          ...input,
+          $global: this as unknown as Marko.Global,
+        }),
+      ),
+      init,
+    );
+  }
+
+  redirect(to: string | URL, status = 302) {
+    if (typeof status !== "number") {
+      throw new RangeError(`Invalid status code ${status}`);
+    } else if (status < 301 || status > 308 || (status > 303 && status < 307)) {
+      throw new RangeError(`Invalid status code ${status}`);
+    }
+    return new Response(null, {
+      status,
+      headers: {
+        location: (typeof to === "string" ? new URL(to, this.url) : to).href,
+      },
+    });
+  }
+
+  back(fallback: string | URL = "/", status?: number) {
+    return this.redirect(
+      this.request.headers.get("referer") || fallback,
+      status,
+    );
+  }
+}
+
+export function createContext(
+  route: RouteMatch | null,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
-): Context<TRoute> {
-  let meta: TRoute["meta"];
-  let params: TRoute["params"];
-  let path: TRoute["path"];
-  if (route) {
-    meta = route.meta;
-    params = route.params;
-    path = route.path;
-  } else {
-    meta = {};
-    params = {};
-    path = "";
-  }
-  return {
-    request,
-    method: request.method as Verb,
-    url,
-    platform,
-    meta,
-    params,
-    route: path,
-    serializedGlobals,
-    parent: parentContextLookup.get(request),
-    async fetch(resource, init) {
-      const request = new Request(
-        typeof resource === "string" ? new URL(resource, this.url) : resource,
-        init,
-      );
-
-      parentContextLookup.set(request, this as any);
-      return (
-        (await globalThis.__marko_run__.fetch(request, this.platform)) ||
-        new Response(null, { status: 404 })
-      );
-    },
-    render(template, input, init = pageResponseInit) {
-      return new Response(
-        toReadable(
-          template.render({
-            ...input,
-            $global: this as unknown as Marko.Global,
-          }),
-        ),
-        init,
-      );
-    },
-    redirect(to, status = 302) {
-      if (typeof status !== "number") {
-        throw new RangeError("Invalid status code 0");
-      } else if (
-        status < 301 ||
-        status > 308 ||
-        (status > 303 && status < 307)
-      ) {
-        throw new RangeError(`Invalid status code ${status}`);
-      }
-      return new Response(null, {
-        status,
-        headers: {
-          location: (typeof to === "string" ? new URL(to, this.url) : to).href,
-        },
-      });
-    },
-    back(fallback = "/", status) {
-      return this.redirect(
-        this.request.headers.get("referer") || fallback,
-        status,
-      );
-    },
-  };
+): Context {
+  return new RuntimeContext(route, request, platform, url);
 }
 
-export async function call<TRoute extends AnyRoute>(
-  handler: RouteHandler<TRoute>,
+export function render<T>(
+  context: Context,
+  template: Marko.Template<T>,
+  input: T,
+  data?: Record<string, unknown>,
+) {
+  if (data) {
+    Object.assign(context.data, data);
+  }
+  return context.render(template, input);
+}
+
+const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
+
+type NextDataFunction = (data?: Record<string, unknown>) => Response;
+
+export async function call(
+  handler: HandlerFunction,
   next: NextFunction,
-  context: MultiRouteContext<TRoute>,
+  context: Context,
+  data?: Record<string, unknown>,
 ): Promise<Response> {
   let response!: RouteHandlerResult;
+
+  if (data) {
+    Object.assign(context.data, data);
+  }
+
+  let method = handlerMethod.get(handler);
+  if (method === undefined) {
+    handlerMethod.set(
+      handler,
+      (method =
+        "verb" in handler && handler.verb !== "ALL"
+          ? (handler.verb as HttpVerb)
+          : false),
+    );
+  }
+
+  if (method && method !== context.method) {
+    return (next as any as NextDataFunction)(data);
+  }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
     let nextCallCount = 0;
     let didThrow = false;
     try {
-      response = await handler(context, () => {
+      response = await handler(context, ((d) => {
         nextCallCount++;
-        return next();
-      });
+        return next(d);
+      }) as NextFunction);
     } catch (error) {
       didThrow = true;
       if (error instanceof Response) {
@@ -198,20 +394,22 @@ export async function call<TRoute extends AnyRoute>(
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
   }
-  return response || next();
+  return response || (next as any as NextDataFunction)(data);
 }
 
-export function compose(handlers: RouteHandler[]): RouteHandler {
+export function compose(handlers: HandlerFunction[]): HandlerFunction {
   const len = handlers.length;
   if (!len) {
-    return (_context, next) => next();
+    return createPassthroughHandler();
   } else if (len === 1) {
     return handlers[0];
   }
   return (context, next) => {
     let i = 0;
-    return (function nextHandler() {
-      return i < len ? call(handlers[i++], nextHandler, context) : next();
+    return (function nextHandler(data) {
+      return i < len
+        ? call(handlers[i++], nextHandler, context, data)
+        : (next as any as NextDataFunction)(data);
     })();
   };
 }
@@ -222,10 +420,12 @@ export function normalizeHandler(
   if (typeof obj === "function") {
     return obj;
   } else if (Array.isArray(obj)) {
-    return compose(obj);
+    return compose(obj as HandlerFunction[]) as RouteHandler;
   } else if (obj instanceof Promise) {
     const promise = obj.then((value) => {
-      fn = Array.isArray(value) ? compose(value) : value;
+      fn = (
+        Array.isArray(value) ? compose(value as HandlerFunction[]) : value
+      ) as RouteHandler;
     });
     let fn: RouteHandler = async (context, next) => {
       await promise;
@@ -234,6 +434,137 @@ export function normalizeHandler(
     return (context, next) => fn(context, next);
   }
   return passthrough;
+}
+
+export function assertHandlerVerb(
+  verb: HttpVerbOrAll,
+  handler: HandlerFunction,
+) {
+  if ("verb" in handler && handler.verb !== verb) {
+    throw new Error(
+      `Expected verb ${verb} but handler was defined with Run.${handler.verb}`,
+    );
+  }
+}
+
+function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
+  return (
+    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
+    handlers: undefined | HandlerFunction | HandlerFunction[],
+  ) => {
+    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
+
+    if (typeof optionsOrHandlers === "function") {
+      assertHandlerVerb(verb, optionsOrHandlers);
+      handler = optionsOrHandlers as any;
+      handler.options ??= {};
+    } else if (Array.isArray(optionsOrHandlers)) {
+      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
+      handler = compose(optionsOrHandlers) as any;
+      handler.options = mergeOptions(...optionsOrHandlers);
+    } else if (typeof handlers === "function") {
+      assertHandlerVerb(verb, handlers);
+      handler = handlers as any;
+      handler.options = mergeOptions(handlers, optionsOrHandlers);
+    } else if (Array.isArray(handlers)) {
+      for (const h of handlers) assertHandlerVerb(verb, h);
+      handler = compose(handlers) as any;
+      handler.options = mergeOptions(...handlers, optionsOrHandlers);
+    } else {
+      handler = createPassthroughHandler() as any;
+      handler.options = mergeOptions(optionsOrHandlers);
+    }
+
+    handler.verb = verb;
+
+    return handler;
+  };
+}
+
+export function normalizeValidator<T>(validator: Validator<T> | undefined) {
+  return validator && typeof validator !== "function"
+    ? (input: T) => {
+        const result = validator["~standard"].validate(input);
+        if (result instanceof Promise) {
+          throw new TypeError("Schema validation must be synchronous");
+        }
+        return result.issues
+          ? [input, result.issues]
+          : [result.value, undefined];
+      }
+    : validator;
+}
+
+const defaultMaxBytes = 1024 * 1024;
+const defaultMaxParts = 1000;
+const defaultMaxFiles = 20;
+
+export function mergeOptions(
+  ...arr: (
+    | NormalizedHandler<Context, "ALL", any, HandlerOptions>
+    | HandlerFunction
+    | HandlerOptions
+  )[]
+) {
+  const merged: HandlerOptions = {};
+  for (const item of arr) {
+    let options: HandlerOptions;
+    if (typeof item === "object") {
+      options = item;
+    } else if ("options" in item) {
+      options = item.options;
+    } else {
+      continue;
+    }
+    for (const k in options) {
+      const key = k as keyof typeof options;
+      const option = options[key];
+      if (typeof option === "object" && typeof merged[key] === "object") {
+        Object.assign(merged[key], option);
+      } else if (option) {
+        merged[key] = option as any;
+      }
+    }
+  }
+
+  const result = {
+    params: normalizeValidator(merged.params),
+    search: normalizeValidator(merged.search),
+  } as NormalizedHandlerOptions;
+
+  if (merged.json) {
+    const { maxBytes = defaultMaxBytes, validator } =
+      typeof merged.json === "function" || "~standard" in merged.json
+        ? { validator: merged.json }
+        : merged.json;
+    result.json = {
+      maxBytes,
+      validator: normalizeValidator(validator),
+    };
+  }
+
+  if (merged.form) {
+    const {
+      maxBytes,
+      maxFiles = defaultMaxFiles,
+      maxFileBytes = defaultMaxBytes,
+      maxParts = defaultMaxParts,
+      onFile,
+      validator,
+    } = typeof merged.form === "function" || "~standard" in merged.form
+      ? { validator: merged.form }
+      : merged.form;
+    result.form = {
+      maxBytes: maxBytes ?? maxFiles * maxFileBytes,
+      maxFileBytes,
+      maxFiles,
+      maxParts,
+      onFile,
+      validator: normalizeValidator(validator),
+    };
+  }
+
+  return result;
 }
 
 export function stripResponseBodySync(response: Response): Response {
@@ -249,6 +580,10 @@ export function stripResponseBody(
 }
 
 export function passthrough() {}
+
+function createPassthroughHandler(): HandlerFunction {
+  return (_ctx, next) => next();
+}
 
 export function noContent() {
   return new Response(null, {

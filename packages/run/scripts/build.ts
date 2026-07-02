@@ -10,6 +10,8 @@ const opts: BuildOptions = {
     "src/vite/index.ts",
     "src/runtime/index.ts",
     "src/runtime/router.ts",
+    "src/runtime/client.ts",
+    "src/runtime/url-builder.ts",
     "src/runtime/internal.ts",
     "src/adapter/index.ts",
     "src/adapter/middleware.ts",

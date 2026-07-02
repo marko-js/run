@@ -16,13 +16,13 @@ export const httpVerbs = [
 ] as const;
 
 export const RoutableFileTypes = {
-  Page: "page",
-  Layout: "layout",
-  Handler: "handler",
   Middleware: "middleware",
-  Meta: "meta",
+  Handler: "handler",
+  Layout: "layout",
+  Page: "page",
   NotFound: "404",
   Error: "500",
+  Meta: "meta",
 } as const;
 
 export type RoutableFileType = ValuesOf<typeof RoutableFileTypes>;

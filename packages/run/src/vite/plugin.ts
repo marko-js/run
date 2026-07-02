@@ -5,7 +5,11 @@ import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
 import { glob } from "glob";
 import path from "path";
-import type { OutputOptions, PluginContext } from "rolldown";
+import {
+  type OutputOptions,
+  type PluginContext,
+  RolldownMagicString,
+} from "rolldown";
 import { fileURLToPath } from "url";
 import {
   buildErrorMessage,
@@ -48,6 +52,7 @@ import {
   setExternalPluginOptions,
 } from "./utils/config";
 import { normalizePath } from "./utils/fs";
+import { findHrefReplacements } from "./utils/href-replace";
 import { logRoutesTable } from "./utils/log";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 import { getRouteVirtualFileName } from "./utils/route";
@@ -145,10 +150,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   async function getMarkoApiForRoute(context: PluginContext, route: Route) {
     routeMarkoApiCache ??= new Map();
     if (!routeMarkoApiCache.has(route)) {
-      const markoAPI =
-        route.templateFilePath &&
-        ((await loadModule(context, normalizePath(route.layouts[0].filePath)))
-          ?.meta?.markoAPI as string | undefined);
+      const markoAPI = route.layouts.length
+        ? ((await loadModule(context, normalizePath(route.layouts[0].filePath)))
+            ?.meta?.markoAPI as string | undefined)
+        : undefined;
       routeMarkoApiCache.set(route, markoAPI);
       return markoAPI;
     }
@@ -220,9 +225,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       entryTemplateImporters = new Set();
 
       for (const route of routes.list) {
-        const routeEntryPath = route.templateFilePath || route.page?.filePath;
-        if (routeEntryPath) {
-          entryTemplates.add(normalizePath(routeEntryPath));
+        if (route.templateFilePath) {
+          entryTemplates.add(normalizePath(route.templateFilePath));
         }
         for (const middleware of route.middleware) {
           entryTemplateImporters.add(normalizePath(middleware.filePath));
@@ -237,9 +241,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         );
       }
       for (const route of Object.values(routes.special) as Route[]) {
-        const routeEntryPath = route.templateFilePath || route.page?.filePath;
-        if (routeEntryPath) {
-          entryTemplates.add(normalizePath(routeEntryPath));
+        if (route.templateFilePath) {
+          entryTemplates.add(normalizePath(route.templateFilePath));
         }
       }
 
@@ -300,6 +303,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               renderRouteTemplate(
                 route,
                 await getMarkoApiForRoute(context, route),
+                !isBuild,
               ),
             );
           }
@@ -310,18 +314,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.templateFilePath) {
-            fs.mkdirSync(path.dirname(route.templateFilePath), {
-              recursive: true,
-            });
-            fs.writeFileSync(
-              route.templateFilePath,
-              renderRouteTemplate(
-                route,
-                await getMarkoApiForRoute(context, route),
-              ),
-            );
-          }
+          fs.mkdirSync(path.dirname(route.templateFilePath!), {
+            recursive: true,
+          });
+          fs.writeFileSync(
+            route.templateFilePath!,
+            renderRouteTemplate(
+              route,
+              await getMarkoApiForRoute(context, route),
+              !isBuild,
+            ),
+          );
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
@@ -702,6 +705,54 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     {
       name: `${PLUGIN_NAME_PREFIX}:post`,
       enforce: "post",
+
+      async transform(code) {
+        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+          return;
+        }
+
+        try {
+          const replacements = findHrefReplacements(
+            code,
+            this.parse(code, { lang: "js" }),
+          );
+
+          if (replacements.length) {
+            const helpers = new Set<string>();
+            const s = new RolldownMagicString(code);
+            for (const { helper, edits } of replacements) {
+              for (const { start, end, code } of edits) {
+                if (code) {
+                  s.overwrite(start, end, code);
+                } else {
+                  s.remove(start, end);
+                }
+              }
+              if (helper) {
+                helpers.add(helper);
+              }
+            }
+
+            if (helpers.size) {
+              s.prepend(
+                `import { ${[...helpers].join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
+              );
+            }
+            return {
+              code: s,
+            };
+          }
+
+          return null;
+        } catch {
+          return {
+            code: new RolldownMagicString(code).prepend(
+              'import "virtual:marko-run/runtime/client";',
+            ),
+          };
+        }
+      },
+
       generateBundle(options, bundle) {
         if (options.sourcemap && options.sourcemap !== "inline") {
           // Iterate through bundle and remove source maps that don't have a corresponding source file

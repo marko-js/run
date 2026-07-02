@@ -1,17 +1,17 @@
 import {
+  HttpVerb,
   NormalizedMeta,
   NormalizedMetaLookup,
-  Verb,
 } from "../../runtime/types";
 import { httpVerbs } from "../constants";
 
-const verbKeys = new Set(httpVerbs.map((v) => v.toUpperCase() as Verb));
+const verbKeys = new Set(httpVerbs.map((v) => v.toUpperCase() as HttpVerb));
 
 function isObject(obj: any): obj is Record<PropertyKey, any> {
   return obj && typeof obj === "object" && !Array.isArray(obj);
 }
 
-export function getMetaDataForVerb<T, TVerb extends Verb>(
+export function getMetaDataForVerb<T, TVerb extends HttpVerb>(
   data: T,
   verb: TVerb,
 ): NormalizedMeta<T, TVerb> {
@@ -23,7 +23,7 @@ export function getMetaDataForVerb<T, TVerb extends Verb>(
   if (isObject(data)) {
     return Object.keys(data).reduce(
       (result, key) => {
-        if (!(key in result || verbKeys.has(key as Verb))) {
+        if (!(key in result || verbKeys.has(key as HttpVerb))) {
           result[key] = data[key];
         }
         return result;

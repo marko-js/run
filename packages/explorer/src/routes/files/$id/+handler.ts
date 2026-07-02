@@ -2,7 +2,7 @@ import { Readable } from "stream";
 
 import { getFileStream } from "../../../data";
 
-export const GET = MarkoRun.route(async (context) => {
+export const GET = Run.GET(async (context) => {
   const fileStream = getFileStream(context.params.id);
   if (!fileStream) {
     return new Response(null, {

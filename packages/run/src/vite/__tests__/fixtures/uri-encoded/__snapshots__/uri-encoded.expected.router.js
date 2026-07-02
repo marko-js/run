@@ -1,5 +1,5 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, head1 } from "virtual:marko-run/__marko-run__a%2fb%3fc%23d+e-f&g.$.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__a%2fb%3fc%23d+e-f&g.$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -20,7 +20,7 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 21) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(21, i2 ? -1 : len));
-							if (s2) return { handler: get1, params: { $id: s2 }, meta: {}, path: '/a%2fb%3fc%23d+e:f&g/$`$id`' };
+							if (s2) return { handler: get1, path: '/a%2fb%3fc%23d+e:f&g/$`$id`', params: { $id: s2 }, options: get1_options, meta: {} };
 						}
 					}
 				}
@@ -36,7 +36,7 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 21) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(21, i2 ? -1 : len));
-							if (s2) return { handler: head1, params: { $id: s2 }, meta: {}, path: '/a%2fb%3fc%23d+e:f&g/$`$id`' };
+							if (s2) return { handler: head1, path: '/a%2fb%3fc%23d+e:f&g/$`$id`', params: { $id: s2 }, options: head1_options, meta: {} };
 						}
 					}
 				}

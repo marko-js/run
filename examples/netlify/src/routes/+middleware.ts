@@ -1,4 +1,4 @@
-export default MarkoRun.route(async ({ request, url, meta }, next) => {
+export default Run.ALL(async ({ request, url, meta }, next) => {
   const requestName = `${request.method} ${url.href}`;
   let success = true;
   console.log(`${requestName} request started`, { meta });

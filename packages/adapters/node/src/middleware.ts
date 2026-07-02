@@ -1,4 +1,4 @@
-import type { RouteWithHandler } from "@marko/run";
+import type { RouteMatch } from "@marko/run";
 import {
   createMiddleware,
   type NodeMiddleware,
@@ -12,7 +12,7 @@ import ensureRuntime from "./ensure-runtime";
 export { createMiddleware, type NodeMiddleware, type NodeMiddlewareOptions };
 
 export interface MatchedRoute {
-  match: RouteWithHandler;
+  match: RouteMatch;
   config: Record<string, unknown>;
 }
 

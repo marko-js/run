@@ -22,16 +22,19 @@ import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko"
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.marko";
 
 const getHandler = normalizeHandler(GET);
 
+export const get1_options = mergeOptions(mware2, getHandler);
+export const head1_options = mergeOptions(mware2);
+
 export function get1(context) {
-	const __page = () => context.render(page, {});
-	const __getHandler = () => call(getHandler, __page, context);
+	const __page = (data) => render(context, page, {}, data);
+	const __getHandler = (data) => call(getHandler, __page, context, data);
 	return call(mware2, __getHandler, context);
 }
 
@@ -53,16 +56,19 @@ import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko"
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.bbb.$.marko";
 
 const getHandler = normalizeHandler(GET);
 
+export const get2_options = mergeOptions(mware2, getHandler);
+export const head2_options = mergeOptions(mware2);
+
 export function get2(context) {
-	const __page = () => context.render(page, {});
-	const __getHandler = () => call(getHandler, __page, context);
+	const __page = (data) => render(context, page, {}, data);
+	const __getHandler = (data) => call(getHandler, __page, context, data);
 	return call(mware2, __getHandler, context);
 }
 
@@ -84,16 +90,19 @@ import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko"
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.bbb.$.ccc.$.marko";
 
 const getHandler = normalizeHandler(GET);
 
+export const get3_options = mergeOptions(mware2, getHandler);
+export const head3_options = mergeOptions(mware2);
+
 export function get3(context) {
-	const __page = () => context.render(page, {});
-	const __getHandler = () => call(getHandler, __page, context);
+	const __page = (data) => render(context, page, {}, data);
+	const __getHandler = (data) => call(getHandler, __page, context, data);
 	return call(mware2, __getHandler, context);
 }
 
@@ -115,16 +124,19 @@ import Page from "../../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko"
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.ccc.$.marko";
 
 const getHandler = normalizeHandler(GET);
 
+export const get4_options = mergeOptions(mware2, getHandler);
+export const head4_options = mergeOptions(mware2);
+
 export function get4(context) {
-	const __page = () => context.render(page, {});
-	const __getHandler = () => call(getHandler, __page, context);
+	const __page = (data) => render(context, page, {}, data);
+	const __getHandler = (data) => call(getHandler, __page, context, data);
 	return call(mware2, __getHandler, context);
 }
 
