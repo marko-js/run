@@ -206,8 +206,12 @@ class RuntimeContext implements Context {
     this.route = route?.path || "";
     this.method = request.method as HttpVerb;
     this.meta = route?.meta || {};
+    // `body` is only defined when the route configures a `json` or `form`
+    // option, matching the types where it is `undefined` otherwise.
     this.body =
-      route && request.body ? thenable(() => readBody(route, this)) : undefined;
+      route && request.body && (route.options.json || route.options.form)
+        ? thenable(() => readBody(route, this))
+        : undefined;
     this.data = {};
     this.url = url;
     this.request = request;
