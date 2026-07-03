@@ -180,6 +180,10 @@ async function readBody(route: RouteMatch, context: Context) {
   return validator ? validator(data) : data;
 }
 
+// Marko's tags API runtime shallow copies `$global` ({ ...input.$global })
+// when rendering, which only picks up own enumerable properties. Everything
+// on the context must live directly on the instance — prototype methods and
+// getters would be dropped from `$global` in templates.
 class RuntimeContext implements Context {
   readonly route: Context["route"];
   readonly method: Context["method"];
@@ -192,7 +196,8 @@ class RuntimeContext implements Context {
   readonly parent: Context["parent"];
   serializedGlobals: Context["serializedGlobals"];
 
-  private readonly _route;
+  declare readonly params: Context["params"];
+  declare readonly search: Context["search"];
 
   constructor(
     route: RouteMatch | null,
@@ -200,7 +205,6 @@ class RuntimeContext implements Context {
     platform: Platform,
     url: URL,
   ) {
-    this._route = route;
     this.route = route?.path || "";
     this.method = request.method as HttpVerb;
     this.meta = route?.meta || {};
@@ -217,36 +221,20 @@ class RuntimeContext implements Context {
       params: true,
       url: true,
     };
-  }
-
-  get params() {
-    const value = this._route
-      ? this._route.options.params
-        ? this._route.options.params(this._route.params as Record<string, any>)
-        : this._route.params
-      : {};
-    Object.defineProperty(this, "params", {
-      configurable: true,
-      enumerable: true,
-      value,
+    defineLazyProperty(this, "params", () =>
+      route
+        ? route.options.params
+          ? route.options.params(route.params as Record<string, any>)
+          : route.params
+        : {},
+    );
+    defineLazyProperty(this, "search", () => {
+      const search = searchParamsToObject(this.url.searchParams);
+      return route?.options.search ? route.options.search(search) : search;
     });
-    return value;
   }
 
-  get search() {
-    const search = searchParamsToObject(this.url.searchParams);
-    const value = this._route?.options.search
-      ? this._route.options.search(search)
-      : search;
-    Object.defineProperty(this, "search", {
-      configurable: true,
-      enumerable: true,
-      value,
-    });
-    return value;
-  }
-
-  async fetch(resource: string | URL | Request, init?: RequestInit) {
+  fetch = async (resource: string | URL | Request, init?: RequestInit) => {
     const request = new Request(
       typeof resource === "string" ? new URL(resource, this.url) : resource,
       init,
@@ -257,13 +245,13 @@ class RuntimeContext implements Context {
       (await globalThis.__marko_run__.fetch(request, this.platform)) ||
       new Response(null, { status: 404 })
     );
-  }
+  };
 
-  render<T>(
+  render = <T>(
     template: Marko.Template<T>,
     input: T,
     init: ResponseInit = pageResponseInit,
-  ) {
+  ) => {
     return new Response(
       toReadable(
         template.render({
@@ -273,9 +261,9 @@ class RuntimeContext implements Context {
       ),
       init,
     );
-  }
+  };
 
-  redirect(to: string | URL, status = 302) {
+  redirect = (to: string | URL, status = 302) => {
     if (typeof status !== "number") {
       throw new RangeError(`Invalid status code ${status}`);
     } else if (status < 301 || status > 308 || (status > 303 && status < 307)) {
@@ -287,14 +275,30 @@ class RuntimeContext implements Context {
         location: (typeof to === "string" ? new URL(to, this.url) : to).href,
       },
     });
-  }
+  };
 
-  back(fallback: string | URL = "/", status?: number) {
+  back = (fallback: string | URL = "/", status?: number) => {
     return this.redirect(
       this.request.headers.get("referer") || fallback,
       status,
     );
-  }
+  };
+}
+
+function defineLazyProperty<T>(target: object, key: string, compute: () => T) {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    get() {
+      const value = compute();
+      Object.defineProperty(target, key, {
+        configurable: true,
+        enumerable: true,
+        value,
+      });
+      return value;
+    },
+  });
 }
 
 export function createContext(
