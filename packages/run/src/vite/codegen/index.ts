@@ -39,6 +39,7 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -58,6 +59,27 @@ export function renderRouteTemplate(
   }
 
   writer.writeLines("");
+
+  // Persisted pages: register the client router with this route's path
+  // pattern and its own generated `?update` entry (the compiled merge
+  // functions, split into a lazy chunk loaded on first navigation). Special
+  // (404/500) pages have no pattern to navigate within, and the class API
+  // has no persisted support.
+  if (
+    persisted &&
+    markoApi !== "class" &&
+    route.key !== RoutableFileTypes.NotFound &&
+    route.key !== RoutableFileTypes.Error
+  ) {
+    importWriter.writeLines(
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+    );
+    writer.writeLines(
+      `<script>
+  __run_persisted_register(${JSON.stringify(route.path.path)}, () => import("./${path.basename(route.templateFilePath!)}?update"));
+</script>`,
+    );
+  }
   writeEntryTemplateTag(
     writer,
     [...route.layouts, route.page].map((file) =>
@@ -420,6 +442,28 @@ function match_internal(method, pathname) {
     .writeLines(
       "const context = createContext(route, request, platform, url);",
     );
+
+  if (options.persisted) {
+    // Persisted pages: every render is persisted-capable; a navigation fetch
+    // negotiates an update render instead, but only when the client's loaded
+    // route matches the one this URL resolves to (route ranking can send a
+    // pattern-matching URL to a different route) — otherwise a 409 tells the
+    // client router to fall back to a full navigation.
+    writer.writeLines(
+      `context.persisted = true;
+  if (
+    route &&
+    request.method === "GET" &&
+    request.headers.get("accept")?.includes("text/marko-patch")
+  ) {
+    if (request.headers.get("x-marko-route") === route.path) {
+      context.persisted = "update";
+    } else {
+      return new Response(null, { status: 409, headers: { vary: "accept" } });
+    }
+  }`,
+    );
+  }
 
   if (hasErrorPage) {
     writer.writeBlockStart("try {");

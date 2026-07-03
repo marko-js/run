@@ -981,6 +981,16 @@ export interface Context<T extends Route = Route> {
   readonly platform: Platform;
   readonly parent: Context | undefined;
   serializedGlobals: Record<string, boolean>;
+  /**
+   * Persisted (single-page server-first updates) render flag for this
+   * request. In builds with the `persisted` option the generated router sets
+   * it before running the chain: `true` renders a persisted-capable document,
+   * `"update"` renders an update patch (negotiated via
+   * `accept: text/marko-patch`). Middleware may override it (e.g. set `false`
+   * to serve a plain document) before the page renders. The context is the
+   * render's `$global`, so this is `$global.persisted`.
+   */
+  persisted?: boolean | "update";
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,

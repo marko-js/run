@@ -42,6 +42,20 @@ const pageResponseInit = {
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
 
+// Persisted (single-page server-first updates) builds serve two
+// representations of every page URL, negotiated on `accept` — so responses
+// must vary on it. Update renders are a newline-delimited stream of
+// serializer frames, not a document.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+const updateResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/marko-patch;charset=UTF-8", vary: "accept" },
+};
+
 globalThis.MarkoRun ??= {
   NotHandled,
   NotMatched,
@@ -191,8 +205,9 @@ class RuntimeContext implements Context {
   readonly platform: Context["platform"];
   readonly parent: Context["parent"];
   serializedGlobals: Context["serializedGlobals"];
-
-  private readonly _route;
+  persisted: Context["persisted"];
+  declare readonly params: Context["params"];
+  declare readonly search: Context["search"];
 
   constructor(
     route: RouteMatch | null,
@@ -200,7 +215,6 @@ class RuntimeContext implements Context {
     platform: Platform,
     url: URL,
   ) {
-    this._route = route;
     this.route = route?.path || "";
     this.method = request.method as HttpVerb;
     this.meta = route?.meta || {};
@@ -217,36 +231,44 @@ class RuntimeContext implements Context {
       params: true,
       url: true,
     };
+    this._defineLazy("params", () =>
+      route
+        ? route.options.params
+          ? route.options.params(route.params as Record<string, any>)
+          : route.params
+        : {},
+    );
+    this._defineLazy("search", () => {
+      const search = searchParamsToObject(url.searchParams);
+      return route?.options.search ? route.options.search(search) : search;
+    });
   }
 
-  get params() {
-    const value = this._route
-      ? this._route.options.params
-        ? this._route.options.params(this._route.params as Record<string, any>)
-        : this._route.params
-      : {};
-    Object.defineProperty(this, "params", {
+  // `params`/`search` are lazy OWN enumerable getters (not prototype
+  // getters): the context is the render's `$global`, and Marko copies
+  // `$global` with an own-property spread — prototype members would be
+  // invisible to template `$global.params` reads (own getters are evaluated
+  // by the spread instead). Same contract as the pre-class factory object.
+  private _defineLazy(key: "params" | "search", compute: () => unknown) {
+    Object.defineProperty(this, key, {
       configurable: true,
       enumerable: true,
-      value,
+      get: () => {
+        const value = compute();
+        Object.defineProperty(this, key, {
+          configurable: true,
+          enumerable: true,
+          value,
+        });
+        return value;
+      },
     });
-    return value;
   }
 
-  get search() {
-    const search = searchParamsToObject(this.url.searchParams);
-    const value = this._route?.options.search
-      ? this._route.options.search(search)
-      : search;
-    Object.defineProperty(this, "search", {
-      configurable: true,
-      enumerable: true,
-      value,
-    });
-    return value;
-  }
-
-  async fetch(resource: string | URL | Request, init?: RequestInit) {
+  // Methods are arrow-function fields for the same reason: own enumerable
+  // properties survive the `$global` spread, so templates can call
+  // `$global.fetch(...)` etc.
+  fetch = async (resource: string | URL | Request, init?: RequestInit) => {
     const request = new Request(
       typeof resource === "string" ? new URL(resource, this.url) : resource,
       init,
@@ -257,13 +279,19 @@ class RuntimeContext implements Context {
       (await globalThis.__marko_run__.fetch(request, this.platform)) ||
       new Response(null, { status: 404 })
     );
-  }
+  };
 
-  render<T>(
+  render = <T>(
     template: Marko.Template<T>,
     input: T,
     init: ResponseInit = pageResponseInit,
-  ) {
+  ) => {
+    if (init === pageResponseInit && this.persisted) {
+      init =
+        this.persisted === "update"
+          ? updateResponseInit
+          : persistedPageResponseInit;
+    }
     return new Response(
       toReadable(
         template.render({
@@ -273,9 +301,9 @@ class RuntimeContext implements Context {
       ),
       init,
     );
-  }
+  };
 
-  redirect(to: string | URL, status = 302) {
+  redirect = (to: string | URL, status = 302) => {
     if (typeof status !== "number") {
       throw new RangeError(`Invalid status code ${status}`);
     } else if (status < 301 || status > 308 || (status > 303 && status < 307)) {
@@ -287,14 +315,14 @@ class RuntimeContext implements Context {
         location: (typeof to === "string" ? new URL(to, this.url) : to).href,
       },
     });
-  }
+  };
 
-  back(fallback: string | URL = "/", status?: number) {
+  back = (fallback: string | URL = "/", status?: number) => {
     return this.redirect(
       this.request.headers.get("referer") || fallback,
       status,
     );
-  }
+  };
 }
 
 export function createContext(
