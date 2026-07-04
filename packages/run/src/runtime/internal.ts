@@ -42,6 +42,20 @@ const pageResponseInit = {
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
 
+// Persisted (single-page server-first updates) builds serve two
+// representations of every page URL, negotiated on `accept` — so responses
+// must vary on it. Update renders are a newline-delimited stream of
+// serializer frames, not a document.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+const updateResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/marko-patch;charset=UTF-8", vary: "accept" },
+};
+
 globalThis.MarkoRun ??= {
   NotHandled,
   NotMatched,
@@ -241,6 +255,12 @@ export function createContext(
       );
     },
     render(template, input, init = pageResponseInit) {
+      if (init === pageResponseInit && context.persisted) {
+        init =
+          context.persisted === "update"
+            ? updateResponseInit
+            : persistedPageResponseInit;
+      }
       return new Response(
         toReadable(
           template.render({

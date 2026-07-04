@@ -981,6 +981,32 @@ export interface Context<T extends Route = Route> {
   readonly platform: Platform;
   readonly parent: Context | undefined;
   serializedGlobals: Record<string, boolean>;
+  /**
+   * Persisted (single-page server-first updates) render flag for this
+   * request. In builds with the `persisted` option the generated router sets
+   * it before running the chain: `true` renders a persisted-capable document,
+   * `"update"` renders an update patch (negotiated via
+   * `accept: text/marko-patch`). Middleware may override it (e.g. set `false`
+   * to serve a plain document) before the page renders. The context is the
+   * render's `$global`, so this is `$global.persisted`.
+   */
+  persisted?: boolean | "update";
+  /**
+   * With `persisted: "update"`: the client's current route (`x-marko-from`)
+   * differs from the target, so the update render also serializes state
+   * values -- the target subtree will be created fresh on the client and
+   * its state initializers may live behind server-only expressions. The
+   * context spreads into the render's `$global`, so this is
+   * `$global.persistedSeed`.
+   */
+  persistedSeed?: boolean;
+  /**
+   * The build identity persisted pages are served (and serialized) with —
+   * @marko/vite's client-build digest, or a per-process token in dev. Update
+   * fetches must present it (`x-marko-build`); a mismatch after a deployment
+   * 409s into a full-navigation fallback instead of applying a stale patch.
+   */
+  buildHash?: string;
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,

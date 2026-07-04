@@ -53,7 +53,11 @@ let context: playwright.BrowserContext;
 before(async () => {
   process.env.TRUST_PROXY = "1";
 
-  browser = await playwright.chromium.launch();
+  browser = await playwright.chromium.launch({
+    // Escape hatch for environments with a system browser instead of the
+    // playwright-managed download (e.g. containers).
+    executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined,
+  });
   context = await browser.newContext();
 
   await context.addInitScript(() => {

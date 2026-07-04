@@ -39,6 +39,7 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -58,6 +59,29 @@ export function renderRouteTemplate(
   }
 
   writer.writeLines("");
+
+  // Persisted pages: bootstrap the client router with the app's route table
+  // (patterns + lazy loaders for every route's template module and `?update`
+  // entry — same-route navigations load only this route's entry chunk;
+  // cross-route navigations also load the target's code) and this route's
+  // own pattern. Special (404/500) pages have no pattern to navigate within,
+  // and the class API has no persisted support.
+  if (
+    persisted &&
+    markoApi !== "class" &&
+    route.key !== RoutableFileTypes.NotFound &&
+    route.key !== RoutableFileTypes.Error
+  ) {
+    importWriter.writeLines(
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";
+client import __run_persisted_routes from "${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}";`,
+    );
+    writer.writeLines(
+      `<script>
+  __run_persisted_register(__run_persisted_routes, ${JSON.stringify(route.path.path)}, $global.buildHash);
+</script>`,
+    );
+  }
   writeEntryTemplateTag(
     writer,
     [...route.layouts, route.page].map((file) =>
@@ -361,6 +385,22 @@ export function renderRouter(
     `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
+  if (options.persisted) {
+    // Build identity for persisted-update gating: @marko/vite's linkAssets
+    // runtime exposes the client build's digest (undefined in dev, where a
+    // per-process token stands in — a dev-server restart then falls back to
+    // full navigations instead of applying stale updates).
+    imports.writeLines(
+      `import { buildId } from "virtual:marko-vite/link-assets";
+
+let resolvedBuildHash;
+function getBuildHash() {
+  return (resolvedBuildHash ??=
+    buildId() || Math.random().toString(36).slice(2));
+}`,
+    );
+  }
+
   for (const route of routes.list) {
     const verbs = getVerbs(route);
     const routeImports: string[] = [];
@@ -420,6 +460,41 @@ function match_internal(method, pathname) {
     .writeLines(
       "const context = createContext(route, request, platform, url);",
     );
+
+  if (options.persisted) {
+    // Persisted pages: every render is persisted-capable and carries the
+    // build's identity (serialized so the client router can send it back).
+    // A navigation fetch negotiates an update render instead, but only when
+    // the client's loaded route matches the one this URL resolves to (route
+    // ranking can send a pattern-matching URL to a different route) AND the
+    // client's build matches this server's (compiled accessors and register
+    // ids are only stable within one build) — otherwise a 409 tells the
+    // client router to fall back to a full navigation.
+    writer.writeLines(
+      `context.persisted = true;
+  context.buildHash = getBuildHash();
+  context.serializedGlobals.buildHash = true;
+  if (
+    route &&
+    request.headers.get("accept")?.includes("text/marko-patch")
+  ) {
+    if (
+      request.headers.get("x-marko-route") === route.path &&
+      request.headers.get("x-marko-build") === context.buildHash
+    ) {
+      context.persisted = "update";
+      // Cross-route navigations (the client's current route differs) swap
+      // in a fresh subtree the client cannot compute state for -- seed-mode
+      // payloads serialize state values too; the client seeds them only
+      // into scopes created during the apply.
+      context.persistedSeed =
+        request.headers.get("x-marko-from") !== route.path;
+    } else {
+      return new Response(null, { status: 409, headers: { vary: "accept" } });
+    }
+  }`,
+    );
+  }
 
   if (hasErrorPage) {
     writer.writeBlockStart("try {");
@@ -752,6 +827,41 @@ function renderMatch(
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
   return `{ handler: ${name}, path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+}
+
+/** Basename of the generated client route-table module (persisted pages). */
+export const ROUTES_CLIENT_FILENAME = `${markoRunFilePrefix}routes.client.js`;
+
+/**
+ * Persisted-pages client route table: path patterns with lazy loaders for
+ * each route's generated template module (importing it registers the
+ * route's renderers, signals, and update merges) and its `?update` entry
+ * (the compiled merge functions). The client router matches link clicks
+ * against the patterns; the server's `x-marko-route` verification catches
+ * ranking differences (mismatches 409 into a full navigation).
+ */
+export function renderRoutesClient(
+  routes: BuiltRoutes,
+  rootDir: string,
+): string {
+  const writer = createStringWriter();
+  writer.writeBlockStart("export default [");
+  for (const route of routes.list) {
+    if (!route.page || !route.templateFilePath) continue;
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath,
+    );
+    writer.writeLines(
+      // The template import is for side effects only (registration); the
+      // ignored-namespace `.then` lets the bundler tree-shake the module's
+      // exports -- the template/walks strings (a layout's whole document
+      // shell) are only reachable through them.
+      `[${JSON.stringify(route.path.path)}, () => import(${JSON.stringify(templatePath)}).then(() => 0), () => import(${JSON.stringify(`${templatePath}?update`)})],`,
+    );
+  }
+  writer.writeBlockEnd("];");
+  return writer.end();
 }
 
 export function renderMiddleware(
