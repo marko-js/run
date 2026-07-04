@@ -175,8 +175,12 @@ async function navigate(href: string, push: boolean, target: MatchableRoute) {
     const applyLine = (line: string) => {
       if (!line) return;
       const fills: unknown[] = [];
+      // Functions are resume fills; strings are effect entries the applier
+      // executes only for scopes it freshly created during the apply.
       for (const item of new Function(`return (${line})`)() as unknown[]) {
-        if (typeof item === "function") fills.push(item);
+        if (typeof item === "function" || typeof item === "string") {
+          fills.push(item);
+        }
       }
       if (!fills.length) return;
       applyFrame(fills);
