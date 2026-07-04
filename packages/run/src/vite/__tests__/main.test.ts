@@ -9,6 +9,7 @@ import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
+  renderRoutesClient,
   renderRouteTemplate,
   renderRouteTypeInfo,
 } from "../codegen";
@@ -155,6 +156,13 @@ describe("router codegen", () => {
             routesSnap += renderRouteTemplate(route);
             routesSnap += "```\n";
           }
+        }
+
+        if (fixtureOptions.persisted) {
+          routesSnap += `\n\n## Client route table\n`;
+          routesSnap += "```js\n";
+          routesSnap += renderRoutesClient(routes, dir);
+          routesSnap += "```\n";
         }
 
         routerSnap = renderRouter(routes, dir, undefined, {

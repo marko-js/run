@@ -5,11 +5,12 @@
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
 <script>
-  __run_persisted_register("/", $global.buildHash, () => import("./index.marko?update"));
+  __run_persisted_register(__run_persisted_routes, "/", $global.buildHash);
 </script>
 <Layout1>
 	<Page/>
@@ -37,11 +38,12 @@ export function head2(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/$id/+page.marko";
 
 <script>
-  __run_persisted_register("/item/$id", $global.buildHash, () => import("./item.$.marko?update"));
+  __run_persisted_register(__run_persisted_routes, "/item/$id", $global.buildHash);
 </script>
 <Layout1>
 	<Page/>
@@ -69,11 +71,12 @@ export function head3(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/$$rest/+page.marko";
 
 <script>
-  __run_persisted_register("/docs/$$rest", $global.buildHash, () => import("./docs.$$.marko?update"));
+  __run_persisted_register(__run_persisted_routes, "/docs/$$rest", $global.buildHash);
 </script>
 <Layout1>
 	<Page/>
@@ -106,4 +109,14 @@ import Page from "../../src/routes/+404.marko";
 <Layout1>
 	<Page/>
 </>
+```
+
+
+## Client route table
+```js
+export default [
+	["/", () => import("./dist/.marko-run/index.marko"), () => import("./dist/.marko-run/index.marko?update")],
+	["/item/$id", () => import("./dist/.marko-run/item.$.marko"), () => import("./dist/.marko-run/item.$.marko?update")],
+	["/docs/$$rest", () => import("./dist/.marko-run/docs.$$.marko"), () => import("./dist/.marko-run/docs.$$.marko?update")],
+];
 ```

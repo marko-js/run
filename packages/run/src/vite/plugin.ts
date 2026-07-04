@@ -25,8 +25,10 @@ import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
+  renderRoutesClient,
   renderRouteTemplate,
   renderRouteTypeInfo,
+  ROUTES_CLIENT_FILENAME,
 } from "./codegen";
 import {
   httpVerbs,
@@ -251,6 +253,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
       }
       virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+      if (persisted) {
+        virtualFiles.set(path.posix.join(root, ROUTES_CLIENT_FILENAME), "");
+      }
 
       for (const externalRoute of externalRoutes) {
         for (const { entryFile } of externalRoute.routes) {
@@ -356,6 +361,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             persisted,
           }),
         );
+
+        if (persisted) {
+          virtualFiles.set(
+            path.posix.join(root, ROUTES_CLIENT_FILENAME),
+            renderRoutesClient(routes, root),
+          );
+        }
 
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {

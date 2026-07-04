@@ -1,15 +1,19 @@
 // Client router for persisted (single-page server-first) navigations.
 //
-// Generated route wrapper templates call `register` with their route's path
-// pattern and an importer for their generated `?update` entry (see
-// `renderRouteTemplate` in ../vite/codegen). From then on, clicks on links
-// that resolve to the same route are intercepted: the target is fetched with
-// update content negotiation (`accept: text/marko-patch` plus the route
-// pattern, which the generated router verifies before rendering in update
-// mode), the entry chunk is lazy-loaded in parallel, and the streamed patch
-// is applied to the live page through the entry's compiled merge functions —
-// no reload, client state intact. Any protocol failure falls back to a full
-// navigation.
+// Generated route wrapper templates call `register` with the app's route
+// table (see `renderRoutesClient` in ../vite/codegen) and their own route's
+// path pattern. From then on, clicks on links matching any table pattern
+// are intercepted: the target is fetched with update content negotiation
+// (`accept: text/marko-patch` plus the matched pattern and build identity,
+// which the generated router verifies before rendering in update mode);
+// the target route's generated `?update` entry — and, for cross-route
+// navigations, its template module, whose import registers the route's
+// renderers, signals, and merges — load in parallel; and the streamed
+// patch applies to the live page through the entry's compiled merge
+// functions. Matched scopes value-update; a route's diverging content
+// swaps in as a fresh branch at the layout's already-dynamic content hop.
+// Client state above the divergence point survives; any protocol failure
+// falls back to a full navigation.
 export interface UpdateEntry {
   /** The route template's compiled merge function. */
   default: (patch: unknown, live: unknown) => void;
@@ -26,34 +30,61 @@ export interface UpdateEntry {
   ) => (fills: unknown[]) => void;
 }
 
-interface RegisteredRoute {
+/** A generated route-table entry: [pattern, loadTemplate, loadUpdate]. */
+export type RouteEntry = [
+  pattern: string,
+  loadTemplate: () => Promise<unknown>,
+  loadUpdate: () => Promise<UpdateEntry>,
+];
+
+interface MatchableRoute {
   pattern: string;
-  buildHash: string;
   test: RegExp;
-  getUpdate: () => Promise<UpdateEntry>;
+  loadTemplate: () => Promise<unknown>;
+  loadUpdate: () => Promise<UpdateEntry>;
 }
 
 const patchContentType = "text/marko-patch";
-let current: RegisteredRoute | undefined;
+let routes: MatchableRoute[] | undefined;
+let currentPattern: string;
+let buildHash: string;
 // The last URL an update was applied for (or the initial document URL) —
 // popstate events that don't change it (hash-only movement) stay native.
 let appliedUrl: string;
 let controller: AbortController | undefined;
 
 export function register(
+  table: RouteEntry[],
+  // The pattern of the route this page rendered through.
   pattern: string,
   // The build this page (and its loaded code) was served with, serialized
   // into `$global` by the generated router; the server only honors update
   // fetches from its own build.
-  buildHash: string,
-  getUpdate: () => Promise<UpdateEntry>,
+  hash: string,
 ) {
-  if (!current) {
+  if (!routes) {
     appliedUrl = location.pathname + location.search;
     addEventListener("click", onClick);
     addEventListener("popstate", onPopstate);
   }
-  current = { pattern, buildHash, test: patternToRegExp(pattern), getUpdate };
+  routes = table.map(([p, loadTemplate, loadUpdate]) => ({
+    pattern: p,
+    test: patternToRegExp(p),
+    loadTemplate,
+    loadUpdate,
+  }));
+  currentPattern = pattern;
+  buildHash = hash;
+}
+
+// First table match wins; the client's linear order can disagree with the
+// server's ranked trie (e.g. a static segment route listed after a dynamic
+// one) — the server's `x-marko-route` verification 409s those into a full
+// navigation.
+function matchRoute(pathname: string) {
+  for (const route of routes!) {
+    if (route.test.test(pathname)) return route;
+  }
 }
 
 function onClick(ev: MouseEvent) {
@@ -88,19 +119,25 @@ function onClick(ev: MouseEvent) {
     return;
   }
 
-  if (!current!.test.test(decode(link.pathname))) return;
+  const target = matchRoute(decode(link.pathname));
+  if (!target) return;
 
   ev.preventDefault();
-  navigate(link.href, true);
+  navigate(link.href, true, target);
 }
 
 function onPopstate() {
   const url = location.pathname + location.search;
-  if (url !== appliedUrl) navigate(location.href, false);
+  if (url === appliedUrl) return;
+  const target = matchRoute(decode(location.pathname));
+  if (target) {
+    navigate(location.href, false, target);
+  } else {
+    location.reload();
+  }
 }
 
-async function navigate(href: string, push: boolean) {
-  const { pattern, buildHash, getUpdate } = current!;
+async function navigate(href: string, push: boolean, target: MatchableRoute) {
   controller?.abort();
   const { signal } = (controller = new AbortController());
 
@@ -109,12 +146,15 @@ async function navigate(href: string, push: boolean) {
       fetch(href, {
         headers: {
           accept: patchContentType,
-          "x-marko-route": pattern,
+          "x-marko-route": target.pattern,
           "x-marko-build": String(buildHash),
         },
         signal,
       }),
-      getUpdate(),
+      target.loadUpdate(),
+      // Cross-route: the target's template module registers the renderers,
+      // signals, and merges its patch will resolve from the registry.
+      target.pattern === currentPattern ? undefined : target.loadTemplate(),
     ]);
 
     if (
@@ -145,6 +185,7 @@ async function navigate(href: string, push: boolean) {
         // page's synchronous content lands), mirroring a streamed MPA
         // render starting to paint.
         applied = true;
+        currentPattern = target.pattern;
         const url = new URL(res.url || href);
         appliedUrl = url.pathname + url.search;
         if (push) {

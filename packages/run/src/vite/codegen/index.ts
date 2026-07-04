@@ -60,11 +60,12 @@ export function renderRouteTemplate(
 
   writer.writeLines("");
 
-  // Persisted pages: register the client router with this route's path
-  // pattern and its own generated `?update` entry (the compiled merge
-  // functions, split into a lazy chunk loaded on first navigation). Special
-  // (404/500) pages have no pattern to navigate within, and the class API
-  // has no persisted support.
+  // Persisted pages: bootstrap the client router with the app's route table
+  // (patterns + lazy loaders for every route's template module and `?update`
+  // entry — same-route navigations load only this route's entry chunk;
+  // cross-route navigations also load the target's code) and this route's
+  // own pattern. Special (404/500) pages have no pattern to navigate within,
+  // and the class API has no persisted support.
   if (
     persisted &&
     markoApi !== "class" &&
@@ -72,11 +73,12 @@ export function renderRouteTemplate(
     route.key !== RoutableFileTypes.Error
   ) {
     importWriter.writeLines(
-      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";
+client import __run_persisted_routes from "${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}";`,
     );
     writer.writeLines(
       `<script>
-  __run_persisted_register(${JSON.stringify(route.path.path)}, $global.buildHash, () => import("./${path.basename(route.templateFilePath!)}?update"));
+  __run_persisted_register(__run_persisted_routes, ${JSON.stringify(route.path.path)}, $global.buildHash);
 </script>`,
     );
   }
@@ -820,6 +822,37 @@ function renderMatch(
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
   return `{ handler: ${name}, path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+}
+
+/** Basename of the generated client route-table module (persisted pages). */
+export const ROUTES_CLIENT_FILENAME = `${markoRunFilePrefix}routes.client.js`;
+
+/**
+ * Persisted-pages client route table: path patterns with lazy loaders for
+ * each route's generated template module (importing it registers the
+ * route's renderers, signals, and update merges) and its `?update` entry
+ * (the compiled merge functions). The client router matches link clicks
+ * against the patterns; the server's `x-marko-route` verification catches
+ * ranking differences (mismatches 409 into a full navigation).
+ */
+export function renderRoutesClient(
+  routes: BuiltRoutes,
+  rootDir: string,
+): string {
+  const writer = createStringWriter();
+  writer.writeBlockStart("export default [");
+  for (const route of routes.list) {
+    if (!route.page || !route.templateFilePath) continue;
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath,
+    );
+    writer.writeLines(
+      `[${JSON.stringify(route.path.path)}, () => import(${JSON.stringify(templatePath)}), () => import(${JSON.stringify(`${templatePath}?update`)})],`,
+    );
+  }
+  writer.writeBlockEnd("];");
+  return writer.end();
 }
 
 export function renderMiddleware(
