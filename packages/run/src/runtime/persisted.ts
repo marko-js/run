@@ -127,19 +127,23 @@ function onClick(ev: MouseEvent) {
   navigate(link.href, true, target);
 }
 
-// Same-origin GET form submissions are links with parameters -- serialize
-// and route them through the same update pipeline. Forms the app already
-// handles (`preventDefault` in an earlier listener) are untouched; POST
-// submissions stay native for now (a mutation's fallback semantics --
-// never replay the request -- arrive with the PRG slice).
+// Same-origin form submissions route through the update pipeline: a GET
+// form is a link with parameters (the body becomes the query), and a POST
+// is the PRG pattern -- the mutation runs, the redirect's followed GET
+// negotiates the update (the server verifies `x-marko-route` against the
+// final URL's route, so cross-route redirects 409 into a full
+// navigation). Forms the app already handles (`preventDefault` in an
+// earlier listener) are untouched.
 function onSubmit(ev: SubmitEvent) {
   const form = ev.target as HTMLFormElement;
   const submitter = ev.submitter;
+  const method = (
+    submitter?.getAttribute("formmethod") || getFormAttr(form, "method")
+  )?.toLowerCase();
   if (
     ev.defaultPrevented ||
-    (
-      submitter?.getAttribute("formmethod") || getFormAttr(form, "method")
-    )?.toLowerCase() !== "get"
+    resubmitting ||
+    (method !== "get" && method !== "post")
   ) {
     return;
   }
@@ -162,17 +166,40 @@ function onSubmit(ev: SubmitEvent) {
   const target = matchRoute(decode(url.pathname));
   if (!target) return;
 
-  // Mirrors native GET submission: the body becomes the query (files
-  // cannot ride a GET; the submitter's name/value is included).
-  const params = new URLSearchParams();
-  for (const [name, value] of new FormData(form, submitter)) {
-    if (typeof value === "string") params.append(name, value);
+  const data = new FormData(form, submitter);
+  if (method === "get") {
+    // Mirrors native GET submission: the body becomes the query (files
+    // submit their name, as native does; the submitter's name/value is
+    // included).
+    const params = new URLSearchParams();
+    for (const [name, value] of data) {
+      params.append(name, typeof value === "string" ? value : value.name);
+    }
+    url.search = params.toString();
+    ev.preventDefault();
+    navigate(url.href, true, target);
+  } else {
+    const enctype = (
+      submitter?.getAttribute("formenctype") || getFormAttr(form, "enctype")
+    )?.toLowerCase();
+    if (enctype === "text/plain") return; // rare; stays native
+    let body: FormData | URLSearchParams = data;
+    if (enctype !== "multipart/form-data") {
+      // fetch encodes URLSearchParams as application/x-www-form-urlencoded,
+      // the native default.
+      body = new URLSearchParams();
+      for (const [name, value] of data) {
+        body.append(name, typeof value === "string" ? value : value.name);
+      }
+    }
+    ev.preventDefault();
+    navigate(url.href, true, target, [body, form, submitter]);
   }
-  url.search = params.toString();
-
-  ev.preventDefault();
-  navigate(url.href, true, target);
 }
+
+// Set while the fallback ladder hands a failed pre-response mutation back
+// to the browser (`requestSubmit` re-fires the submit event).
+let resubmitting: undefined | 0 | 1;
 
 // Reads a form attribute robustly: a control named eg `action` shadows the
 // `form.action` property (DOM clobbering), and missing attributes must fall
@@ -192,13 +219,29 @@ function onPopstate() {
   }
 }
 
-async function navigate(href: string, push: boolean, target: MatchableRoute) {
+async function navigate(
+  href: string,
+  push: boolean,
+  target: MatchableRoute,
+  // A mutation (POST form submission): [body, form, submitter].
+  mutation?: [
+    body: FormData | URLSearchParams,
+    form: HTMLFormElement,
+    submitter: HTMLElement | null,
+  ],
+) {
+  // Later navigations abort superseded fetches -- except mutations, which
+  // the server may already have applied; those run to completion and only
+  // their *application* is superseded (the per-frame signal check).
   controller?.abort();
   const { signal } = (controller = new AbortController());
+  let res: Response | undefined;
 
   try {
-    const [res, entry] = await Promise.all([
+    const [fetched, entry] = await Promise.all([
       fetch(href, {
+        method: mutation && "POST",
+        body: mutation?.[0],
         headers: {
           accept: patchContentType,
           "x-marko-route": target.pattern,
@@ -208,18 +251,23 @@ async function navigate(href: string, push: boolean, target: MatchableRoute) {
           "x-marko-from": currentPattern,
           "x-marko-build": String(buildHash),
         },
-        signal,
+        signal: mutation ? undefined : signal,
       }),
       target.loadUpdate(),
       // Cross-route: the target's template module registers the renderers,
       // signals, and merges its patch will resolve from the registry.
       target.pattern === currentPattern ? undefined : target.loadTemplate(),
     ]);
+    res = fetched;
+    if (signal.aborted) return;
 
-    if (
-      !res.ok ||
-      !res.headers.get("content-type")?.includes(patchContentType)
-    ) {
+    // Content-type, not status, decides: non-2xx patch responses (eg a
+    // validation error re-rendering the page) still apply -- keeping
+    // focus and scroll is exactly when it matters most. A redirect was
+    // followed by now (PRG); its route was verified against the final URL
+    // server-side, so a cross-route redirect lands here as a non-patch
+    // 409 and falls back below.
+    if (!res.headers.get("content-type")?.includes(patchContentType)) {
       throw new Error(`unexpected update response (${res.status})`);
     }
 
@@ -249,9 +297,12 @@ async function navigate(href: string, push: boolean, target: MatchableRoute) {
         // render starting to paint.
         applied = true;
         currentPattern = target.pattern;
-        const url = new URL(res.url || href);
+        const url = new URL(res!.url || href);
+        // An in-place refresh (a PRG redirect landing back on the same
+        // URL) adds no history entry.
+        const samePage = url.pathname + url.search === appliedUrl;
         appliedUrl = url.pathname + url.search;
-        if (push) {
+        if (push && !samePage) {
           history.pushState(null, "", url.href);
           scrollTo(0, 0);
         }
@@ -277,10 +328,27 @@ async function navigate(href: string, push: boolean, target: MatchableRoute) {
     if (!applied) {
       throw new Error("update response carried no fills");
     }
+    dispatchEvent(new CustomEvent("marko-run:navigate"));
   } catch (err) {
     if (signal.aborted) return; // Superseded by a newer navigation.
-    // Fallback ladder: any protocol failure becomes a full navigation.
-    if (push) {
+    // Fallback ladder: any protocol failure becomes a full navigation. A
+    // mutation must never replay: with a response in hand the mutation
+    // happened -- follow its final URL with a plain GET; without one it
+    // may or may not have -- hand the submission back to the browser
+    // (standard POST navigation semantics, resubmission warnings
+    // included).
+    if (mutation) {
+      if (res) {
+        location.assign(res.url || href);
+      } else {
+        resubmitting = 1;
+        try {
+          mutation[1].requestSubmit(mutation[2]);
+        } finally {
+          resubmitting = 0 as never;
+        }
+      }
+    } else if (push) {
       location.assign(href);
     } else {
       location.reload();

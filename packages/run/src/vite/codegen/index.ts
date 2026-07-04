@@ -476,7 +476,6 @@ function match_internal(method, pathname) {
   context.serializedGlobals.buildHash = true;
   if (
     route &&
-    request.method === "GET" &&
     request.headers.get("accept")?.includes("text/marko-patch")
   ) {
     if (
