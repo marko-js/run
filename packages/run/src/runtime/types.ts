@@ -992,6 +992,15 @@ export interface Context<T extends Route = Route> {
    */
   persisted?: boolean | "update";
   /**
+   * With `persisted: "update"`: the client's current route (`x-marko-from`)
+   * differs from the target, so the update render also serializes state
+   * values -- the target subtree will be created fresh on the client and
+   * its state initializers may live behind server-only expressions. The
+   * context spreads into the render's `$global`, so this is
+   * `$global.persistedSeed`.
+   */
+  persistedSeed?: boolean;
+  /**
    * The build identity persisted pages are served (and serialized) with —
    * @marko/vite's client-build digest, or a per-process token in dev. Update
    * fetches must present it (`x-marko-build`); a mismatch after a deployment

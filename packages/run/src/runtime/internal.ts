@@ -206,6 +206,7 @@ class RuntimeContext implements Context {
   readonly parent: Context["parent"];
   serializedGlobals: Context["serializedGlobals"];
   persisted: Context["persisted"];
+  persistedSeed: Context["persistedSeed"];
   declare readonly params: Context["params"];
   declare readonly search: Context["search"];
 

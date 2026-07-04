@@ -484,6 +484,12 @@ function match_internal(method, pathname) {
       request.headers.get("x-marko-build") === context.buildHash
     ) {
       context.persisted = "update";
+      // Cross-route navigations (the client's current route differs) swap
+      // in a fresh subtree the client cannot compute state for -- seed-mode
+      // payloads serialize state values too; the client seeds them only
+      // into scopes created during the apply.
+      context.persistedSeed =
+        request.headers.get("x-marko-from") !== route.path;
     } else {
       return new Response(null, { status: 409, headers: { vary: "accept" } });
     }

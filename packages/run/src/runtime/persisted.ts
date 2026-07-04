@@ -202,6 +202,10 @@ async function navigate(href: string, push: boolean, target: MatchableRoute) {
         headers: {
           accept: patchContentType,
           "x-marko-route": target.pattern,
+          // The route this page is currently showing -- a differing target
+          // is a cross-route navigation, whose update render also seeds
+          // state for the subtree the client will create fresh.
+          "x-marko-from": currentPattern,
           "x-marko-build": String(buildHash),
         },
         signal,
