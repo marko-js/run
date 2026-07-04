@@ -115,8 +115,8 @@ import Page from "../../src/routes/+404.marko";
 ## Client route table
 ```js
 export default [
-	["/", () => import("./dist/.marko-run/index.marko"), () => import("./dist/.marko-run/index.marko?update")],
-	["/item/$id", () => import("./dist/.marko-run/item.$.marko"), () => import("./dist/.marko-run/item.$.marko?update")],
-	["/docs/$$rest", () => import("./dist/.marko-run/docs.$$.marko"), () => import("./dist/.marko-run/docs.$$.marko?update")],
+	["/", () => import("./dist/.marko-run/index.marko").then(() => 0), () => import("./dist/.marko-run/index.marko?update")],
+	["/item/$id", () => import("./dist/.marko-run/item.$.marko").then(() => 0), () => import("./dist/.marko-run/item.$.marko?update")],
+	["/docs/$$rest", () => import("./dist/.marko-run/docs.$$.marko").then(() => 0), () => import("./dist/.marko-run/docs.$$.marko?update")],
 ];
 ```

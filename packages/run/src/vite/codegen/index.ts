@@ -853,7 +853,11 @@ export function renderRoutesClient(
       route.templateFilePath,
     );
     writer.writeLines(
-      `[${JSON.stringify(route.path.path)}, () => import(${JSON.stringify(templatePath)}), () => import(${JSON.stringify(`${templatePath}?update`)})],`,
+      // The template import is for side effects only (registration); the
+      // ignored-namespace `.then` lets the bundler tree-shake the module's
+      // exports -- the template/walks strings (a layout's whole document
+      // shell) are only reachable through them.
+      `[${JSON.stringify(route.path.path)}, () => import(${JSON.stringify(templatePath)}).then(() => 0), () => import(${JSON.stringify(`${templatePath}?update`)})],`,
     );
   }
   writer.writeBlockEnd("];");
