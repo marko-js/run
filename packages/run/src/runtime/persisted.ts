@@ -65,6 +65,7 @@ export function register(
   if (!routes) {
     appliedUrl = location.pathname + location.search;
     addEventListener("click", onClick);
+    addEventListener("submit", onSubmit);
     addEventListener("popstate", onPopstate);
   }
   routes = table.map(([p, loadTemplate, loadUpdate]) => ({
@@ -124,6 +125,60 @@ function onClick(ev: MouseEvent) {
 
   ev.preventDefault();
   navigate(link.href, true, target);
+}
+
+// Same-origin GET form submissions are links with parameters -- serialize
+// and route them through the same update pipeline. Forms the app already
+// handles (`preventDefault` in an earlier listener) are untouched; POST
+// submissions stay native for now (a mutation's fallback semantics --
+// never replay the request -- arrive with the PRG slice).
+function onSubmit(ev: SubmitEvent) {
+  const form = ev.target as HTMLFormElement;
+  const submitter = ev.submitter;
+  if (
+    ev.defaultPrevented ||
+    (
+      submitter?.getAttribute("formmethod") || getFormAttr(form, "method")
+    )?.toLowerCase() !== "get"
+  ) {
+    return;
+  }
+
+  const url = new URL(
+    submitter?.getAttribute("formaction") ??
+      getFormAttr(form, "action") ??
+      location.href,
+    location.href,
+  );
+  const formTarget =
+    submitter?.getAttribute("formtarget") || getFormAttr(form, "target");
+  if (
+    url.origin !== location.origin ||
+    (formTarget && formTarget !== "_self")
+  ) {
+    return;
+  }
+
+  const target = matchRoute(decode(url.pathname));
+  if (!target) return;
+
+  // Mirrors native GET submission: the body becomes the query (files
+  // cannot ride a GET; the submitter's name/value is included).
+  const params = new URLSearchParams();
+  for (const [name, value] of new FormData(form, submitter)) {
+    if (typeof value === "string") params.append(name, value);
+  }
+  url.search = params.toString();
+
+  ev.preventDefault();
+  navigate(url.href, true, target);
+}
+
+// Reads a form attribute robustly: a control named eg `action` shadows the
+// `form.action` property (DOM clobbering), and missing attributes must fall
+// back to the native default.
+function getFormAttr(form: HTMLFormElement, name: string) {
+  return form.getAttribute(name) || (name === "method" ? "get" : undefined);
 }
 
 function onPopstate() {
