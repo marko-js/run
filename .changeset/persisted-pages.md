@@ -9,7 +9,10 @@ to `@marko/vite`), negotiates update renders in the generated router
 router from every generated route wrapper with that route's `?update`
 entry, and applies server-rendered update payloads to the live page on
 same-route navigations — no reload, client state intact, full-navigation
-fallback on any protocol failure. Updates are additionally gated on build
+fallback on any protocol failure. Responses apply as they stream: the
+synchronous page content settles with the first frame (history/scroll
+commit there) and each async boundary's body lands as its frame arrives.
+Updates are additionally gated on build
 identity (`@marko/vite`'s client-build digest, serialized to the page and
 required back on update fetches), so deployments invalidate in-flight pages
 into full navigations instead of applying stale patches. Requires a Marko

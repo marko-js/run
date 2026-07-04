@@ -16,13 +16,14 @@ export interface UpdateEntry {
   /**
    * Re-exported by the generated entry so this module never imports the
    * marko runtime itself — a second runtime instance would have its own
-   * resume registry and silently pair nothing.
+   * resume registry and silently pair nothing. `createUpdate` is the
+   * per-navigation streaming applier: one call per response frame against a
+   * shared patch context.
    */
-  applyUpdate: (
+  createUpdate: (
     merge: (patch: unknown, live: unknown) => void,
-    fills: unknown,
     liveRoot?: unknown,
-  ) => void;
+  ) => (fills: unknown[]) => void;
 }
 
 interface RegisteredRoute {
@@ -123,17 +124,54 @@ async function navigate(href: string, push: boolean) {
       throw new Error(`unexpected update response (${res.status})`);
     }
 
-    // TODO(persisted): apply frames as they stream in once the runtime
-    // grows a per-navigation patch context; today the whole payload buffers.
-    const fills = extractFills(await res.text());
-    if (signal.aborted) return;
+    // Update responses are a newline-delimited stream of serializer frames:
+    // each line is a bare JS array of resume fills (the serializer escapes
+    // newlines in values). Frames apply as they arrive against a shared
+    // per-navigation patch context, so the synchronous page content settles
+    // immediately while slow async boundaries (`<await>` bodies) land in
+    // later frames — the same progressive behavior as a streamed document.
+    const applyFrame = entry.createUpdate(entry.default);
+    let applied = false;
+    const applyLine = (line: string) => {
+      if (!line) return;
+      const fills: unknown[] = [];
+      for (const item of new Function(`return (${line})`)() as unknown[]) {
+        if (typeof item === "function") fills.push(item);
+      }
+      if (!fills.length) return;
+      applyFrame(fills);
+      if (!applied) {
+        // The navigation commits with the first applied frame (when the
+        // page's synchronous content lands), mirroring a streamed MPA
+        // render starting to paint.
+        applied = true;
+        const url = new URL(res.url || href);
+        appliedUrl = url.pathname + url.search;
+        if (push) {
+          history.pushState(null, "", url.href);
+          scrollTo(0, 0);
+        }
+      }
+    };
 
-    entry.applyUpdate(entry.default, fills);
-    const url = new URL(res.url || href);
-    appliedUrl = url.pathname + url.search;
-    if (push) {
-      history.pushState(null, "", url.href);
-      scrollTo(0, 0);
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (signal.aborted) return;
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop()!;
+      for (const line of lines) applyLine(line);
+      if (done) {
+        applyLine(buffer);
+        break;
+      }
+    }
+
+    if (!applied) {
+      throw new Error("update response carried no fills");
     }
   } catch (err) {
     if (signal.aborted) return; // Superseded by a newer navigation.
@@ -147,26 +185,6 @@ async function navigate(href: string, push: boolean) {
       console.warn("@marko/run: persisted navigation fell back", err);
     }
   }
-}
-
-// Update responses are a newline-delimited stream of serializer frames:
-// each line is a bare JS array of resume fills (plus effect strings, which
-// the applier ignores for matched scopes).
-function extractFills(text: string) {
-  const fills: unknown[] = [];
-  for (const line of text.split("\n")) {
-    if (line) {
-      for (const item of new Function(`return (${line})`)() as unknown[]) {
-        if (typeof item === "function") {
-          fills.push(item);
-        }
-      }
-    }
-  }
-  if (!fills.length) {
-    throw new Error("update response carried no fills");
-  }
-  return fills;
 }
 
 // Mirrors the generated router's matching for a single route pattern:
