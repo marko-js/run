@@ -27,6 +27,7 @@ export interface UpdateEntry {
 
 interface RegisteredRoute {
   pattern: string;
+  buildHash: string;
   test: RegExp;
   getUpdate: () => Promise<UpdateEntry>;
 }
@@ -40,6 +41,10 @@ let controller: AbortController | undefined;
 
 export function register(
   pattern: string,
+  // The build this page (and its loaded code) was served with, serialized
+  // into `$global` by the generated router; the server only honors update
+  // fetches from its own build.
+  buildHash: string,
   getUpdate: () => Promise<UpdateEntry>,
 ) {
   if (!current) {
@@ -47,7 +52,7 @@ export function register(
     addEventListener("click", onClick);
     addEventListener("popstate", onPopstate);
   }
-  current = { pattern, test: patternToRegExp(pattern), getUpdate };
+  current = { pattern, buildHash, test: patternToRegExp(pattern), getUpdate };
 }
 
 function onClick(ev: MouseEvent) {
@@ -94,7 +99,7 @@ function onPopstate() {
 }
 
 async function navigate(href: string, push: boolean) {
-  const { pattern, getUpdate } = current!;
+  const { pattern, buildHash, getUpdate } = current!;
   controller?.abort();
   const { signal } = (controller = new AbortController());
 
@@ -104,6 +109,7 @@ async function navigate(href: string, push: boolean) {
         headers: {
           accept: patchContentType,
           "x-marko-route": pattern,
+          "x-marko-build": String(buildHash),
         },
         signal,
       }),

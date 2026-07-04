@@ -9,7 +9,7 @@ import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
 <script>
-  __run_persisted_register("/", () => import("./index.marko?update"));
+  __run_persisted_register("/", $global.buildHash, () => import("./index.marko?update"));
 </script>
 <Layout1>
 	<Page/>
@@ -41,7 +41,7 @@ import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/$id/+page.marko";
 
 <script>
-  __run_persisted_register("/item/$id", () => import("./item.$.marko?update"));
+  __run_persisted_register("/item/$id", $global.buildHash, () => import("./item.$.marko?update"));
 </script>
 <Layout1>
 	<Page/>
@@ -73,7 +73,7 @@ import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/$$rest/+page.marko";
 
 <script>
-  __run_persisted_register("/docs/$$rest", () => import("./docs.$$.marko?update"));
+  __run_persisted_register("/docs/$$rest", $global.buildHash, () => import("./docs.$$.marko?update"));
 </script>
 <Layout1>
 	<Page/>

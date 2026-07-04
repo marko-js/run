@@ -1,4 +1,11 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { buildId } from "virtual:marko-vite/link-assets";
+
+let resolvedBuildHash;
+function getBuildHash() {
+  return (resolvedBuildHash ??=
+    buildId() || Math.random().toString(36).slice(2));
+}
 import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__index.js";
 import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__item.$.js";
 import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__docs.$$.js";
@@ -66,12 +73,17 @@ function match_internal(method, pathname) {
 export async function invoke(route, request, platform, url) {
 	const context = createContext(route, request, platform, url);
 	context.persisted = true;
+  context.buildHash = getBuildHash();
+  context.serializedGlobals.buildHash = true;
   if (
     route &&
     request.method === "GET" &&
     request.headers.get("accept")?.includes("text/marko-patch")
   ) {
-    if (request.headers.get("x-marko-route") === route.path) {
+    if (
+      request.headers.get("x-marko-route") === route.path &&
+      request.headers.get("x-marko-build") === context.buildHash
+    ) {
       context.persisted = "update";
     } else {
       return new Response(null, { status: 409, headers: { vary: "accept" } });

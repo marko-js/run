@@ -991,6 +991,13 @@ export interface Context<T extends Route = Route> {
    * render's `$global`, so this is `$global.persisted`.
    */
   persisted?: boolean | "update";
+  /**
+   * The build identity persisted pages are served (and serialized) with —
+   * @marko/vite's client-build digest, or a per-process token in dev. Update
+   * fetches must present it (`x-marko-build`); a mismatch after a deployment
+   * 409s into a full-navigation fallback instead of applying a stale patch.
+   */
+  buildHash?: string;
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,

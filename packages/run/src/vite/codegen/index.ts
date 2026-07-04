@@ -76,7 +76,7 @@ export function renderRouteTemplate(
     );
     writer.writeLines(
       `<script>
-  __run_persisted_register(${JSON.stringify(route.path.path)}, () => import("./${path.basename(route.templateFilePath!)}?update"));
+  __run_persisted_register(${JSON.stringify(route.path.path)}, $global.buildHash, () => import("./${path.basename(route.templateFilePath!)}?update"));
 </script>`,
     );
   }
@@ -383,6 +383,22 @@ export function renderRouter(
     `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
+  if (options.persisted) {
+    // Build identity for persisted-update gating: @marko/vite's linkAssets
+    // runtime exposes the client build's digest (undefined in dev, where a
+    // per-process token stands in — a dev-server restart then falls back to
+    // full navigations instead of applying stale updates).
+    imports.writeLines(
+      `import { buildId } from "virtual:marko-vite/link-assets";
+
+let resolvedBuildHash;
+function getBuildHash() {
+  return (resolvedBuildHash ??=
+    buildId() || Math.random().toString(36).slice(2));
+}`,
+    );
+  }
+
   for (const route of routes.list) {
     const verbs = getVerbs(route);
     const routeImports: string[] = [];
@@ -444,19 +460,27 @@ function match_internal(method, pathname) {
     );
 
   if (options.persisted) {
-    // Persisted pages: every render is persisted-capable; a navigation fetch
-    // negotiates an update render instead, but only when the client's loaded
-    // route matches the one this URL resolves to (route ranking can send a
-    // pattern-matching URL to a different route) — otherwise a 409 tells the
+    // Persisted pages: every render is persisted-capable and carries the
+    // build's identity (serialized so the client router can send it back).
+    // A navigation fetch negotiates an update render instead, but only when
+    // the client's loaded route matches the one this URL resolves to (route
+    // ranking can send a pattern-matching URL to a different route) AND the
+    // client's build matches this server's (compiled accessors and register
+    // ids are only stable within one build) — otherwise a 409 tells the
     // client router to fall back to a full navigation.
     writer.writeLines(
       `context.persisted = true;
+  context.buildHash = getBuildHash();
+  context.serializedGlobals.buildHash = true;
   if (
     route &&
     request.method === "GET" &&
     request.headers.get("accept")?.includes("text/marko-patch")
   ) {
-    if (request.headers.get("x-marko-route") === route.path) {
+    if (
+      request.headers.get("x-marko-route") === route.path &&
+      request.headers.get("x-marko-build") === context.buildHash
+    ) {
       context.persisted = "update";
     } else {
       return new Response(null, { status: 409, headers: { vary: "accept" } });
