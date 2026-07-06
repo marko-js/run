@@ -180,130 +180,102 @@ async function readBody(route: RouteMatch, context: Context) {
   return validator ? validator(data) : data;
 }
 
-class RuntimeContext implements Context {
-  readonly route: Context["route"];
-  readonly method: Context["method"];
-  readonly meta: Context["meta"];
-  readonly body: Context["body"];
-  readonly data: Context["data"];
-  readonly url: Context["url"];
-  readonly request: Context["request"];
-  readonly platform: Context["platform"];
-  readonly parent: Context["parent"];
-  serializedGlobals: Context["serializedGlobals"];
-
-  private readonly _route;
-
-  constructor(
-    route: RouteMatch | null,
-    request: Request,
-    platform: Platform,
-    url: URL,
-  ) {
-    this._route = route;
-    this.route = route?.path || "";
-    this.method = request.method as HttpVerb;
-    this.meta = route?.meta || {};
-    this.body =
-      route && request.body && (route.options.json || route.options.form)
-        ? thenable(() => readBody(route, this))
-        : undefined;
-    this.data = {};
-    this.url = url;
-    this.request = request;
-    this.platform = platform;
-    this.parent = parentContextLookup.get(request);
-    this.serializedGlobals = {
-      params: true,
-      url: true,
-    };
-  }
-
-  get params() {
-    const value = this._route
-      ? this._route.options.params
-        ? this._route.options.params(this._route.params as Record<string, any>)
-        : this._route.params
-      : {};
-    Object.defineProperty(this, "params", {
-      configurable: true,
-      enumerable: true,
-      value,
-    });
-    return value;
-  }
-
-  get search() {
-    const search = searchParamsToObject(this.url.searchParams);
-    const value = this._route?.options.search
-      ? this._route.options.search(search)
-      : search;
-    Object.defineProperty(this, "search", {
-      configurable: true,
-      enumerable: true,
-      value,
-    });
-    return value;
-  }
-
-  async fetch(resource: string | URL | Request, init?: RequestInit) {
-    const request = new Request(
-      typeof resource === "string" ? new URL(resource, this.url) : resource,
-      init,
-    );
-
-    parentContextLookup.set(request, this as any);
-    return (
-      (await globalThis.__marko_run__.fetch(request, this.platform)) ||
-      new Response(null, { status: 404 })
-    );
-  }
-
-  render<T>(
-    template: Marko.Template<T>,
-    input: T,
-    init: ResponseInit = pageResponseInit,
-  ) {
-    return new Response(
-      toReadable(
-        template.render({
-          ...input,
-          $global: this as unknown as Marko.Global,
-        }),
-      ),
-      init,
-    );
-  }
-
-  redirect(to: string | URL, status = 302) {
-    if (typeof status !== "number") {
-      throw new RangeError(`Invalid status code ${status}`);
-    } else if (status < 301 || status > 308 || (status > 303 && status < 307)) {
-      throw new RangeError(`Invalid status code ${status}`);
-    }
-    return new Response(null, {
-      status,
-      headers: {
-        location: (typeof to === "string" ? new URL(to, this.url) : to).href,
-      },
-    });
-  }
-
-  back(fallback: string | URL = "/", status?: number) {
-    return this.redirect(
-      this.request.headers.get("referer") || fallback,
-      status,
-    );
-  }
-}
-
 export function createContext(
   route: RouteMatch | null,
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
 ): Context {
-  return new RuntimeContext(route, request, platform, url);
+  const context: Context = {
+    route: route?.path || "",
+    method: request.method as HttpVerb,
+    meta: route?.meta || {},
+    body:
+      route && request.body && (route.options.json || route.options.form)
+        ? thenable(() => readBody(route, context))
+        : undefined,
+    data: {},
+    url,
+    request,
+    platform,
+    parent: parentContextLookup.get(request),
+    serializedGlobals: {
+      params: true,
+      url: true,
+    },
+    get params() {
+      const value = route
+        ? route.options.params
+          ? route.options.params(route.params as Record<string, any>)
+          : route.params
+        : {};
+      Object.defineProperty(context, "params", {
+        configurable: true,
+        enumerable: true,
+        value,
+      });
+      return value;
+    },
+    get search() {
+      const search = searchParamsToObject(url.searchParams);
+      const value = route?.options.search
+        ? route.options.search(search)
+        : search;
+      Object.defineProperty(context, "search", {
+        configurable: true,
+        enumerable: true,
+        value,
+      });
+      return value;
+    },
+    async fetch(resource, init) {
+      const request = new Request(
+        typeof resource === "string" ? new URL(resource, url) : resource,
+        init,
+      );
+
+      parentContextLookup.set(request, context);
+      return (
+        (await globalThis.__marko_run__.fetch(request, platform)) ||
+        new Response(null, { status: 404 })
+      );
+    },
+    render(template, input, init = pageResponseInit) {
+      return new Response(
+        toReadable(
+          template.render({
+            ...input,
+            $global: context as unknown as Marko.Global,
+          }),
+        ),
+        init,
+      );
+    },
+    redirect(to, status = 302) {
+      if (typeof status !== "number") {
+        throw new RangeError(`Invalid status code ${status}`);
+      } else if (
+        status < 301 ||
+        status > 308 ||
+        (status > 303 && status < 307)
+      ) {
+        throw new RangeError(`Invalid status code ${status}`);
+      }
+      return new Response(null, {
+        status,
+        headers: {
+          location: (typeof to === "string" ? new URL(to, url) : to).href,
+        },
+      });
+    },
+    back(fallback = "/", status) {
+      return context.redirect(
+        request.headers.get("referer") || fallback,
+        status,
+      );
+    },
+  };
+  return context;
 }
 
 export function render<T>(
