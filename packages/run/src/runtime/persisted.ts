@@ -1,16 +1,18 @@
 // Client router for persisted (single-page server-first) navigations.
 //
-// Generated route wrapper templates call `register` with the app's route
-// table (see `renderRoutesClient` in ../vite/codegen) and their own route's
-// path pattern. From then on, clicks on links matching any table pattern
-// are intercepted: the target is fetched with update content negotiation
-// (`accept: text/marko-patch` plus the matched pattern and build identity,
-// which the generated router verifies before rendering in update mode);
-// the target route's generated `?update` entry — and, for cross-route
-// navigations, its template module, whose import registers the route's
-// renderers, signals, and merges — load in parallel; and the streamed
-// patch applies to the live page through the entry's compiled merge
-// functions. Matched scopes value-update; a route's diverging content
+// Generated route wrapper templates call `register` with the app's generated
+// route matcher (see `renderRoutesClient` in ../vite/codegen — the same
+// segment trie the server ranks with, so client and server matching cannot
+// disagree within a build), their own route's build-stable index, and the
+// build identity. From then on, clicks on links the matcher resolves are
+// intercepted: the target is fetched with update content negotiation
+// (`accept: text/marko-patch` plus the matched route index and build
+// identity, which the generated router verifies before rendering in update
+// mode); the target route's generated `?update` entry — and, for
+// cross-route navigations, its template module, whose import registers the
+// route's renderers, signals, and merges — load in parallel; and the
+// streamed patch applies to the live page through the entry's compiled
+// merge functions. Matched scopes value-update; a route's diverging content
 // swaps in as a fresh branch at the layout's already-dynamic content hop.
 // Client state above the divergence point survives; any protocol failure
 // falls back to a full navigation.
@@ -30,23 +32,28 @@ export interface UpdateEntry {
   ) => (fills: unknown[]) => void;
 }
 
-/** A generated route-table entry: [pattern, loadTemplate, loadUpdate]. */
+/**
+ * A generated route-entry tuple: the route's build-stable index (the wire
+ * identity sent as `x-marko-route`) plus lazy loaders for its template
+ * module and `?update` entry.
+ */
 export type RouteEntry = [
-  pattern: string,
+  id: number,
   loadTemplate: () => Promise<unknown>,
   loadUpdate: () => Promise<UpdateEntry>,
 ];
 
-interface MatchableRoute {
-  pattern: string;
-  test: RegExp;
-  loadTemplate: () => Promise<unknown>;
-  loadUpdate: () => Promise<UpdateEntry>;
-}
+/**
+ * The generated client matcher: the server router's ranked trie over page
+ * routes, whose terminals are `RouteEntry` tuples. Takes a raw
+ * `location.pathname` (segment values decode inside, exactly like the
+ * server's matcher).
+ */
+export type RouteMatcher = (pathname: string) => RouteEntry | null;
 
 const patchContentType = "text/marko-patch";
-let routes: MatchableRoute[] | undefined;
-let currentPattern: string;
+let matcher: RouteMatcher | undefined;
+let currentId: number;
 let buildHash: string;
 // The last URL an update was applied for (or the initial document URL) —
 // popstate events that don't change it (hash-only movement) stay native.
@@ -54,38 +61,23 @@ let appliedUrl: string;
 let controller: AbortController | undefined;
 
 export function register(
-  table: RouteEntry[],
-  // The pattern of the route this page rendered through.
-  pattern: string,
+  match: RouteMatcher,
+  // The build-stable index of the route this page rendered through.
+  id: number,
   // The build this page (and its loaded code) was served with, serialized
-  // into `$global` by the generated router; the server only honors update
-  // fetches from its own build.
+  // under the internal "~run" global by the generated router; the server
+  // only honors update fetches from its own build.
   hash: string,
 ) {
-  if (!routes) {
+  if (!matcher) {
     appliedUrl = location.pathname + location.search;
     addEventListener("click", onClick);
     addEventListener("submit", onSubmit);
     addEventListener("popstate", onPopstate);
   }
-  routes = table.map(([p, loadTemplate, loadUpdate]) => ({
-    pattern: p,
-    test: patternToRegExp(p),
-    loadTemplate,
-    loadUpdate,
-  }));
-  currentPattern = pattern;
+  matcher = match;
+  currentId = id;
   buildHash = hash;
-}
-
-// First table match wins; the client's linear order can disagree with the
-// server's ranked trie (e.g. a static segment route listed after a dynamic
-// one) — the server's `x-marko-route` verification 409s those into a full
-// navigation.
-function matchRoute(pathname: string) {
-  for (const route of routes!) {
-    if (route.test.test(pathname)) return route;
-  }
 }
 
 function onClick(ev: MouseEvent) {
@@ -120,7 +112,7 @@ function onClick(ev: MouseEvent) {
     return;
   }
 
-  const target = matchRoute(decode(link.pathname));
+  const target = matcher!(link.pathname);
   if (!target) return;
 
   ev.preventDefault();
@@ -163,7 +155,7 @@ function onSubmit(ev: SubmitEvent) {
     return;
   }
 
-  const target = matchRoute(decode(url.pathname));
+  const target = matcher!(url.pathname);
   if (!target) return;
 
   const data = new FormData(form, submitter);
@@ -211,7 +203,7 @@ function getFormAttr(form: HTMLFormElement, name: string) {
 function onPopstate() {
   const url = location.pathname + location.search;
   if (url === appliedUrl) return;
-  const target = matchRoute(decode(location.pathname));
+  const target = matcher!(location.pathname);
   if (target) {
     navigate(location.href, false, target);
   } else {
@@ -222,7 +214,7 @@ function onPopstate() {
 async function navigate(
   href: string,
   push: boolean,
-  target: MatchableRoute,
+  target: RouteEntry,
   // A mutation (POST form submission): [body, form, submitter].
   mutation?: [
     body: FormData | URLSearchParams,
@@ -230,6 +222,7 @@ async function navigate(
     submitter: HTMLElement | null,
   ],
 ) {
+  const targetId = target[0];
   // Later navigations abort superseded fetches -- except mutations, which
   // the server may already have applied; those run to completion and only
   // their *application* is superseded (the per-frame signal check).
@@ -244,19 +237,19 @@ async function navigate(
         body: mutation?.[0],
         headers: {
           accept: patchContentType,
-          "x-marko-route": target.pattern,
+          "x-marko-route": "" + targetId,
           // The route this page is currently showing -- a differing target
           // is a cross-route navigation, whose update render also seeds
           // state for the subtree the client will create fresh.
-          "x-marko-from": currentPattern,
-          "x-marko-build": String(buildHash),
+          "x-marko-from": "" + currentId,
+          "x-marko-build": buildHash,
         },
         signal: mutation ? undefined : signal,
       }),
-      target.loadUpdate(),
+      target[2](),
       // Cross-route: the target's template module registers the renderers,
       // signals, and merges its patch will resolve from the registry.
-      target.pattern === currentPattern ? undefined : target.loadTemplate(),
+      targetId === currentId ? undefined : target[1](),
     ]);
     res = fetched;
     if (signal.aborted) return;
@@ -309,7 +302,7 @@ async function navigate(
         // page's synchronous content lands), mirroring a streamed MPA
         // render starting to paint.
         applied = true;
-        currentPattern = target.pattern;
+        currentId = targetId;
         const url = new URL(res!.url || href);
         // An in-place refresh (a PRG redirect landing back on the same
         // URL) adds no history entry.
@@ -373,32 +366,6 @@ async function navigate(
     if (typeof console !== "undefined") {
       console.warn("@marko/run: persisted navigation fell back", err);
     }
-  }
-}
-
-// Mirrors the generated router's matching for a single route pattern:
-// `$name` matches one segment, `$$name` the (possibly empty) rest.
-function patternToRegExp(pattern: string) {
-  let source = "^";
-  for (const segment of pattern.split("/")) {
-    if (!segment) continue;
-    if (segment.startsWith("$$")) {
-      return new RegExp(source + "(?:/.*)?$");
-    }
-    source +=
-      "/" +
-      (segment.charAt(0) === "$"
-        ? "[^/]+"
-        : segment.replace(/[$()*+.?[\\\]^{|}]/g, "\\$&"));
-  }
-  return new RegExp(source + "/?$");
-}
-
-function decode(pathname: string) {
-  try {
-    return decodeURIComponent(pathname);
-  } catch {
-    return pathname;
   }
 }
 

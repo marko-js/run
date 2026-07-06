@@ -5,12 +5,12 @@
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
+client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_routes, "/", $global.buildHash);
+  __run_persisted_register(__run_persisted_match, 2, $global["~run"]);
 </script>
 <Layout1>
 	<Page/>
@@ -38,12 +38,12 @@ export function head2(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
+client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/$id/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_routes, "/item/$id", $global.buildHash);
+  __run_persisted_register(__run_persisted_match, 3, $global["~run"]);
 </script>
 <Layout1>
 	<Page/>
@@ -71,12 +71,12 @@ export function head3(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_routes from "virtual:marko-run/__marko-run__routes.client.js";
+client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/$$rest/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_routes, "/docs/$$rest", $global.buildHash);
+  __run_persisted_register(__run_persisted_match, 4, $global["~run"]);
 </script>
 <Layout1>
 	<Page/>
@@ -114,9 +114,30 @@ import Page from "../../src/routes/+404.marko";
 
 ## Client route table
 ```js
-export default [
-	["/", () => import("./dist/.marko-run/index.marko").then(() => 0), () => import("./dist/.marko-run/index.marko?update")],
-	["/item/$id", () => import("./dist/.marko-run/item.$.marko").then(() => 0), () => import("./dist/.marko-run/item.$.marko?update")],
-	["/docs/$$rest", () => import("./dist/.marko-run/docs.$$.marko").then(() => 0), () => import("./dist/.marko-run/docs.$$.marko?update")],
-];
+const r2 = [2, () => import("./dist/.marko-run/index.marko").then(() => 0), () => import("./dist/.marko-run/index.marko?update")];
+const r3 = [3, () => import("./dist/.marko-run/item.$.marko").then(() => 0), () => import("./dist/.marko-run/item.$.marko?update")];
+const r4 = [4, () => import("./dist/.marko-run/docs.$$.marko").then(() => 0), () => import("./dist/.marko-run/docs.$$.marko?update")];
+
+export default function match(pathname) {
+	const last = pathname.length - 1;
+  if (last && pathname.charAt(last) === '/') pathname = pathname.slice(0, last);
+  const len = pathname.length;
+	if (len === 1) return r2;
+	const i1 = pathname.indexOf('/', 1) + 1;
+	if (i1 && i1 !== len) {
+		switch (pathname.slice(1, i1 - 1)) {
+			case 'item': {
+				const i2 = pathname.indexOf('/', 6) + 1;
+				if (!i2 || i2 === len) {
+					const s2 = decodeURIComponent(pathname.slice(6, i2 ? -1 : len));
+					if (s2) return r3;
+				}
+			} break;
+			case 'docs': {
+				return r4;
+			} break;
+		}
+	}
+	return null;
+}
 ```

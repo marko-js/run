@@ -78,9 +78,10 @@ export interface RouterOptions {
    * Enables persisted pages (single-page server-first updates): templates
    * compile persisted-capable (forwarded to `@marko/vite`'s `persisted`
    * option), the generated router negotiates update renders
-   * (`accept: text/marko-patch` + matching `x-marko-route`), and route
-   * wrapper templates register the client router with their generated
-   * `?update` entry. Requires a Marko runtime with persisted support.
+   * (`accept: text/marko-patch` + a matching `x-marko-route` route index
+   * and `x-marko-build` build identity), and route wrapper templates
+   * register the client router with the generated trie matcher and their
+   * route's index. Requires a Marko runtime with persisted support.
    *
    * The plugin also defines `import.meta.env.MARKO_RUN_PERSISTED` so app
    * code can compile-gate persisted-only wiring (eg `marko-run:navigate`

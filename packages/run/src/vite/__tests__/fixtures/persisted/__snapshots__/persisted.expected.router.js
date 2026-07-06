@@ -28,7 +28,7 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get2, path: '/', params: {}, options: get2_options, meta: {} };
+			if (len === 1) return { handler: get2, i: 2, path: '/', params: {}, options: get2_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (i1 && i1 !== len) {
 				switch (pathname.slice(1, i1 - 1)) {
@@ -36,11 +36,11 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 6) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(6, i2 ? -1 : len));
-							if (s2) return { handler: get3, path: '/item/$id', params: { id: s2 }, options: get3_options, meta: {} };
+							if (s2) return { handler: get3, i: 3, path: '/item/$id', params: { id: s2 }, options: get3_options, meta: {} };
 						}
 					} break;
 					case 'docs': {
-						return { handler: get4, path: '/docs/$$rest', params: { rest: pathname.slice(6) }, options: get4_options, meta: {} };
+						return { handler: get4, i: 4, path: '/docs/$$rest', params: { rest: pathname.slice(6) }, options: get4_options, meta: {} };
 					} break;
 				}
 			}
@@ -48,7 +48,7 @@ function match_internal(method, pathname) {
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head2, path: '/', params: {}, options: head2_options, meta: {} };
+			if (len === 1) return { handler: head2, i: 2, path: '/', params: {}, options: head2_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (i1 && i1 !== len) {
 				switch (pathname.slice(1, i1 - 1)) {
@@ -56,11 +56,11 @@ function match_internal(method, pathname) {
 						const i2 = pathname.indexOf('/', 6) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(6, i2 ? -1 : len));
-							if (s2) return { handler: head3, path: '/item/$id', params: { id: s2 }, options: head3_options, meta: {} };
+							if (s2) return { handler: head3, i: 3, path: '/item/$id', params: { id: s2 }, options: head3_options, meta: {} };
 						}
 					} break;
 					case 'docs': {
-						return { handler: head4, path: '/docs/$$rest', params: { rest: pathname.slice(6) }, options: head4_options, meta: {} };
+						return { handler: head4, i: 4, path: '/docs/$$rest', params: { rest: pathname.slice(6) }, options: head4_options, meta: {} };
 					} break;
 				}
 			}
@@ -73,15 +73,21 @@ function match_internal(method, pathname) {
 export async function invoke(route, request, platform, url) {
 	const context = createContext(route, request, platform, url);
 	context.persisted = true;
-  context.buildHash = getBuildHash();
-  context.serializedGlobals.buildHash = true;
+  // The build's identity rides one internal serialized-global key ("~run")
+  // rather than a typed `$global` property -- `$global` is user/data
+  // surface; the client router reads it back at register time and presents
+  // it as `x-marko-build` on update fetches. Route identity is the
+  // build-stable route index (`route.i`), never pattern strings.
+  const buildHash = getBuildHash();
+  context["~run"] = buildHash;
+  context.serializedGlobals["~run"] = true;
   if (
     route &&
     request.headers.get("accept")?.includes("text/marko-patch")
   ) {
     if (
-      request.headers.get("x-marko-route") === route.path &&
-      request.headers.get("x-marko-build") === context.buildHash
+      request.headers.get("x-marko-route") === "" + route.i &&
+      request.headers.get("x-marko-build") === buildHash
     ) {
       context.persisted = "update";
       // Cross-route navigations (the client's current route differs) swap
@@ -93,7 +99,7 @@ export async function invoke(route, request, platform, url) {
       // graphs (async content streams behind placeholder boundaries as
       // boundary-body frames).
       context.persistedFragment = context.persistedSeed =
-        request.headers.get("x-marko-from") !== route.path;
+        request.headers.get("x-marko-from") !== "" + route.i;
     } else {
       return new Response(null, { status: 409, headers: { vary: "accept" } });
     }
