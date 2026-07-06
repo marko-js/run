@@ -440,7 +440,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         persisted = Boolean(opts.persisted);
         // Adapter pluginOptions may have merged into `opts` after the
         // initial spread, so re-forward the compile flag to @marko/vite.
-        markoVitePluginOptions.persisted = opts.persisted;
+        // Run's persisted router always delivers cross-route divergence as
+        // fragment frames, so it compiles fragment-first: persisted entries
+        // ship no fills-path construction material for content a live page
+        // has never rendered (server-only render graphs tree-shake out of
+        // navigation chunks). Cast until the published @marko/vite types
+        // pick up the `"fragments"` value (same release train).
+        markoVitePluginOptions.persisted = (persisted
+          ? "fragments"
+          : undefined) as unknown as boolean | undefined;
         store = new ReadOncePersistedStore(
           `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`,
         );
