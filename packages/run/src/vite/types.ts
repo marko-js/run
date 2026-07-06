@@ -81,6 +81,10 @@ export interface RouterOptions {
    * (`accept: text/marko-patch` + matching `x-marko-route`), and route
    * wrapper templates register the client router with their generated
    * `?update` entry. Requires a Marko runtime with persisted support.
+   *
+   * The plugin also defines `import.meta.env.MARKO_RUN_PERSISTED` so app
+   * code can compile-gate persisted-only wiring (eg `marko-run:navigate`
+   * listeners) and have it tree-shake out of non-persisted builds.
    */
   persisted?: boolean;
 }

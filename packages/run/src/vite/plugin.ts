@@ -551,6 +551,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           pluginConfig.build.target = getBrowserslistTargets(root);
         }
 
+        // Compile-time flag so apps can gate persisted-only wiring (eg
+        // `marko-run:navigate` listeners re-syncing client mirrors of
+        // `$global` data) and have it tree-shake out of non-persisted
+        // builds -- replaces hand-rolled app defines.
+        pluginConfig.define ??= {};
+        pluginConfig.define["import.meta.env.MARKO_RUN_PERSISTED"] ??=
+          JSON.stringify(persisted);
+
         if (isBuild) {
           pluginConfig.logLevel ??= "warn";
 

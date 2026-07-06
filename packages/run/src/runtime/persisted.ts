@@ -268,7 +268,13 @@ async function navigate(
     // server-side, so a cross-route redirect lands here as a non-patch
     // 409 and falls back below.
     if (!res.headers.get("content-type")?.includes(patchContentType)) {
-      throw new Error(`unexpected update response (${res.status})`);
+      // Production keeps only the status (it distinguishes protocol 409s
+      // from real failures in the fallback warn); dev gets the description.
+      throw new Error(
+        process.env.NODE_ENV !== "production"
+          ? `unexpected update response (${res.status})`
+          : String(res.status),
+      );
     }
 
     // Update responses are a newline-delimited stream of serializer frames:
@@ -333,7 +339,11 @@ async function navigate(
     }
 
     if (!applied) {
-      throw new Error("update response carried no fills");
+      throw new Error(
+        process.env.NODE_ENV !== "production"
+          ? "update response carried no fills"
+          : undefined,
+      );
     }
     dispatchEvent(new CustomEvent("marko-run:navigate"));
   } catch (err) {
