@@ -1001,6 +1001,16 @@ export interface Context<T extends Route = Route> {
    */
   persistedSeed?: boolean;
   /**
+   * With `persisted: "update"` + `persistedSeed`: the diverging content
+   * hop renders as a fragment frame -- resumable HTML the client inserts
+   * and resumes at the hop's anchor instead of constructing from
+   * registered renderer graphs. The generated router sets it alongside
+   * `persistedSeed` for cross-route navigations; middleware may clear it
+   * to force fills-based construction. This is
+   * `$global.persistedFragment`.
+   */
+  persistedFragment?: boolean;
+  /**
    * The build identity persisted pages are served (and serialized) with —
    * @marko/vite's client-build digest, or a per-process token in dev. Update
    * fetches must present it (`x-marko-build`); a mismatch after a deployment

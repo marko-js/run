@@ -485,9 +485,13 @@ function match_internal(method, pathname) {
       context.persisted = "update";
       // Cross-route navigations (the client's current route differs) swap
       // in a fresh subtree the client cannot compute state for -- seed-mode
-      // payloads serialize state values too; the client seeds them only
-      // into scopes created during the apply.
-      context.persistedSeed =
+      // payloads serialize state values too (the client seeds them only
+      // into scopes created during the apply), and the diverging content
+      // hop renders as a fragment frame: resumable HTML the client inserts
+      // and resumes instead of constructing from registered renderer
+      // graphs (async content streams behind placeholder boundaries as
+      // boundary-body frames).
+      context.persistedFragment = context.persistedSeed =
         request.headers.get("x-marko-from") !== route.path;
     } else {
       return new Response(null, { status: 409, headers: { vary: "accept" } });

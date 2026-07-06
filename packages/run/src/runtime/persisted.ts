@@ -284,9 +284,15 @@ async function navigate(
       if (!line) return;
       const fills: unknown[] = [];
       // Functions are resume fills; strings are effect entries the applier
-      // executes only for scopes it freshly created during the apply.
+      // executes only for scopes it freshly created during the apply;
+      // arrays are fragment / boundary-body entries (a cross-route
+      // navigation's diverging subtree, delivered as resumable HTML).
       for (const item of parseFrame(line) as unknown[]) {
-        if (typeof item === "function" || typeof item === "string") {
+        if (
+          typeof item === "function" ||
+          typeof item === "string" ||
+          Array.isArray(item)
+        ) {
           fills.push(item);
         }
       }
