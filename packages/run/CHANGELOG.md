@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.11.1
+
+### Patch Changes
+
+- afe373c: Revert context to a plain object so its methods and lazy getters survive being spread into `$global`
+
 ## 0.11.0
 
 ### Minor Changes
