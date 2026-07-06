@@ -209,7 +209,7 @@ export function createContext(
           ? route.options.params(route.params as Record<string, any>)
           : route.params
         : {};
-      Object.defineProperty(this, "params", {
+      Object.defineProperty(context, "params", {
         configurable: true,
         enumerable: true,
         value,
@@ -217,11 +217,11 @@ export function createContext(
       return value;
     },
     get search() {
-      const search = searchParamsToObject(this.url.searchParams);
+      const search = searchParamsToObject(url.searchParams);
       const value = route?.options.search
         ? route.options.search(search)
         : search;
-      Object.defineProperty(this, "search", {
+      Object.defineProperty(context, "search", {
         configurable: true,
         enumerable: true,
         value,
@@ -230,13 +230,13 @@ export function createContext(
     },
     async fetch(resource, init) {
       const request = new Request(
-        typeof resource === "string" ? new URL(resource, this.url) : resource,
+        typeof resource === "string" ? new URL(resource, url) : resource,
         init,
       );
 
-      parentContextLookup.set(request, this as any);
+      parentContextLookup.set(request, context);
       return (
-        (await globalThis.__marko_run__.fetch(request, this.platform)) ||
+        (await globalThis.__marko_run__.fetch(request, platform)) ||
         new Response(null, { status: 404 })
       );
     },
@@ -245,7 +245,7 @@ export function createContext(
         toReadable(
           template.render({
             ...input,
-            $global: this as unknown as Marko.Global,
+            $global: context as unknown as Marko.Global,
           }),
         ),
         init,
@@ -264,13 +264,13 @@ export function createContext(
       return new Response(null, {
         status,
         headers: {
-          location: (typeof to === "string" ? new URL(to, this.url) : to).href,
+          location: (typeof to === "string" ? new URL(to, url) : to).href,
         },
       });
     },
     back(fallback = "/", status) {
-      return this.redirect(
-        this.request.headers.get("referer") || fallback,
+      return context.redirect(
+        request.headers.get("referer") || fallback,
         status,
       );
     },
