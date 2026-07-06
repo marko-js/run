@@ -35,6 +35,17 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
+// Per-render options forwarded to marko's `render()` second argument. The
+// persisted render mode rides here rather than on `$global` (which _is_ the
+// request context) so app globals stay uncontaminated.
+interface MarkoRenderOptions {
+  persisted?: {
+    update: boolean;
+    seed: boolean;
+    fragment: boolean;
+  };
+}
+
 const parentContextLookup = new WeakMap<Request, Context>();
 
 const pageResponseInit = {
@@ -254,19 +265,47 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
-      if (init === pageResponseInit && context.persisted) {
-        init =
-          context.persisted === "update"
-            ? updateResponseInit
-            : persistedPageResponseInit;
+    render<T>(
+      template: Marko.Template<T>,
+      input: T,
+      init: ResponseInit = pageResponseInit,
+    ) {
+      const { persisted } = context;
+      let options: MarkoRenderOptions | undefined;
+      if (persisted) {
+        if (init === pageResponseInit) {
+          init =
+            persisted === "update"
+              ? updateResponseInit
+              : persistedPageResponseInit;
+        }
+        // The persisted render mode is a per-render option, passed as
+        // render()'s second argument -- not smuggled onto `$global` (which
+        // _is_ this request context, so app globals stay uncontaminated). The
+        // loose `persisted`/`persistedSeed`/`persistedFragment` properties
+        // stay the public/middleware surface; here they fold into the mode
+        // marko reads.
+        const update = persisted === "update";
+        options = {
+          persisted: {
+            update,
+            seed: update && !!context.persistedSeed,
+            fragment: update && !!context.persistedFragment,
+          },
+        };
       }
       return new Response(
+        // Marko 6 (runtime-tags) takes per-render options as render()'s second
+        // argument; the marko-5 ambient `Marko.Template` types this runtime is
+        // written against only declare the stream/callback overloads, so pass
+        // the options through a narrowed local signature.
         toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
+          (
+            template.render as (
+              input: Marko.TemplateInput<T>,
+              options?: MarkoRenderOptions,
+            ) => ReturnType<Marko.Template<T>["render"]>
+          )({ ...input, $global: context as unknown as Marko.Global }, options),
         ),
         init,
       );

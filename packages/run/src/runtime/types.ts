@@ -987,8 +987,11 @@ export interface Context<T extends Route = Route> {
    * it before running the chain: `true` renders a persisted-capable document,
    * `"update"` renders an update patch (negotiated via
    * `accept: text/marko-patch`). Middleware may override it (e.g. set `false`
-   * to serve a plain document) before the page renders. The context is the
-   * render's `$global`, so this is `$global.persisted`.
+   * to serve a plain document) before the page renders. `render()` folds this
+   * (and the seed/fragment flags below) into the render-mode option it passes
+   * as marko `render()`'s second argument, so these stay the public/middleware
+   * surface without contaminating `$global` (which _is_ this context) with
+   * framework render-mode keys.
    */
   persisted?: boolean | "update";
   /**
@@ -996,8 +999,7 @@ export interface Context<T extends Route = Route> {
    * `x-marko-from` route index) differs from the target, so the update
    * render also serializes state values -- the target subtree will be
    * created fresh on the client and its state initializers may live behind
-   * server-only expressions. The context spreads into the render's
-   * `$global`, so this is `$global.persistedSeed`.
+   * server-only expressions.
    */
   persistedSeed?: boolean;
   /**
@@ -1006,8 +1008,7 @@ export interface Context<T extends Route = Route> {
    * and resumes at the hop's anchor instead of constructing from
    * registered renderer graphs. The generated router sets it alongside
    * `persistedSeed` for cross-route navigations; middleware may clear it
-   * to force fills-based construction. This is
-   * `$global.persistedFragment`.
+   * to force fills-based construction.
    */
   persistedFragment?: boolean;
   fetch(
