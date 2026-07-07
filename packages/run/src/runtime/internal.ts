@@ -67,6 +67,26 @@ const updateResponseInit = {
   headers: { "content-type": "text/marko-patch;charset=UTF-8", vary: "accept" },
 };
 
+// A persisted response is negotiated on `accept`, so its `content-type`
+// (patch, for updates) and `vary` are framework-owned and must hold even
+// when a handler supplied its own `init` -- otherwise the client router,
+// which gates a navigation on the patch content-type, silently falls back to
+// a full page load and the two representations can mis-cache. Any unrelated
+// `vary` tokens the caller set are preserved.
+function applyPersistedResponseHeaders(response: Response, update: boolean) {
+  const { headers } = response;
+  if (update) {
+    headers.set("content-type", "text/marko-patch;charset=UTF-8");
+  }
+  const vary = headers.get("vary");
+  if (!vary) {
+    headers.set("vary", "accept");
+  } else if (!/(?:^|,)\s*accept\s*(?:,|$)/i.test(vary)) {
+    headers.set("vary", `${vary}, accept`);
+  }
+  return response;
+}
+
 globalThis.MarkoRun ??= {
   NotHandled,
   NotMatched,
@@ -272,12 +292,15 @@ export function createContext(
     ) {
       const { persisted } = context;
       let options: MarkoRenderOptions | undefined;
+      const update = persisted === "update";
+      // A handler that supplied its own init keeps its status/headers, but the
+      // accept-negotiated content-type/vary are framework-owned and reapplied
+      // below (`applyPersistedResponseHeaders`); the default init is swapped
+      // for the matching constant, which already carries them.
+      const customInit = !!persisted && init !== pageResponseInit;
       if (persisted) {
-        if (init === pageResponseInit) {
-          init =
-            persisted === "update"
-              ? updateResponseInit
-              : persistedPageResponseInit;
+        if (!customInit) {
+          init = update ? updateResponseInit : persistedPageResponseInit;
         }
         // The persisted render mode is a per-render option, passed as
         // render()'s second argument -- not smuggled onto `$global` (which
@@ -285,7 +308,6 @@ export function createContext(
         // loose `persisted`/`persistedSeed`/`persistedFragment` properties
         // stay the public/middleware surface; here they fold into the mode
         // marko reads.
-        const update = persisted === "update";
         options = {
           persisted: {
             update,
@@ -294,7 +316,7 @@ export function createContext(
           },
         };
       }
-      return new Response(
+      const response = new Response(
         // Marko 6 (runtime-tags) takes per-render options as render()'s second
         // argument; the marko-5 ambient `Marko.Template` types this runtime is
         // written against only declare the stream/callback overloads, so pass
@@ -309,6 +331,9 @@ export function createContext(
         ),
         init,
       );
+      return customInit
+        ? applyPersistedResponseHeaders(response, update)
+        : response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {
