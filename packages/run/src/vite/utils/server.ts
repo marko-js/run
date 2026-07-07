@@ -37,7 +37,9 @@ export async function spawnServer(
     env = await parseEnv(env);
   }
 
-  const proc = cp.spawn(cmd, args, {
+  // Join the command and args into a single string rather than passing an
+  // args array alongside `shell: true`, which Node deprecates (DEP0190).
+  const proc = cp.spawn([cmd, ...args].join(" "), {
     cwd,
     shell: true,
     stdio,
