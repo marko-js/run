@@ -43,7 +43,31 @@ interface MarkoRenderOptions {
     update: boolean;
     seed: boolean;
     fragment: boolean;
+    // The possession echo (`x-marko-have`) the client sent: per dynamic-tag
+    // hop site (`"<scopeId> <accessor>"`), the renderer id the live page holds.
+    // The update render ships a fragment for a hop whose renderer differs,
+    // letting a same-route dynamic swap apply instead of failing. Absent unless
+    // the client sent the header (and only honored for update renders).
+    possessed?: Record<string, string>;
   };
+}
+
+// Decode the client's possession echo. It is untrusted request input, so a
+// malformed value is dropped (the render proceeds without it -- at worst a
+// diverging hop falls back to a full navigation, never a corrupt apply) rather
+// than allowed to throw.
+function decodePossessed(request: Request) {
+  const have = request.headers.get("x-marko-have");
+  if (have) {
+    try {
+      const parsed = JSON.parse(have);
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, string>;
+      }
+    } catch {
+      // Malformed echo -- ignore.
+    }
+  }
 }
 
 const parentContextLookup = new WeakMap<Request, Context>();
@@ -313,6 +337,9 @@ export function createContext(
             update,
             seed: update && !!context.persistedSeed,
             fragment: update && !!context.persistedFragment,
+            // Only update renders consult the echo; the header is client input,
+            // decoded defensively (see `decodePossessed`).
+            possessed: update ? decodePossessed(request) : undefined,
           },
         };
       }

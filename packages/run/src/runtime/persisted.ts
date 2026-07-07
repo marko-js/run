@@ -30,6 +30,15 @@ export interface UpdateEntry {
     merge: (patch: unknown, live: unknown) => void,
     liveRoot?: unknown,
   ) => (fills: unknown[]) => void;
+  /**
+   * Builds the possession echo (`x-marko-have`): what renderer the live page
+   * currently holds at each dynamic-tag hop, so a same-route navigation whose
+   * update renders a different one there ships a fragment for exactly that hop
+   * instead of failing the apply into a full navigation. Returns "" when the
+   * page holds no hops. Optional so an entry compiled by a runtime without the
+   * primitive (the echo is a progressive enhancement) simply sends no header.
+   */
+  have?: () => string;
 }
 
 /**
@@ -231,7 +240,18 @@ async function navigate(
   let res: Response | undefined;
 
   try {
-    const [fetched, entry] = await Promise.all([
+    // The update entry loads before the fetch so its possession echo can ride
+    // the request (a request header must be set at fetch time). The entry must
+    // load to apply the response regardless, so this only reorders it ahead of
+    // the fetch rather than adding work; after the first navigation of a route
+    // its chunk is cached, so the reorder is free. The target's template
+    // module (cross-route only) still loads in parallel with the fetch.
+    const entry = await target[2]();
+    // What the live page holds at each dynamic-tag hop. `have` is absent when
+    // the entry was compiled by a runtime without the primitive -- the echo is
+    // a progressive enhancement, so the header is simply omitted.
+    const have = entry.have?.() || "";
+    const [fetched] = await Promise.all([
       fetch(href, {
         method: mutation && "POST",
         body: mutation?.[0],
@@ -243,10 +263,12 @@ async function navigate(
           // state for the subtree the client will create fresh.
           "x-marko-from": "" + currentId,
           "x-marko-build": buildHash,
+          // Present only when the page holds hops: the server ships a fragment
+          // for any hop whose renderer differs from what the client echoed.
+          ...(have && { "x-marko-have": have }),
         },
         signal: mutation ? undefined : signal,
       }),
-      target[2](),
       // Cross-route: the target's template module registers the renderers,
       // signals, and merges its patch will resolve from the registry.
       targetId === currentId ? undefined : target[1](),

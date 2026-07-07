@@ -102,3 +102,58 @@ describe("persisted render() response headers", () => {
     assert.equal(res.headers.get("vary"), null);
   });
 });
+
+describe("persisted render() possession echo (x-marko-have)", () => {
+  // Captures the per-render options marko receives, so the decoded echo the
+  // update render will consult is observable (only the options are under test).
+  function renderPersisted(
+    persisted: boolean | "update",
+    headers?: Record<string, string>,
+  ) {
+    let options: any;
+    const capturing = {
+      render: (_input: unknown, opts: unknown) => ((options = opts), rendered),
+    } as any;
+    const ctx = createContext(
+      null,
+      new Request("http://localhost/reports", { headers }),
+      {} as any,
+    ) as any;
+    ctx.persisted = persisted;
+    ctx.render(capturing, {});
+    return options?.persisted;
+  }
+
+  it("decodes the echo into `possessed` for an update render", () => {
+    const persisted = renderPersisted("update", {
+      "x-marko-have": '{"5 a":"a2","8 b":"a3"}',
+    });
+    assert.deepEqual(persisted.possessed, { "5 a": "a2", "8 b": "a3" });
+  });
+
+  it("omits `possessed` when the client sent no echo", () => {
+    assert.equal(renderPersisted("update").possessed, undefined);
+  });
+
+  it("ignores a malformed echo rather than throwing", () => {
+    // The header is untrusted client input: a bad value must degrade to no
+    // echo (at worst a full-navigation fallback), never crash the render.
+    assert.equal(
+      renderPersisted("update", { "x-marko-have": "{not json" }).possessed,
+      undefined,
+    );
+    assert.equal(
+      renderPersisted("update", { "x-marko-have": '"a string"' }).possessed,
+      undefined,
+    );
+  });
+
+  it("does not honor the echo on a non-update persisted render", () => {
+    // Only update renders consult possession; the initial (seed) document has
+    // no live page to have anything, so its scopes are all fresh.
+    assert.equal(
+      renderPersisted(true, { "x-marko-have": '{"5 a":"a2"}' }).possessed,
+      undefined,
+    );
+  });
+});
