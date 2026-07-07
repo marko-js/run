@@ -78,7 +78,9 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
 
       args.push(...parseNetlifyArgs(previewOptions.args));
 
-      const proc = spawn("netlify", args, {
+      // Join the command and args into a single string rather than passing an
+      // args array alongside `shell: true`, which Node deprecates (DEP0190).
+      const proc = spawn(["netlify", ...args].join(" "), {
         cwd,
         env: options.edge
           ? { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" }
