@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.0.5
+
+### Patch Changes
+
+- 2391732: Avoid Node's `DEP0190` deprecation warning by joining the command and args into a single string instead of passing an args array alongside `shell: true` when spawning the dev/preview server.
+
 ## 3.0.4
 
 ### Patch Changes
