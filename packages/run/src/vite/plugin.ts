@@ -438,7 +438,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         resolvedRoutesDir = path.resolve(root, routesDir);
         outputDir = path.join(root, config.build?.outDir || "dist");
-        entryFilesDir = path.join(outputDir, ".marko-run");
+        // In dev, keep the generated route templates OUT of the build outDir. A
+        // concurrent `marko-run build` empties outDir (buildStart) and deletes
+        // `<outDir>/.marko-run` (closeBundle); when dev shared that directory the
+        // build pulled the templates out from under the running server, leaving
+        // every route 500ing on a missing server entry until a restart. A cache
+        // dir under node_modules is outside outDir (build never touches it) and is
+        // ignored by Vite's dev watcher, so the two commands can no longer collide.
+        entryFilesDir = isBuild
+          ? path.join(outputDir, ".marko-run")
+          : path.join(root, "node_modules", ".cache", "@marko", "run");
         entryFilesDirPosix = normalizePath(entryFilesDir);
         relativeEntryFilesDirPosix = normalizePath(
           path.relative(root, entryFilesDir),
