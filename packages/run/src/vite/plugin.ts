@@ -546,6 +546,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         return setExternalPluginOptions(pluginConfig, opts);
       },
+      configEnvironment() {
+        // `@marko/run/router` resolves to a virtual module, so no
+        // environment's dependency scan may load it (or its graph) from disk.
+        return { optimizeDeps: { exclude: ["@marko/run/router"] } };
+      },
       configResolved(config) {
         resolvedConfig = config;
         const {
