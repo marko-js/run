@@ -1,5 +1,13 @@
 # @marko/run
 
+## 0.11.4
+
+### Patch Changes
+
+- 59c3a4e: Fix a build race where a virtual file (eg. the router behind `@marko/run/router`) could be served as an empty module if the bundler requested it while route rendering was still in flight, producing `IMPORT_IS_UNDEFINED`/`MISSING_EXPORT` diagnostics and a server bundle with an empty router.
+- 1cc228d: Detect script route handler and middleware exports in dev by parsing the file in isolation instead of transforming it through the client environment, which pulled each file's server-only import graph through the browser pipeline and errored on imports only the server environment can resolve (e.g. `cloudflare:workers`). `.marko` handlers still compile through the pipeline before export detection.
+- e0daf3c: Exclude the virtual `@marko/run/router` module from dependency optimization in every environment, so an environment that scans a server entry (e.g. a Cloudflare Workers environment) no longer fails its dependency scan trying to load the virtual file from disk.
+
 ## 0.11.3
 
 ### Patch Changes
