@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.11.3
+
+### Patch Changes
+
+- 53fc9c1: Remove the runtime's `node:url` import in favor of the global `URLSearchParams` (available everywhere the runtime runs), so the router no longer requires Node compatibility on edge targets like Cloudflare Workers.
+
 ## 0.11.2
 
 ### Patch Changes
