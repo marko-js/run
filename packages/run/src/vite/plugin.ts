@@ -17,6 +17,7 @@ import {
   type ModuleNode,
   type Plugin,
   type ResolvedConfig,
+  transformWithOxc,
   type ViteDevServer,
 } from "vite";
 
@@ -136,6 +137,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
   async function getExportsFromFile(context: PluginContext, filePath: string) {
     if (devServer) {
+      if (/\.[cm]?[jt]sx?$/i.test(filePath)) {
+        // Parsed in isolation: these are server-only files, and transforming
+        // them through a dev environment pulls in their whole import graph.
+        const source = await fs.promises.readFile(filePath, "utf-8");
+        const { code } = await transformWithOxc(source, filePath);
+        return getExportIdentifiers(context.parse(code));
+      }
+      // Anything else (e.g. `.marko`) must compile before it parses as JS.
       const result = await devServer.transformRequest(filePath, { ssr: false });
       return result ? getExportIdentifiers(context.parse(result.code)) : [];
     }
