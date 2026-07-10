@@ -1,7 +1,5 @@
 /// <reference types="marko" />
 
-import { URLSearchParams } from "node:url";
-
 import { parseFormData } from "@remix-run/form-data-parser";
 
 import { httpVerbs } from "../vite/constants";
