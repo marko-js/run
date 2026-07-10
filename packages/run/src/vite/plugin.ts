@@ -702,7 +702,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async load(id) {
-        if (!renderVirtualFilesResult) {
+        if (!renderVirtualFilesResult || virtualFiles.has(id)) {
+          // Virtual files are seeded with empty placeholders until
+          // `renderVirtualFiles` completes, and the bundler can request one
+          // while rendering is still in flight (eg. when a `+handler` or
+          // `+middleware` module loaded to inspect its exports transitively
+          // imports `@marko/run/router`), so a virtual file must always wait
+          // for rendering to finish before its content is read.
           await renderVirtualFiles(this);
         }
         if (virtualFiles.has(id)) {
