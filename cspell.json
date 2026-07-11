@@ -37,10 +37,15 @@
     "vdir",
     "Broutes",
     "Freadme",
-    "quasis"
+    "quasis",
+    "letmein",
+    "cheatsheet"
   ],
   "ignoreRegExpList": [],
-  "files": ["*", "src/**/*"],
+  "files": [
+    "*",
+    "src/**/*"
+  ],
   "ignorePaths": [
     "dist",
     "**/CHANGELOG.md",
