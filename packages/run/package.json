@@ -15,6 +15,7 @@
   "type": "module",
   "exports": {
     ".": "./src/runtime/index.ts",
+    "./cheatsheet.md": "./cheatsheet.md",
     "./namespace": "./src/runtime/namespace.ts",
     "./router": "./src/runtime/router.ts",
     "./vite": "./src/vite/index.ts",
@@ -26,7 +27,8 @@
     "marko-run": "./dist/cli/index.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "cheatsheet.md"
   ],
   "scripts": {
     "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
