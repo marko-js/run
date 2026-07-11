@@ -5,6 +5,7 @@
       "import": "./dist/runtime/index.js",
       "require": "./dist/runtime/index.cjs"
     },
+    "./cheatsheet.md": "./cheatsheet.md",
     "./namespace": {
       "types": "./dist/runtime/namespace.d.ts"
     },
