@@ -85,30 +85,46 @@ components — no other constraints. Request info comes from `$global` (below).
 
 ### Handlers
 
+Handlers are authored with the global `Run` namespace (no import needed; the
+runtime installs it and the generated types narrow it per file):
+
 ```js
 /* src/routes/things/+handler.js */
-export function GET(context, next) {
+export const GET = Run.GET((context, next) => {
   // do work before the page renders
   return next({ things: loadThings() }); // -> $global.data.things in the page
-}
+});
 
-export async function POST(context, next) {
+export const POST = Run.POST(async (context) => {
   const form = await context.request.formData();
   // ...
   return context.redirect("/things", 303);
-}
+});
 ```
 
 - Valid verb exports: **UPPERCASE** `GET`, `HEAD`, `POST`, `PUT`, `DELETE`,
   `PATCH`, `OPTIONS` (no `connect`/`trace`; lowercase exports are ignored with a
   build warning).
-- Each export may be a handler function, an **array** of handlers (composed in
-  order), or a promise of either.
-- Newer wrapper API (adds validation & typing; `Run` is an injected global):
-  `export const POST = Run.POST(handler)`, `Run.POST([mw, handler])`,
-  `Run.POST(options, handler)`, and `Run.ALL(...)` for middleware. Options can
-  validate/coerce `params`, `search`, `json`, `form` (functions or Standard
-  Schemas; sync only) — validated bodies arrive at `context.body`.
+- `Run.<VERB>` accepts a handler function, an **array** of handlers (composed
+  in order), an options object plus handler, or options alone:
+  `Run.POST(handler)` / `Run.POST([mw, handler])` / `Run.POST(options, handler)`
+  / `Run.POST(options)`.
+- Options validate/coerce `params`, `search`, `json`, `form` (plain functions
+  or Standard Schemas; validation must be synchronous). Validated bodies arrive
+  at `context.body` (a re-readable thenable); `json`/`form` accept limits
+  (`maxBytes`, `maxParts`, `maxFiles`, …). Options merge along the
+  middleware→handler chain.
+
+```js
+export const GET = Run.GET(
+  { params: (p) => ({ id: Number(p.id) }) },
+  (context, next) => next({ product: getProduct(context.params.id) }),
+);
+```
+
+- Plain uppercase function exports (`export function GET(context, next) {}`)
+  are the legacy authoring style: still supported, but new code should use
+  `Run.<VERB>()` (and the `Run` types instead of the deprecated `MarkoRun.*`).
 
 **Handler contract**
 
@@ -119,13 +135,14 @@ export async function POST(context, next) {
   (or throw) its result**, or dev warns and `next` runs twice.
 - `next(data)` merges `data` into `context.data`; templates read `$global.data`.
 - You may throw a `Response` anywhere to short-circuit.
-- Handlers created with `Run.<VERB>()` are skipped (auto-`next`) for other methods.
+- Handlers created with `Run.<VERB>()` are skipped (auto-`next`) for other
+  methods; `Run.ALL()` runs for every method.
 
 ### Middleware
 
 ```js
 /* src/routes/+middleware.js */
-export default async function (context, next) {
+export default Run.ALL(async (context, next) => {
   const start = performance.now();
   try {
     return await next(); // ALWAYS return/await it
@@ -136,11 +153,14 @@ export default async function (context, next) {
       performance.now() - start,
     );
   }
-}
+});
 ```
 
-- `default` export (function/array/promise); runs for **every** method, root→leaf,
-  before handlers. Same contract as handlers (`next(data)`, return Responses).
+- `default` export wrapped in `Run.ALL(...)` runs for **every** method,
+  root→leaf, before handlers. Same contract as handlers (`next(data)`, return
+  Responses). Wrapping in a specific verb instead (`export default
+Run.POST(...)`) scopes the middleware to that method. A bare function/array
+  default export is the legacy style and still works.
 - Response post-processing pattern: `const res = await next(); res.headers.append("set-cookie", ...); return res;`
 
 ### Execution order (request → response)
@@ -294,8 +314,9 @@ declare module "@marko/run" {
 - Progressive enhancement first: plain `<form method="post">` + a `POST` handler
   that `context.redirect(..., 303)`s (PRG) or `return context.fetch(context.url)`
   (single flight) — no client JS required.
-- Load data in `+handler.js`/`+middleware.js` with `next({ data })` and read
-  `$global.data` in the page; keep pages presentation-only.
+- Load data in `+handler.js`/`+middleware.js` with `return next({ data })` from
+  a `Run.GET(...)` handler and read `$global.data` in the page; keep pages
+  presentation-only.
 - Put shared chrome in `+layout.marko`; use pathless `_dirs` (or `(a,_b)` groups)
   to scope middleware/layouts without affecting URLs.
 - One concern per file: middleware for cross-cutting (auth, logging, headers),

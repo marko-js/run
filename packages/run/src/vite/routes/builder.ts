@@ -23,6 +23,32 @@ export function isRoutableFile(filename: string) {
   return RoutableFileRegex.test(filename);
 }
 
+const bracketSegmentReg = /\[[^\]]*\]/;
+
+// Warn (dev and build) about files that look like they were meant to be
+// routable but silently are not — other frameworks' conventions, mostly.
+function warnNonRoutableLookalike(name: string, filePath: string): void {
+  const relativeFilePath = path.relative(process.cwd(), filePath);
+  if (name[0] === "+") {
+    const hint = /^\+server\./i.test(name)
+      ? "request handlers are named `+handler.<ext>`"
+      : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko` and `+500.marko`";
+    console.warn(`[marko-run] ${relativeFilePath} is not routable; ${hint}.`);
+  } else if (bracketSegmentReg.test(name)) {
+    console.warn(
+      `[marko-run] ${relativeFilePath} is not routable; dynamic path segments are written \`$param\` (catch-all \`$$param\`), not \`[param]\`.`,
+    );
+  } else if (name[0] === "$") {
+    const base = name.replace(/\.[^.]+$/, "");
+    const suggestion = /\.marko$/i.test(name)
+      ? `${base}+page.marko`
+      : `${base}+handler${name.slice(name.lastIndexOf("."))}`;
+    console.warn(
+      `[marko-run] ${relativeFilePath} is not routable; route files need a \`+type\` suffix after their path segments, e.g. \`${suggestion}\`.`,
+    );
+  }
+}
+
 export function matchRoutableFile(filename: string) {
   const match = filename.match(RoutableFileRegex);
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
@@ -63,6 +89,12 @@ export async function buildRoutes(
       let { name } = dir;
       const prevDirStackLength = dirStack.length;
 
+      if (bracketSegmentReg.test(name)) {
+        console.warn(
+          `[marko-run] directory \`${name}\` does not declare a dynamic path segment; use \`$param\` (catch-all \`$$param\`), not \`[param]\`.`,
+        );
+      }
+
       if (isBaseDir) {
         isBaseDir = false;
         if (!basePath) {
@@ -86,6 +118,7 @@ export async function buildRoutes(
       const { name } = file;
       const match = name.match(RoutableFileRegex);
       if (!match) {
+        warnNonRoutableLookalike(name, file.path);
         return;
       }
 

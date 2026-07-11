@@ -42,10 +42,7 @@
     "cheatsheet"
   ],
   "ignoreRegExpList": [],
-  "files": [
-    "*",
-    "src/**/*"
-  ],
+  "files": ["*", "src/**/*"],
   "ignorePaths": [
     "dist",
     "**/CHANGELOG.md",
