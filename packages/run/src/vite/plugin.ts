@@ -297,8 +297,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               }
             }
             if (!route.handler.verbs.length) {
+              const nearMisses = exports.filter(
+                (name) =>
+                  name !== name.toUpperCase() &&
+                  httpVerbs.includes(name.toLowerCase() as HttpVerb),
+              );
               context.warn(
-                `Did not find any http verb exports in ${path.relative(root, route.handler.filePath)} - expected ${httpVerbs.map((v) => v.toUpperCase()).join(", ")}`,
+                `Did not find any http verb exports in ${path.relative(root, route.handler.filePath)} - expected ${httpVerbs.map((v) => v.toUpperCase()).join(", ")}${
+                  nearMisses.length
+                    ? `. Found \`${nearMisses.join("`, `")}\` - verb exports must be uppercase, e.g. \`export const ${nearMisses[0].toUpperCase()} = Run.${nearMisses[0].toUpperCase()}(handler)\``
+                    : ""
+                }`,
               );
             }
           }
