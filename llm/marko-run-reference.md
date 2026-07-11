@@ -317,6 +317,10 @@ declare module "@marko/run" {
 - Load data in `+handler.js`/`+middleware.js` with `return next({ data })` from
   a `Run.GET(...)` handler and read `$global.data` in the page; keep pages
   presentation-only.
+- Pass promises through `next()` unawaited (`next({ user: getUser() })`) and
+  render them with `<await|user|=$global.data.user>`: the page shell streams
+  immediately and the data fills in. Awaiting in the handler delays the first
+  byte; fetching inside components creates request waterfalls.
 - Put shared chrome in `+layout.marko`; use pathless `_dirs` (or `(a,_b)` groups)
   to scope middleware/layouts without affecting URLs.
 - One concern per file: middleware for cross-cutting (auth, logging, headers),

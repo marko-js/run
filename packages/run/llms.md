@@ -38,10 +38,10 @@ Context/`$global` properties: `request` (WHATWG Request), `url` (URL), `params`,
 
 ```js
 /* src/routes/guestbook/+handler.js */
-import { addEntry } from "../../store.js";
+import { addEntry, loadEntries } from "../../store.js";
 
 export const GET = Run.GET((context, next) => {
-  return next({ title: "Guestbook" }); // next() renders the page; data -> $global.data
+  return next({ title: "Guestbook", entries: loadEntries() }); // next() renders the page; data -> $global.data
 });
 
 export const POST = Run.POST(async (context) => {
@@ -57,6 +57,7 @@ export const POST = Run.POST(async (context) => {
 - Return a `Response` → sent as-is (page does not render).
 - Return nothing → framework calls `next()` for you (page renders).
 - If you call `next()` yourself, RETURN its result.
+- Load page data HERE, and pass promises unawaited: `next({ entries: loadEntries() })` streams the page shell immediately and the page renders `<await|entries|=$global.data.entries>` when it resolves. Awaiting in the handler delays the first byte; fetching inside components creates waterfalls.
 - JSON APIs: `return new Response(JSON.stringify(obj), { status: 200, headers: { "content-type": "application/json" } })`.
 
 ## Middleware (auth/logging, written once for a subtree)
