@@ -33,10 +33,12 @@ function warnNonRoutableLookalike(name: string, filePath: string): void {
     const hint = /^\+server\./i.test(name)
       ? "request handlers are named `+handler.<ext>`"
       : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko` and `+500.marko`";
-    console.warn(`[marko-run] ${relativeFilePath} is not routable; ${hint}.`);
+    console.warn(
+      `[marko-run] ${relativeFilePath} is not routable; ${hint}. READ node_modules/@marko/run/llms.md before changing route files.`,
+    );
   } else if (bracketSegmentReg.test(name)) {
     console.warn(
-      `[marko-run] ${relativeFilePath} is not routable; dynamic path segments are written \`$param\` (catch-all \`$$param\`), not \`[param]\`.`,
+      `[marko-run] ${relativeFilePath} is not routable; dynamic path segments are written \`$param\` (catch-all \`$$param\`), not \`[param]\`. READ node_modules/@marko/run/llms.md before changing route files.`,
     );
   } else if (name[0] === "$") {
     const base = name.replace(/\.[^.]+$/, "");
@@ -44,7 +46,7 @@ function warnNonRoutableLookalike(name: string, filePath: string): void {
       ? `${base}+page.marko`
       : `${base}+handler${name.slice(name.lastIndexOf("."))}`;
     console.warn(
-      `[marko-run] ${relativeFilePath} is not routable; route files need a \`+type\` suffix after their path segments, e.g. \`${suggestion}\`.`,
+      `[marko-run] ${relativeFilePath} is not routable; route files need a \`+type\` suffix after their path segments, e.g. \`${suggestion}\`. READ node_modules/@marko/run/llms.md before changing route files.`,
     );
   }
 }

@@ -39,7 +39,8 @@
     "Freadme",
     "quasis",
     "letmein",
-    "cheatsheet"
+    "cheatsheet",
+    "llms"
   ],
   "ignoreRegExpList": [],
   "files": ["*", "src/**/*"],

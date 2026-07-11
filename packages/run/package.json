@@ -26,7 +26,8 @@
     "marko-run": "./dist/cli/index.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "llms.md"
   ],
   "scripts": {
     "build": "rm -rf ./dist && tsc -b && tsx scripts/build.ts"
