@@ -3,10 +3,10 @@
 /** The generated update module for one route. */
 export interface UpdateEntry {
   default: (patch: unknown, live: unknown) => void;
-  createUpdate: (
+  createPatch: (
     merge: (patch: unknown, live: unknown) => void,
     liveRoot?: unknown,
-  ) => (fills: unknown[]) => void;
+  ) => (source: string) => boolean;
   /** The renderer held at each live dynamic-tag hop. */
   have?: () => string;
 }
@@ -95,23 +95,11 @@ export async function navigate(
       );
     }
 
-    const applyFrame = entry.createUpdate(entry.default);
-    const parseFrame = getParseFrame();
+    const applyPatch = entry.createPatch(entry.default);
     let applied = false;
     const applyLine = (line: string) => {
       if (!line) return;
-      const fills: unknown[] = [];
-      for (const item of parseFrame(line) as unknown[]) {
-        if (
-          typeof item === "function" ||
-          typeof item === "string" ||
-          Array.isArray(item)
-        ) {
-          fills.push(item);
-        }
-      }
-      if (!fills.length) return;
-      applyFrame(fills);
+      if (!applyPatch(line)) return;
       if (!applied) {
         applied = true;
         state.currentId = targetId;
@@ -166,24 +154,4 @@ export function encodeHave(json: string): string {
     (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
   );
   return escaped.length > 4096 ? "" : escaped;
-}
-
-// Frames use the same resume-fill expressions as document scripts. Execute
-// them through the same nonce-compatible script path used for page resumes.
-let parseFrameImpl: undefined | ((line: string) => unknown[]);
-function getParseFrame() {
-  if (!parseFrameImpl) {
-    const nonce =
-      document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce;
-    parseFrameImpl = (line) => {
-      const script = document.createElement("script");
-      if (nonce) script.nonce = nonce;
-      script.textContent = `self.__marko_run_frame__=(${line})`;
-      document.head.appendChild(script).remove();
-      const frame = (self as any).__marko_run_frame__ as unknown[];
-      delete (self as any).__marko_run_frame__;
-      return frame;
-    };
-  }
-  return parseFrameImpl;
 }
