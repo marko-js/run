@@ -3,6 +3,7 @@
 import { parseFormData } from "@remix-run/form-data-parser";
 
 import { httpVerbs } from "../vite/constants";
+import { setDirectRender } from "./direct-render";
 import type {
   Awaitable,
   RouteHandler,
@@ -87,6 +88,32 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
       };
   return toReadable(rendered);
 };
+
+// Lazy, no-read-ahead (highWaterMark 0) body: constructing the `Response`
+// doesn't consume the render, so the node adapter can take it (getDirectRender).
+function toResponseBody(rendered: Rendered): ReadableStream<Uint8Array> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  const getReader = () => (reader ||= toReadable(rendered).getReader());
+  return new ReadableStream<Uint8Array>(
+    {
+      pull(ctrl) {
+        return getReader()
+          .read()
+          .then(
+            (result) => {
+              if (result.done) ctrl.close();
+              else ctrl.enqueue(result.value);
+            },
+            (err) => ctrl.error(err),
+          );
+      },
+      cancel(reason) {
+        return getReader().cancel(reason);
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
 
 function searchParamsToObject(params: URLSearchParams | FormData) {
   const obj: Record<string, any> = {};
@@ -239,15 +266,17 @@ export function createContext(
       );
     },
     render(template, input, init = pageResponseInit) {
-      return new Response(
-        toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
-        ),
-        init,
-      );
+      const rendered = template.render({
+        ...input,
+        $global: context as unknown as Marko.Global,
+      });
+      const response = new Response(toResponseBody(rendered), init);
+      // Let the node adapter write the render straight to the socket, but only
+      // when it can be iterated directly (older/custom renders may not be).
+      if (Symbol.asyncIterator in (rendered as object)) {
+        setDirectRender(response, rendered);
+      }
+      return response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {

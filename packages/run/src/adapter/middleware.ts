@@ -4,6 +4,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import type { TLSSocket } from "tls";
 
 import type { Fetch, Platform } from "../runtime";
+import { getDirectRender } from "../runtime/direct-render";
 
 export interface NodePlatformInfo {
   request: IncomingMessage;
@@ -161,7 +162,17 @@ export function createMiddleware(
       if (response) {
         res.statusCode = response.status;
         copyResponseHeaders(res, response.headers);
-        if (response.body) {
+
+        const rendered = getDirectRender(response);
+        if (rendered) {
+          // Write the render's HTML strings straight to the socket (Node
+          // encodes UTF-8), skipping the whatwg re-encode of `response.body`.
+          for await (const html of rendered) {
+            if (res.destroyed) return;
+            res.write(html);
+            (res as any).flush?.();
+          }
+        } else if (response.body) {
           for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
             if (res.destroyed) return;
             res.write(chunk);
