@@ -2,11 +2,7 @@
 
 /** The generated update module for one route. */
 export interface UpdateEntry {
-  default: (patch: unknown, live: unknown) => void;
-  createPatch: (
-    merge: (patch: unknown, live: unknown) => void,
-    liveRoot?: unknown,
-  ) => (source: string) => boolean;
+  createPatch: () => (source: string) => boolean;
   /** The renderer held at each live dynamic-tag hop. */
   have?: () => string;
 }
@@ -95,7 +91,7 @@ export async function navigate(
       );
     }
 
-    const applyPatch = entry.createPatch(entry.default);
+    const applyPatch = entry.createPatch();
     let applied = false;
     const applyLine = (line: string) => {
       if (!line) return;
