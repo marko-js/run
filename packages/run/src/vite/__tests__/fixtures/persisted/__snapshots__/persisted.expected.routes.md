@@ -5,12 +5,15 @@
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_match, 2, $global["~run"]);
+  __run_persisted_register(
+    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    2,
+    $global["~run"],
+  );
 </script>
 <Layout1>
 	<Page/>
@@ -38,12 +41,15 @@ export function head2(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/$id/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_match, 3, $global["~run"]);
+  __run_persisted_register(
+    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    3,
+    $global["~run"],
+  );
 </script>
 <Layout1>
 	<Page/>
@@ -71,12 +77,15 @@ export function head3(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
-client import __run_persisted_match from "virtual:marko-run/__marko-run__routes.client.js";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/$$rest/+page.marko";
 
 <script>
-  __run_persisted_register(__run_persisted_match, 4, $global["~run"]);
+  __run_persisted_register(
+    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    4,
+    $global["~run"],
+  );
 </script>
 <Layout1>
 	<Page/>

@@ -19,9 +19,11 @@ const state: NavigationState = {
   currentId: 0,
 };
 let matcher: RouteMatcher | undefined;
+let matcherPromise: Promise<RouteMatcher> | undefined;
+let loadMatcher: () => Promise<RouteMatcher>;
 
 export function register(
-  match: RouteMatcher,
+  loadMatch: () => Promise<RouteMatcher>,
   // The build-stable index of the route this page rendered through.
   id: number,
   // The server only honors update fetches from its own build.
@@ -33,7 +35,7 @@ export function register(
     addEventListener("submit", onSubmit);
     addEventListener("popstate", onPopstate);
   }
-  matcher = match;
+  loadMatcher = loadMatch;
   state.currentId = id;
   state.buildHash = hash;
 }
@@ -70,11 +72,8 @@ function onClick(ev: MouseEvent) {
     return;
   }
 
-  const target = matcher!(link.pathname);
-  if (!target) return;
-
   ev.preventDefault();
-  navigate(link.href, true, target);
+  navigateMatched(link.href, true, link.pathname);
 }
 
 // Same-origin forms retain their native behavior when they cannot use the
@@ -110,9 +109,6 @@ function onSubmit(ev: SubmitEvent) {
 
   // POST actions need not themselves be page routes: their redirect must land
   // back on the current route for an update response to be accepted.
-  const target = matcher!(method === "get" ? url.pathname : location.pathname);
-  if (!target) return;
-
   const data = new FormData(form, submitter);
   if (method === "get") {
     const params = new URLSearchParams();
@@ -121,7 +117,7 @@ function onSubmit(ev: SubmitEvent) {
     }
     url.search = params.toString();
     ev.preventDefault();
-    navigate(url.href, true, target);
+    navigateMatched(url.href, true, url.pathname);
   } else {
     const enctype = (
       submitter?.getAttribute("formenctype") || getFormAttr(form, "enctype")
@@ -135,7 +131,7 @@ function onSubmit(ev: SubmitEvent) {
       }
     }
     ev.preventDefault();
-    navigate(url.href, true, target, [body, form, submitter]);
+    navigateMatched(url.href, true, location.pathname, [body, form, submitter]);
   }
 }
 
@@ -146,28 +142,48 @@ function getFormAttr(form: HTMLFormElement, name: string) {
 function onPopstate() {
   const url = location.pathname + location.search;
   if (url === state.appliedUrl) return;
-  const target = matcher!(location.pathname);
-  if (target) {
-    navigate(location.href, false, target);
-  } else {
-    location.reload();
-  }
+  navigateMatched(location.href, false, location.pathname);
 }
 
 let navigationModule:
   | Promise<typeof import("./persisted-navigation.js")>
   | undefined;
 
-function navigate(
+function navigateMatched(
   href: string,
   push: boolean,
-  target: RouteEntry,
+  pathname: string,
   mutation?: Mutation,
 ) {
-  (navigationModule ||= import("./persisted-navigation.js")).then(
-    ({ navigate }) => navigate(state, href, push, target, mutation, fallback),
+  Promise.all([
+    matcher
+      ? matcher(pathname)
+      : (matcherPromise ||= loadMatcher().then(
+          (loaded) => (matcher = loaded),
+        )).then((loaded) => loaded(pathname)),
+    (navigationModule ||= import("./persisted-navigation.js")),
+  ]).then(
+    ([target, { navigate }]) =>
+      target
+        ? navigate(state, href, push, target, mutation, fallback)
+        : fallbackNative(href, push, mutation),
     (err) => fallback(err, href, push, mutation),
   );
+}
+
+function fallbackNative(href: string, push: boolean, mutation?: Mutation) {
+  if (mutation) {
+    state.resubmitting = true;
+    try {
+      mutation[1].requestSubmit(mutation[2]);
+    } finally {
+      state.resubmitting = false;
+    }
+  } else if (push) {
+    location.assign(href);
+  } else {
+    location.reload();
+  }
 }
 
 function fallback(
@@ -184,12 +200,7 @@ function fallback(
     if (response) {
       location.assign(response.url || href);
     } else {
-      state.resubmitting = true;
-      try {
-        mutation[1].requestSubmit(mutation[2]);
-      } finally {
-        state.resubmitting = false;
-      }
+      fallbackNative(href, push, mutation);
     }
   } else if (push) {
     location.assign(href);

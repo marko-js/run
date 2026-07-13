@@ -61,11 +61,11 @@ export function renderRouteTemplate(
   writer.writeLines("");
 
   // Persisted pages: bootstrap the client router with the app's generated
-  // route matcher (the same trie the server ranks with, terminals being lazy
-  // loaders for each route's template module and `?update` entry), this route's
-  // build-stable index, and the build identity (serialized under the internal
-  // "~run" global). Special (404/500) pages have no route to navigate within,
-  // and the class API has no persisted support.
+  // lazily loaded route matcher (the same trie the server ranks with, terminals
+  // being lazy loaders for each route's template module and `?update` entry),
+  // this route's build-stable index, and the build identity (serialized under
+  // the internal "~run" global). Special (404/500) pages have no route to
+  // navigate within, and the class API has no persisted support.
   if (
     persisted &&
     markoApi !== "class" &&
@@ -73,12 +73,15 @@ export function renderRouteTemplate(
     route.key !== RoutableFileTypes.Error
   ) {
     importWriter.writeLines(
-      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";
-client import __run_persisted_match from "${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}";`,
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
     );
     writer.writeLines(
       `<script>
-  __run_persisted_register(__run_persisted_match, ${route.index}, $global["~run"]);
+  __run_persisted_register(
+    () => import("${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}").then((mod) => mod.default),
+    ${route.index},
+    $global["~run"],
+  );
 </script>`,
     );
   }
