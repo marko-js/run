@@ -426,16 +426,18 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
 
     if (typeof optionsOrHandlers === "function") {
       assertHandlerVerb(verb, optionsOrHandlers);
-      handler = optionsOrHandlers as any;
-      handler.options ??= {};
+      const _fn = optionsOrHandlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = (_fn as any).options ?? {};
     } else if (Array.isArray(optionsOrHandlers)) {
       for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
       handler = compose(optionsOrHandlers) as any;
       handler.options = mergeOptions(...optionsOrHandlers);
     } else if (typeof handlers === "function") {
       assertHandlerVerb(verb, handlers);
-      handler = handlers as any;
-      handler.options = mergeOptions(handlers, optionsOrHandlers);
+      const _fn = handlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = mergeOptions(_fn, optionsOrHandlers);
     } else if (Array.isArray(handlers)) {
       for (const h of handlers) assertHandlerVerb(verb, h);
       handler = compose(handlers) as any;
