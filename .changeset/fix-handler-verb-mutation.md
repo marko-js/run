@@ -9,7 +9,7 @@ handler object and then set `.verb` on it, which permanently tagged any reused u
 with the first verb it was registered under. Passing the same function to a second `Run.*()` call
 (e.g. a shared handler used in both `Run.GET` and `Run.POST([...])`) would then throw:
 
-```
+```text
 Error: Expected verb POST but handler was defined with Run.GET
 ```
 
