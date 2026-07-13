@@ -42,7 +42,8 @@ type Fallback = (
   response?: Response,
 ) => void;
 
-const patchContentType = "text/marko-patch";
+const patchAccept = "text/marko-patch";
+const patchContentType = "text/javascript";
 
 export async function navigate(
   state: NavigationState,
@@ -70,7 +71,7 @@ export async function navigate(
         method: mutation && "POST",
         body: mutation?.[0],
         headers: {
-          accept: patchContentType,
+          accept: patchAccept,
           "x-marko-route": "" + targetId,
           "x-marko-from": "" + state.currentId,
           "x-marko-build": state.buildHash,
@@ -167,29 +168,22 @@ export function encodeHave(json: string): string {
   return escaped.length > 4096 ? "" : escaped;
 }
 
-// Frames use the same resume-fill expressions as document scripts. Prefer the
-// fast evaluator; under a CSP without unsafe-eval, use a nonce-bearing script
-// like the page's existing resume scripts. Failure naturally falls back.
+// Frames use the same resume-fill expressions as document scripts. Execute
+// them through the same nonce-compatible script path used for page resumes.
 let parseFrameImpl: undefined | ((line: string) => unknown[]);
 function getParseFrame() {
   if (!parseFrameImpl) {
-    try {
-      new Function("");
-      parseFrameImpl = (line) =>
-        new Function(`return (${line})`)() as unknown[];
-    } catch {
-      const nonce =
-        document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce;
-      parseFrameImpl = (line) => {
-        const script = document.createElement("script");
-        if (nonce) script.nonce = nonce;
-        script.textContent = `self.__marko_run_frame__=(${line})`;
-        document.head.appendChild(script).remove();
-        const frame = (self as any).__marko_run_frame__ as unknown[];
-        delete (self as any).__marko_run_frame__;
-        return frame;
-      };
-    }
+    const nonce =
+      document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce;
+    parseFrameImpl = (line) => {
+      const script = document.createElement("script");
+      if (nonce) script.nonce = nonce;
+      script.textContent = `self.__marko_run_frame__=(${line})`;
+      document.head.appendChild(script).remove();
+      const frame = (self as any).__marko_run_frame__ as unknown[];
+      delete (self as any).__marko_run_frame__;
+      return frame;
+    };
   }
   return parseFrameImpl;
 }

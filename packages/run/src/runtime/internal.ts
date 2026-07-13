@@ -111,7 +111,7 @@ const updateResponseInit = {
   status: 200,
   headers: {
     "cache-control": "no-store",
-    "content-type": "text/marko-patch;charset=UTF-8",
+    "content-type": "text/javascript;charset=UTF-8",
     vary: "accept",
   },
 };
@@ -127,7 +127,7 @@ function applyPersistedResponseHeaders(response: Response, update: boolean) {
     // Patch bytes depend on x-marko-from/x-marko-have and the live build.
     // They are navigation-specific and must never be replayed from a cache.
     headers.set("cache-control", "no-store");
-    headers.set("content-type", "text/marko-patch;charset=UTF-8");
+    headers.set("content-type", "text/javascript;charset=UTF-8");
   }
   const vary = headers.get("vary");
   if (!vary) {

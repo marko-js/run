@@ -42,7 +42,7 @@ describe("persisted render() response headers", () => {
     );
     assert.equal(
       res.headers.get("content-type"),
-      "text/marko-patch;charset=UTF-8",
+      "text/javascript;charset=UTF-8",
     );
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(res.headers.get("vary"), "accept");
@@ -63,7 +63,7 @@ describe("persisted render() response headers", () => {
     );
     assert.equal(
       res.headers.get("content-type"),
-      "text/marko-patch;charset=UTF-8",
+      "text/javascript;charset=UTF-8",
     );
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(res.headers.get("vary"), "accept");
