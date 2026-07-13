@@ -6,10 +6,5 @@
       "require": "./dist/index.cjs"
     }
   },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": ["./dist/index.d.ts"]
-    }
-  }
+  "types": "./dist/index.d.ts"
 }

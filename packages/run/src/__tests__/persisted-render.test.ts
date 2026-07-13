@@ -1,7 +1,7 @@
 import assert from "assert";
 
 import { createContext } from "../runtime/internal";
-import { encodeHave } from "../runtime/persisted";
+import { encodeHave } from "../runtime/persisted-navigation";
 
 // A rendered value that satisfies both branches of the runtime's `toReadable`
 // (it exposes `.toReadable()` and is async-iterable), so the fake template
@@ -20,7 +20,7 @@ const rendered = {
 };
 const fakeTemplate = { render: () => rendered } as any;
 
-function context(persisted: boolean | "update") {
+function context(persisted: boolean | "update" | "fragment") {
   const ctx = createContext(
     null,
     new Request("http://localhost/reports"),
@@ -37,6 +37,7 @@ describe("persisted render() response headers", () => {
       res.headers.get("content-type"),
       "text/marko-patch;charset=UTF-8",
     );
+    assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(res.headers.get("vary"), "accept");
   });
 
@@ -57,6 +58,7 @@ describe("persisted render() response headers", () => {
       res.headers.get("content-type"),
       "text/marko-patch;charset=UTF-8",
     );
+    assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(res.headers.get("vary"), "accept");
     assert.equal(res.status, 201, "caller status preserved");
     assert.equal(
@@ -77,7 +79,7 @@ describe("persisted render() response headers", () => {
     assert.equal(res.headers.get("vary"), "cookie, accept");
   });
 
-  it("persisted seed render still varies on accept with a custom init", () => {
+  it("persisted document render still varies on accept with a custom init", () => {
     const res = context(true).render(
       fakeTemplate,
       {},
@@ -111,7 +113,10 @@ describe("persisted render() class-API second-argument guard", () => {
   // options to templates that understand them. Class-API templates are
   // detected structurally (they always carry `createOut`, see
   // runtime-class's `renderable.js`); runtime-tags templates never do.
-  function renderWith(template: any, persisted: boolean | "update") {
+  function renderWith(
+    template: any,
+    persisted: boolean | "update" | "fragment",
+  ) {
     let options: any;
     const capturing = {
       ...template,
@@ -142,7 +147,7 @@ describe("persisted render() possession echo (x-marko-have)", () => {
   // Captures the per-render options marko receives, so the decoded echo the
   // update render will consult is observable (only the options are under test).
   function renderPersisted(
-    persisted: boolean | "update",
+    persisted: boolean | "update" | "fragment",
     headers?: Record<string, string>,
   ) {
     let options: any;
@@ -168,6 +173,13 @@ describe("persisted render() possession echo (x-marko-have)", () => {
 
   it("omits `possessed` when the client sent no echo", () => {
     assert.equal(renderPersisted("update").possessed, undefined);
+  });
+
+  it("couples cross-route fragment delivery to fresh-scope seeding", () => {
+    const persisted = renderPersisted("fragment");
+    assert.equal(persisted.update, true);
+    assert.equal(persisted.fragment, true);
+    assert.equal(persisted.seed, true);
   });
 
   it("ignores a malformed echo rather than throwing", () => {

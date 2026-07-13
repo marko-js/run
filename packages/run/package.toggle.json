@@ -29,15 +29,5 @@
       "require": "./dist/adapter/index.cjs"
     }
   },
-  "types": "./dist/runtime/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": ["./dist/runtime/index.d.ts"],
-      "namespace": ["./dist/runtime/namespace.d.ts"],
-      "router": ["./dist/runtime/router.d.ts"],
-      "vite": ["./dist/vite/index.d.ts"],
-      "adapter/middleware": ["./dist/adapter/middleware.d.ts"],
-      "adapter": ["./dist/adapter/index.d.ts"]
-    }
-  }
+  "types": "./dist/runtime/index.d.ts"
 }

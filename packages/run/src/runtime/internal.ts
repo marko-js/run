@@ -98,7 +98,11 @@ const persistedPageResponseInit = {
 
 const updateResponseInit = {
   status: 200,
-  headers: { "content-type": "text/marko-patch;charset=UTF-8", vary: "accept" },
+  headers: {
+    "cache-control": "no-store",
+    "content-type": "text/marko-patch;charset=UTF-8",
+    vary: "accept",
+  },
 };
 
 // A persisted response's `content-type` (patch, for updates) and `vary` are
@@ -109,6 +113,9 @@ const updateResponseInit = {
 function applyPersistedResponseHeaders(response: Response, update: boolean) {
   const { headers } = response;
   if (update) {
+    // Patch bytes depend on x-marko-from/x-marko-have and the live build.
+    // They are navigation-specific and must never be replayed from a cache.
+    headers.set("cache-control", "no-store");
     headers.set("content-type", "text/marko-patch;charset=UTF-8");
   }
   const vary = headers.get("vary");
@@ -325,7 +332,8 @@ export function createContext(
     ) {
       const { persisted } = context;
       let options: MarkoRenderOptions | undefined;
-      const update = persisted === "update";
+      const update = persisted === "update" || persisted === "fragment";
+      const fragment = persisted === "fragment";
       // A handler's own init keeps its status/headers, but the accept-negotiated
       // content-type/vary are framework-owned and reapplied below; the default
       // init is swapped for the matching constant that carries them.
@@ -347,8 +355,8 @@ export function createContext(
           options = {
             persisted: {
               update,
-              seed: update && !!context.persistedSeed,
-              fragment: update && !!context.persistedFragment,
+              seed: fragment,
+              fragment,
               // Only update renders consult the echo; the header is client input,
               // decoded defensively (see `decodePossessed`).
               possessed: update ? decodePossessed(request) : undefined,

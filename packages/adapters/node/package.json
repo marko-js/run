@@ -18,6 +18,16 @@
     "./middleware": "./src/middleware.ts"
   },
   "types": "./src/index.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ],
+      "middleware": [
+        "./dist/middleware.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],

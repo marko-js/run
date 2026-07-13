@@ -14,6 +14,7 @@ const opts: BuildOptions = {
     "src/runtime/url-builder.ts",
     "src/runtime/internal.ts",
     "src/runtime/persisted.ts",
+    "src/runtime/persisted-navigation.ts",
     "src/adapter/index.ts",
     "src/adapter/middleware.ts",
   ],
@@ -29,6 +30,18 @@ const opts: BuildOptions = {
     ),
   },
   plugins: [
+    {
+      // Keep the navigation engine behind the browser's first persisted
+      // navigation. Both files are explicit entries, so the relative import is
+      // valid in dist without enabling package-wide chunk splitting.
+      name: "lazy-persisted-navigation",
+      setup(build) {
+        build.onResolve(
+          { filter: /^\.\/persisted-navigation\.js$/ },
+          ({ path }) => ({ path, external: true }),
+        );
+      },
+    },
     {
       name: "external-modules",
       setup(build) {

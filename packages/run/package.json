@@ -22,6 +22,28 @@
     "./adapter": "./src/adapter/index.ts"
   },
   "types": "./src/runtime/index.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/runtime/index.d.ts"
+      ],
+      "namespace": [
+        "./dist/runtime/namespace.d.ts"
+      ],
+      "router": [
+        "./dist/runtime/router.d.ts"
+      ],
+      "vite": [
+        "./dist/vite/index.d.ts"
+      ],
+      "adapter/middleware": [
+        "./dist/adapter/middleware.d.ts"
+      ],
+      "adapter": [
+        "./dist/adapter/index.d.ts"
+      ]
+    }
+  },
   "bin": {
     "marko-run": "./dist/cli/index.mjs"
   },

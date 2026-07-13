@@ -17,6 +17,13 @@
     ".": "./src/index.ts"
   },
   "types": "./src/index.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],
