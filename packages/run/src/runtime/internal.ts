@@ -33,25 +33,36 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
-// Per-render options forwarded to marko's `render()` second argument. The
-// persisted render mode rides here rather than on `$global` (which _is_ the
-// request context) so app globals stay uncontaminated.
+// Private request facts forwarded to marko's `render()` second argument.
+// They stay off `$global` (which _is_ the request context), and Marko derives
+// patch structure rather than exposing it as application configuration.
 interface MarkoRenderOptions {
   persisted?: {
-    update: boolean;
-    seed: boolean;
-    fragment: boolean;
-    // The possession echo (`x-marko-have`) the client sent: per dynamic-tag
-    // hop, the renderer id the live page holds. Keyed by a build-stable
-    // compiler-generated site id (identical in the document and update renders
-    // -- not the runtime scope id, numbered differently between them), with the
-    // iteration's loop key appended when the hop repeats inside a keyed `<for>`
-    // (`"<siteId> <loopKey>"`). See marko's `_have`
-    // (packages/runtime-tags/src/dom/update.ts). The update render ships a
-    // fragment for a hop whose renderer differs, letting a same-route dynamic
-    // swap apply instead of failing. Absent unless the client sent the header.
-    possessed?: Record<string, string>;
+    patch?: {
+      fromRoute: string;
+      targetRoute: string;
+      // The possession echo (`x-marko-have`) the client sent: per dynamic-tag
+      // hop, the renderer id the live page holds. Keyed by a build-stable
+      // compiler-generated site id. Absent unless the client sent the header.
+      possessed?: Record<string, string>;
+    };
   };
+}
+
+interface PersistedRequest {
+  fromRoute?: string;
+  targetRoute?: string;
+}
+
+const persistedRequestLookup = new WeakMap<Context, PersistedRequest>();
+
+/** @internal Marks a generated-router request as part of persisted pages. */
+export function setPersisted(
+  context: Context,
+  fromRoute?: string,
+  targetRoute?: string,
+) {
+  persistedRequestLookup.set(context, { fromRoute, targetRoute });
 }
 
 // Decode the client's possession echo. Untrusted request input, so a malformed
@@ -330,17 +341,24 @@ export function createContext(
       input: T,
       init: ResponseInit = pageResponseInit,
     ) {
-      const { persisted } = context;
+      const persisted = persistedRequestLookup.get(context);
       let options: MarkoRenderOptions | undefined;
-      const update = persisted === "update" || persisted === "fragment";
-      const fragment = persisted === "fragment";
+      const patch =
+        persisted?.fromRoute !== undefined &&
+        persisted.targetRoute !== undefined
+          ? {
+              fromRoute: persisted.fromRoute,
+              targetRoute: persisted.targetRoute,
+              possessed: decodePossessed(request),
+            }
+          : undefined;
       // A handler's own init keeps its status/headers, but the accept-negotiated
       // content-type/vary are framework-owned and reapplied below; the default
       // init is swapped for the matching constant that carries them.
       const customInit = !!persisted && init !== pageResponseInit;
       if (persisted) {
         if (!customInit) {
-          init = update ? updateResponseInit : persistedPageResponseInit;
+          init = patch ? updateResponseInit : persistedPageResponseInit;
         }
         // Only runtime-tags (marko 6) templates understand render()'s second
         // argument -- a marko 5 (class-API) template treats a non-`out` second
@@ -353,14 +371,7 @@ export function createContext(
         // also stubs one (throwing) for a friendlier error.
         if (!("createOut" in template)) {
           options = {
-            persisted: {
-              update,
-              seed: fragment,
-              fragment,
-              // Only update renders consult the echo; the header is client input,
-              // decoded defensively (see `decodePossessed`).
-              possessed: update ? decodePossessed(request) : undefined,
-            },
+            persisted: { patch },
           };
         }
       }
@@ -380,7 +391,7 @@ export function createContext(
         init,
       );
       return customInit
-        ? applyPersistedResponseHeaders(response, update)
+        ? applyPersistedResponseHeaders(response, !!patch)
         : response;
     },
     redirect(to, status = 302) {

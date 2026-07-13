@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { createContext } from "../runtime/internal";
+import { createContext, setPersisted } from "../runtime/internal";
 import { encodeHave } from "../runtime/persisted-navigation";
 
 // A rendered value that satisfies both branches of the runtime's `toReadable`
@@ -20,19 +20,26 @@ const rendered = {
 };
 const fakeTemplate = { render: () => rendered } as any;
 
-function context(persisted: boolean | "update" | "fragment") {
+type PersistedRequest = false | { fromRoute?: string; targetRoute?: string };
+
+function context(persisted: PersistedRequest) {
   const ctx = createContext(
     null,
     new Request("http://localhost/reports"),
     {} as any,
   ) as any;
-  ctx.persisted = persisted;
+  if (persisted) {
+    setPersisted(ctx, persisted.fromRoute, persisted.targetRoute);
+  }
   return ctx;
 }
 
 describe("persisted render() response headers", () => {
   it("update render (default init) advertises the patch content-type", () => {
-    const res = context("update").render(fakeTemplate, {});
+    const res = context({ fromRoute: "2", targetRoute: "2" }).render(
+      fakeTemplate,
+      {},
+    );
     assert.equal(
       res.headers.get("content-type"),
       "text/marko-patch;charset=UTF-8",
@@ -46,7 +53,7 @@ describe("persisted render() response headers", () => {
     // lose the accept-negotiated patch content-type: the client router gates
     // a navigation on it and would otherwise silently fall back to a full
     // page load for that route.
-    const res = context("update").render(
+    const res = context({ fromRoute: "2", targetRoute: "2" }).render(
       fakeTemplate,
       {},
       {
@@ -69,7 +76,7 @@ describe("persisted render() response headers", () => {
   });
 
   it("update render preserves a caller's own vary tokens", () => {
-    const res = context("update").render(
+    const res = context({ fromRoute: "2", targetRoute: "2" }).render(
       fakeTemplate,
       {},
       {
@@ -80,7 +87,7 @@ describe("persisted render() response headers", () => {
   });
 
   it("persisted document render still varies on accept with a custom init", () => {
-    const res = context(true).render(
+    const res = context({}).render(
       fakeTemplate,
       {},
       {
@@ -113,10 +120,7 @@ describe("persisted render() class-API second-argument guard", () => {
   // options to templates that understand them. Class-API templates are
   // detected structurally (they always carry `createOut`, see
   // runtime-class's `renderable.js`); runtime-tags templates never do.
-  function renderWith(
-    template: any,
-    persisted: boolean | "update" | "fragment",
-  ) {
+  function renderWith(template: any, persisted: PersistedRequest) {
     let options: any;
     const capturing = {
       ...template,
@@ -127,19 +131,27 @@ describe("persisted render() class-API second-argument guard", () => {
       new Request("http://localhost/reports"),
       {} as any,
     ) as any;
-    ctx.persisted = persisted;
+    if (persisted) {
+      setPersisted(ctx, persisted.fromRoute, persisted.targetRoute);
+    }
     ctx.render(capturing, {});
     return options;
   }
 
   it("omits render options for a class-API (createOut-carrying) template", () => {
-    assert.equal(renderWith({ createOut: () => {} }, "update"), undefined);
-    assert.equal(renderWith({ createOut: () => {} }, true), undefined);
+    assert.equal(
+      renderWith({ createOut: () => {} }, { fromRoute: "2", targetRoute: "2" }),
+      undefined,
+    );
+    assert.equal(renderWith({ createOut: () => {} }, {}), undefined);
   });
 
   it("still passes render options for a runtime-tags template", () => {
-    assert.notEqual(renderWith({}, "update"), undefined);
-    assert.notEqual(renderWith({}, true), undefined);
+    assert.notEqual(
+      renderWith({}, { fromRoute: "2", targetRoute: "2" }),
+      undefined,
+    );
+    assert.notEqual(renderWith({}, {}), undefined);
   });
 });
 
@@ -147,7 +159,7 @@ describe("persisted render() possession echo (x-marko-have)", () => {
   // Captures the per-render options marko receives, so the decoded echo the
   // update render will consult is observable (only the options are under test).
   function renderPersisted(
-    persisted: boolean | "update" | "fragment",
+    persisted: Exclude<PersistedRequest, false>,
     headers?: Record<string, string>,
   ) {
     let options: any;
@@ -159,38 +171,55 @@ describe("persisted render() possession echo (x-marko-have)", () => {
       new Request("http://localhost/reports", { headers }),
       {} as any,
     ) as any;
-    ctx.persisted = persisted;
+    setPersisted(ctx, persisted.fromRoute, persisted.targetRoute);
     ctx.render(capturing, {});
     return options?.persisted;
   }
 
   it("decodes the echo into `possessed` for an update render", () => {
-    const persisted = renderPersisted("update", {
-      "x-marko-have": '{"5 a":"a2","8 b":"a3"}',
+    const persisted = renderPersisted(
+      { fromRoute: "2", targetRoute: "2" },
+      {
+        "x-marko-have": '{"5 a":"a2","8 b":"a3"}',
+      },
+    );
+    assert.deepEqual(persisted.patch.possessed, {
+      "5 a": "a2",
+      "8 b": "a3",
     });
-    assert.deepEqual(persisted.possessed, { "5 a": "a2", "8 b": "a3" });
   });
 
   it("omits `possessed` when the client sent no echo", () => {
-    assert.equal(renderPersisted("update").possessed, undefined);
+    assert.equal(
+      renderPersisted({ fromRoute: "2", targetRoute: "2" }).patch.possessed,
+      undefined,
+    );
   });
 
   it("couples cross-route fragment delivery to fresh-scope seeding", () => {
-    const persisted = renderPersisted("fragment");
-    assert.equal(persisted.update, true);
-    assert.equal(persisted.fragment, true);
-    assert.equal(persisted.seed, true);
+    const persisted = renderPersisted({
+      fromRoute: "2",
+      targetRoute: "3",
+    });
+    assert.equal(persisted.patch.fromRoute, "2");
+    assert.equal(persisted.patch.targetRoute, "3");
   });
 
   it("ignores a malformed echo rather than throwing", () => {
     // The header is untrusted client input: a bad value must degrade to no
     // echo (at worst a full-navigation fallback), never crash the render.
     assert.equal(
-      renderPersisted("update", { "x-marko-have": "{not json" }).possessed,
+      renderPersisted(
+        { fromRoute: "2", targetRoute: "2" },
+        { "x-marko-have": "{not json" },
+      ).patch.possessed,
       undefined,
     );
     assert.equal(
-      renderPersisted("update", { "x-marko-have": '"a string"' }).possessed,
+      renderPersisted(
+        { fromRoute: "2", targetRoute: "2" },
+        { "x-marko-have": '"a string"' },
+      ).patch.possessed,
       undefined,
     );
   });
@@ -199,7 +228,7 @@ describe("persisted render() possession echo (x-marko-have)", () => {
     // Only update renders consult possession; the initial (seed) document has
     // no live page to have anything, so its scopes are all fresh.
     assert.equal(
-      renderPersisted(true, { "x-marko-have": '{"5 a":"a2"}' }).possessed,
+      renderPersisted({}, { "x-marko-have": '{"5 a":"a2"}' }).patch?.possessed,
       undefined,
     );
   });
@@ -208,7 +237,10 @@ describe("persisted render() possession echo (x-marko-have)", () => {
     // `typeof [] === "object"` passes a bare object check; the client only
     // ever sends a plain object, so an array is malformed input.
     assert.equal(
-      renderPersisted("update", { "x-marko-have": '["a","b"]' }).possessed,
+      renderPersisted(
+        { fromRoute: "2", targetRoute: "2" },
+        { "x-marko-have": '["a","b"]' },
+      ).patch.possessed,
       undefined,
     );
   });
@@ -219,9 +251,12 @@ describe("persisted render() possession echo (x-marko-have)", () => {
     // spuriously be true even for an echo that never mentioned that site --
     // and `__proto__` is valid JSON, landing as an own data property rather
     // than repointing the prototype. `possessed` must not expose either.
-    const possessed = renderPersisted("update", {
-      "x-marko-have": '{"__proto__":{"polluted":"yes"},"5 a":"a2"}',
-    }).possessed;
+    const possessed = renderPersisted(
+      { fromRoute: "2", targetRoute: "2" },
+      {
+        "x-marko-have": '{"__proto__":{"polluted":"yes"},"5 a":"a2"}',
+      },
+    ).patch.possessed;
     assert.equal(
       "toString" in possessed,
       false,

@@ -1,4 +1,4 @@
-import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { NotHandled, NotMatched, createContext, setPersisted } from "virtual:marko-run/runtime/internal";
 import { buildId } from "virtual:marko-vite/link-assets";
 
 let resolvedBuildHash;
@@ -72,7 +72,7 @@ function match_internal(method, pathname) {
 
 export async function invoke(route, request, platform, url) {
 	const context = createContext(route, request, platform, url);
-	context.persisted = true;
+	setPersisted(context);
   // The build's identity rides one internal serialized-global key ("~run")
   // rather than a typed `$global` property -- `$global` is user/data
   // surface; the client router reads it back at register time and presents
@@ -98,10 +98,11 @@ export async function invoke(route, request, platform, url) {
       // and resumes instead of constructing from registered renderer
       // graphs (async content streams behind placeholder boundaries as
       // boundary-body frames).
-      context.persisted =
-        request.headers.get("x-marko-from") === "" + route.i
-          ? "update"
-          : "fragment";
+      setPersisted(
+        context,
+        request.headers.get("x-marko-from"),
+        "" + route.i,
+      );
     } else {
       return new Response(null, {
         status: 409,

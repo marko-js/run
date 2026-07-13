@@ -981,18 +981,6 @@ export interface Context<T extends Route = Route> {
   readonly platform: Platform;
   readonly parent: Context | undefined;
   serializedGlobals: Record<string, boolean>;
-  /**
-   * Persisted (single-page server-first updates) render flag for this request.
-   * The generated router sets it before running the chain: `true` renders a
-   * persisted-capable document, `"update"` a matched update, and `"fragment"`
-   * an update whose cross-route branch must arrive as resumable HTML.
-   * Middleware may override it (e.g. `false` to
-   * serve a plain document). `render()` folds this and the seed/fragment flags
-   * below into marko `render()`'s second argument, so they stay the
-   * public/middleware surface without contaminating `$global` (which _is_ this
-   * context) with additional framework render-mode keys.
-   */
-  persisted?: boolean | "update" | "fragment";
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,
