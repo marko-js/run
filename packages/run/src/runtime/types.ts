@@ -981,6 +981,35 @@ export interface Context<T extends Route = Route> {
   readonly platform: Platform;
   readonly parent: Context | undefined;
   serializedGlobals: Record<string, boolean>;
+  /**
+   * Persisted (single-page server-first updates) render flag for this request.
+   * The generated router sets it before running the chain: `true` renders a
+   * persisted-capable document, `"update"` an update patch (negotiated via
+   * `accept: text/marko-patch`). Middleware may override it (e.g. `false` to
+   * serve a plain document). `render()` folds this and the seed/fragment flags
+   * below into marko `render()`'s second argument, so they stay the
+   * public/middleware surface without contaminating `$global` (which _is_ this
+   * context) with framework render-mode keys.
+   */
+  persisted?: boolean | "update";
+  /**
+   * With `persisted: "update"`: the client's current route (`x-marko-from`)
+   * differs from the target, so the update render also serializes state values
+   * -- the target subtree is created fresh on the client and its state
+   * initializers may live behind server-only expressions.
+   */
+  persistedSeed?: boolean;
+  /**
+   * With `persisted: "update"` + `persistedSeed`: the diverging content hop
+   * renders as a fragment frame -- resumable HTML the client inserts and resumes
+   * at the hop's anchor instead of constructing from registered renderer graphs.
+   * The router sets it alongside `persistedSeed` for cross-route navigations.
+   * Middleware should not clear it: fragment-first builds (the compiler's
+   * `persisted: "fragments"` mode) never ship the registered-renderer-graph
+   * material fills-based construction needs, so clearing it breaks the apply
+   * instead of falling back to it.
+   */
+  persistedFragment?: boolean;
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,

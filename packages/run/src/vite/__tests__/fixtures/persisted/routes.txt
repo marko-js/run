@@ -1,0 +1,9 @@
++layout.marko
++page.marko
++404.marko
+/item
+  /$id
+    +page.marko
+/docs
+  /$$rest
+    +page.marko

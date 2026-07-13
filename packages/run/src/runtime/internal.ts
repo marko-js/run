@@ -33,12 +33,92 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
+// Per-render options forwarded to marko's `render()` second argument. The
+// persisted render mode rides here rather than on `$global` (which _is_ the
+// request context) so app globals stay uncontaminated.
+interface MarkoRenderOptions {
+  persisted?: {
+    update: boolean;
+    seed: boolean;
+    fragment: boolean;
+    // The possession echo (`x-marko-have`) the client sent: per dynamic-tag
+    // hop, the renderer id the live page holds. Keyed by a build-stable
+    // compiler-generated site id (identical in the document and update renders
+    // -- not the runtime scope id, numbered differently between them), with the
+    // iteration's loop key appended when the hop repeats inside a keyed `<for>`
+    // (`"<siteId> <loopKey>"`). See marko's `_have`
+    // (packages/runtime-tags/src/dom/update.ts). The update render ships a
+    // fragment for a hop whose renderer differs, letting a same-route dynamic
+    // swap apply instead of failing. Absent unless the client sent the header.
+    possessed?: Record<string, string>;
+  };
+}
+
+// Decode the client's possession echo. Untrusted request input, so a malformed
+// value is dropped (the render proceeds without it -- at worst a diverging hop
+// falls back to a full navigation, never a corrupt apply) rather than thrown.
+function decodePossessed(request: Request) {
+  const have = request.headers.get("x-marko-have");
+  if (have) {
+    try {
+      const parsed = JSON.parse(have);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Untrusted input: copy onto a null-prototype object, not the parsed
+        // object directly. A downstream `siteKey in possessed` check (marko's
+        // fragment-vs-fills decision per hop) would otherwise spuriously hit on
+        // an inherited key (`toString`, ...) or a `__proto__` data property
+        // `JSON.parse` permits. `Object.assign` onto a null-prototype target
+        // has no inherited `__proto__` setter, so such a key lands as an inert
+        // own property instead of repointing the prototype.
+        return Object.assign(
+          Object.create(null) as Record<string, string>,
+          parsed,
+        );
+      }
+    } catch {
+      // Malformed echo -- ignore.
+    }
+  }
+}
+
 const parentContextLookup = new WeakMap<Request, Context>();
 
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
+
+// Persisted builds serve two representations of every page URL, negotiated on
+// `accept`, so responses must vary on it. Update renders are a newline-delimited
+// stream of serializer frames, not a document.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+const updateResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/marko-patch;charset=UTF-8", vary: "accept" },
+};
+
+// A persisted response's `content-type` (patch, for updates) and `vary` are
+// framework-owned and must hold even when a handler supplied its own `init` --
+// otherwise the client router, which gates on the patch content-type, silently
+// falls back to a full page load and the two representations can mis-cache.
+// Unrelated `vary` tokens the caller set are preserved.
+function applyPersistedResponseHeaders(response: Response, update: boolean) {
+  const { headers } = response;
+  if (update) {
+    headers.set("content-type", "text/marko-patch;charset=UTF-8");
+  }
+  const vary = headers.get("vary");
+  if (!vary) {
+    headers.set("vary", "accept");
+  } else if (!/(?:^|,)\s*accept\s*(?:,|$)/i.test(vary)) {
+    headers.set("vary", `${vary}, accept`);
+  }
+  return response;
+}
 
 globalThis.MarkoRun ??= {
   NotHandled,
@@ -238,16 +318,62 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
-      return new Response(
+    render<T>(
+      template: Marko.Template<T>,
+      input: T,
+      init: ResponseInit = pageResponseInit,
+    ) {
+      const { persisted } = context;
+      let options: MarkoRenderOptions | undefined;
+      const update = persisted === "update";
+      // A handler's own init keeps its status/headers, but the accept-negotiated
+      // content-type/vary are framework-owned and reapplied below; the default
+      // init is swapped for the matching constant that carries them.
+      const customInit = !!persisted && init !== pageResponseInit;
+      if (persisted) {
+        if (!customInit) {
+          init = update ? updateResponseInit : persistedPageResponseInit;
+        }
+        // Only runtime-tags (marko 6) templates understand render()'s second
+        // argument -- a marko 5 (class-API) template treats a non-`out` second
+        // argument as a writer and throws on its first write, so a class-API
+        // route (persisted builds still allow them; they render a normal
+        // document) must never receive it. Detected structurally, not by
+        // version: class-API templates always carry `createOut` (runtime-class's
+        // `renderable.js`), runtime-tags HTML templates never do -- `mount`
+        // alone can't discriminate, since a debug-mode runtime-tags template
+        // also stubs one (throwing) for a friendlier error.
+        if (!("createOut" in template)) {
+          options = {
+            persisted: {
+              update,
+              seed: update && !!context.persistedSeed,
+              fragment: update && !!context.persistedFragment,
+              // Only update renders consult the echo; the header is client input,
+              // decoded defensively (see `decodePossessed`).
+              possessed: update ? decodePossessed(request) : undefined,
+            },
+          };
+        }
+      }
+      const response = new Response(
+        // Marko 6 takes per-render options as render()'s second argument, but
+        // the ambient marko-5 `Marko.Template` types only declare the
+        // stream/callback overloads, so pass options through a narrowed local
+        // signature.
         toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
+          (
+            template.render as (
+              input: Marko.TemplateInput<T>,
+              options?: MarkoRenderOptions,
+            ) => ReturnType<Marko.Template<T>["render"]>
+          )({ ...input, $global: context as unknown as Marko.Global }, options),
         ),
         init,
       );
+      return customInit
+        ? applyPersistedResponseHeaders(response, update)
+        : response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {

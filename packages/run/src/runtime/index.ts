@@ -37,6 +37,17 @@ declare global {
     readonly [__run__.TYPES]: void;
   }
 
+  interface ImportMetaEnv {
+    /**
+     * Whether persisted pages (single-page server-first updates) are enabled
+     * for this build -- mirrors the `persisted` router option, defined by the
+     * vite plugin via `config().define`. Lets app code compile-gate
+     * persisted-only wiring (eg `marko-run:navigate` listeners) so it
+     * tree-shakes out of non-persisted builds.
+     */
+    readonly MARKO_RUN_PERSISTED: boolean;
+  }
+
   /** @deprecated use \`Run\` namespace instead */
   namespace MarkoRun {
     export {

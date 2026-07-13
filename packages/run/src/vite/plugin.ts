@@ -26,8 +26,10 @@ import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
+  renderRoutesClient,
   renderRouteTemplate,
   renderRouteTypeInfo,
+  ROUTES_CLIENT_FILENAME,
 } from "./codegen";
 import {
   httpVerbs,
@@ -92,6 +94,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let routesDir: NonNullable<(typeof opts)["routesDir"]>;
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
+  let persisted: boolean;
   const { ...markoVitePluginOptions } = opts;
 
   let store: ReadOncePersistedStore<RouteData>;
@@ -259,6 +262,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
       }
       virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+      if (persisted) {
+        virtualFiles.set(path.posix.join(root, ROUTES_CLIENT_FILENAME), "");
+      }
 
       for (const externalRoute of externalRoutes) {
         for (const { entryFile } of externalRoute.routes) {
@@ -313,6 +319,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 route,
                 await getMarkoApiForRoute(context, route),
                 !isBuild,
+                persisted,
               ),
             );
           }
@@ -360,8 +367,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           path.posix.join(root, ROUTER_FILENAME),
           renderRouter(routes, root, runtimeInclude, {
             trailingSlashes,
+            persisted,
           }),
         );
+
+        if (persisted) {
+          virtualFiles.set(
+            path.posix.join(root, ROUTES_CLIENT_FILENAME),
+            renderRoutesClient(routes, root),
+          );
+        }
 
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {
@@ -431,6 +446,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         routesDir = opts.routesDir || "src/routes";
         trailingSlashes = opts.trailingSlashes || "RedirectWithout";
+        persisted = Boolean(opts.persisted);
+        // Adapter pluginOptions may have merged into `opts` after the initial
+        // spread, so re-forward the compile flag to @marko/vite. Run's persisted
+        // router always delivers cross-route divergence as fragment frames, so
+        // it compiles fragment-first: persisted entries ship no fills-path
+        // construction material for content a live page never rendered
+        // (server-only render graphs tree-shake out of navigation chunks). Cast
+        // until the published @marko/vite types pick up the `"fragments"` value.
+        markoVitePluginOptions.persisted = (persisted
+          ? "fragments"
+          : undefined) as unknown as boolean | undefined;
         store = new ReadOncePersistedStore(
           `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`,
         );
@@ -532,6 +558,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         if (isBuild && !config.build?.target) {
           pluginConfig.build.target = getBrowserslistTargets(root);
         }
+
+        // Compile-time flag so apps can gate persisted-only wiring (eg
+        // `marko-run:navigate` listeners re-syncing client mirrors of `$global`
+        // data) and have it tree-shake out of non-persisted builds.
+        pluginConfig.define ??= {};
+        pluginConfig.define["import.meta.env.MARKO_RUN_PERSISTED"] ??=
+          JSON.stringify(persisted);
 
         if (isBuild) {
           pluginConfig.logLevel ??= "warn";
