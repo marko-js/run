@@ -1,7 +1,33 @@
 import assert from "assert";
 import http from "http";
 
-import { copyResponseHeaders } from "../adapter/middleware";
+import { copyResponseHeaders, getRender } from "../adapter/middleware";
+
+const kRender = Symbol.for("@marko/run.render");
+
+function pageResponse(html: string[]) {
+  const render = (async function* () {
+    yield* html;
+  })();
+  const response = new Response(
+    new ReadableStream({
+      pull(ctrl) {
+        ctrl.enqueue(new TextEncoder().encode(html.join("")));
+        ctrl.close();
+      },
+    }),
+  );
+  (response as any)[kRender] = { render, body: response.body };
+  return response;
+}
+
+async function collect(body: AsyncIterable<string | Uint8Array> | null) {
+  let out = "";
+  for await (const chunk of body!) {
+    out += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+  }
+  return out;
+}
 
 describe("Adapter Middleware", () => {
   describe("copyResponseHeaders", () => {
@@ -25,6 +51,33 @@ describe("Adapter Middleware", () => {
       const actual = res.getHeader("set-cookie");
 
       assert.deepEqual(actual, expected);
+    });
+  });
+
+  describe("getRender", () => {
+    it("should take the stashed render for an untouched page response", async () => {
+      assert.equal(await collect(getRender(pageResponse(["a", "b"]))), "ab");
+    });
+
+    it("should fall back to the body of a response without a render", async () => {
+      assert.equal(await collect(getRender(new Response("plain"))), "plain");
+    });
+
+    it("should fall back to the body once `clone()` has teed it", async () => {
+      // Cloning drains the single-use render into the two teed branches, so the
+      // render no longer holds the output and the body does.
+      const response = pageResponse(["a", "b"]);
+      const clone = response.clone();
+
+      assert.equal(await clone.text(), "ab");
+      assert.equal(await collect(getRender(response)), "ab");
+    });
+
+    it("should fall back to the body once it has been read", async () => {
+      const response = pageResponse(["a", "b"]);
+      await response.text();
+
+      assert.equal(getRender(response), response.body);
     });
   });
 });
