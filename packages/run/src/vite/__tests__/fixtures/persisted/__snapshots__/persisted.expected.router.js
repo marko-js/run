@@ -1,4 +1,4 @@
-import { NotHandled, NotMatched, createContext, setPersisted } from "virtual:marko-run/runtime/internal";
+import { NotHandled, NotMatched, createContext, initializePersisted } from "virtual:marko-run/runtime/internal";
 import { buildId } from "virtual:marko-vite/link-assets";
 
 let resolvedBuildHash;
@@ -72,44 +72,12 @@ function match_internal(method, pathname) {
 
 export async function invoke(route, request, platform, url) {
 	const context = createContext(route, request, platform, url);
-	setPersisted(context);
-  // The build's identity rides one internal serialized-global key ("~run")
-  // rather than a typed `$global` property -- `$global` is user/data
-  // surface; the client router reads it back at register time and presents
-  // it as `x-marko-build` on update fetches. Route identity is the
-  // build-stable route index (`route.i`), never pattern strings.
-  const buildHash = getBuildHash();
-  context["~run"] = buildHash;
-  context.serializedGlobals["~run"] = true;
-  if (
-    route &&
-    (request.method === "GET" || request.method === "HEAD") &&
-    request.headers.get("accept")?.includes("text/marko-patch")
-  ) {
-    if (
-      request.headers.get("x-marko-route") === "" + route.i &&
-      request.headers.get("x-marko-build") === buildHash
-    ) {
-      // Cross-route navigations (the client's current route differs) swap
-      // in a fresh subtree the client cannot compute state for -- seed-mode
-      // payloads serialize state values too (the client seeds them only
-      // into scopes created during the apply), and the diverging content
-      // hop renders as a fragment frame: resumable HTML the client inserts
-      // and resumes instead of constructing from registered renderer
-      // graphs (async content streams behind placeholder boundaries as
-      // boundary-body frames).
-      setPersisted(
-        context,
-        request.headers.get("x-marko-from"),
-        "" + route.i,
-      );
-    } else {
-      return new Response(null, {
-        status: 409,
-        headers: { "cache-control": "no-store", vary: "accept" },
-      });
-    }
-  }
+	const persistedMismatch = initializePersisted(
+    context,
+    route?.i,
+    getBuildHash(),
+  );
+  if (persistedMismatch) return persistedMismatch;
 	if (route) {
 		try {
 			const response = await route.handler(context);

@@ -1,7 +1,15 @@
 import assert from "assert";
 
-import { createContext, setPersisted } from "../runtime/internal";
+import {
+  createContext,
+  initializePersisted,
+  setPersisted,
+} from "../runtime/internal";
 import { encodeHave } from "../runtime/persisted-navigation";
+import {
+  createPatchRequestHeaders,
+  isPatchResponse,
+} from "../runtime/persisted-protocol";
 
 // A rendered value that satisfies both branches of the runtime's `toReadable`
 // (it exposes `.toReadable()` and is async-iterable), so the fake template
@@ -110,6 +118,72 @@ describe("persisted render() response headers", () => {
     assert.equal(res.status, 404);
     assert.equal(res.headers.get("content-type"), "text/plain;charset=UTF-8");
     assert.equal(res.headers.get("vary"), null);
+  });
+});
+
+describe("persisted request negotiation", () => {
+  function negotiate(headers: Record<string, string>, method = "GET") {
+    const ctx = createContext(
+      null,
+      new Request("http://localhost/reports", { headers, method }),
+      {} as any,
+    ) as any;
+    return {
+      ctx,
+      mismatch: initializePersisted(ctx, 2, "current-build"),
+    };
+  }
+
+  it("constructs and accepts one matching protocol request", () => {
+    const headers = createPatchRequestHeaders(
+      2,
+      1,
+      "current-build",
+      '{"site":"renderer"}',
+    );
+    assert.deepEqual(headers, {
+      accept: "text/marko-patch",
+      "x-marko-route": "2",
+      "x-marko-from": "1",
+      "x-marko-build": "current-build",
+      "x-marko-have": '{"site":"renderer"}',
+    });
+
+    const { ctx, mismatch } = negotiate(headers);
+    assert.equal(mismatch, undefined);
+    assert.equal(ctx["~run"], "current-build");
+    assert.equal(ctx.serializedGlobals["~run"], true);
+
+    let options: any;
+    ctx.render(
+      {
+        render: (_input: unknown, next: unknown) => (
+          (options = next),
+          rendered
+        ),
+      },
+      {},
+    );
+    assert.equal(options.persisted.patch.fromRoute, "1");
+    assert.equal(options.persisted.patch.targetRoute, "2");
+  });
+
+  it("rejects a stale build as a non-cacheable non-patch response", () => {
+    const { mismatch } = negotiate(
+      createPatchRequestHeaders(2, 1, "stale-build", ""),
+    );
+    assert.equal(mismatch?.status, 409);
+    assert.equal(mismatch?.headers.get("cache-control"), "no-store");
+    assert.equal(mismatch?.headers.get("vary"), "accept");
+    assert.equal(isPatchResponse(mismatch!), false);
+  });
+
+  it("does not reject a mutation before its handler runs", () => {
+    const { mismatch } = negotiate(
+      createPatchRequestHeaders(2, 1, "stale-build", ""),
+      "POST",
+    );
+    assert.equal(mismatch, undefined);
   });
 });
 

@@ -8,6 +8,15 @@ import type {
   RouteHandler,
   RouteHandlerResult,
 } from "./legacy-types";
+import {
+  acceptsPatch,
+  applyPersistedResponseHeaders,
+  createPatchMismatchResponse,
+  decodePossessed,
+  matchesPatchRequest,
+  patchResponseContentType,
+  persistedHeaders,
+} from "./persisted-protocol";
 import thenable from "./thenable";
 import type {
   Context,
@@ -65,30 +74,30 @@ export function setPersisted(
   persistedRequestLookup.set(context, { fromRoute, targetRoute });
 }
 
-// Decode the client's possession echo. Untrusted request input, so a malformed
-// value is dropped (the render proceeds without it -- at worst a diverging hop
-// falls back to a full navigation, never a corrupt apply) rather than thrown.
-function decodePossessed(request: Request) {
-  const have = request.headers.get("x-marko-have");
-  if (have) {
-    try {
-      const parsed = JSON.parse(have);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        // Untrusted input: copy onto a null-prototype object, not the parsed
-        // object directly. A downstream `siteKey in possessed` check (marko's
-        // fragment-vs-fills decision per hop) would otherwise spuriously hit on
-        // an inherited key (`toString`, ...) or a `__proto__` data property
-        // `JSON.parse` permits. `Object.assign` onto a null-prototype target
-        // has no inherited `__proto__` setter, so such a key lands as an inert
-        // own property instead of repointing the prototype.
-        return Object.assign(
-          Object.create(null) as Record<string, string>,
-          parsed,
-        );
-      }
-    } catch {
-      // Malformed echo -- ignore.
+/** @internal Initializes and negotiates one generated-router request. */
+export function initializePersisted(
+  context: Context,
+  routeId: number | undefined,
+  buildHash: string,
+): Response | undefined {
+  setPersisted(context);
+  (context as Context & Record<string, unknown>)["~run"] = buildHash;
+  context.serializedGlobals["~run"] = true;
+
+  const { request } = context;
+  if (
+    routeId !== undefined &&
+    (request.method === "GET" || request.method === "HEAD") &&
+    acceptsPatch(request)
+  ) {
+    if (!matchesPatchRequest(request, routeId, buildHash)) {
+      return createPatchMismatchResponse();
     }
+    setPersisted(
+      context,
+      request.headers.get(persistedHeaders.from) || undefined,
+      "" + routeId,
+    );
   }
 }
 
@@ -111,32 +120,10 @@ const updateResponseInit = {
   status: 200,
   headers: {
     "cache-control": "no-store",
-    "content-type": "text/javascript;charset=UTF-8",
+    "content-type": patchResponseContentType,
     vary: "accept",
   },
 };
-
-// A persisted response's `content-type` (patch, for updates) and `vary` are
-// framework-owned and must hold even when a handler supplied its own `init` --
-// otherwise the client router, which gates on the patch content-type, silently
-// falls back to a full page load and the two representations can mis-cache.
-// Unrelated `vary` tokens the caller set are preserved.
-function applyPersistedResponseHeaders(response: Response, update: boolean) {
-  const { headers } = response;
-  if (update) {
-    // Patch bytes depend on x-marko-from/x-marko-have and the live build.
-    // They are navigation-specific and must never be replayed from a cache.
-    headers.set("cache-control", "no-store");
-    headers.set("content-type", "text/javascript;charset=UTF-8");
-  }
-  const vary = headers.get("vary");
-  if (!vary) {
-    headers.set("vary", "accept");
-  } else if (!/(?:^|,)\s*accept\s*(?:,|$)/i.test(vary)) {
-    headers.set("vary", `${vary}, accept`);
-  }
-  return response;
-}
 
 globalThis.MarkoRun ??= {
   NotHandled,

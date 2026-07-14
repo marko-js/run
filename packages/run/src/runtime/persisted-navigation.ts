@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+import {
+  createPatchRequestHeaders,
+  isPatchResponse,
+} from "./persisted-protocol.js";
+
 /** The generated update module for one route. */
 export interface UpdateEntry {
   createPatch: () => (source: string) => boolean;
@@ -38,9 +43,6 @@ type Fallback = (
   response?: Response,
 ) => void;
 
-const patchAccept = "text/marko-patch";
-const patchContentType = "text/javascript";
-
 export async function navigate(
   state: NavigationState,
   href: string,
@@ -66,13 +68,12 @@ export async function navigate(
       fetch(href, {
         method: mutation && "POST",
         body: mutation?.[0],
-        headers: {
-          accept: patchAccept,
-          "x-marko-route": "" + targetId,
-          "x-marko-from": "" + state.currentId,
-          "x-marko-build": state.buildHash,
-          ...(have && { "x-marko-have": have }),
-        },
+        headers: createPatchRequestHeaders(
+          targetId,
+          state.currentId,
+          state.buildHash,
+          have,
+        ),
         signal: mutation ? undefined : signal,
       }),
       targetId === state.currentId ? undefined : target[1](),
@@ -83,7 +84,7 @@ export async function navigate(
     // Status is intentionally not the discriminator: validation responses may
     // be non-2xx patches. A protocol/build/route mismatch returns non-patch
     // content and takes the ordinary-navigation fallback.
-    if (!response.headers.get("content-type")?.includes(patchContentType)) {
+    if (!isPatchResponse(response)) {
       throw new Error(
         import.meta.env.DEV
           ? `unexpected update response (${response.status})`
