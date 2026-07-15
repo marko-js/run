@@ -5,18 +5,16 @@ import { Step, StepContext } from "../../main.test";
 export const steps: Step[] = [post];
 
 async function post({ page }: StepContext) {
-  const url = new URL(page.url());
-  const response = await page.request.fetch(url.href, {
-    method: "post",
-    form: {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    body: new URLSearchParams({
       name: "MarkoRun",
-      age: 7
-    },
-    timeout: 0
+      age: "7",
+    }),
   });
-  assert.equal(response.ok(), true, "Post failed");
+  assert.equal(response.ok, true, "Post failed");
 
   const json = await response.json();
 
-  assert.equal(json.issues, null)
+  assert.equal(json.issues, null);
 }

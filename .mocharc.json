@@ -1,5 +1,7 @@
 {
   "exit": true,
+  "no-warnings": true,
+  "experimental-vm-modules": true,
   "timeout": 20000,
   "extension": ["js", "ts", "marko"],
   "spec": ["packages/**/src/**/*.test.@(js|ts)"],

@@ -18,9 +18,12 @@ async function submitPost({ page }: StepContext) {
     {} as Record<string, string>,
   );
 
-  const response = await page.request.post(page.url(), { form });
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    body: new URLSearchParams(form),
+  });
 
-  assert.equal(response.ok(), false);
+  assert.equal(response.ok, false);
   assert.match(
     await response.text(),
     /The request body stream has been destroyed or consumed by something before Marko Run/,

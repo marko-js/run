@@ -8,7 +8,7 @@ export const steps = [];
 
 export const assert_preview: Assert = async (page, block) =>  {
   await block();
-  const fileSrc = await page.getByRole("article").innerText()
+  const fileSrc = page.innerText("article")
   const filePath = path.join(process.cwd(), "dist", "public", fileSrc)
   assert.equal(fs.existsSync(filePath), true, `Asset ${fileSrc} was not written to dist`);
 }

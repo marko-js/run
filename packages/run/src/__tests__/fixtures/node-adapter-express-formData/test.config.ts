@@ -17,9 +17,12 @@ async function submitPost({ page }: StepContext) {
     {} as Record<string, string>,
   );
 
-  const response = await page.request.post(page.url(), { form });
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    body: new URLSearchParams(form),
+  });
 
-  assert.equal(response.ok(), true);
+  assert.equal(response.ok, true);
 
   const json = await response.json();
   const actual = json.formData;
