@@ -8,6 +8,15 @@ import type {
   RouteHandler,
   RouteHandlerResult,
 } from "./legacy-types";
+import {
+  acceptsPatch,
+  applyPersistedResponseHeaders,
+  createPatchMismatchResponse,
+  decodePossessed,
+  matchesPatchRequest,
+  patchResponseContentType,
+  persistedHeaders,
+} from "./persisted-protocol";
 import thenable from "./thenable";
 import type {
   Context,
@@ -33,11 +42,102 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
+// Private request facts forwarded to marko's `render()` second argument.
+// They stay off `$global` (which _is_ the request context), and Marko derives
+// patch structure rather than exposing it as application configuration.
+interface MarkoRenderOptions {
+  persisted?: PersistedRender;
+}
+
+// Mirrors marko's `PersistedRender`/`PersistedPatch` contract
+// (`@marko/runtime-tags`, `src/common/types.ts`); run does not depend on that
+// package's types, so the shape is re-declared here under the same names.
+interface PersistedRender {
+  patch?: PersistedPatch;
+}
+
+interface PersistedPatch {
+  fromRoute: string;
+  targetRoute: string;
+  // The possession echo (`x-marko-have`) the client sent: per dynamic-tag
+  // hop, the renderer id the live page holds. Keyed by a build-stable
+  // compiler-generated site id. Absent unless the client sent the header.
+  possessed?: Record<string, string>;
+}
+
+interface PersistedRequest {
+  fromRoute?: string;
+  targetRoute?: string;
+}
+
+const persistedRequestLookup = new WeakMap<Context, PersistedRequest>();
+
+/** @internal Marks a generated-router request as part of persisted pages. */
+export function setPersisted(
+  context: Context,
+  fromRoute?: string,
+  targetRoute?: string,
+) {
+  persistedRequestLookup.set(context, { fromRoute, targetRoute });
+}
+
+/** @internal Initializes and negotiates one generated-router request. */
+export function initializePersisted(
+  context: Context,
+  routeId: number | undefined,
+  buildHash: string,
+): Response | undefined {
+  setPersisted(context);
+  (context as Context & Record<string, unknown>)["~run"] = buildHash;
+  context.serializedGlobals["~run"] = true;
+
+  const { request } = context;
+  const { method } = request;
+  if (
+    routeId !== undefined &&
+    (method === "GET" || method === "HEAD" || method === "POST") &&
+    acceptsPatch(request)
+  ) {
+    if (matchesPatchRequest(request, routeId, buildHash)) {
+      // A matched POST patches its direct response (validation re-renders
+      // keep the live page's state); a PRG redirect never renders here and
+      // is renegotiated by the followed GET at its final URL.
+      setPersisted(
+        context,
+        request.headers.get(persistedHeaders.from) || undefined,
+        "" + routeId,
+      );
+    } else if (method !== "POST") {
+      // A mutation must always reach its handler: a mismatched POST renders
+      // the ordinary document post-handler and the client falls back, while
+      // reads are rejected before any work happens.
+      return createPatchMismatchResponse();
+    }
+  }
+}
+
 const parentContextLookup = new WeakMap<Request, Context>();
 
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
+};
+
+// Persisted builds serve two representations of every page URL, negotiated on
+// `accept`, so responses must vary on it. Patch renders are a newline-delimited
+// stream of serializer frames, not a document.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+const patchResponseInit = {
+  status: 200,
+  headers: {
+    "cache-control": "no-store",
+    "content-type": patchResponseContentType,
+    vary: "accept",
+  },
 };
 
 globalThis.MarkoRun ??= {
@@ -238,16 +338,50 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
-      return new Response(
+    render<T>(
+      template: Marko.Template<T>,
+      input: T,
+      init: ResponseInit = pageResponseInit,
+    ) {
+      const persisted = persistedRequestLookup.get(context);
+      let options: MarkoRenderOptions | undefined;
+      const patch =
+        persisted?.fromRoute !== undefined &&
+        persisted.targetRoute !== undefined
+          ? {
+              fromRoute: persisted.fromRoute,
+              targetRoute: persisted.targetRoute,
+              possessed: decodePossessed(request),
+            }
+          : undefined;
+      // A handler's own init keeps its status/headers, but the accept-negotiated
+      // content-type/vary are framework-owned and reapplied below; the default
+      // init is swapped for the matching constant that carries them.
+      const customInit = !!persisted && init !== pageResponseInit;
+      if (persisted) {
+        if (!customInit) {
+          init = patch ? patchResponseInit : persistedPageResponseInit;
+        }
+        options = { persisted: { patch } };
+      }
+      const response = new Response(
+        // Marko 6 takes per-render options as render()'s second argument, but
+        // the ambient marko-5 `Marko.Template` types only declare the
+        // stream/callback overloads, so pass options through a narrowed local
+        // signature.
         toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
+          (
+            template.render as (
+              input: Marko.TemplateInput<T>,
+              options?: MarkoRenderOptions,
+            ) => ReturnType<Marko.Template<T>["render"]>
+          )({ ...input, $global: context as unknown as Marko.Global }, options),
         ),
         init,
       );
+      return customInit
+        ? applyPersistedResponseHeaders(response, !!patch)
+        : response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {

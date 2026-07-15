@@ -39,6 +39,7 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -58,6 +59,27 @@ export function renderRouteTemplate(
   }
 
   writer.writeLines("");
+
+  // Persisted pages: bootstrap the client router with the app's generated
+  // lazily loaded route matcher (the same trie the server ranks with, terminals
+  // being lazy loaders for each route's template module and `?update` entry),
+  // this route's build-stable index, and the build identity (serialized under
+  // the internal "~run" global). Special (404/500) pages have no route to
+  // navigate within, so their callers never pass `persisted`.
+  if (persisted) {
+    importWriter.writeLines(
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+    );
+    writer.writeLines(
+      `<script>
+  __run_persisted_register(
+    () => import("${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}").then((mod) => mod.default),
+    ${route.index},
+    $global["~run"],
+  );
+</script>`,
+    );
+  }
   writeEntryTemplateTag(
     writer,
     [...route.layouts, route.page].map((file) =>
@@ -358,8 +380,24 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${options.persisted ? ", initializePersisted" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
+
+  if (options.persisted) {
+    // Build identity for persisted-update gating: @marko/vite's linkAssets
+    // exposes the client build's digest (undefined in dev, where a per-process
+    // token stands in, so a dev-server restart falls back to full navigations
+    // instead of applying stale updates).
+    imports.writeLines(
+      `import { buildId } from "virtual:marko-vite/link-assets";
+
+let resolvedBuildHash;
+function getBuildHash() {
+  return (resolvedBuildHash ??=
+    buildId() || Math.random().toString(36).slice(2));
+}`,
+    );
+  }
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
@@ -405,7 +443,9 @@ function match_internal(method, pathname) {
       const trie = createRouteTrie(filteredRoutes);
       writer.writeLines(`case '${verb.toUpperCase()}':`);
       writer.writeBlockStart(`case '${verb.toLowerCase()}': {`);
-      writeRouterVerb(writer, trie, verb);
+      writeRouterVerb(writer, trie, (route, path, pathIndex) =>
+        renderMatch(verb, route, path, pathIndex, Boolean(options.persisted)),
+      );
       writer.writeBlockEnd("}");
     }
   }
@@ -420,6 +460,33 @@ function match_internal(method, pathname) {
     .writeLines(
       "const context = createContext(route, request, platform, url);",
     );
+
+  if (options.persisted) {
+    // Persisted pages: every render is persisted-capable and carries the
+    // build's identity (serialized so the client can send it back). A
+    // navigation fetch negotiates an update render instead, but only when the
+    // route the client matched still resolves to this URL (within a build they
+    // diverge when a redirect moved the request, or a handler-only route --
+    // absent from the client's pages-only trie -- shadows a page route at the
+    // same rank) AND the client's build matches this server's (route indexes
+    // and register ids are stable only within one build). A mismatched read is
+    // rejected with a 409 (the client falls back to a full navigation); a
+    // mutation must always run its handler -- rejecting it pre-handler would
+    // silently drop it (the client fallback ladder treats any response as
+    // proof it already happened) -- so a matched POST patches its direct
+    // response (validation re-renders keep live page state) while a
+    // mismatched POST renders the ordinary document post-handler. The PRG
+    // redirect's followed GET carries the same headers, so negotiation
+    // re-runs at the final URL.
+    writer.writeLines(
+      `const persistedMismatch = initializePersisted(
+    context,
+    route?.i,
+    getBuildHash(),
+  );
+  if (persistedMismatch) return persistedMismatch;`,
+    );
+  }
 
   if (hasErrorPage) {
     writer.writeBlockStart("try {");
@@ -545,10 +612,15 @@ export async function fetch(request, platform) {
 }`);
 }
 
+// Emits a segment-trie matcher body over `pathname`/`len` (statics before
+// dynamics per level, catch-alls last). `terminal` renders the expression for a
+// matched route -- the server router returns handler match objects, the
+// persisted client table route-entry tuples -- so both matchers share this
+// logic and cannot disagree on ranking.
 function writeRouterVerb(
   writer: Writer,
   trie: RouteTrie,
-  verb: HttpVerb,
+  terminal: (route: Route, path: PathInfo, pathIndex?: string) => string,
   level: number = 0,
   offset: number | string = 1,
 ): void {
@@ -558,7 +630,7 @@ function writeRouterVerb(
   if (level === 0) {
     if (route) {
       writer.writeLines(
-        `if (len === 1) return ${renderMatch(verb, route, trie.path!)};`,
+        `if (len === 1) return ${terminal(route, trie.path!)};`,
       );
     } else if (trie.static || dynamic) {
       writer.writeBlockStart(`if (len > 1) {`);
@@ -569,7 +641,7 @@ function writeRouterVerb(
   if (trie.static || dynamic) {
     const next = level + 1;
     const index = `i${next}`;
-    let terminal: RouteTrie[] | undefined;
+    let terminals: RouteTrie[] | undefined;
     let children: RouteTrie[] | undefined;
 
     writer.writeLines(`const ${index} = pathname.indexOf('/', ${offset}) + 1;`);
@@ -577,7 +649,7 @@ function writeRouterVerb(
     if (trie.static) {
       for (const child of trie.static.values()) {
         if (child.route) {
-          (terminal ??= []).push(child);
+          (terminals ??= []).push(child);
         }
         if (child.static || child.dynamic || child.catchAll) {
           (children ??= []).push(child);
@@ -585,7 +657,7 @@ function writeRouterVerb(
       }
     }
 
-    if (terminal || dynamic?.route) {
+    if (terminals || dynamic?.route) {
       closeCount++;
       writer.writeBlockStart(`if (!${index} || ${index} === len) {`);
 
@@ -594,29 +666,25 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        terminal?.some(
-          (terminal) => decodeURIComponent(terminal.key) !== terminal.key,
-        )
-      ) {
+      } else if (terminals?.some((t) => decodeURIComponent(t.key) !== t.key)) {
         value = `decodeURIComponent(${value})`;
       }
 
-      if (terminal) {
-        const useSwitch = terminal.length > 1;
+      if (terminals) {
+        const useSwitch = terminals.length > 1;
 
         if (useSwitch) {
           writer.writeBlockStart(`switch (${value}) {`);
         }
 
-        for (const { key, path, route } of terminal) {
+        for (const { key, path, route } of terminals) {
           const decodedKey = decodeURIComponent(key);
           if (useSwitch) {
             writer.write(`case '${decodedKey}': `, true);
           } else {
             writer.write(`if (${value} === '${decodedKey}') `, true);
           }
-          writer.write(`return ${renderMatch(verb, route!, path!)};\n`);
+          writer.write(`return ${terminal(route!, path!)};\n`);
         }
 
         if (useSwitch) {
@@ -626,17 +694,13 @@ function writeRouterVerb(
 
       if (dynamic?.route) {
         writer.writeLines(
-          `if (${value}) return ${renderMatch(
-            verb,
-            dynamic.route,
-            dynamic.path!,
-          )};`,
+          `if (${value}) return ${terminal(dynamic.route, dynamic.path!)};`,
         );
       }
     }
 
     if (children || dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
-      if (terminal || dynamic?.route) {
+      if (terminals || dynamic?.route) {
         writer.writeBlockEnd("} else {").indent++;
       } else {
         writer.writeBlockStart(`if (${index} && ${index} !== len) {`);
@@ -671,7 +735,7 @@ function writeRouterVerb(
 
           const nextOffset =
             typeof offset === "string" ? index : offset + child.key.length + 1;
-          writeRouterVerb(writer, child, verb, next, nextOffset);
+          writeRouterVerb(writer, child, terminal, next, nextOffset);
 
           if (useSwitch) {
             writer.writeBlockEnd("} break;");
@@ -687,7 +751,7 @@ function writeRouterVerb(
 
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         writer.writeBlockStart(`if (${value}) {`);
-        writeRouterVerb(writer, dynamic, verb, next, index);
+        writeRouterVerb(writer, dynamic, terminal, next, index);
         writer.writeBlockEnd(`}`);
       }
     }
@@ -699,12 +763,7 @@ function writeRouterVerb(
 
   if (catchAll) {
     writer.writeLines(
-      `return ${renderMatch(
-        verb,
-        catchAll.route,
-        catchAll.path,
-        String(offset),
-      )};`,
+      `return ${terminal(catchAll.route, catchAll.path, String(offset))};`,
     );
   } else if (level === 0) {
     writer.writeLines("return null;");
@@ -746,12 +805,67 @@ function renderMatch(
   verb: HttpVerb,
   route: Route,
   path: PathInfo,
-  pathIndex?: string,
+  pathIndex: string | undefined,
+  withIndex: boolean,
 ) {
   const name = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
-  return `{ handler: ${name}, path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+  // In persisted mode the match object carries `i`, the route's build-stable
+  // identity, which update negotiation compares against the client's
+  // `x-marko-route`/`x-marko-from` headers. Non-persisted builds omit it so
+  // their router output stays byte-identical.
+  const index = withIndex ? `i: ${route.index}, ` : "";
+  return `{ handler: ${name}, ${index}path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+}
+
+/** Basename of the generated client route-table module (persisted pages). */
+export const ROUTES_CLIENT_FILENAME = `${markoRunFilePrefix}routes.client.js`;
+
+/**
+ * Persisted-pages client route matcher: the same generated segment trie the
+ * server ranks with (page routes only), whose terminals are route-entry tuples
+ * -- the route's build-stable index (sent as `x-marko-route`) plus lazy loaders
+ * for its template module (importing it registers the route's renderers,
+ * signals, and merges) and its `?update` entry (the compiled merge functions).
+ * Sharing the server router's emitter means the two cannot disagree on ranking
+ * within a build, and no path patterns or regex ship to the client.
+ */
+export function renderRoutesClient(
+  routes: BuiltRoutes,
+  rootDir: string,
+): string {
+  const writer = createStringWriter();
+  const pageRoutes = routes.list.filter(
+    (route) => route.page && route.templateFilePath,
+  );
+  for (const route of pageRoutes) {
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath!,
+    );
+    writer.writeLines(
+      // Side-effect-only import (registration); the ignored-namespace `.then`
+      // lets the bundler tree-shake the module's exports -- the template/walks
+      // strings (a layout's whole document shell) are only reachable through
+      // them.
+      `const r${route.index} = [${route.index}, () => import(${JSON.stringify(templatePath)}).then(() => 0), () => import(${JSON.stringify(`${templatePath}?update`)})];`,
+    );
+  }
+  writer.writeLines("");
+  writer.writeBlockStart("export default function match(pathname) {");
+  writer.writeLines(
+    `const last = pathname.length - 1;
+  if (last && pathname.charAt(last) === '/') pathname = pathname.slice(0, last);
+  const len = pathname.length;`,
+  );
+  writeRouterVerb(
+    writer,
+    createRouteTrie(pageRoutes),
+    (route) => `r${route.index}`,
+  );
+  writer.writeBlockEnd("}");
+  return writer.end();
 }
 
 export function renderMiddleware(
