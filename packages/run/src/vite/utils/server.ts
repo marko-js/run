@@ -2,6 +2,7 @@ import cp, { type ChildProcess, type StdioOptions } from "child_process";
 import cluster, { type Address, type Worker } from "cluster";
 import { config, parse } from "dotenv";
 import fs from "fs";
+import type { Server } from "http";
 import net, { type Socket } from "net";
 
 export interface SpawnedServer {
@@ -44,16 +45,11 @@ export async function spawnServer(
     shell: true,
     stdio,
     windowsHide: true,
+    detached: process.platform !== "win32",
     env: { ...env, NODE_ENV: "development", ...process.env, PORT: `${port}` },
   });
 
-  const close = async () => {
-    proc.unref();
-    proc.kill();
-    if (!(await waitForExit(proc, 500))) {
-      proc.kill("SIGKILL");
-    }
-  };
+  const close = () => closeSpawnedProcess(proc);
 
   try {
     await Promise.race([waitForError(proc, port), waitForServer(port, wait)]);
@@ -113,13 +109,50 @@ export async function spawnServerWorker(
   }
 }
 
-async function waitForExit(proc: ChildProcess, wait: number = 0) {
-  if (proc.exitCode !== null) return;
+export async function closeSpawnedProcess(proc: ChildProcess) {
+  proc.unref();
+  killTree(proc, "SIGTERM");
+  if (!(await waitForExit(proc, 500))) {
+    killTree(proc, "SIGKILL");
+  }
+}
 
-  return await new Promise<number | null>((resolve) => {
-    (proc.once("exit", resolve), proc.once("close", resolve));
+export function closeServer(server: Server) {
+  return new Promise<void>((resolve, reject) => {
+    server.close((err) => (err ? reject(err) : resolve()));
+    server.closeAllConnections();
+  });
+}
+
+export function withTimeout<T>(promise: Promise<T>, ms: number) {
+  return Promise.race([
+    promise,
+    new Promise<void>((resolve) => setTimeout(resolve, ms).unref()),
+  ]);
+}
+
+function killTree(proc: ChildProcess, signal: NodeJS.Signals) {
+  if (!proc.pid || proc.exitCode !== null || proc.signalCode) return;
+  if (process.platform === "win32") {
+    cp.spawnSync("taskkill", ["/pid", `${proc.pid}`, "/T", "/F"], {
+      windowsHide: true,
+    });
+  } else {
+    try {
+      process.kill(-proc.pid, signal);
+    } catch {
+      proc.kill(signal);
+    }
+  }
+}
+
+async function waitForExit(proc: ChildProcess, wait: number = 0) {
+  if (proc.exitCode !== null || proc.signalCode) return true;
+
+  return await new Promise<boolean>((resolve) => {
+    proc.once("exit", () => resolve(true));
     if (wait) {
-      setTimeout(resolve, wait, null);
+      setTimeout(resolve, wait, false).unref();
     }
   });
 }
@@ -143,7 +176,7 @@ export async function waitForError(
 export async function waitForServer(
   port: number,
   wait: number = 0,
-): Promise<Socket> {
+): Promise<void> {
   let remaining = wait > 0 ? wait : Infinity;
   let connection: Socket | null;
   while (!(connection = await getConnection(port))) {
@@ -156,7 +189,7 @@ export async function waitForServer(
       );
     }
   }
-  return connection;
+  connection.destroy();
 }
 
 export async function waitForWorker(worker: Worker, port: number) {
@@ -197,7 +230,9 @@ export async function getConnection(port: number): Promise<Socket | null> {
 }
 
 export async function isPortInUse(port: number): Promise<boolean> {
-  return Boolean(await getConnection(port));
+  const connection = await getConnection(port);
+  connection?.destroy();
+  return Boolean(connection);
 }
 
 export async function getAvailablePort(port?: number): Promise<number> {

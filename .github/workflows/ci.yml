@@ -19,7 +19,7 @@ jobs:
       - name: Use node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       - name: Install dependencies
         run: npm i npm@11.6.0 -g && npm ci
@@ -34,7 +34,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [20, 22, 24]
+        node: [22, 24, 26]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -45,8 +45,6 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm i npm@11.6.0 -g && npm ci
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
       - name: Run tests
         run: npm run "@ci:test"
       - name: Report code coverage
@@ -67,7 +65,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       - name: Install dependencies
         run: npm i npm@11.6.0 -g && npm ci

@@ -5,12 +5,12 @@ import { JSDOM } from "jsdom";
 import snap from "mocha-snap";
 import { createRequire } from "module";
 import path from "path";
-import * as playwright from "playwright";
 import { fileURLToPath } from "url";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
+import { BrowserPage } from "./utils/browser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = process.cwd();
@@ -21,145 +21,30 @@ Function.prototype.toString = function () {
   return toString.call(this).replace(/\b__name\(([^,]+),[^)]+\)/g, "$1");
 };
 
-declare global {
-  const page: playwright.Page;
-  namespace NodeJS {
-    interface Global {
-      page: playwright.Page;
-    }
-  }
-}
-
-declare namespace globalThis {
-  let page: playwright.Page;
-}
-
-declare let __loading__: Promise<void> | undefined;
-
 export type StepContext = {
-  page: playwright.Page;
-  response: playwright.Response;
+  page: BrowserPage;
+  response: Response;
 };
 export type Step = (context: StepContext) => Promise<unknown> | unknown;
 export type Assert = (
-  page: playwright.Page,
+  page: BrowserPage,
   fn: () => Promise<void>,
 ) => Promise<void>;
 
 const requireCwd = createRequire(root);
-let browser: playwright.Browser;
-let context: playwright.BrowserContext;
+let page: BrowserPage;
 
-before(async () => {
+before(() => {
   process.env.TRUST_PROXY = "1";
-
-  browser = await playwright.chromium.launch();
-  context = await browser.newContext();
-
-  await context.addInitScript(() => {
-    // needed for esbuild.
-    (window as any).__name = (v: any) => v;
-    __loading__ = undefined;
-
-    const seen = new Set<string>();
-    let remaining = 0;
-    let resolve: undefined | (() => void);
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onError);
-    onMutate(document, (_, obs) => {
-      if (!document.body) return;
-      obs.disconnect();
-      trackAssets();
-      onMutate(document.body, trackAssets);
-    });
-
-    function onMutate(target: Node, fn: MutationCallback) {
-      new MutationObserver(fn).observe(target, {
-        childList: true,
-        subtree: true,
-      });
-    }
-    function trackAssets() {
-      for (const el of document.querySelectorAll<
-        HTMLScriptElement | HTMLLinkElement
-      >("script[src],link[rel=stylesheet][href]")) {
-        const href = "src" in el ? el.src : el.href;
-        if (href && !seen.has(href)) {
-          const link = document.createElement("link");
-          __loading__ ||= new Promise((r) => (resolve = r));
-          seen.add(href);
-          remaining++;
-
-          if ("src" in el) {
-            if (el.getAttribute("type") === "module") {
-              link.rel = "modulepreload";
-            } else {
-              link.rel = "preload";
-              link.as = "script";
-            }
-          } else {
-            link.rel = "preload";
-            link.as = "style";
-          }
-
-          link.href = href;
-          link.onload = link.onerror = () => {
-            link.onload = link.onerror = null;
-            link.remove();
-            seen.delete(href);
-            if (!--remaining) {
-              resolve?.();
-              resolve = __loading__ = undefined;
-            }
-          };
-          document.head.append(link);
-        }
-      }
-    }
-    function onError(ev: ErrorEvent | PromiseRejectionEvent) {
-      const msg =
-        ev instanceof PromiseRejectionEvent
-          ? `${ev.reason}\n`
-          : `${ev.error || `Error loading ${(ev.target as any).outerHTML}`}\n`;
-      if (!msg.includes("WebSocket closed")) {
-        let errorContainer = document.getElementById("error");
-        if (!errorContainer) {
-          errorContainer = document.createElement("pre");
-          errorContainer.id = "error";
-          (document.getElementById("app") || document.body).appendChild(
-            errorContainer,
-          );
-        }
-        errorContainer.insertAdjacentText("beforeend", msg);
-      }
-    }
-  });
 });
 
-after(async () => {
-  await browser.close();
-});
-
-async function getHTML() {
+async function getHTML(settle = true) {
+  if (settle) await page.settle();
+  const { document } = page;
   return defaultSerializer(
     defaultNormalizer(
       JSDOM.fragment(
-        await page.evaluate(async () => {
-          do {
-            await __loading__;
-            await new Promise((r) => {
-              requestAnimationFrame(() => {
-                const { port1, port2 } = new MessageChannel();
-                port1.onmessage = r;
-                port2.postMessage(0);
-              });
-            });
-          } while (__loading__);
-
-          return (
-            (document.getElementById("app") || document.body)?.innerHTML || ""
-          );
-        }),
+        (document.getElementById("app") || document.body)?.innerHTML || "",
       ),
     ),
   )
@@ -204,8 +89,8 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
   };
 
   describe(fixture, function () {
-    beforeEach(async () => {
-      globalThis.page = await context.newPage();
+    beforeEach(() => {
+      page = new BrowserPage();
     });
 
     afterEach(async () => {
@@ -286,7 +171,7 @@ for (const fixture of fs.readdirSync(FIXTURES)) {
 }
 
 async function testPage(
-  page: playwright.Page,
+  page: BrowserPage,
   dir: string,
   pathname: string,
   steps: Step[],
@@ -304,21 +189,20 @@ async function testPage(
     const stepContext = { page } as StepContext;
     await waitForServer(server.port);
 
-    stepContext.response = (await page.goto(url.href, {
-      referer: referrerUrl?.href,
-      waitUntil: "commit",
-    }))!;
-
     let snapshot = "# Loading\n\n";
     let prevHtml = "";
-    const contentType = await stepContext.response?.headerValue("content-type");
-    if (!contentType || contentType.includes("text/html")) {
-      await page.waitForSelector("body");
-      const initialHtml = await getHTML();
-      snapshot += htmlSnapshot(initialHtml, prevHtml);
-      prevHtml = initialHtml;
+    await page.goto(url.href, {
+      referer: referrerUrl?.href,
+      async onBodyReady() {
+        if (!prevHtml) {
+          prevHtml = await getHTML(false);
+          snapshot += htmlSnapshot(prevHtml);
+        }
+      },
+    });
+    stepContext.response = page.response;
 
-      await stepContext.response.finished();
+    if (page.window) {
       const finalHtml = await getHTML();
       if (finalHtml !== prevHtml) {
         snapshot += htmlSnapshot(finalHtml, prevHtml);
@@ -334,14 +218,11 @@ async function testPage(
         prevHtml = html;
       }
     } else {
-      await stepContext.response.finished();
-      snapshot += `\`\`\`\n${await page.content()}\n\`\`\`\n\n`;
+      snapshot += `\`\`\`\n${await page.response.text()}\n\`\`\`\n\n`;
     }
 
     await snap(snapshot, { ext: ".md", dir });
   } finally {
-    // TODO: figure out why the dev server fails to close sometimes without this wait
-    await delay(50);
     await server.close();
   }
 }
@@ -385,8 +266,4 @@ function htmlSnapshot(html: string, prevHtml?: string) {
     return `\`\`\`diff\n${diff}\n\`\`\`\n\n`;
   }
   return `\`\`\`html\n${html}\n\`\`\`\n\n`;
-}
-
-function delay(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }

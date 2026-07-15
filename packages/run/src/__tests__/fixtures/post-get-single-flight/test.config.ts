@@ -4,5 +4,5 @@ export const path = "/123";
 export const steps: Step[] = [(ctx) => clickSubmit(ctx)];
 
 async function clickSubmit({ page }: StepContext) {
-  await page.locator("button").click();
+  await page.click("button");
 }

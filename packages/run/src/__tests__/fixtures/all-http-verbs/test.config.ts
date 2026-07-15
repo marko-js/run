@@ -14,8 +14,8 @@ export const steps: Step[] = [
 function assertBody(method: string): Step {
   return async ({ page }) => {
     const url = new URL(page.url());
-    const response = await page.request.fetch(url.href, { method });
-    assert.equal(response.ok(), true, `Response for ${method} is not ok`);
+    const response = await page.fetch(url.href, { method });
+    assert.equal(response.ok, true, `Response for ${method} is not ok`);
     const body = await response.text();
     assert.equal(
       body,
@@ -28,8 +28,8 @@ function assertBody(method: string): Step {
 function assertNoBody(method: string): Step {
   return async ({ page }) => {
     const url = new URL(page.url());
-    const response = await page.request.fetch(url.href, { method });
-    assert.equal(response.ok(), true, `Response for ${method} is not ok`);
+    const response = await page.fetch(url.href, { method });
+    assert.equal(response.ok, true, `Response for ${method} is not ok`);
     const body = await response.text();
     assert.equal(
       body,

@@ -1,4 +1,7 @@
-import baseAdapter, { type Adapter } from "@marko/run/adapter";
+import baseAdapter, {
+  type Adapter,
+  closeSpawnedProcess,
+} from "@marko/run/adapter";
 import { execSync, spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -86,6 +89,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
           ? { ...process.env, DENO_TLS_CA_STORE: "mozilla,system" }
           : process.env,
         shell: true,
+        detached: process.platform !== "win32",
       });
 
       if (process.env.NODE_ENV !== "test") {
@@ -96,8 +100,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       return {
         port,
         close() {
-          proc.unref();
-          proc.kill();
+          return closeSpawnedProcess(proc);
         },
       };
     },

@@ -9,6 +9,7 @@ import type { ResolvedConfig } from "vite";
 import type { Adapter, ExplorerData } from "../vite";
 import { resolveAdapter as pluginResolveAdapter } from "../vite/plugin";
 import {
+  closeServer,
   getAvailablePort,
   getInspectOptions,
   loadEnv,
@@ -16,6 +17,7 @@ import {
   spawnServer,
   spawnServerWorker,
   waitForWorker,
+  withTimeout,
 } from "../vite/utils/server";
 import { createDevServer, type MarkoRunDev } from "./dev-server";
 import { logInfoBox } from "./utils";
@@ -28,6 +30,7 @@ export {
   type MarkoRunDev,
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
+export { closeServer, closeSpawnedProcess } from "../vite/utils/server";
 export type { NodePlatformInfo } from "./middleware";
 
 export type MarkoRunDevAccessor = () => MarkoRunDev;
@@ -141,8 +144,8 @@ export default function adapter(): Adapter {
         port: address.port,
         async close() {
           await Promise.allSettled([
-            devServer.close(),
-            listener.close(),
+            withTimeout(devServer.close(), 500),
+            closeServer(listener),
             explorer?.close(),
           ]);
         },
