@@ -1,0 +1,51 @@
+import { build, BuildOptions } from "esbuild";
+import path from "path";
+
+const srcdir = path.resolve("src");
+const outdir = path.resolve("dist");
+
+const opts: BuildOptions = {
+  entryPoints: ["src/index.ts"],
+  outdir,
+  outbase: srcdir,
+  platform: "node",
+  target: ["node14"],
+  bundle: true,
+  plugins: [
+    {
+      name: "external-modules",
+      setup(build) {
+        build.onResolve(
+          { filter: /^[^./]|^\.[^./]|^\.\.[^/]/ },
+          ({ path }) => ({
+            path,
+            external: true,
+          }),
+        );
+      },
+    },
+  ],
+};
+
+await Promise.all([
+  build({
+    ...opts,
+    format: "cjs",
+    outExtension: { ".js": ".cjs" },
+    define: {
+      "import.meta.url": "__importMetaURL",
+    },
+    inject: ["./scripts/importMetaURL.js"],
+  }),
+  build({
+    ...opts,
+    format: "esm",
+    splitting: true,
+  }),
+  build({
+    ...opts,
+    entryPoints: ["src/default-node-entry.ts", "src/preview-entry.mjs"],
+    format: "esm",
+    outExtension: { ".js": ".mjs" },
+  }),
+]);
