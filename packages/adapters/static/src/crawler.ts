@@ -1,6 +1,7 @@
 import fs from "fs";
 import { WritableStream as Parser } from "htmlparser2/WritableStream";
 import nodePath from "path";
+import { finished } from "stream/promises";
 
 const ignoredRels = new Set(["nofollow", "enclosure", "external"]);
 
@@ -126,8 +127,11 @@ export default function createCrawler(
         );
       }
     } finally {
-      pageWriter?.end();
       parser.end();
+      if (pageWriter) {
+        pageWriter.end();
+        await finished(pageWriter);
+      }
     }
   }
 
