@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.0.6
+
+### Patch Changes
+
+- 8ad1405: Remove Playwright from the test suite in favor of an in-process jsdom test browser, and make dev/preview server shutdown reliable — faster, less flaky tests.
+
 ## 3.0.5
 
 ### Patch Changes
