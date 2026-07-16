@@ -4,22 +4,17 @@ import { JSDOM } from "jsdom";
 import type {
   Mutation,
   NavigationState,
+  PersistedEntry,
   RouteEntry,
-  UpdateEntry,
 } from "../runtime/persisted-navigation";
 
-// The client navigation module runs against browser globals; a jsdom window
-// supplies them for the whole file (assigned before the modules are
-// imported). `location.assign`/`location.replace` would be jsdom "not
-// implemented" navigations, so they are replaced with recording stubs.
+// Install jsdom browser globals before loading the client navigation modules.
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost:3000/list?page=1",
 });
 const window = dom.window;
 const navigations: string[] = [];
-// jsdom's location methods are non-configurable, so the global the modules
-// see is a recording stub that delegates reads to the real (history-synced)
-// location.
+// Record navigation methods while delegating reads to jsdom's synced location.
 (globalThis as any).location = {
   get href() {
     return window.location.href;
@@ -77,19 +72,25 @@ const patchResponse = (
   return response;
 };
 
-/** An entry whose createPatch treats a frame as `apply:<0|1>` per line. */
-const makeEntry = (applied: string[], have?: string): UpdateEntry => ({
-  createPatch: () => (source: string) => {
-    applied.push(source);
-    return source.startsWith("fill");
+/** An entry whose patch applies lines beginning with `fill`. */
+const makeEntry = (
+  applied: string[],
+  result: (source: string) => true | string = (source) => {
+    if (!source.startsWith("fill")) throw new Error("apply failed");
+    return true;
   },
-  ...(have !== undefined ? { have: () => have } : null),
+): PersistedEntry => ({
+  patch: () => (source: string) => {
+    applied.push(source);
+    return result(source);
+  },
 });
 
 const makeState = (overrides?: Partial<NavigationState>): NavigationState => ({
   appliedUrl: "/list?page=1",
-  buildHash: "build-1",
+  buildId: "build-1",
   currentId: 1,
+  have: "",
   ...overrides,
 });
 
@@ -110,14 +111,16 @@ describe("persisted client navigate()", () => {
   function run(
     state: NavigationState,
     href: string,
-    entry: UpdateEntry,
-    { push = true, targetId = 2, mutation, fallbacks = [] as unknown[][] } = {},
+    entry: PersistedEntry,
+    {
+      push = true,
+      targetId = 2,
+      mutation,
+      fallbacks = [] as unknown[][],
+      load = () => Promise.resolve(entry),
+    } = {},
   ) {
-    const target: RouteEntry = [
-      targetId,
-      () => Promise.resolve(0),
-      () => Promise.resolve(entry),
-    ];
+    const target: RouteEntry = [targetId, load];
     return navigate(
       state,
       href,
@@ -153,14 +156,93 @@ describe("persisted client navigate()", () => {
     assert.equal(headers["x-marko-build"], "build-1");
   });
 
-  it("sends the possession echo when the entry provides one", async () => {
+  it("sends the opaque possession token stored by the router", async () => {
     fetchImpl = async () => patchResponse(["fill"]);
-    await run(makeState(), "http://localhost:3000/item/2", {
-      ...makeEntry([]),
-      have: () => '{"!site":"1"}',
+    await run(
+      makeState({ have: "opaque-token" }),
+      "http://localhost:3000/item/2",
+      makeEntry([]),
+    );
+    const headers = fetchCalls[0].init.headers as Record<string, string>;
+    assert.equal(headers["x-marko-have"], "opaque-token");
+  });
+
+  it("replaces the possession token after a frame applies", async () => {
+    fetchImpl = async () => patchResponse(["fill-1", "fill-2"]);
+    const state = makeState({ have: "initial-token" });
+    await run(
+      state,
+      "http://localhost:3000/item/2",
+      makeEntry([], (source) =>
+        source === "fill-1" ? "~=replacement-token" : true,
+      ),
+    );
+    assert.equal(state.have, "replacement-token");
+
+    fetchCalls = [];
+    fetchImpl = async () => patchResponse(["fill"]);
+    await run(state, "http://localhost:3000/item/3", makeEntry([]), {
+      targetId: 3,
     });
     const headers = fetchCalls[0].init.headers as Record<string, string>;
-    assert.equal(headers["x-marko-have"], '{"!site":"1"}');
+    assert.equal(headers["x-marko-have"], "replacement-token");
+  });
+
+  it("accepts a metadata-only frame as an applied update", async () => {
+    fetchImpl = async (href) => patchResponse(["metadata"], href);
+    const state = makeState({ have: "initial-token" });
+    await run(
+      state,
+      "http://localhost:3000/item/2",
+      makeEntry([], () => "~=replacement-token"),
+    );
+    assert.equal(state.have, "replacement-token");
+    assert.equal(state.currentId, 2);
+    assert.equal(state.appliedUrl, "/item/2");
+  });
+
+  it("applies an opaque prefix delta", async () => {
+    fetchImpl = async () => patchResponse(["metadata"]);
+    const state = makeState({ have: "shared-old" });
+    await run(
+      state,
+      "http://localhost:3000/item/2",
+      makeEntry([], () => "~+6.new"),
+    );
+    assert.equal(state.have, "sharednew");
+  });
+
+  it("does not replace the token when frame application fails", async () => {
+    fetchImpl = async (href) => patchResponse(["fail"], href);
+    const state = makeState({ have: "initial-token" });
+    const fallbacks: unknown[][] = [];
+    await run(
+      state,
+      "http://localhost:3000/item/2",
+      makeEntry([], () => {
+        throw new Error("apply failed");
+      }),
+      { fallbacks },
+    );
+    assert.equal(state.have, "initial-token");
+    assert.equal(state.currentId, 1);
+    assert.equal(fallbacks.length, 1);
+  });
+
+  it("loads the target entry concurrently with the request", async () => {
+    let resolveEntry!: (entry: PersistedEntry) => void;
+    const entry = makeEntry([]);
+    const loading = new Promise<PersistedEntry>((resolve) => {
+      resolveEntry = resolve;
+    });
+    fetchImpl = async () => patchResponse(["fill"]);
+    const navigation = run(makeState(), "http://localhost:3000/item/2", entry, {
+      load: () => loading,
+    });
+    await Promise.resolve();
+    assert.equal(fetchCalls.length, 1);
+    resolveEntry(entry);
+    await navigation;
   });
 
   it("keeps the original fragment and scrolls to its anchor", async () => {
@@ -211,13 +293,27 @@ describe("persisted client navigate()", () => {
     assert.ok(fallbacks[0][4] instanceof Response);
   });
 
-  it("falls back when no frame carries fills", async () => {
+  it("falls back when the first nonempty frame fails", async () => {
     const fallbacks: unknown[][] = [];
     fetchImpl = async () => patchResponse(["skip-a", "skip-b"]);
     await run(makeState(), "http://localhost:3000/item/2", makeEntry([]), {
       fallbacks,
     });
     assert.equal(fallbacks.length, 1);
+  });
+
+  it("replaces after a later nonempty frame fails", async () => {
+    const fallbacks: unknown[][] = [];
+    fetchImpl = async (href) => patchResponse(["fill-1", "fail"], href);
+    const state = makeState();
+    await run(state, "http://localhost:3000/item/2", makeEntry([]), {
+      fallbacks,
+    });
+
+    assert.equal(state.currentId, 2);
+    assert.equal(window.location.pathname, "/item/2");
+    assert.deepEqual(navigations, ["replace:http://localhost:3000/item/2"]);
+    assert.deepEqual(fallbacks, []);
   });
 
   it("replaces (not assigns) after a mid-stream failure once applied", async () => {
@@ -322,7 +418,7 @@ describe("persisted client navigate()", () => {
 });
 
 describe("persisted client interception", () => {
-  let routeId: number | null = 2;
+  let routeId: number | undefined = 2;
   const entryApplied: string[] = [];
   before(async () => {
     fetchImpl = async () => patchResponse(["fill"]);
@@ -330,16 +426,16 @@ describe("persisted client interception", () => {
     register(
       () =>
         Promise.resolve((pathname: string) =>
-          routeId === null
-            ? null
+          routeId === undefined
+            ? undefined
             : ([
                 routeId,
-                () => Promise.resolve(0),
                 () => Promise.resolve(makeEntry(entryApplied)),
               ] as RouteEntry),
         ),
       1,
       "build-1",
+      () => "",
     );
   });
   beforeEach(() => {
@@ -368,9 +464,7 @@ describe("persisted client interception", () => {
   }
 
   it("leaves same-document fragment movement native", async () => {
-    // Declared first: jsdom performs the (unprevented) fragment navigation,
-    // which fires popstate; the module ignores it only while `appliedUrl`
-    // still matches this page, i.e. before any test navigates away.
+    // Run first so jsdom's popstate still sees the initial `appliedUrl`.
     assert.equal(click(link("/list?page=1#details")), false);
     await flush();
     assert.equal(fetchCalls.length, 0, JSON.stringify(fetchCalls));
@@ -403,7 +497,7 @@ describe("persisted client interception", () => {
   });
 
   it("falls back natively when the target does not match a route", async () => {
-    routeId = null;
+    routeId = undefined;
     try {
       assert.equal(click(link("/outside")), true);
       await flush();

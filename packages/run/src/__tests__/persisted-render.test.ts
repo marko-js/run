@@ -5,16 +5,12 @@ import {
   initializePersisted,
   setPersisted,
 } from "../runtime/internal";
-import { encodeHave } from "../runtime/persisted-protocol";
 import {
   createPatchRequestHeaders,
   isPatchResponse,
 } from "../runtime/persisted-protocol";
 
-// A rendered value that satisfies both branches of the runtime's `toReadable`
-// (it exposes `.toReadable()` and is async-iterable), so the fake template
-// works regardless of which branch `toReadable` memoized first. Only the
-// response headers are under test, so the body is empty.
+// Covers both `toReadable` branches; response headers are the only output tested.
 const rendered = {
   toReadable: () =>
     new ReadableStream<Uint8Array>({
@@ -37,7 +33,19 @@ function context(persisted: PersistedRequest) {
     {} as any,
   ) as any;
   if (persisted) {
-    setPersisted(ctx, persisted.fromRoute, persisted.targetRoute);
+    const descriptor = "target descriptor";
+    setPersisted(
+      ctx,
+      persisted.fromRoute !== undefined && persisted.targetRoute !== undefined
+        ? {
+            descriptor,
+            patch: {
+              fromRoute: persisted.fromRoute,
+              targetRoute: persisted.targetRoute,
+            },
+          }
+        : { descriptor },
+    );
   }
   return ctx;
 }
@@ -57,10 +65,7 @@ describe("persisted render() response headers", () => {
   });
 
   it("update render keeps the patch content-type/vary with a custom init", () => {
-    // A handler that supplies its own init (custom status/headers) must not
-    // lose the accept-negotiated patch content-type: the client router gates
-    // a navigation on it and would otherwise silently fall back to a full
-    // page load for that route.
+    // Custom response data must retain the negotiated patch content type.
     const res = context({ fromRoute: "2", targetRoute: "2" }).render(
       fakeTemplate,
       {},
@@ -130,7 +135,11 @@ describe("persisted request negotiation", () => {
     ) as any;
     return {
       ctx,
-      mismatch: initializePersisted(ctx, 2, "current-build"),
+      mismatch: initializePersisted(ctx, 2, "current-build", [
+        undefined,
+        "source descriptor",
+        "target descriptor",
+      ]),
     };
   }
 
@@ -151,8 +160,8 @@ describe("persisted request negotiation", () => {
 
     const { ctx, mismatch } = negotiate(headers);
     assert.equal(mismatch, undefined);
-    assert.equal(ctx["~run"], "current-build");
-    assert.equal(ctx.serializedGlobals["~run"], true);
+    assert.equal("~run" in ctx, false);
+    assert.equal("~run" in ctx.serializedGlobals, false);
 
     let options: any;
     ctx.render(
@@ -166,6 +175,33 @@ describe("persisted request negotiation", () => {
     );
     assert.equal(options.persisted.patch.fromRoute, "1");
     assert.equal(options.persisted.patch.targetRoute, "2");
+    assert.equal(options.persisted.patch.have, '{"site":"renderer"}');
+    assert.equal(options.persisted.patch.source, "source descriptor");
+    assert.equal(options.persisted.descriptor, "target descriptor");
+  });
+
+  it("rejects a malformed source route before rendering", () => {
+    const headers = createPatchRequestHeaders(
+      2,
+      1,
+      "current-build",
+      "opaque-token",
+    );
+    headers["x-marko-from"] = "__proto__";
+    const { mismatch } = negotiate(headers);
+    assert.equal(mismatch?.status, 409);
+  });
+
+  it("rejects a target without a generated descriptor", () => {
+    const ctx = createContext(
+      null,
+      new Request("http://localhost/reports", {
+        headers: createPatchRequestHeaders(2, 1, "current-build", ""),
+      }),
+      {} as any,
+    ) as any;
+    const mismatch = initializePersisted(ctx, 2, "current-build", []);
+    assert.equal(mismatch?.status, 409);
   });
 
   it("rejects a stale build as a non-cacheable non-patch response", () => {
@@ -229,149 +265,108 @@ describe("persisted request negotiation", () => {
 });
 
 describe("persisted render() possession echo (x-marko-have)", () => {
-  // Captures the per-render options marko receives, so the decoded echo the
-  // update render will consult is observable (only the options are under test).
   function renderPersisted(
-    persisted: Exclude<PersistedRequest, false>,
+    fromRoute: string | undefined,
     headers?: Record<string, string>,
+    descriptors: readonly unknown[] = [
+      undefined,
+      undefined,
+      "target descriptor",
+    ],
+    targetRoute = 2,
   ) {
     let options: any;
     const capturing = {
       render: (_input: unknown, opts: unknown) => ((options = opts), rendered),
     } as any;
+    const requestHeaders = fromRoute
+      ? {
+          ...createPatchRequestHeaders(
+            targetRoute,
+            +fromRoute,
+            "current-build",
+            "",
+          ),
+          ...headers,
+          "x-marko-from": fromRoute,
+        }
+      : headers;
     const ctx = createContext(
       null,
-      new Request("http://localhost/reports", { headers }),
+      new Request("http://localhost/reports", { headers: requestHeaders }),
       {} as any,
     ) as any;
-    setPersisted(ctx, persisted.fromRoute, persisted.targetRoute);
+    const mismatch = initializePersisted(
+      ctx,
+      targetRoute,
+      "current-build",
+      descriptors,
+    );
+    assert.equal(mismatch, undefined);
     ctx.render(capturing, {});
     return options?.persisted;
   }
 
-  it("decodes the echo into `possessed` for an update render", () => {
+  it("passes the echo through opaquely for an update render", () => {
+    const persisted = renderPersisted("2", {
+      "x-marko-have": "P!not-json!",
+    });
+    assert.equal(persisted.patch.have, "P!not-json!");
+  });
+
+  it("omits `have` when the client sent no echo", () => {
+    const persisted = renderPersisted("2");
+    assert.equal(persisted.patch.have, undefined);
+    assert.equal(persisted.patch.source, undefined);
+  });
+
+  it("selects source and target descriptors for a cross-route patch", () => {
     const persisted = renderPersisted(
-      { fromRoute: "2", targetRoute: "2" },
-      {
-        "x-marko-have": '{"5 a":"a2","8 b":"a3"}',
-      },
+      "2",
+      { "x-marko-have": "Ptoken" },
+      [undefined, undefined, "source descriptor", "target descriptor"],
+      3,
     );
-    assert.deepEqual(persisted.patch.possessed, {
-      "5 a": "a2",
-      "8 b": "a3",
-    });
-  });
-
-  it("omits `possessed` when the client sent no echo", () => {
-    assert.equal(
-      renderPersisted({ fromRoute: "2", targetRoute: "2" }).patch.possessed,
-      undefined,
-    );
-  });
-
-  it("couples cross-route fragment delivery to fresh-scope seeding", () => {
-    const persisted = renderPersisted({
-      fromRoute: "2",
-      targetRoute: "3",
-    });
     assert.equal(persisted.patch.fromRoute, "2");
     assert.equal(persisted.patch.targetRoute, "3");
+    assert.equal(persisted.patch.have, "Ptoken");
+    assert.equal(persisted.patch.source, "source descriptor");
+    assert.equal(persisted.descriptor, "target descriptor");
   });
 
-  it("ignores a malformed echo rather than throwing", () => {
-    // The header is untrusted client input: a bad value must degrade to no
-    // echo (at worst a full-navigation fallback), never crash the render.
-    assert.equal(
-      renderPersisted(
-        { fromRoute: "2", targetRoute: "2" },
-        { "x-marko-have": "{not json" },
-      ).patch.possessed,
+  it("forwards the route descriptor to an initial document render", () => {
+    const persisted = renderPersisted(undefined, undefined, [
       undefined,
-    );
+      undefined,
+      "target descriptor",
+    ]);
+    assert.equal(persisted.patch, undefined);
+    assert.equal(persisted.descriptor, "target descriptor");
+  });
+
+  it("omits an oversized echo", () => {
     assert.equal(
-      renderPersisted(
-        { fromRoute: "2", targetRoute: "2" },
-        { "x-marko-have": '"a string"' },
-      ).patch.possessed,
+      renderPersisted("2", { "x-marko-have": "x".repeat(4097) }).patch.have,
       undefined,
     );
   });
 
   it("does not honor the echo on a non-update persisted render", () => {
-    // Only update renders consult possession; the initial (seed) document has
-    // no live page to have anything, so its scopes are all fresh.
     assert.equal(
-      renderPersisted({}, { "x-marko-have": '{"5 a":"a2"}' }).patch?.possessed,
+      renderPersisted(undefined, { "x-marko-have": "Ptoken" }).patch?.have,
       undefined,
     );
   });
 
-  it("rejects an array echo rather than passing it through", () => {
-    // `typeof [] === "object"` passes a bare object check; the client only
-    // ever sends a plain object, so an array is malformed input.
-    assert.equal(
-      renderPersisted(
-        { fromRoute: "2", targetRoute: "2" },
-        { "x-marko-have": '["a","b"]' },
-      ).patch.possessed,
+  it("drops have when the valid source route has no descriptor", () => {
+    const persisted = renderPersisted("1", { "x-marko-have": "Ptoken" }, [
       undefined,
-    );
-  });
-
-  it("does not let a prototype-chain key produce a spurious hit", () => {
-    // A plain `JSON.parse` result inherits `Object.prototype`, so
-    // `"toString" in possessed` (the shape of the downstream lookup) would
-    // spuriously be true even for an echo that never mentioned that site --
-    // and `__proto__` is valid JSON, landing as an own data property rather
-    // than repointing the prototype. `possessed` must not expose either.
-    const possessed = renderPersisted(
-      { fromRoute: "2", targetRoute: "2" },
-      {
-        "x-marko-have": '{"__proto__":{"polluted":"yes"},"5 a":"a2"}',
-      },
-    ).patch.possessed;
-    assert.equal(
-      "toString" in possessed,
-      false,
-      "must not inherit Object.prototype",
-    );
-    assert.equal(
-      ({} as any).polluted,
       undefined,
-      "must not pollute Object.prototype globally",
-    );
-    assert.equal(possessed["5 a"], "a2");
-  });
-});
-
-describe("client possession echo encoding (encodeHave)", () => {
-  it("passes small, ASCII-only payloads through unchanged", () => {
-    const json = '{"5 a":"a2","8 b":"a3"}';
-    assert.equal(encodeHave(json), json);
-  });
-
-  it("passes an empty string through unchanged (header stays omitted)", () => {
-    assert.equal(encodeHave(""), "");
-  });
-
-  it("escapes non-ASCII loop-key data so the header stays ISO-8859-1-safe", () => {
-    // fetch() throws setting a header value with bytes outside that range;
-    // JSON.stringify (marko's `_have`) does not escape non-ASCII characters.
-    const json = JSON.stringify({ "5 café": "a2" });
-    const encoded = encodeHave(json);
-    assert.ok(/^[\x00-\x7f]*$/.test(encoded), "must be ASCII-only");
-    assert.deepEqual(JSON.parse(encoded), JSON.parse(json));
-  });
-
-  it("omits the echo entirely once the encoded value crosses ~4 KB", () => {
-    // A too-large header risks the whole request being rejected by a
-    // header-size cap -- strictly worse than sending no echo.
-    const big = JSON.stringify({ a: "x".repeat(5000) });
-    assert.equal(encodeHave(big), "");
-  });
-
-  it("keeps a payload just under the cap", () => {
-    const json = JSON.stringify({ a: "x".repeat(100) });
-    assert.equal(encodeHave(json), json);
+      "target descriptor",
+    ]);
+    assert.equal(persisted.patch.fromRoute, "1");
+    assert.equal(persisted.patch.have, undefined);
+    assert.equal(persisted.patch.source, undefined);
+    assert.equal(persisted.descriptor, "target descriptor");
   });
 });

@@ -11,14 +11,14 @@ export const persistedHeaders = {
 export function createPatchRequestHeaders(
   targetRoute: number,
   fromRoute: number,
-  buildHash: string,
+  buildId: string,
   have: string,
 ): Record<string, string> {
   return {
     accept: patchAccept,
     [persistedHeaders.route]: "" + targetRoute,
     [persistedHeaders.from]: "" + fromRoute,
-    [persistedHeaders.build]: buildHash,
+    [persistedHeaders.build]: buildId,
     ...(have && { [persistedHeaders.have]: have }),
   };
 }
@@ -30,11 +30,11 @@ export function acceptsPatch(request: Request): boolean {
 export function matchesPatchRequest(
   request: Request,
   routeId: number,
-  buildHash: string,
+  buildId: string,
 ): boolean {
   return (
     request.headers.get(persistedHeaders.route) === "" + routeId &&
-    request.headers.get(persistedHeaders.build) === buildHash
+    request.headers.get(persistedHeaders.build) === buildId
   );
 }
 
@@ -69,34 +69,7 @@ export function applyPersistedResponseHeaders(
   return response;
 }
 
-// Possession echoes may contain arbitrary Unicode loop keys, while fetch
-// headers must be byte-safe. Escape to ASCII and omit oversized hints;
-// omission is lossy, not fatal -- the server ships authoritative fragments
-// for the sites it cannot prove, trading payload bytes for sparse fills.
-export function encodeHave(json: string): string {
-  if (!json) return json;
-  const escaped = json.replace(
-    /[-￿]/g,
-    (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
-  );
-  return escaped.length > 4096 ? "" : escaped;
-}
-
-export function decodePossessed(
-  request: Request,
-): Record<string, string> | undefined {
+export function readHave(request: Request): string | undefined {
   const have = request.headers.get(persistedHeaders.have);
-  if (have) {
-    try {
-      const parsed = JSON.parse(have);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return Object.assign(
-          Object.create(null) as Record<string, string>,
-          parsed,
-        );
-      }
-    } catch {
-      // A malformed hint degrades to fragment delivery or navigation fallback.
-    }
-  }
+  return have && have.length <= 4096 ? have : undefined;
 }

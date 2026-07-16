@@ -40,11 +40,8 @@ export function renderRouteTemplate(
   markoApi?: string,
   dev = false,
   persisted = false,
+  runtimeId = "M",
 ): string {
-  if (!route.page) {
-    throw new Error(`Route ${route.key} has no page to render`);
-  }
-
   const writer = createStringWriter();
   if (markoApi) {
     writer.writeLines(`<!-- use ${markoApi} -->\n`);
@@ -60,29 +57,26 @@ export function renderRouteTemplate(
 
   writer.writeLines("");
 
-  // Persisted pages: bootstrap the client router with the app's generated
-  // lazily loaded route matcher (the same trie the server ranks with, terminals
-  // being lazy loaders for each route's template module and `?update` entry),
-  // this route's build-stable index, and the build identity (serialized under
-  // the internal "~run" global). Special (404/500) pages have no route to
-  // navigate within, so their callers never pass `persisted`.
+  // Bootstrap persisted navigation; special pages omit this.
   if (persisted) {
     importWriter.writeLines(
       `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+      `client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";`,
     );
     writer.writeLines(
       `<script>
   __run_persisted_register(
     () => import("${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}").then((mod) => mod.default),
     ${route.index},
-    $global["~run"],
+    __run_persisted_build_id(),
+    () => self[${JSON.stringify(runtimeId)}]._.${dev ? "have" : "h"},
   );
 </script>`,
     );
   }
   writeEntryTemplateTag(
     writer,
-    [...route.layouts, route.page].map((file) =>
+    [...route.layouts, route.page!].map((file) =>
       normalizedRelativePath(
         path.dirname(route.templateFilePath!),
         file.filePath,
@@ -119,7 +113,11 @@ function writeEntryTemplateTag(
   }
 }
 
-export function renderRouteEntry(route: Route, rootDir: string): string {
+export function renderRouteEntry(
+  route: Route,
+  rootDir: string,
+  persisted = false,
+): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
@@ -191,8 +189,15 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   }
 
   if (page) {
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath!,
+    );
     imports.writeLines(
-      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      persisted
+        ? `import page, { __marko_persisted_descriptor as persisted${index} } from "${templatePath}";
+export { persisted${index} };`
+        : `import page from "${templatePath}";`,
     );
   }
   if (meta) {
@@ -384,18 +389,8 @@ export function renderRouter(
   );
 
   if (options.persisted) {
-    // Build identity for persisted-update gating: @marko/vite's linkAssets
-    // exposes the client build's digest (undefined in dev, where a per-process
-    // token stands in, so a dev-server restart falls back to full navigations
-    // instead of applying stale updates).
     imports.writeLines(
-      `import { buildId } from "virtual:marko-vite/link-assets";
-
-let resolvedBuildHash;
-function getBuildHash() {
-  return (resolvedBuildHash ??=
-    buildId() || Math.random().toString(36).slice(2));
-}`,
+      `import { buildId } from "virtual:marko-vite/link-assets";`,
     );
   }
 
@@ -410,6 +405,9 @@ function getBuildHash() {
         routeImports.push(`${verbName}_meta`);
       }
     }
+    if (options.persisted && route.page) {
+      routeImports.push(`persisted${route.index}`);
+    }
     imports.writeLines(
       `import { ${routeImports.join(", ")} } from "${virtualFilePrefix}/${getRouteVirtualFileName(route)}";`,
     );
@@ -418,6 +416,17 @@ function getBuildHash() {
     imports.writeLines(
       `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
     );
+  }
+
+  if (options.persisted) {
+    const pageRoutes = routes.list.filter((route) => route.page);
+    const descriptors = Array<string>(
+      Math.max(-1, ...pageRoutes.map((route) => route.index)) + 1,
+    );
+    for (const route of pageRoutes) {
+      descriptors[route.index] = `persisted${route.index}`;
+    }
+    writer.writeLines(`const persisted = [${descriptors.join(",")}];`);
   }
 
   writer
@@ -462,27 +471,13 @@ function match_internal(method, pathname) {
     );
 
   if (options.persisted) {
-    // Persisted pages: every render is persisted-capable and carries the
-    // build's identity (serialized so the client can send it back). A
-    // navigation fetch negotiates an update render instead, but only when the
-    // route the client matched still resolves to this URL (within a build they
-    // diverge when a redirect moved the request, or a handler-only route --
-    // absent from the client's pages-only trie -- shadows a page route at the
-    // same rank) AND the client's build matches this server's (route indexes
-    // and register ids are stable only within one build). A mismatched read is
-    // rejected with a 409 (the client falls back to a full navigation); a
-    // mutation must always run its handler -- rejecting it pre-handler would
-    // silently drop it (the client fallback ladder treats any response as
-    // proof it already happened) -- so a matched POST patches its direct
-    // response (validation re-renders keep live page state) while a
-    // mismatched POST renders the ordinary document post-handler. The PRG
-    // redirect's followed GET carries the same headers, so negotiation
-    // re-runs at the final URL.
+    // Negotiate patches only for the generated route and build; POSTs always run.
     writer.writeLines(
       `const persistedMismatch = initializePersisted(
     context,
     route?.i,
-    getBuildHash(),
+    buildId(),
+    persisted,
   );
   if (persistedMismatch) return persistedMismatch;`,
     );
@@ -612,11 +607,7 @@ export async function fetch(request, platform) {
 }`);
 }
 
-// Emits a segment-trie matcher body over `pathname`/`len` (statics before
-// dynamics per level, catch-alls last). `terminal` renders the expression for a
-// matched route -- the server router returns handler match objects, the
-// persisted client table route-entry tuples -- so both matchers share this
-// logic and cannot disagree on ranking.
+// Emits the shared ranked segment trie for server and persisted client matches.
 function writeRouterVerb(
   writer: Writer,
   trie: RouteTrie,
@@ -811,10 +802,7 @@ function renderMatch(
   const name = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
-  // In persisted mode the match object carries `i`, the route's build-stable
-  // identity, which update negotiation compares against the client's
-  // `x-marko-route`/`x-marko-from` headers. Non-persisted builds omit it so
-  // their router output stays byte-identical.
+  // Persisted matches carry the build-stable route identity used by negotiation.
   const index = withIndex ? `i: ${route.index}, ` : "";
   return `{ handler: ${name}, ${index}path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
 }
@@ -822,50 +810,65 @@ function renderMatch(
 /** Basename of the generated client route-table module (persisted pages). */
 export const ROUTES_CLIENT_FILENAME = `${markoRunFilePrefix}routes.client.js`;
 
-/**
- * Persisted-pages client route matcher: the same generated segment trie the
- * server ranks with (page routes only), whose terminals are route-entry tuples
- * -- the route's build-stable index (sent as `x-marko-route`) plus lazy loaders
- * for its template module (importing it registers the route's renderers,
- * signals, and merges) and its `?update` entry (the compiled merge functions).
- * Sharing the server router's emitter means the two cannot disagree on ranking
- * within a build, and no path patterns or regex ship to the client.
- */
+/** Generates the client route matcher and its lazy route entries. */
 export function renderRoutesClient(
   routes: BuiltRoutes,
   rootDir: string,
 ): string {
   const writer = createStringWriter();
-  const pageRoutes = routes.list.filter(
-    (route) => route.page && route.templateFilePath,
-  );
+  const pageRoutes = routes.list
+    .filter((route) => route.page)
+    .sort(compareClientRoutes);
+  writer.writeBlockStart("const routes = [");
   for (const route of pageRoutes) {
     const templatePath = normalizedRelativePath(
       rootDir,
       route.templateFilePath!,
     );
     writer.writeLines(
-      // Side-effect-only import (registration); the ignored-namespace `.then`
-      // lets the bundler tree-shake the module's exports -- the template/walks
-      // strings (a layout's whole document shell) are only reachable through
-      // them.
-      `const r${route.index} = [${route.index}, () => import(${JSON.stringify(templatePath)}).then(() => 0), () => import(${JSON.stringify(`${templatePath}?update`)})];`,
+      `[${route.index}, () => import(${JSON.stringify(`${templatePath}?persisted`)}), ${renderClientRouteReg(route)}],`,
     );
   }
-  writer.writeLines("");
-  writer.writeBlockStart("export default function match(pathname) {");
+  writer.writeBlockEnd("];");
   writer.writeLines(
-    `const last = pathname.length - 1;
-  if (last && pathname.charAt(last) === '/') pathname = pathname.slice(0, last);
-  const len = pathname.length;`,
+    "export default (pathname) => routes.find((route) => route[2].test(pathname));",
   );
-  writeRouterVerb(
-    writer,
-    createRouteTrie(pageRoutes),
-    (route) => `r${route.index}`,
-  );
-  writer.writeBlockEnd("}");
   return writer.end();
+}
+
+function compareClientRoutes(a: Route, b: Route) {
+  const length = Math.max(a.path.segments.length, b.path.segments.length);
+  for (let i = 0; i < length; i++) {
+    const diff =
+      clientSegmentRank(a.path.segments[i]) -
+      clientSegmentRank(b.path.segments[i]);
+    if (diff) return diff;
+  }
+  return a.index - b.index;
+}
+
+function clientSegmentRank(segment: string | undefined) {
+  return segment === undefined
+    ? -1
+    : segment === "$$"
+      ? 2
+      : segment === "$"
+        ? 1
+        : 0;
+}
+
+function renderClientRouteReg(route: Route) {
+  if (!route.path.segments.length) return "/^\\/$/";
+  let source = "^";
+  for (const segment of route.path.segments) {
+    source +=
+      segment === "$$"
+        ? "\\/.+"
+        : segment === "$"
+          ? "\\/[^/]+"
+          : "\\/" + segment.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+  }
+  return `/${source}\\/?$/`;
 }
 
 export function renderMiddleware(

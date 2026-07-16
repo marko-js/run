@@ -2,25 +2,21 @@
 
 import {
   createPatchRequestHeaders,
-  encodeHave,
   isPatchResponse,
 } from "./persisted-protocol.js";
 
-/** The generated update module for one route. */
-export interface UpdateEntry {
-  createPatch: () => (source: string) => boolean;
-  /** The renderer held at each live dynamic-tag hop. */
-  have?: () => string;
+/** The deferred persisted module for one route. */
+export interface PersistedEntry {
+  patch: () => (source: string) => true | string;
 }
 
-/** Build-stable route id plus lazy template and update entries. */
+/** Build-stable route id plus its lazy persisted entry. */
 export type RouteEntry = [
   id: number,
-  loadTemplate: () => Promise<unknown>,
-  loadUpdate: () => Promise<UpdateEntry>,
+  loadPersisted: () => Promise<PersistedEntry>,
 ];
 
-export type RouteMatcher = (pathname: string) => RouteEntry | null;
+export type RouteMatcher = (pathname: string) => RouteEntry | undefined;
 
 export type Mutation = [
   body: FormData | URLSearchParams,
@@ -30,10 +26,20 @@ export type Mutation = [
 
 export interface NavigationState {
   appliedUrl: string;
-  buildHash: string;
+  buildId: string;
   controller?: AbortController;
   currentId: number;
+  have: string;
   resubmitting?: boolean;
+}
+
+function applyHave(current: string, metadata: string) {
+  if (metadata[1] === "=") return metadata.slice(2);
+  const separator = metadata.indexOf(".", 2);
+  return (
+    current.slice(0, parseInt(metadata.slice(2, separator), 36)) +
+    metadata.slice(separator + 1)
+  );
 }
 
 type Fallback = (
@@ -61,31 +67,24 @@ export async function navigate(
   let applied = false;
 
   try {
-    // Load the update entry before fetch so its compact possession echo can be
-    // sent with the request. Cross-route template registration remains parallel
-    // with the network.
-    const entry = await target[2]();
-    const have = encodeHave(entry.have?.() || "");
-    const [fetched] = await Promise.all([
+    const [entry, nextResponse] = await Promise.all([
+      target[1](),
       fetch(href, {
         method: mutation && "POST",
         body: mutation?.[0],
         headers: createPatchRequestHeaders(
           targetId,
           state.currentId,
-          state.buildHash,
-          have,
+          state.buildId,
+          state.have,
         ),
         signal: mutation ? undefined : signal,
       }),
-      targetId === state.currentId ? undefined : target[1](),
     ]);
-    response = fetched;
+    response = nextResponse;
     if (signal.aborted) return void response.body?.cancel();
 
-    // Status is intentionally not the discriminator: validation responses may
-    // be non-2xx patches. A protocol/build/route mismatch returns non-patch
-    // content and takes the ordinary-navigation fallback.
+    // Patch MIME, rather than status, distinguishes validation patch responses.
     if (!isPatchResponse(response)) {
       throw new Error(
         import.meta.env.DEV
@@ -94,15 +93,14 @@ export async function navigate(
       );
     }
 
-    const applyPatch = entry.createPatch();
+    const applyPatch = entry.patch();
     const applyLine = (line: string) => {
       if (!line) return;
-      if (!applyPatch(line)) return;
+      const result = applyPatch(line);
+      if (typeof result === "string")
+        state.have = applyHave(state.have, result);
       if (!applied) {
-        // Advancing on the first frame means an abort mid-stream leaves
-        // `x-marko-from` claiming the full target against a partially patched
-        // page; the server then finds nothing to merge and the zero-fill
-        // response falls back to a full navigation.
+        // Advance on the first applied frame; later failure replaces this entry.
         applied = true;
         state.currentId = targetId;
         const url = new URL(response!.url || href);
@@ -121,8 +119,7 @@ export async function navigate(
       }
     };
 
-    // Each newline is one serializer frame. Apply synchronous HTML state as
-    // soon as it arrives, then merge later async boundary frames in order.
+    // Apply newline-delimited serializer frames in arrival order.
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -148,8 +145,7 @@ export async function navigate(
   } catch (err) {
     if (signal.aborted) return;
     if (applied) {
-      // The page already advanced history for this navigation; replace so a
-      // partially updated document doesn't leave a duplicate entry behind.
+      // Replace the advanced entry after a partial apply fails.
       console.warn("@marko/run: persisted navigation fell back", err);
       location.replace(response!.url || href);
       return;

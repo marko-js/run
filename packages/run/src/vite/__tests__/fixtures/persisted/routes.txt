@@ -2,8 +2,12 @@
 +page.marko
 +404.marko
 /item
+  /new
+    +page.marko
   /$id
     +page.marko
 /docs
+  /intro
+    +page.marko
   /$$rest
     +page.marko

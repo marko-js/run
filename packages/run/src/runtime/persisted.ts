@@ -1,7 +1,5 @@
 /// <reference types="vite/client" />
-// Eager shell for persisted (single-page server-first) navigations. It only
-// matches native links/forms and loads the navigation engine on first use, so
-// an MPA-style first visit does not pay for fetch negotiation or patch parsing.
+// Eager interception shell; navigation code remains lazy until first use.
 
 import type {
   Mutation,
@@ -11,19 +9,22 @@ import type {
 
 const state: NavigationState = {
   appliedUrl: "",
-  buildHash: "",
+  buildId: "",
   currentId: 0,
+  have: "",
 };
 let matcher: RouteMatcher | undefined;
 let matcherPromise: Promise<RouteMatcher> | undefined;
 let loadMatcher: () => Promise<RouteMatcher>;
+let getHave: () => string;
 
 export function register(
   loadMatch: () => Promise<RouteMatcher>,
   // The build-stable index of the route this page rendered through.
   id: number,
   // The server only honors update fetches from its own build.
-  hash: string,
+  buildId: string,
+  have: () => string,
 ) {
   if (!matcher) {
     state.appliedUrl = location.pathname + location.search;
@@ -33,7 +34,8 @@ export function register(
   }
   loadMatcher = loadMatch;
   state.currentId = id;
-  state.buildHash = hash;
+  state.buildId = buildId;
+  getHave = have;
 }
 
 function onClick(ev: MouseEvent) {
@@ -72,10 +74,7 @@ function onClick(ev: MouseEvent) {
   navigateMatched(link.href, true, link.pathname);
 }
 
-// Same-origin forms retain their native behavior when they cannot use the
-// update path. GET becomes a routed URL; a POST patches its direct response
-// (a validation re-render of the current route keeps live page state) or
-// follows normal PRG semantics.
+// Forms retain native behavior when they cannot use the update path.
 function onSubmit(ev: SubmitEvent) {
   const form = ev.target as HTMLFormElement;
   const submitter = ev.submitter;
@@ -105,9 +104,7 @@ function onSubmit(ev: SubmitEvent) {
     return;
   }
 
-  // POST actions need not themselves be page routes: a direct response is
-  // accepted as an update when the action IS the current route, and a PRG
-  // redirect is renegotiated at whatever route its final URL matches.
+  // POSTs can patch the current route or renegotiate after a redirect.
   const data = new FormData(form, submitter);
   if (method === "get") {
     const params = new URLSearchParams();
@@ -145,8 +142,7 @@ function onPopstate() {
 }
 
 let navigationModule:
-  | Promise<typeof import("./persisted-navigation.js")>
-  | undefined;
+  Promise<typeof import("./persisted-navigation.js")> | undefined;
 
 function navigateMatched(
   href: string,
@@ -154,6 +150,7 @@ function navigateMatched(
   pathname: string,
   mutation?: Mutation,
 ) {
+  if (!state.have) state.have = getHave();
   Promise.all([
     matcher
       ? matcher(pathname)
@@ -192,10 +189,8 @@ function fallback(
   mutation?: Mutation,
   response?: Response,
 ) {
-  // Once a mutation response exists the server owns the outcome, so its final
-  // URL is safe to follow with GET. Failing before a response leaves the
-  // mutation uncertain; the native resubmit re-sends it, accepting the same
-  // duplicate risk as a user retrying a failed form post.
+  // Before a response, native resubmission accepts normal duplicate-POST risk.
+  // After one, follow the server-owned final URL with GET.
   if (mutation) {
     if (response) {
       if (import.meta.env.DEV && !response.redirected) {

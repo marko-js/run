@@ -143,7 +143,7 @@ describe("router codegen", () => {
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route, dir);
+          routesSnap += renderRouteEntry(route, dir, fixtureOptions.persisted);
           routesSnap += "```\n";
           i++;
         }

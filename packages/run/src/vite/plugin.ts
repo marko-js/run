@@ -334,13 +334,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 ),
                 !isBuild,
                 persisted,
+                opts.runtimeId,
               ),
             );
           }
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root),
+            renderRouteEntry(route, root, persisted),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
