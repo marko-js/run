@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.7
+
+### Patch Changes
+
+- cf911bd: Fix a race where the build could complete before crawled pages were fully written to disk, intermittently causing missing or truncated files in the static output.
+
 ## 2.0.6
 
 ### Patch Changes

@@ -1,5 +1,31 @@
 # @marko/run
 
+## 0.11.5
+
+### Patch Changes
+
+- 0f12e17: Fix `Run.*()` mutating shared handler functions and export internal types to resolve TS2883
+
+  `createDefineHandler` previously assigned the caller-supplied handler directly as the returned
+  handler object and then set `.verb` on it, which permanently tagged any reused utility function
+  with the first verb it was registered under. Passing the same function to a second `Run.*()` call
+  (e.g. a shared handler used in both `Run.GET` and `Run.POST([...])`) would then throw:
+
+  ```text
+  Error: Expected verb POST but handler was defined with Run.GET
+  ```
+
+  The fix wraps single-function arguments in a new closure so `.verb` is set on the wrapper, leaving
+  the original function unmodified and free to be reused across verbs.
+
+  `HandlerTypes`, `NormalizedHandlerFunction`, and `Typed` are now re-exported from the package
+  root. Without these exports, using the array overload of `Run.*()` on an exported handler constant
+  produced TS2883 ("The inferred type cannot be named without a reference to …/runtime/types"),
+  because TypeScript could not portably name those types in generated declaration files.
+
+- aaa8987: Warn in dev and build about route files that look routable but silently are not: a `+type` marker matching no routable type (e.g. `+server.js`, a wrong extension like `+page.txt`, a typo'd `+pge.marko`) points at the routable file list, and a `$param` name missing its `+type` suggests the fix. `[flag]` variant groups (e.g. `@ebay/arc`'s `header[mobile+android].js`, or `+page[mobile].marko`) are ignored so they never read as broken routes. The "no http verb exports" warning also names any lowercase verb-like exports it found (e.g. `get`) and shows the `Run.GET(handler)` form.
+- 8ad1405: Remove Playwright from the test suite in favor of an in-process jsdom test browser, and make dev/preview server shutdown reliable — faster, less flaky tests.
+
 ## 0.11.4
 
 ### Patch Changes
