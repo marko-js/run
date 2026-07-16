@@ -9,6 +9,7 @@ import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
+  renderRoutesClient,
   renderRouteTemplate,
   renderRouteTypeInfo,
 } from "../codegen";
@@ -37,6 +38,9 @@ describe("router codegen", () => {
       const entryFilesDir = path.join(dir, "dist", ".marko-run");
       const sources: RouteSource[] = [];
       const jsonData = new Map<string, Record<string, unknown>>();
+      // Fixtures may carry an `options.json` with router codegen options
+      // (e.g. `{ "persisted": true }`).
+      let fixtureOptions: { persisted?: boolean } = {};
 
       function getFileData<T extends Record<string, unknown>>(
         file: RoutableFile,
@@ -49,6 +53,12 @@ describe("router codegen", () => {
         withFileTypes: true,
       })) {
         if (file.isFile()) {
+          if (file.name === "options.json") {
+            fixtureOptions = JSON.parse(
+              await fs.promises.readFile(path.join(dir, file.name), "utf-8"),
+            );
+            continue;
+          }
           const match = /^routes(?:-(.+))?\.txt$/.exec(file.name);
           if (match) {
             const filename = path.join(dir, file.name);
@@ -123,12 +133,17 @@ describe("router codegen", () => {
               : undefined;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
-            routesSnap += renderRouteTemplate(route, layoutData?.api);
+            routesSnap += renderRouteTemplate(
+              route,
+              layoutData?.api,
+              false,
+              fixtureOptions.persisted,
+            );
             routesSnap += "```\n";
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route, dir);
+          routesSnap += renderRouteEntry(route, dir, fixtureOptions.persisted);
           routesSnap += "```\n";
           i++;
         }
@@ -143,7 +158,17 @@ describe("router codegen", () => {
           }
         }
 
-        routerSnap = renderRouter(routes, dir);
+        if (fixtureOptions.persisted) {
+          routesSnap += `\n\n## Client route table\n`;
+          routesSnap += "```js\n";
+          routesSnap += renderRoutesClient(routes, dir);
+          routesSnap += "```\n";
+        }
+
+        routerSnap = renderRouter(routes, dir, undefined, {
+          trailingSlashes: "RedirectWithout",
+          ...fixtureOptions,
+        });
         typesSnap = await renderRouteTypeInfo(routes, typesDir);
       }
 

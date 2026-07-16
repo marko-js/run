@@ -39,11 +39,9 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
+  runtimeId = "M",
 ): string {
-  if (!route.page) {
-    throw new Error(`Route ${route.key} has no page to render`);
-  }
-
   const writer = createStringWriter();
   if (markoApi) {
     writer.writeLines(`<!-- use ${markoApi} -->\n`);
@@ -58,9 +56,31 @@ export function renderRouteTemplate(
   }
 
   writer.writeLines("");
+
+  // Bootstrap persisted navigation; special pages omit this.
+  if (persisted) {
+    // Marko stores the possession token under HAVE_RUNTIME_KEY, whose name
+    // follows Marko's own debug/optimize mode (".have" debug, ".h" optimized),
+    // not Vite's dev/build mode - so the accessor reads whichever key exists.
+    const runtime = `self[${JSON.stringify(runtimeId)}]._`;
+    importWriter.writeLines(
+      `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+      `client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";`,
+    );
+    writer.writeLines(
+      `<script>
+  __run_persisted_register(
+    () => import("${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}").then((mod) => mod.default),
+    ${route.index},
+    __run_persisted_build_id(),
+    () => ${runtime}.h ?? ${runtime}.have,
+  );
+</script>`,
+    );
+  }
   writeEntryTemplateTag(
     writer,
-    [...route.layouts, route.page].map((file) =>
+    [...route.layouts, route.page!].map((file) =>
       normalizedRelativePath(
         path.dirname(route.templateFilePath!),
         file.filePath,
@@ -97,7 +117,11 @@ function writeEntryTemplateTag(
   }
 }
 
-export function renderRouteEntry(route: Route, rootDir: string): string {
+export function renderRouteEntry(
+  route: Route,
+  rootDir: string,
+  persisted = false,
+): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
@@ -169,8 +193,15 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   }
 
   if (page) {
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath!,
+    );
     imports.writeLines(
-      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      persisted
+        ? `import page, { __marko_persisted_descriptor as persisted${index} } from "${templatePath}";
+export { persisted${index} };`
+        : `import page from "${templatePath}";`,
     );
   }
   if (meta) {
@@ -358,8 +389,14 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${options.persisted ? ", initializePersisted" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
+
+  if (options.persisted) {
+    imports.writeLines(
+      `import { buildId } from "virtual:marko-vite/link-assets";`,
+    );
+  }
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
@@ -372,6 +409,9 @@ export function renderRouter(
         routeImports.push(`${verbName}_meta`);
       }
     }
+    if (options.persisted && route.page) {
+      routeImports.push(`persisted${route.index}`);
+    }
     imports.writeLines(
       `import { ${routeImports.join(", ")} } from "${virtualFilePrefix}/${getRouteVirtualFileName(route)}";`,
     );
@@ -380,6 +420,17 @@ export function renderRouter(
     imports.writeLines(
       `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
     );
+  }
+
+  if (options.persisted) {
+    const pageRoutes = routes.list.filter((route) => route.page);
+    const descriptors = Array<string>(
+      Math.max(-1, ...pageRoutes.map((route) => route.index)) + 1,
+    );
+    for (const route of pageRoutes) {
+      descriptors[route.index] = `persisted${route.index}`;
+    }
+    writer.writeLines(`const persisted = [${descriptors.join(",")}];`);
   }
 
   writer
@@ -405,7 +456,9 @@ function match_internal(method, pathname) {
       const trie = createRouteTrie(filteredRoutes);
       writer.writeLines(`case '${verb.toUpperCase()}':`);
       writer.writeBlockStart(`case '${verb.toLowerCase()}': {`);
-      writeRouterVerb(writer, trie, verb);
+      writeRouterVerb(writer, trie, (route, path, pathIndex) =>
+        renderMatch(verb, route, path, pathIndex, Boolean(options.persisted)),
+      );
       writer.writeBlockEnd("}");
     }
   }
@@ -420,6 +473,19 @@ function match_internal(method, pathname) {
     .writeLines(
       "const context = createContext(route, request, platform, url);",
     );
+
+  if (options.persisted) {
+    // Negotiate patches only for the generated route and build; POSTs always run.
+    writer.writeLines(
+      `const persistedMismatch = initializePersisted(
+    context,
+    route?.i,
+    buildId(),
+    persisted,
+  );
+  if (persistedMismatch) return persistedMismatch;`,
+    );
+  }
 
   if (hasErrorPage) {
     writer.writeBlockStart("try {");
@@ -545,10 +611,12 @@ export async function fetch(request, platform) {
 }`);
 }
 
+// Emits the server matcher's ranked segment trie; the persisted client
+// matches with the regex route table from renderRoutesClient instead.
 function writeRouterVerb(
   writer: Writer,
   trie: RouteTrie,
-  verb: HttpVerb,
+  terminal: (route: Route, path: PathInfo, pathIndex?: string) => string,
   level: number = 0,
   offset: number | string = 1,
 ): void {
@@ -558,7 +626,7 @@ function writeRouterVerb(
   if (level === 0) {
     if (route) {
       writer.writeLines(
-        `if (len === 1) return ${renderMatch(verb, route, trie.path!)};`,
+        `if (len === 1) return ${terminal(route, trie.path!)};`,
       );
     } else if (trie.static || dynamic) {
       writer.writeBlockStart(`if (len > 1) {`);
@@ -569,7 +637,7 @@ function writeRouterVerb(
   if (trie.static || dynamic) {
     const next = level + 1;
     const index = `i${next}`;
-    let terminal: RouteTrie[] | undefined;
+    let terminals: RouteTrie[] | undefined;
     let children: RouteTrie[] | undefined;
 
     writer.writeLines(`const ${index} = pathname.indexOf('/', ${offset}) + 1;`);
@@ -577,7 +645,7 @@ function writeRouterVerb(
     if (trie.static) {
       for (const child of trie.static.values()) {
         if (child.route) {
-          (terminal ??= []).push(child);
+          (terminals ??= []).push(child);
         }
         if (child.static || child.dynamic || child.catchAll) {
           (children ??= []).push(child);
@@ -585,7 +653,7 @@ function writeRouterVerb(
       }
     }
 
-    if (terminal || dynamic?.route) {
+    if (terminals || dynamic?.route) {
       closeCount++;
       writer.writeBlockStart(`if (!${index} || ${index} === len) {`);
 
@@ -594,29 +662,25 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        terminal?.some(
-          (terminal) => decodeURIComponent(terminal.key) !== terminal.key,
-        )
-      ) {
+      } else if (terminals?.some((t) => decodeURIComponent(t.key) !== t.key)) {
         value = `decodeURIComponent(${value})`;
       }
 
-      if (terminal) {
-        const useSwitch = terminal.length > 1;
+      if (terminals) {
+        const useSwitch = terminals.length > 1;
 
         if (useSwitch) {
           writer.writeBlockStart(`switch (${value}) {`);
         }
 
-        for (const { key, path, route } of terminal) {
+        for (const { key, path, route } of terminals) {
           const decodedKey = decodeURIComponent(key);
           if (useSwitch) {
             writer.write(`case '${decodedKey}': `, true);
           } else {
             writer.write(`if (${value} === '${decodedKey}') `, true);
           }
-          writer.write(`return ${renderMatch(verb, route!, path!)};\n`);
+          writer.write(`return ${terminal(route!, path!)};\n`);
         }
 
         if (useSwitch) {
@@ -626,17 +690,13 @@ function writeRouterVerb(
 
       if (dynamic?.route) {
         writer.writeLines(
-          `if (${value}) return ${renderMatch(
-            verb,
-            dynamic.route,
-            dynamic.path!,
-          )};`,
+          `if (${value}) return ${terminal(dynamic.route, dynamic.path!)};`,
         );
       }
     }
 
     if (children || dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
-      if (terminal || dynamic?.route) {
+      if (terminals || dynamic?.route) {
         writer.writeBlockEnd("} else {").indent++;
       } else {
         writer.writeBlockStart(`if (${index} && ${index} !== len) {`);
@@ -671,7 +731,7 @@ function writeRouterVerb(
 
           const nextOffset =
             typeof offset === "string" ? index : offset + child.key.length + 1;
-          writeRouterVerb(writer, child, verb, next, nextOffset);
+          writeRouterVerb(writer, child, terminal, next, nextOffset);
 
           if (useSwitch) {
             writer.writeBlockEnd("} break;");
@@ -687,7 +747,7 @@ function writeRouterVerb(
 
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         writer.writeBlockStart(`if (${value}) {`);
-        writeRouterVerb(writer, dynamic, verb, next, index);
+        writeRouterVerb(writer, dynamic, terminal, next, index);
         writer.writeBlockEnd(`}`);
       }
     }
@@ -699,12 +759,7 @@ function writeRouterVerb(
 
   if (catchAll) {
     writer.writeLines(
-      `return ${renderMatch(
-        verb,
-        catchAll.route,
-        catchAll.path,
-        String(offset),
-      )};`,
+      `return ${terminal(catchAll.route, catchAll.path, String(offset))};`,
     );
   } else if (level === 0) {
     writer.writeLines("return null;");
@@ -746,12 +801,79 @@ function renderMatch(
   verb: HttpVerb,
   route: Route,
   path: PathInfo,
-  pathIndex?: string,
+  pathIndex: string | undefined,
+  withIndex: boolean,
 ) {
   const name = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
-  return `{ handler: ${name}, path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+  // Persisted matches carry the build-stable route identity used by negotiation.
+  const index = withIndex ? `i: ${route.index}, ` : "";
+  return `{ handler: ${name}, ${index}path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+}
+
+/** Basename of the generated client route-table module (persisted pages). */
+export const ROUTES_CLIENT_FILENAME = `${markoRunFilePrefix}routes.client.js`;
+
+/** Generates the client route matcher and its lazy route entries. */
+export function renderRoutesClient(
+  routes: BuiltRoutes,
+  rootDir: string,
+): string {
+  const writer = createStringWriter();
+  const pageRoutes = routes.list
+    .filter((route) => route.page)
+    .sort(compareClientRoutes);
+  writer.writeBlockStart("const routes = [");
+  for (const route of pageRoutes) {
+    const templatePath = normalizedRelativePath(
+      rootDir,
+      route.templateFilePath!,
+    );
+    writer.writeLines(
+      `[${route.index}, () => import(${JSON.stringify(`${templatePath}?persisted`)}), ${renderClientRouteReg(route)}],`,
+    );
+  }
+  writer.writeBlockEnd("];");
+  writer.writeLines(
+    "export default (pathname) => routes.find((route) => route[2].test(pathname));",
+  );
+  return writer.end();
+}
+
+function compareClientRoutes(a: Route, b: Route) {
+  const length = Math.max(a.path.segments.length, b.path.segments.length);
+  for (let i = 0; i < length; i++) {
+    const diff =
+      clientSegmentRank(a.path.segments[i]) -
+      clientSegmentRank(b.path.segments[i]);
+    if (diff) return diff;
+  }
+  return a.index - b.index;
+}
+
+function clientSegmentRank(segment: string | undefined) {
+  return segment === undefined
+    ? -1
+    : segment === "$$"
+      ? 2
+      : segment === "$"
+        ? 1
+        : 0;
+}
+
+function renderClientRouteReg(route: Route) {
+  if (!route.path.segments.length) return "/^\\/$/";
+  let source = "^";
+  for (const segment of route.path.segments) {
+    source +=
+      segment === "$$"
+        ? "\\/.+"
+        : segment === "$"
+          ? "\\/[^/]+"
+          : "\\/" + segment.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+  }
+  return `/${source}\\/?$/`;
 }
 
 export function renderMiddleware(
