@@ -29,6 +29,8 @@
     "mware",
     "postable",
     "renderable",
+    "formaction",
+    "formmethod",
     "domcontentloaded",
     "requestfinished",
     "requestfailed",
@@ -37,7 +39,8 @@
     "vdir",
     "Broutes",
     "Freadme",
-    "quasis"
+    "quasis",
+    "taskkill"
   ],
   "ignoreRegExpList": [],
   "files": ["*", "src/**/*"],
