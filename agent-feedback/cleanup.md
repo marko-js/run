@@ -19,3 +19,21 @@ Duplication, dead code, inconsistencies, refactor opportunities. Format and rule
 `packages/run/src/vite/codegen/index.ts` › `writeRouteEntryHandler` | 2026-07-18 | impact:low | effort:low
 
 `writeRouteEntryHandler` (`codegen/index.ts:231-249`) branches on `if (page && (verb === "get" || verb === "head"))` but the `if` and `else` bodies are byte-identical — both run `writer.writeBlockStart(\`export function ${verb}${index}(context) {\`)` (`:245-249`) — so the condition emits the same code either way and is dead. This runs on every `marko-run build`/`marko-run dev`for any route with a page. The meaningful page/verb dispatch happens later at`:253` (`page && (verb === "get" || "head" || "post")`); collapse `:245-249`to a single unconditional`writeBlockStart`, or give one arm a genuinely different body if a variation was intended (it reads as leftover from an abandoned one). Pure readability/dead-code cleanup, no behavior change.
+
+## Fix the tsconfig-detection glob: `.tsconfig*` matches nothing real and `jsconfig.json` projects never get route types
+
+`packages/run/src/vite/plugin.ts` › `writeTypesFile` | 2026-07-18 | impact:low | effort:low
+
+`writeTypesFile` only emits `.marko-run/routes.d.ts` when `globFileExists(root, "{.tsconfig*,tsconfig*.json}")` matches. The `.tsconfig*` alternative matches hidden files named `.tsconfig…`, a convention no tool uses — it reads like a typo for `jsconfig*.json`, which the glob currently misses, so JS projects with a `jsconfig.json` never get the generated route types that power the typed `Run` namespace in editors (verified: dev with only `jsconfig.json` produces no `.marko-run/` directory at all; renaming it to `tsconfig.json` generates `routes.d.ts`). VS Code's JS language service consumes `.d.ts` files through jsconfig, so include `jsconfig*.json` in the pattern and drop the `.tsconfig*` branch.
+
+## Show "handler" in the build routes table only for verbs the handler exports
+
+`packages/run/src/vite/utils/log.ts` › `logRoutesTable` | 2026-07-18 | impact:low | effort:low
+
+`logRoutesTable` pushes "handler" into a row's entry chain whenever `route.handler` exists, regardless of verb: a route with `+page.marko` and a `+handler.ts` exporting only `POST` prints its GET row as `handler -> page`, implying a GET handler runs before the page when none exists. The per-verb information is already available — `getVerbs` derives verbs from `route.handler?.verbs` (packages/run/src/vite/utils/route.ts:13) — so the cell could check `route.handler.verbs.includes(verb)` before pushing. Cosmetic, but the table is the main at-a-glance view of each route's execution chain.
+
+## Read the banner version at runtime instead of inlining npm_package_version at build time
+
+`packages/run/scripts/build.ts` › `opts` | 2026-07-18 | impact:low | effort:low
+
+The startup banner (`packages/run/src/adapter/utils.ts:38`) reads `process.env.npm_package_version`, which esbuild `define` freezes at package-build time; the published `0.11.0-rc.10` tarball contains the literal `v${"0.11.0-rc.9"}` in `dist/adapter/index.js`, so every rc.10 install printed the previous version at startup (verify with `npm pack @marko/run@0.11.0-rc.10` and grep the dist). The root `@ci:version` script runs the build before `changeset version`, so any release that publishes a dist built before the bump ships a stale banner again. Read the version from the package's own package.json at runtime, or have release CI assert the inlined value matches the manifest.

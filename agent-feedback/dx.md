@@ -113,3 +113,33 @@ A `node:`-prefixed import referenced from client-reachable code (e.g. `fs.readdi
 `packages/run/package.json` | 2026-07-19 | impact:med | effort:med
 
 The only cheatsheet in the system is marko's `runtime-tags/cheatsheet.md`, which the compiler fix-guide points at for marko-syntax compile throws; `@marko/run` ships no cheatsheet file (`find -iname 'cheatsheet*'` over the run repo is empty). That cheatsheet's sole `@marko/run` reference is one incidental data-loading clause (`cheatsheet.md:89`) — nothing on file-based routing, `+page`/`+handler`/`+layout`/`+middleware` conventions, `$global.data` flow, or config, which is a top agent failure area. Worse, run- and vite-originated errors (bad route file, missing handler, malformed `+meta.json`, invalid config) are not marko compile throws, so `appendAgentFixGuide` (`packages/compiler/src/util/agent-fix-guide.js:5`) never augments them at all. This is the agentic gap: agents build `@marko/run` apps mostly by convention (file-based routes, `+page`/`+handler` naming), where the failures are run-specific rather than marko-syntax, yet they get a bare error and no pointer to the convention they violated. Ship a run cheatsheet (routing, the `+`-file conventions, `$global.data`, config) and wire the same coding-agent detection guide into run's CLI/vite error boundary, or at minimum extend the marko cheatsheet with a routing section and point run projects at it.
+
+## Document (or provide) a way for pages to set per-route `<head>` content
+
+`packages/run/README.md` › `+layout.marko` | 2026-07-18 | impact:med | effort:med
+
+The root layout owns `<head>`, layouts stream before the page in SSR, and route data only flows downstream (middleware/handler → `next(data)` → `$global.data`), so a page cannot tell its layout what `<title>`/meta to render — Marko 6 has no head-hoisting, and the generated entry nests the page as plain layout body content with no inputs (`packages/run/src/vite/codegen/index.ts:83`). The only working pattern is a sibling `+handler.js` per route whose sole job is `next({ page: { title, description } })`, splitting a page's metadata into a separate file and forcing handler boilerplate onto purely static pages. The README documents `context.data`/`$global.data` merging in general (line ~590) but has no head-management section; document this convention explicitly in the layout/handler docs — or consider first-class per-page head support — since every SSR app hits it.
+
+## Allow a status/ResponseInit when `next()` renders the route's page
+
+`packages/run/src/runtime/internal.ts` › `pageResponseInit` | 2026-07-18 | impact:med | effort:low
+
+A POST handler that re-renders the page with validation errors via `return next({ error })` always produces HTTP 200: codegen wires `next` to `render(context, page, {}, data)` (packages/run/src/vite/codegen/index.ts:259), which calls `context.render` with the hardcoded `pageResponseInit` (`status: 200`), and `next()` accepts only a data argument — no ResponseInit. The working escape hatch is re-wrapping the response — `const r = await next({ error }); return new Response(r.body, { status: 422, headers: r.headers })` — but it is undocumented and non-obvious. Let `next()` accept an optional init (the special 404/500 pages already use dedicated ResponseInits), or document the re-wrap pattern near the README's Loading Data section.
+
+## Gate the dev request-log spinner on stdout being a TTY
+
+`packages/run/src/adapter/logger.ts` › `DraftLog.into(console)` | 2026-07-18 | impact:med | effort:low
+
+The request logger enables draftlog's rewriting drafts gated only on `!inspector.url()`, never `process.stdout.isTTY`, and animates an arrow spinner at 100ms per in-flight request. When output is redirected (`marko-run > dev.log 2>&1`, CI logs), every animation tick still writes a cursor-control frame — `\x1b7\x1b[1A\x1b[2K\x1b[1G ◀━ GET /` — because draftlog's `LogDraft.update` emits CSI save/up/clear/restore unconditionally and its off-screen invalidation never fires on a non-TTY stream (`rows()` is undefined there), so a single curl produces several garbage lines and logs become unreadable and bloated. draftlog already ships a fallback: `DraftLog.into(console, true)` makes `console.draft` a plain `console.log`; calling that (or skipping `DraftLog.into` so the `console.draft` branch in `logRequest` is falsy) when `!process.stdout.isTTY` fixes it in one condition.
+
+## Document that middleware never runs for unmatched paths (or run root middleware before the 404)
+
+`packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-07-18 | impact:med | effort:low
+
+The generated `invoke` only calls the composed middleware+handler chain inside `if (route) { ... route.handler(context) }`; unmatched requests fall straight to the 404 branch, so `routes/+middleware.ts` never executes for a path with no `+page`/`+handler`. A root middleware like `Run.ALL((ctx, next) => ctx.url.pathname === "/" ? ctx.redirect("/en") : next())` — the natural Accept-Language pattern coming from Express/Next — silently does nothing when all pages live under `routes/$lang/**`: GET / returns 404, not 302, until a stub `routes/+page.marko` makes the route exist. `packages/run/README.md` ("+middleware" section, ~line 182) says middleware runs "before handlers" but never states it is skipped entirely for unmatched paths. Add a prominent README note, or run the root middleware chain ahead of the 404 response.
+
+## Document marko-run CLI flags (--port/$PORT, --config, --env, --output) in the README
+
+`packages/run/README.md` › `CLI` | 2026-07-18 | impact:low | effort:low
+
+The CLI section of `packages/run/README.md` documents only bare `marko-run dev|build|preview` invocations and never mentions any flag, even though `packages/run/src/cli/index.ts` implements `-p/--port` (with a `$PORT` env-var fallback for both dev and preview, default 3000), `-c/--config`, `-e/--env`, `-o/--output`, and `-f/--file`. The most common deployment question — how do I change the port? — is currently only answerable by reading the sade option strings in source (`PORT=4014 marko-run dev` does listen on 4014). Add a short options table under the CLI heading covering each command's flags and the `$PORT` fallback.
