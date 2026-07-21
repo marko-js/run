@@ -8,6 +8,14 @@ import type {
   RouteHandler,
   RouteHandlerResult,
 } from "./legacy-types";
+import {
+  acceptsPatch,
+  applyPersistedResponseHeaders,
+  createPatchMismatchResponse,
+  matchesPatchRequest,
+  patchResponseContentType,
+  persistedHeaders,
+} from "./persisted-protocol";
 import thenable from "./thenable";
 import type {
   Context,
@@ -33,11 +41,103 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
+// Private request facts forwarded to Marko's per-render options, not `$global`.
+interface MarkoRenderOptions {
+  persisted?: Omit<PersistedRequest, "buildId">;
+}
+
+// Mirrors Marko's persisted contract without depending on its runtime types;
+// `buildId` stays run-side, echoed on patch responses rather than forwarded.
+export interface PersistedRequest {
+  buildId: string;
+  patch?: PersistedPatch;
+}
+
+type PersistedPatch = {
+  fromRoute: string;
+  targetRoute: string;
+};
+
+const persistedRequestLookup = new WeakMap<Context, PersistedRequest>();
+
+/** @internal Marks a generated-router request as part of persisted pages. */
+export function setPersisted(context: Context, persisted: PersistedRequest) {
+  persistedRequestLookup.set(context, persisted);
+}
+
+function getPersistedRoute(
+  persistedRoutes: readonly unknown[],
+  route: string | undefined,
+) {
+  return route && /^(?:0|[1-9]\d*)$/.test(route) && persistedRoutes[+route]
+    ? { route }
+    : undefined;
+}
+
+/** @internal Initializes and negotiates one generated-router request. */
+export function initializePersisted(
+  context: Context,
+  routeId: number | undefined,
+  buildId: string,
+  persistedRoutes: readonly unknown[],
+): Response | undefined {
+  const targetPersisted =
+    routeId !== undefined && persistedRoutes[routeId] !== undefined;
+  if (targetPersisted) {
+    setPersisted(context, { buildId });
+  }
+
+  const { request } = context;
+  const { method } = request;
+  if (
+    routeId !== undefined &&
+    (method === "GET" || method === "HEAD" || method === "POST") &&
+    acceptsPatch(request)
+  ) {
+    const targetRoute = "" + routeId;
+    const source = getPersistedRoute(
+      persistedRoutes,
+      request.headers.get(persistedHeaders.from) || undefined,
+    );
+    if (
+      targetPersisted &&
+      source &&
+      matchesPatchRequest(request, routeId, buildId)
+    ) {
+      setPersisted(context, {
+        buildId,
+        patch: {
+          fromRoute: source.route,
+          targetRoute,
+        },
+      });
+    } else if (method !== "POST") {
+      // Mutations still reach their handler; mismatched reads fail before rendering.
+      return createPatchMismatchResponse();
+    }
+  }
+}
+
 const parentContextLookup = new WeakMap<Request, Context>();
 
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
+};
+
+// Persisted pages vary on `accept`; patches are newline-delimited script frames.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+const patchResponseInit = {
+  status: 200,
+  headers: {
+    "cache-control": "no-store",
+    "content-type": patchResponseContentType,
+    vary: "accept",
+  },
 };
 
 globalThis.MarkoRun ??= {
@@ -238,16 +338,41 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
-      return new Response(
+    render<T>(
+      template: Marko.Template<T>,
+      input: T,
+      init: ResponseInit = pageResponseInit,
+    ) {
+      const persisted = persistedRequestLookup.get(context);
+      let options: MarkoRenderOptions | undefined;
+      const patch = persisted?.patch;
+      // Preserve custom response data while reapplying framework-owned headers.
+      const customInit = !!persisted && init !== pageResponseInit;
+      if (persisted) {
+        if (!customInit) {
+          init = patch ? patchResponseInit : persistedPageResponseInit;
+        }
+        options = { persisted: { patch } };
+      }
+      const response = new Response(
+        // Ambient Marko 5 types omit Marko 6's per-render options overload.
         toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
+          (
+            template.render as (
+              input: Marko.TemplateInput<T>,
+              options?: MarkoRenderOptions,
+            ) => ReturnType<Marko.Template<T>["render"]>
+          )({ ...input, $global: context as unknown as Marko.Global }, options),
         ),
         init,
       );
+      // The client executes a patch body only when this echo names its build.
+      if (patch) {
+        response.headers.set(persistedHeaders.build, persisted!.buildId);
+      }
+      return customInit
+        ? applyPersistedResponseHeaders(response, !!patch)
+        : response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {
