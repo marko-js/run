@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@marko/run-explorer": "^2.0.4",
-    "@marko/vite": "^6.0.3",
+    "@marko/vite": "^6.1.3",
     "@remix-run/form-data-parser": "^0.17.2",
     "@standard-schema/spec": "^1.1.0",
     "browserslist": "^4.28.2",
