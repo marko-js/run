@@ -242,11 +242,7 @@ function writeRouteEntryHandler(
 
   writer.writeLines("");
 
-  if (page && (verb === "get" || verb === "head")) {
-    writer.writeBlockStart(`export function ${verb}${index}(context) {`);
-  } else {
-    writer.writeBlockStart(`export function ${verb}${index}(context) {`);
-  }
+  writer.writeBlockStart(`export function ${verb}${index}(context) {`);
 
   const continuations = writer.branch("cont");
 

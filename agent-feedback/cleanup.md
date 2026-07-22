@@ -14,12 +14,6 @@ Duplication, dead code, inconsistencies, refactor opportunities. Format and rule
 
 `const unusedFiles = new Set<RoutableFile>()` (`builder.ts:82`) is maintained but never consumed. It gets an `.add` for every layout/middleware encountered (`:199`, `:207`) and a `.delete` when one is bound to a route (`:278`, `:284`), but the set is never read, iterated, returned, or logged — `buildRoutes` returns `{ list, middleware, special }` without it (`:175-179`), confirmed by grepping `packages/run/src/vite/` for `unusedFiles` (only those five sites exist). After `traverse()` completes, any leftover entries — layouts/middleware declared but never applied to a route — are simply discarded. Either drop the set and its four maintenance sites, or consume it to warn about unused layouts/middleware. The latter is the same missing diagnostic that lets an orphaned `+meta` pass silently (see the dx finding on page-less `+meta`), so wiring it up would close both gaps at once; deleting it is a no-behavior-change cleanup.
 
-## Collapse the identical if/else in `writeRouteEntryHandler` route-entry codegen
-
-`packages/run/src/vite/codegen/index.ts` › `writeRouteEntryHandler` | 2026-07-18 | impact:low | effort:low
-
-`writeRouteEntryHandler` (`codegen/index.ts:231-249`) branches on `if (page && (verb === "get" || verb === "head"))` but the `if` and `else` bodies are byte-identical — both run `writer.writeBlockStart(\`export function ${verb}${index}(context) {\`)` (`:245-249`) — so the condition emits the same code either way and is dead. This runs on every `marko-run build`/`marko-run dev`for any route with a page. The meaningful page/verb dispatch happens later at`:253` (`page && (verb === "get" || "head" || "post")`); collapse `:245-249`to a single unconditional`writeBlockStart`, or give one arm a genuinely different body if a variation was intended (it reads as leftover from an abandoned one). Pure readability/dead-code cleanup, no behavior change.
-
 ## Fix the tsconfig-detection glob: `.tsconfig*` matches nothing real and `jsconfig.json` projects never get route types
 
 `packages/run/src/vite/plugin.ts` › `writeTypesFile` | 2026-07-18 | impact:low | effort:low
