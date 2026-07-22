@@ -2,7 +2,7 @@ import { createRequire } from "module";
 import path from "path";
 
 const require = createRequire(import.meta.url);
-const applied = Symbol("markoRunAgentFixGuide");
+const applied = new WeakSet<Error>();
 
 /**
  * When a coding agent is driving the terminal, append a one-line pointer to
@@ -12,22 +12,24 @@ const applied = Symbol("markoRunAgentFixGuide");
  * the compiler's own fix-guide (marko-js/marko#3423) for `@marko/run`'s errors.
  */
 export default function appendAgentFixGuide<T>(error: T): T {
-  if (
-    error instanceof Error &&
-    !(error as { [applied]?: true })[applied] &&
-    isCodingAgent()
-  ) {
+  if (error instanceof Error && !applied.has(error) && isCodingAgent()) {
     const cheatsheet = cheatsheetPath();
     if (cheatsheet) {
-      (error as { [applied]?: true })[applied] = true;
-      // `message` may be locked by the thrower (e.g. rolldown errors), so
-      // redefine rather than assign.
-      Object.defineProperty(error, "message", {
-        value: `${error.message}\n\nFix guide: READ ${cheatsheet} before writing a fix.`,
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
+      try {
+        // `message` may be locked by the thrower (e.g. rolldown errors), so
+        // redefine rather than assign. Best-effort: a frozen or otherwise
+        // non-configurable error must never let augmentation mask the real
+        // route/codegen failure this runs inside the catch path of.
+        Object.defineProperty(error, "message", {
+          value: `${error.message}\n\nFix guide: READ ${cheatsheet} before writing a fix.`,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
+        applied.add(error);
+      } catch {
+        // Preserve the original diagnostic if it cannot be augmented.
+      }
     }
   }
 

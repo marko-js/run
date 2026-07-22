@@ -60,6 +60,13 @@ describe("agent-fix-guide", () => {
     assert.equal((tagged.match(/Fix guide:/g) || []).length, 1);
   });
 
+  it("never masks a frozen error it cannot augment", () => {
+    process.env.CLAUDECODE = "1";
+    const error = Object.freeze(new Error("Route conflict"));
+    assert.doesNotThrow(() => appendAgentFixGuide(error));
+    assert.equal(appendAgentFixGuide(error).message, "Route conflict");
+  });
+
   it("passes non-errors through untouched", () => {
     process.env.CLAUDECODE = "1";
     const value = { not: "an error" };
