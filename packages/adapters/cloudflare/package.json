@@ -1,0 +1,38 @@
+{
+  "name": "@marko/run-adapter-cloudflare",
+  "version": "0.1.0",
+  "description": "Preview and deploy @marko/run apps to Cloudflare Workers/Pages",
+  "keywords": [
+    "marko"
+  ],
+  "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/cloudflare",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marko-js/run.git"
+  },
+  "license": "MIT",
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b && tsx scripts/build.ts",
+    "test": ""
+  },
+  "dependencies": {
+    "@cloudflare/vite-plugin": "^1.43.0",
+    "@cloudflare/workers-types": "^4.20241106.0"
+  },
+  "peerDependencies": {
+    "@marko/run": "^0.7||^0.8||^0.9||^0.10||^0.11",
+    "wrangler": "^4.107.0"
+  },
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
+  }
+}

@@ -13,3 +13,5 @@ dist
 coverage
 *.lcov
 .vscode
+# Local Wrangler state
+.wrangler
