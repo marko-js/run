@@ -8,6 +8,7 @@ import type {
   Route,
   SpecialRoutes,
 } from "../types";
+import { agentRouteFixGuide } from "../utils/agent-fix-guide";
 import { parseFlatRoute } from "./parse";
 import VDir from "./vdir";
 import type { Walker, WalkOptions } from "./walk";
@@ -29,7 +30,8 @@ export function isRoutableFile(filename: string) {
 const bracketFlagReg = /\[[^\]]*\]/g;
 
 function warnLookalike(message: string): void {
-  console.warn(`[marko-run] ${message}`);
+  // The cheat-sheet pointer is agent-gated; humans just see the convention.
+  console.warn(`[marko-run] ${message}${agentRouteFixGuide()}`);
 }
 
 // Warn (dev and build) about files that look like a botched route — a `+type`

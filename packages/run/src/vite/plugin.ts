@@ -46,6 +46,7 @@ import type {
   PackageData,
   Route,
 } from "./types";
+import appendAgentFixGuide from "./utils/agent-fix-guide";
 import { getExportIdentifiers } from "./utils/ast";
 import {
   getExternalAdapterOptions,
@@ -271,7 +272,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       }
 
       return routes;
-    })());
+    })().catch((err) => {
+      // Point coding agents at the cheat sheet on route-build errors,
+      // whichever plugin hook triggered the build.
+      throw appendAgentFixGuide(err);
+    }));
   }
 
   let renderVirtualFilesResult: Promise<void> | undefined;
@@ -387,6 +392,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
         }
       } catch (err) {
+        // Tag codegen errors too (route-build errors arrive already tagged);
+        // `prepareError` reads `message`, so the dev overlay carries it as well.
+        appendAgentFixGuide(err);
         if (isBuild) {
           throw err;
         }
