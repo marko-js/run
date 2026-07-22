@@ -1,10 +1,14 @@
 /// <reference types="vite/client" />
-// Eager interception shell; navigation code remains lazy until first use.
+// Eager navigation bootstrap. The engine and route table ship with the
+// entry: enhanced navigation is core progressive enhancement, so the first
+// click pays only for the route's update modules and the patch — never for
+// interception machinery. Route update graphs stay lazy per route.
 
-import type {
-  Mutation,
-  NavigationState,
-  RouteMatcher,
+import {
+  type Mutation,
+  navigate,
+  type NavigationState,
+  type RouteMatcher,
 } from "./persisted-navigation.js";
 
 const state: NavigationState = {
@@ -12,12 +16,10 @@ const state: NavigationState = {
   buildId: "",
   currentId: 0,
 };
-let matcher: RouteMatcher | undefined;
-let matcherPromise: Promise<RouteMatcher> | undefined;
-let loadMatcher: () => Promise<RouteMatcher>;
+let matcher: RouteMatcher;
 
 export function register(
-  loadMatch: () => Promise<RouteMatcher>,
+  routeMatcher: RouteMatcher,
   // The build-stable index of the route this page rendered through.
   id: number,
   // The link-assets build id baked into both bundles as a literal; the
@@ -33,7 +35,7 @@ export function register(
     addEventListener("submit", onSubmit);
     addEventListener("popstate", onPopstate);
   }
-  loadMatcher = loadMatch;
+  matcher = routeMatcher;
   state.currentId = id;
   state.buildId = buildId;
 }
@@ -144,30 +146,22 @@ function onPopstate() {
   navigateMatched(location.href, false, location.pathname);
 }
 
-let navigationModule:
-  | Promise<typeof import("./persisted-navigation.js")>
-  | undefined;
-
 function navigateMatched(
   href: string,
   push: boolean,
   pathname: string,
   mutation?: Mutation,
 ) {
-  Promise.all([
-    matcher
-      ? matcher(pathname)
-      : (matcherPromise ||= loadMatcher().then(
-          (loaded) => (matcher = loaded),
-        )).then((loaded) => loaded(pathname)),
-    (navigationModule ||= import("./persisted-navigation.js")),
-  ]).then(
-    ([target, { navigate }]) =>
-      target
-        ? navigate(state, href, push, target, mutation, fallback)
-        : fallbackNative(href, push, mutation),
-    (err) => fallback(err, href, push, mutation),
-  );
+  try {
+    const target = matcher(pathname);
+    if (target) {
+      navigate(state, href, push, target, mutation, fallback);
+    } else {
+      fallbackNative(href, push, mutation);
+    }
+  } catch (err) {
+    fallback(err, href, push, mutation);
+  }
 }
 
 function fallbackNative(href: string, push: boolean, mutation?: Mutation) {

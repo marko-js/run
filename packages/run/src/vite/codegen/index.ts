@@ -60,12 +60,13 @@ export function renderRouteTemplate(
   if (persisted) {
     importWriter.writeLines(
       `client import { register as __run_persisted_register } from "${virtualFilePrefix}/runtime/persisted";`,
+      `client import __run_persisted_matcher from "${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}";`,
       `client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";`,
     );
     writer.writeLines(
       `<script>
   __run_persisted_register(
-    () => import("${virtualFilePrefix}/${ROUTES_CLIENT_FILENAME}").then((mod) => mod.default),
+    __run_persisted_matcher,
     ${route.index},
     __run_persisted_build_id(),
   );

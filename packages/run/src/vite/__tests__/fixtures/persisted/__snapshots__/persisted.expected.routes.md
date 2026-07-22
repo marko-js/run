@@ -5,13 +5,14 @@
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_matcher from "virtual:marko-run/__marko-run__routes.client.js";
 client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/+page.marko";
 
 <script>
   __run_persisted_register(
-    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    __run_persisted_matcher,
     2,
     __run_persisted_build_id(),
   );
@@ -42,13 +43,14 @@ export function head2(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_matcher from "virtual:marko-run/__marko-run__routes.client.js";
 client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/new/+page.marko";
 
 <script>
   __run_persisted_register(
-    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    __run_persisted_matcher,
     3,
     __run_persisted_build_id(),
   );
@@ -79,13 +81,14 @@ export function head3(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_matcher from "virtual:marko-run/__marko-run__routes.client.js";
 client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/item/$id/+page.marko";
 
 <script>
   __run_persisted_register(
-    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    __run_persisted_matcher,
     4,
     __run_persisted_build_id(),
   );
@@ -116,13 +119,14 @@ export function head4(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_matcher from "virtual:marko-run/__marko-run__routes.client.js";
 client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/intro/+page.marko";
 
 <script>
   __run_persisted_register(
-    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    __run_persisted_matcher,
     5,
     __run_persisted_build_id(),
   );
@@ -153,13 +157,14 @@ export function head5(context) {
 ### Template
 ```marko
 client import { register as __run_persisted_register } from "virtual:marko-run/runtime/persisted";
+client import __run_persisted_matcher from "virtual:marko-run/__marko-run__routes.client.js";
 client import { buildId as __run_persisted_build_id } from "virtual:marko-vite/link-assets";
 import Layout1 from "../../src/routes/+layout.marko";
 import Page from "../../src/routes/docs/$$rest/+page.marko";
 
 <script>
   __run_persisted_register(
-    () => import("virtual:marko-run/__marko-run__routes.client.js").then((mod) => mod.default),
+    __run_persisted_matcher,
     6,
     __run_persisted_build_id(),
   );

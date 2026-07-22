@@ -1059,14 +1059,11 @@ describe("persisted client traversal scroll", () => {
     const { register } = await import("../runtime/persisted.js?traversal");
     const entry: PersistedEntry = { patch: () => () => true };
     register(
-      () =>
-        Promise.resolve(
-          (pathname: string) =>
-            [
-              pathname.startsWith("/item") ? 2 : 1,
-              () => Promise.resolve(entry),
-            ] satisfies RouteEntry,
-        ),
+      (pathname: string) =>
+        [
+          pathname.startsWith("/item") ? 2 : 1,
+          () => Promise.resolve(entry),
+        ] satisfies RouteEntry,
       1,
       "build-1",
     );
@@ -1120,14 +1117,11 @@ describe("persisted client traversal during an in-flight navigation", () => {
     const { register } = await import("../runtime/persisted.js?popstate-wins");
     const applied: string[] = [];
     register(
-      () =>
-        Promise.resolve(
-          (pathname: string) =>
-            [
-              pathname.startsWith("/item") ? 2 : 1,
-              () => Promise.resolve(makeEntry(applied)),
-            ] satisfies RouteEntry,
-        ),
+      (pathname: string) =>
+        [
+          pathname.startsWith("/item") ? 2 : 1,
+          () => Promise.resolve(makeEntry(applied)),
+        ] satisfies RouteEntry,
       1,
       "build-1",
     );
@@ -1171,12 +1165,10 @@ describe("persisted client interception", () => {
     fetchImpl = async () => patchResponse(["fill"]);
     const { register } = await import("../runtime/persisted");
     register(
-      () =>
-        Promise.resolve((pathname: string) =>
-          routeId === undefined
-            ? undefined
-            : ([routeId, () => entryLoader()] as RouteEntry),
-        ),
+      (pathname: string) =>
+        routeId === undefined
+          ? undefined
+          : ([routeId, () => entryLoader()] as RouteEntry),
       1,
       "build-1",
     );
