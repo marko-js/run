@@ -1,0 +1,14 @@
+packages:
+  - examples/*
+  - packages/*
+  - packages/adapters/*
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
+  netlify-cli: true
+  sharp: true
+  unix-dgram: true
+linkWorkspacePackages: true
+publicHoistPattern:
+  - "@marko/runtime-tags"
+  - "make-fetch-happen"

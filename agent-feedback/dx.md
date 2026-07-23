@@ -2,6 +2,12 @@
 
 Friction in builds, tests, tooling, or repo workflows. Format and rules: [README.md](README.md).
 
+## Let the Netlify preview fixtures run offline (cache the edge runtime or skip when it can't be fetched)
+
+`packages/run/src/__tests__/main.test.ts` › `testPage` | 2026-07-23 | impact:med | effort:med
+
+The `netlify-adapter-edge` and `netlify-adapter-not-edge` preview fixtures shell out to the Netlify CLI, which downloads its edge-functions (Deno) runtime on the first `preview` run. In a restricted/offline environment that download fails (`Download failed with status code 403` → `Netlify CLI has terminated unexpectedly` / `Error: fetch failed`), so those fixtures cannot run and there is no offline fallback. (An earlier, broader "dozens of fixtures cascade" symptom was actually a separate adapter-resolution bug — adapter-less fixtures defaulting to the Netlify adapter — now fixed by declaring the adapters at the workspace-root `package.json`; only these two explicit Netlify fixtures still need the download.) `testPage` already closes its server in `finally`, so the request here is not another `server.close()`: cache/vendor the edge runtime for CI, or mark these fixtures `skip_preview` (with a warning) when the runtime is unavailable, so a blocked download is one skipped fixture instead of a failure that blocks running the rest of the suite locally.
+
 ## Add a canonical-origin option to the static adapter so build-time absolute URLs are not http://localhost
 
 `packages/adapters/static/src/crawler.ts` › `createCrawler` | 2026-07-18 | impact:med | effort:low
