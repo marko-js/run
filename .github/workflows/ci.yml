@@ -10,6 +10,10 @@ concurrency:
   group: "${{ github.workflow }}-${{ github.event_name == 'pull_request_target' && github.head_ref || github.ref }}"
   cancel-in-progress: true
 
+# Least-privilege default for all jobs; the release job widens this in its own block.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -149,9 +149,3 @@ The generated `invoke` only calls the composed middleware+handler chain inside `
 `packages/run/README.md` › `CLI` | 2026-07-18 | impact:low | effort:low
 
 The CLI section of `packages/run/README.md` documents only bare `marko-run dev|build|preview` invocations and never mentions any flag, even though `packages/run/src/cli/index.ts` implements `-p/--port` (with a `$PORT` env-var fallback for both dev and preview, default 3000), `-c/--config`, `-e/--env`, `-o/--output`, and `-f/--file`. The most common deployment question — how do I change the port? — is currently only answerable by reading the sade option strings in source (`PORT=4014 marko-run dev` does listen on 4014). Add a short options table under the CLI heading covering each command's flags and the `$PORT` fallback.
-
-## Declare least-privilege `permissions` on the CI `build` and `test` jobs
-
-`.github/workflows/ci.yml` › `jobs.build` / `jobs.test` | 2026-07-23 | impact:low | effort:low
-
-The `build` and `test` jobs in `.github/workflows/ci.yml` declare no `permissions:` block, so their `GITHUB_TOKEN` inherits the repository/organization default scope; if that default is write-enabled, PR-triggered install/build/test scripts run with more write access to the checkout token than they need. The `release` job already scopes its own `id-token`/`contents`/`pull-requests: write`, so adding `permissions: contents: read` at the workflow level (build/test need nothing more) leaves `release` unaffected. Flagged by zizmor/CodeRabbit as excessive-permissions; out of scope for the pnpm migration that surfaced it.
