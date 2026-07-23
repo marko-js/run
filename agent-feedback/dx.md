@@ -2,11 +2,11 @@
 
 Friction in builds, tests, tooling, or repo workflows. Format and rules: [README.md](README.md).
 
-## Keep Netlify preview tests from cascading when the edge runtime download fails
+## Let the Netlify preview fixtures run offline (cache the edge runtime or skip when it can't be fetched)
 
 `packages/run/src/__tests__/main.test.ts` › `testPage` | 2026-07-23 | impact:med | effort:med
 
-The full test suite depends on Netlify CLI downloading its edge-functions runtime during preview tests. In a restricted environment that download fails with `Netlify CLI has terminated unexpectedly` / `Error: fetch failed`; the spawned preview process closes its socket, and dozens of later fixtures then fail with `SocketError: other side closed` or port timeouts instead of a single actionable infrastructure failure. Make the edge runtime available during setup or cache it for tests, and ensure a failed spawned preview is fully closed before later fixtures run so one unavailable download does not obscure the rest of the suite.
+The `netlify-adapter-edge` and `netlify-adapter-not-edge` preview fixtures shell out to the Netlify CLI, which downloads its edge-functions (Deno) runtime on the first `preview` run. In a restricted/offline environment that download fails (`Download failed with status code 403` → `Netlify CLI has terminated unexpectedly` / `Error: fetch failed`), so those fixtures cannot run and there is no offline fallback. (An earlier, broader "dozens of fixtures cascade" symptom was actually a separate adapter-resolution bug — adapter-less fixtures defaulting to the Netlify adapter — now fixed by declaring the adapters at the workspace-root `package.json`; only these two explicit Netlify fixtures still need the download.) `testPage` already closes its server in `finally`, so the request here is not another `server.close()`: cache/vendor the edge runtime for CI, or mark these fixtures `skip_preview` (with a warning) when the runtime is unavailable, so a blocked download is one skipped fixture instead of a failure that blocks running the rest of the suite locally.
 
 ## Add a canonical-origin option to the static adapter so build-time absolute URLs are not http://localhost
 
@@ -150,8 +150,8 @@ The generated `invoke` only calls the composed middleware+handler chain inside `
 
 The CLI section of `packages/run/README.md` documents only bare `marko-run dev|build|preview` invocations and never mentions any flag, even though `packages/run/src/cli/index.ts` implements `-p/--port` (with a `$PORT` env-var fallback for both dev and preview, default 3000), `-c/--config`, `-e/--env`, `-o/--output`, and `-f/--file`. The most common deployment question — how do I change the port? — is currently only answerable by reading the sade option strings in source (`PORT=4014 marko-run dev` does listen on 4014). Add a short options table under the CLI heading covering each command's flags and the `$PORT` fallback.
 
-## Strip coding-agent env markers in the test suite so dev error-page snapshots are hermetic
+## Declare least-privilege `permissions` on the CI `build` and `test` jobs
 
-`packages/run/src/vite/utils/agent-fix-guide.ts` › `isCodingAgent` | 2026-07-30 | impact:med | effort:low
+`.github/workflows/ci.yml` › `jobs.build` / `jobs.test` | 2026-07-23 | impact:low | effort:low
 
-`appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md ..." to compiler-level errors whenever an agent env marker (`CLAUDECODE`, `CLAUDE_CODE`, `AI_AGENT`, `CURSOR_AGENT`, ...) is set. Running `npm test` from inside any coding agent therefore fails snapshot tests whose expectations were recorded without the marker — e.g. `packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` gains the fix-guide line in the rendered dev error page and `main.test.ts` reports a diff, while the same suite passes in CI. Worse, an agent that "fixes" the failure by regenerating snapshots would break CI in the opposite direction. Delete these env vars in a test bootstrap (or gate `isCodingAgent` off when `NODE_ENV === "test"`) so the suite behaves identically regardless of who launches it.
+The `build` and `test` jobs in `.github/workflows/ci.yml` declare no `permissions:` block, so their `GITHUB_TOKEN` inherits the repository/organization default scope; if that default is write-enabled, PR-triggered install/build/test scripts run with more write access to the checkout token than they need. The `release` job already scopes its own `id-token`/`contents`/`pull-requests: write`, so adding `permissions: contents: read` at the workflow level (build/test need nothing more) leaves `release` unaffected. Flagged by zizmor/CodeRabbit as excessive-permissions; out of scope for the pnpm migration that surfaced it.
