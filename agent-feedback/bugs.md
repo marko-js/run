@@ -2,6 +2,16 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
+## `error-invalid-routes` dev snapshot is stale on main after the error-page fix guide
+
+`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` | 2026-07-23 | impact:low | effort:low
+
+`npm test` fails on origin/main (verified in a clean worktree): the dev error
+page now appends "Fix guide: READ ../../../../cheatsheet.md before writing a
+fix." (added with the LLM routing cheatsheet, 225c2ee), but this fixture's
+`dev.expected.md` was never regenerated. `npm run test:update -- --grep
+error-invalid-routes` produces the two-line snapshot fix.
+
 ## Serve the prerendered 404 page with a real 404 status in static-adapter preview
 
 `packages/adapters/static/src/index.ts` › `startPreview` | 2026-07-18 | impact:low | effort:low
