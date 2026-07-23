@@ -17,6 +17,15 @@ importers:
       '@marko/fixture-snapshots':
         specifier: ^2.2.1
         version: 2.2.1(@marko/testing-library@6.4.1(marko@5.39.7)(supports-color@8.1.1))(marko@5.39.7)
+      '@marko/run-adapter-netlify':
+        specifier: workspace:*
+        version: link:packages/adapters/netlify
+      '@marko/run-adapter-node':
+        specifier: workspace:*
+        version: link:packages/adapters/node
+      '@marko/run-adapter-static':
+        specifier: workspace:*
+        version: link:packages/adapters/static
       '@marko/testing-library':
         specifier: ^6.4.1
         version: 6.4.1(marko@5.39.7)(supports-color@8.1.1)
@@ -352,15 +361,6 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
     devDependencies:
-      '@marko/run-adapter-netlify':
-        specifier: workspace:*
-        version: link:../adapters/netlify
-      '@marko/run-adapter-node':
-        specifier: workspace:*
-        version: link:../adapters/node
-      '@marko/run-adapter-static':
-        specifier: workspace:*
-        version: link:../adapters/static
       marko:
         specifier: ^5.39.7
         version: 5.39.7

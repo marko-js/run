@@ -59,9 +59,6 @@
     "warp10": "^2.1.0"
   },
   "devDependencies": {
-    "@marko/run-adapter-netlify": "workspace:*",
-    "@marko/run-adapter-node": "workspace:*",
-    "@marko/run-adapter-static": "workspace:*",
     "marko": "^5.39.7"
   },
   "peerDependencies": {
