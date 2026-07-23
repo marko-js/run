@@ -2,6 +2,12 @@
 
 Friction in builds, tests, tooling, or repo workflows. Format and rules: [README.md](README.md).
 
+## Keep Netlify preview tests from cascading when the edge runtime download fails
+
+`packages/run/src/__tests__/main.test.ts` › `testPage` | 2026-07-23 | impact:med | effort:med
+
+The full test suite depends on Netlify CLI downloading its edge-functions runtime during preview tests. In a restricted environment that download fails with `Netlify CLI has terminated unexpectedly` / `Error: fetch failed`; the spawned preview process closes its socket, and dozens of later fixtures then fail with `SocketError: other side closed` or port timeouts instead of a single actionable infrastructure failure. Make the edge runtime available during setup or cache it for tests, and ensure a failed spawned preview is fully closed before later fixtures run so one unavailable download does not obscure the rest of the suite.
+
 ## Add a canonical-origin option to the static adapter so build-time absolute URLs are not http://localhost
 
 `packages/adapters/static/src/crawler.ts` › `createCrawler` | 2026-07-18 | impact:med | effort:low
