@@ -1,26 +1,21 @@
 {
   "private": true,
   "type": "module",
-  "workspaces": [
-    "./examples/*",
-    "./packages/*",
-    "./packages/adapters/*"
-  ],
   "scripts": {
-    "@ci:build": "npm run build",
-    "@ci:lint": "eslint --format unix . && prettier . --check --with-node-modules --log-level=warn",
-    "@ci:release": "npm run build && node scripts/pkg-toggle && changeset publish && node scripts/pkg-toggle && npm ci",
-    "@ci:test": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" MARKO_DEBUG=1 c8 npm test",
-    "@ci:version": "npm run build && npm run format && changeset version && npm i --package-lock-only",
-    "build": "npm run build -w packages -w packages/adapters --if-present",
-    "build:examples": "npm run build -w examples",
+    "@ci:build": "pnpm run build",
+    "@ci:lint": "eslint --format unix . && prettier . --check --log-level=warn",
+    "@ci:release": "pnpm run build && node scripts/pkg-toggle && changeset publish && node scripts/pkg-toggle && pnpm install --frozen-lockfile",
+    "@ci:test": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" MARKO_DEBUG=1 c8 pnpm test",
+    "@ci:version": "pnpm run build && pnpm run format && changeset version && pnpm install --lockfile-only",
+    "build": "pnpm --filter \"./packages/**\" --recursive --if-present run build",
+    "build:examples": "pnpm --filter \"./examples/*\" --recursive --if-present run build",
     "change": "changeset add",
-    "format": "eslint --format unix --fix .; prettier . --write --with-node-modules --log-level=warn",
-    "lint": "eslint --format unix . && prettier . --check --with-node-modules --log-level=warn && cspell \"**/*.{md,ts,marko}\"",
+    "format": "eslint --format unix --fix .; prettier . --write --log-level=warn",
+    "lint": "eslint --format unix . && prettier . --check --log-level=warn && cspell \"**/*.{md,ts,marko}\"",
     "prepare": "husky",
     "report": "open ./coverage/lcov-report/index.html",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"$NODE_OPTIONS --import tsx\" mocha",
-    "test:update": "cross-env UPDATE_EXPECTATIONS=1 npm test -- --update"
+    "test:update": "cross-env UPDATE_EXPECTATIONS=1 pnpm test --update"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
@@ -63,5 +58,6 @@
     "typescript-eslint": "^8.61.1",
     "valibot": "^1.4.1",
     "vite": "^8.0.16"
-  }
+  },
+  "packageManager": "pnpm@11.15.1"
 }

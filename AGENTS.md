@@ -1,16 +1,16 @@
 # @marko/run Monorepo
 
-`@marko/run` is the Marko application framework: file-based routing (`src/routes/**` with `+page.marko`, `+layout.marko`, `+handler`, `+middleware`), a Vite plugin, and deployment adapters. npm workspaces; primary development happens in `packages/run`, adapters live in `packages/adapters/*`.
+`@marko/run` is the Marko application framework: file-based routing (`src/routes/**` with `+page.marko`, `+layout.marko`, `+handler`, `+middleware`), a Vite plugin, and deployment adapters. pnpm workspaces; primary development happens in `packages/run`, adapters live in `packages/adapters/*`.
 
 ## Commands
 
 ```sh
-npm test                 # mocha suite (tsx loader)
-npm run test:update      # regenerate test expectations (review the diff!)
-npm run build            # all packages -> dist/
-npm run lint             # eslint + prettier + cspell
-npm run format           # eslint --fix + prettier --write
-npm run change           # add a changeset (required for user-facing changes)
+pnpm test                 # mocha suite (tsx loader)
+pnpm run test:update      # regenerate test expectations (review the diff!)
+pnpm run build            # all packages -> dist/
+pnpm run lint             # eslint + prettier + cspell
+pnpm run format           # eslint --fix + prettier --write
+pnpm run change           # add a changeset (required for user-facing changes)
 ```
 
 ## Agent feedback

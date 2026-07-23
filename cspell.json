@@ -68,7 +68,7 @@
     "dist",
     "**/CHANGELOG.md",
     "**/node_modules/**",
-    "package-lock.json",
+    "pnpm-lock.yaml",
     "__snapshots__"
   ]
 }
