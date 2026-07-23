@@ -11,3 +11,4 @@ allowBuilds:
 linkWorkspacePackages: true
 publicHoistPattern:
   - "@marko/runtime-tags"
+  - "make-fetch-happen"
