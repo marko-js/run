@@ -42,21 +42,15 @@ export async function preview(
     "serve",
   );
 
-  const requestedPort =
-    port ??
-    resolvedConfig.preview.port ??
-    resolvedConfig.server.port ??
-    defaultPort;
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(requestedPort),
+    resolveAvailablePort(
+      port ??
+        resolvedConfig.preview.port ??
+        resolvedConfig.server.port ??
+        defaultPort,
+    ),
     resolveAdapter(resolvedConfig),
   ]);
-
-  if (availablePort !== requestedPort) {
-    console.warn(
-      `Port ${requestedPort} is in use, listening on port ${availablePort} instead.`,
-    );
-  }
 
   if (!adapter) {
     throw new Error("No adapter specified for 'serve' command");
@@ -114,21 +108,15 @@ export async function dev(
     envFile = path.resolve(cwd, envFile);
   }
 
-  const requestedPort =
-    port ??
-    resolvedConfig.server.port ??
-    resolvedConfig.preview.port ??
-    defaultPort;
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(requestedPort),
+    resolveAvailablePort(
+      port ??
+        resolvedConfig.server.port ??
+        resolvedConfig.preview.port ??
+        defaultPort,
+    ),
     resolveAdapter(resolvedConfig),
   ]);
-
-  if (availablePort !== requestedPort) {
-    console.warn(
-      `Port ${requestedPort} is in use, listening on port ${availablePort} instead.`,
-    );
-  }
 
   if (!adapter) {
     throw new Error(
@@ -240,6 +228,16 @@ export async function build(
   await viteBuild({
     ...buildConfig,
   });
+}
+
+async function resolveAvailablePort(requestedPort: number): Promise<number> {
+  const availablePort = await getAvailablePort(requestedPort);
+  if (availablePort !== requestedPort) {
+    console.warn(
+      `Port ${requestedPort} is in use, listening on port ${availablePort} instead.`,
+    );
+  }
+  return availablePort;
 }
 
 function findFileWithExt(
