@@ -1,10 +1,5 @@
-// Loaded via .mocharc.json `require`. Snapshot expectations are recorded in a
-// human terminal, but `@marko/run` changes its error/warning output when a
-// coding-agent env marker is present (see
-// packages/run/src/vite/utils/agent-fix-guide.ts), which made the suite fail
-// whenever an agent ran `npm test`. Strip the markers up front — child
-// processes spawned by fixtures inherit the cleaned env, and tests that cover
-// the agent behavior set the vars themselves.
+// Agent env markers alter error output (see vite/utils/agent-fix-guide.ts),
+// which would break snapshot expectations recorded without them.
 for (const key of [
   "CLAUDECODE",
   "CLAUDE_CODE",
