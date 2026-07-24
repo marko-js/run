@@ -6,7 +6,12 @@ import kleur from "kleur";
 
 import type { NodeMiddleware } from "./middleware";
 
-if (!inspector.url()) {
+// Rewriting lines with cursor-control escapes only works on an interactive
+// terminal. When output is piped (CI, editors, AI agents) skip installing
+// DraftLog entirely so `logRequest` falls back to plain sequential lines —
+// otherwise every 100ms spinner frame is appended as a new line of escape
+// sequences in the captured output.
+if (!inspector.url() && process.stdout.isTTY && process.env.TERM !== "dumb") {
   DraftLog.into(console);
   (DraftLog as any).defaults.canReWrite = false;
 }

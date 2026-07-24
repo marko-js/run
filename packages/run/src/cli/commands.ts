@@ -42,15 +42,21 @@ export async function preview(
     "serve",
   );
 
+  const requestedPort =
+    port ??
+    resolvedConfig.preview.port ??
+    resolvedConfig.server.port ??
+    defaultPort;
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(
-      port ??
-        resolvedConfig.preview.port ??
-        resolvedConfig.server.port ??
-        defaultPort,
-    ),
+    getAvailablePort(requestedPort),
     resolveAdapter(resolvedConfig),
   ]);
+
+  if (availablePort !== requestedPort) {
+    console.warn(
+      `Port ${requestedPort} is in use, listening on port ${availablePort} instead.`,
+    );
+  }
 
   if (!adapter) {
     throw new Error("No adapter specified for 'serve' command");
@@ -108,15 +114,21 @@ export async function dev(
     envFile = path.resolve(cwd, envFile);
   }
 
+  const requestedPort =
+    port ??
+    resolvedConfig.server.port ??
+    resolvedConfig.preview.port ??
+    defaultPort;
   const [availablePort, adapter] = await Promise.all([
-    getAvailablePort(
-      port ??
-        resolvedConfig.server.port ??
-        resolvedConfig.preview.port ??
-        defaultPort,
-    ),
+    getAvailablePort(requestedPort),
     resolveAdapter(resolvedConfig),
   ]);
+
+  if (availablePort !== requestedPort) {
+    console.warn(
+      `Port ${requestedPort} is in use, listening on port ${availablePort} instead.`,
+    );
+  }
 
   if (!adapter) {
     throw new Error(

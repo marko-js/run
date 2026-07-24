@@ -30,7 +30,7 @@ prog
   )
   .option(
     "-p, --port",
-    "Port the server should listen on (defaults: `$PORT` env variable or 3000)",
+    "Port the server should listen on (defaults: 'preview.port' or 'server.port' in config, or `$PORT` env variable, or 3000)",
   )
   .option("-f, --file", "Output file to start")
   .action(async (entry, opts) => {
@@ -56,7 +56,7 @@ prog
   .describe("Start development server in watch mode")
   .option(
     "-p, --port",
-    "Port the dev server should listen on (defaults: 'preview.port' in config, or `$PORT` env variable, or 3000)",
+    "Port the dev server should listen on (defaults: 'server.port' or 'preview.port' in config, or `$PORT` env variable, or 3000)",
   )
   .example("dev --config vite.config.js")
   .action(async (entry, opts) => {
