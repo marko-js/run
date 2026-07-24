@@ -6,5 +6,5 @@
   "extension": ["js", "ts", "marko"],
   "spec": ["packages/**/src/**/*.test.@(js|ts)"],
   "watchFiles": ["packages/**/src/**/*.@(ts|marko)"],
-  "require": ["tsx", "mocha-snap"]
+  "require": ["tsx", "mocha-snap", "./scripts/test-env.mjs"]
 }
