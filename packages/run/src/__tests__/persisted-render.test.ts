@@ -81,7 +81,7 @@ describe("persisted render() response headers", () => {
       "text/javascript;charset=UTF-8",
     );
     assert.equal(res.headers.get("cache-control"), "no-store");
-    assert.equal(res.headers.get("vary"), "accept");
+    assert.equal(res.headers.get("vary"), "accept, x-marko-echo");
     assert.equal(res.headers.get("x-marko-build"), "current-build");
     assert.equal(res.status, 201, "caller status preserved");
     assert.equal(
@@ -106,7 +106,7 @@ describe("persisted render() response headers", () => {
         headers: { vary: "cookie" },
       },
     );
-    assert.equal(res.headers.get("vary"), "cookie, accept");
+    assert.equal(res.headers.get("vary"), "cookie, accept, x-marko-echo");
   });
 
   it("persisted document render still varies on accept with a custom init", () => {

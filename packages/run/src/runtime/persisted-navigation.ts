@@ -2,6 +2,8 @@
 
 import {
   createPatchRequestHeaders,
+  type EchoSnapshot,
+  encodeEcho,
   isPatchResponse,
   persistedHeaders,
 } from "./persisted-protocol.js";
@@ -9,6 +11,8 @@ import {
 /** The deferred persisted module for one route. */
 export interface PersistedEntry {
   patch: (fail?: (error: unknown) => void) => (source: string) => true | string;
+  /** The page's provable possessions, echoed on the next patch request. */
+  echo: () => EchoSnapshot;
 }
 
 /** Build-stable route id plus its lazy persisted entry. */
@@ -31,6 +35,11 @@ export interface NavigationState {
   controller?: AbortController;
   currentId: number;
   resubmitting?: boolean;
+  /** The applied page's possession snapshot (set once its entry applied). */
+  echo?: () => EchoSnapshot;
+  /** The server's opaque value-digest feedback, committed only after the
+   * response that carried it fully applied. */
+  echoValues?: string;
 }
 
 // Ids are authored decoded while URL fragments arrive percent-encoded;
@@ -85,14 +94,19 @@ export async function navigate(
 
   try {
     const loading = target[1]();
+    const headers = createPatchRequestHeaders(
+      targetId,
+      state.currentId,
+      state.buildId,
+    );
+    // The echo asserts only what the applied page provably holds; a page
+    // whose entry never applied a patch has nothing to assert.
+    const echo = encodeEcho(state.echo?.(), state.echoValues);
+    if (echo) headers[persistedHeaders.echo] = echo;
     const fetching = fetch(href, {
       method: mutation && "POST",
       body: mutation?.[0],
-      headers: createPatchRequestHeaders(
-        targetId,
-        state.currentId,
-        state.buildId,
-      ),
+      headers,
       signal: mutation ? undefined : signal,
     });
     let entry: PersistedEntry;
@@ -133,6 +147,9 @@ export async function navigate(
       if (!applied) {
         // Advance on the first applied frame; later failure replaces this entry.
         applied = true;
+        // The snapshot is a live view of possession — safe to adopt as soon
+        // as this entry owns the page, even if the stream later aborts.
+        state.echo = entry.echo;
         state.currentId = targetId;
         const url = new URL(response!.url || href);
         // fetch drops fragments; like a redirect without its own fragment,
@@ -175,6 +192,11 @@ export async function navigate(
         import.meta.env.DEV ? "patch response carried no fills" : undefined,
       );
     }
+    // Value feedback commits only after every frame applied: it must never
+    // assert digests for fills a superseded stream never ran. (A superseding
+    // navigation aborts this one mid-stream and simply forgoes the update.)
+    const feedback = response.headers.get(persistedHeaders.echo);
+    if (feedback !== null) state.echoValues = feedback || undefined;
     if (!push) {
       // Any browser restore targeted the pre-patch DOM; land the traversal
       // on the position recorded when this entry was last departed.

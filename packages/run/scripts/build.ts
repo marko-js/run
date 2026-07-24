@@ -14,6 +14,7 @@ const opts: BuildOptions = {
     "src/runtime/url-builder.ts",
     "src/runtime/internal.ts",
     "src/runtime/persisted.ts",
+    "src/runtime/persisted-protocol.ts",
     "src/runtime/persisted-navigation.ts",
     "src/adapter/index.ts",
     "src/adapter/middleware.ts",

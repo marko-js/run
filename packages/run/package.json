@@ -17,6 +17,7 @@
     ".": "./src/runtime/index.ts",
     "./cheatsheet.md": "./cheatsheet.md",
     "./namespace": "./src/runtime/namespace.ts",
+    "./protocol": "./src/runtime/persisted-protocol.ts",
     "./router": "./src/runtime/router.ts",
     "./vite": "./src/vite/index.ts",
     "./adapter/middleware": "./src/adapter/middleware.ts",

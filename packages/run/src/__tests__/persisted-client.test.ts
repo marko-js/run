@@ -163,6 +163,7 @@ const makeEntry = (
     applied.push(source);
     return result(source);
   },
+  echo: () => ({ regions: {} }),
 });
 
 const makeState = (overrides?: Partial<NavigationState>): NavigationState => ({
@@ -252,6 +253,45 @@ describe("persisted client navigate()", () => {
     assert.equal(headers["x-marko-route"], "2");
     assert.equal(headers["x-marko-from"], "1");
     assert.equal(headers["x-marko-build"], "build-1");
+  });
+
+  it("echoes possessions and commits feedback only after apply", async () => {
+    const applied: string[] = [];
+    const state = makeState();
+    // First navigation: nothing applied yet, so no echo field ships.
+    fetchImpl = async (href) => patchResponse(["fill-1"], href);
+    const entry: PersistedEntry = {
+      echo: () => ({ regions: { 'a5|k"x"': "0123456789abcdef" } }),
+      patch: () => (source) => (applied.push(source), true),
+    };
+    await run(state, "http://localhost:3000/item/2", entry);
+    assert.equal(
+      (fetchCalls[0].init.headers as Record<string, string>)["x-marko-echo"],
+      undefined,
+    );
+
+    // Second navigation echoes the applied entry's possessions; the
+    // response's value feedback commits only after every frame applied.
+    fetchImpl = async (href) =>
+      patchResponse(["fill-2"], href, {
+        ...patchHeaders,
+        "x-marko-echo": "c-feedback",
+      });
+    await run(state, "http://localhost:3000/item/3", entry, { targetId: 3 });
+    const echoed = (fetchCalls[1].init.headers as Record<string, string>)[
+      "x-marko-echo"
+    ];
+    assert.ok(echoed?.startsWith("E1."), `echo header missing: ${echoed}`);
+    assert.equal(state.echoValues, "c-feedback");
+
+    // Third navigation replays the committed feedback inside the envelope.
+    fetchImpl = async (href) => patchResponse(["fill-3"], href);
+    await run(state, "http://localhost:3000/item/4", entry, { targetId: 4 });
+    const third = (fetchCalls[2].init.headers as Record<string, string>)[
+      "x-marko-echo"
+    ];
+    assert.ok(third!.length > echoed!.length, "feedback not replayed");
+    assert.deepEqual(applied, ["fill-1", "fill-2", "fill-3"]);
   });
 
   it("does not advance the page when frame application fails", async () => {
@@ -582,6 +622,7 @@ describe("persisted client navigate()", () => {
     const arriving = window.document.createElement("input");
     arriving.setAttribute("autofocus", "");
     const entry: PersistedEntry = {
+      echo: () => ({ regions: {} }),
       patch: () => () => {
         focused.remove();
         window.document.body.append(arriving);
@@ -604,6 +645,7 @@ describe("persisted client navigate()", () => {
     window.document.body.focus = () => void bodyFocused++;
     try {
       const entry: PersistedEntry = {
+        echo: () => ({ regions: {} }),
         patch: () => () => {
           focused.remove();
           return true;
@@ -670,6 +712,7 @@ describe("persisted client navigate()", () => {
     const fallbacks: unknown[][] = [];
     let patchFactoryCalls = 0;
     const entry: PersistedEntry = {
+      echo: () => ({ regions: {} }),
       patch: () => {
         patchFactoryCalls++;
         return () => true;
@@ -758,6 +801,7 @@ describe("persisted client navigate()", () => {
   /** An entry that applies every line and exposes its failure sink. */
   const makeFailSinkEntry = (sinks: ((error: unknown) => void)[]) =>
     ({
+      echo: () => ({ regions: {} }),
       patch: (fail) => {
         sinks.push(fail!);
         return () => true;

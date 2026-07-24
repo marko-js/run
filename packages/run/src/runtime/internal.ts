@@ -12,6 +12,7 @@ import {
   acceptsPatch,
   applyPersistedResponseHeaders,
   createPatchMismatchResponse,
+  decodeEcho,
   matchesPatchRequest,
   patchResponseContentType,
   persistedHeaders,
@@ -51,11 +52,15 @@ interface MarkoRenderOptions {
 export interface PersistedRequest {
   buildId: string;
   patch?: PersistedPatch;
+  /** The request echo's opaque value-digest section, for the app's pruning
+   * oracle; regions feed Marko directly through `patch.heldRegions`. */
+  echoValues?: string;
 }
 
 type PersistedPatch = {
   fromRoute: string;
   targetRoute: string;
+  heldRegions?: (site: string, instance: string) => string | undefined;
 };
 
 const persistedRequestLookup = new WeakMap<Context, PersistedRequest>();
@@ -104,12 +109,17 @@ export function initializePersisted(
       source &&
       matchesPatchRequest(request, routeId, buildId)
     ) {
+      // A malformed or oversize echo decodes to nothing: every claim it
+      // carried becomes a miss and the patch ships complete.
+      const echo = decodeEcho(request.headers.get(persistedHeaders.echo));
       setPersisted(context, {
         buildId,
         patch: {
           fromRoute: source.route,
           targetRoute,
+          heldRegions: echo?.regions,
         },
+        echoValues: echo?.values,
       });
     } else if (method !== "POST") {
       // Mutations still reach their handler; mismatched reads fail before rendering.
