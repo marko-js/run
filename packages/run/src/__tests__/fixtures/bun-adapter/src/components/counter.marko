@@ -1,0 +1,11 @@
+class {
+  declare state: { count: number };
+  onCreate() {
+    this.state = { count: 0 };
+  }
+  handleIncrement() {
+    this.state.count++;
+  }
+}
+
+<button on-click("handleIncrement")>${state.count}</button>
