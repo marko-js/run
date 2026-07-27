@@ -95,6 +95,9 @@ importers:
       lint-staged:
         specifier: ^17.0.7
         version: 17.0.7
+      make-fetch-happen:
+        specifier: ^12.0.0
+        version: 12.0.0
       marko:
         specifier: ^5.39.7
         version: 5.39.7
