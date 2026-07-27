@@ -2,6 +2,7 @@ packages:
   - examples/*
   - packages/*
   - packages/adapters/*
+# Dependencies whose postinstall scripts must run (binary downloads/native builds).
 allowBuilds:
   "@parcel/watcher": true
   esbuild: true
@@ -10,5 +11,10 @@ allowBuilds:
   unix-dgram: true
 linkWorkspacePackages: true
 publicHoistPattern:
+  # marko 5's tags-api interop imports this dep of marko itself via a bare
+  # specifier that Vite resolves from the app root; hoist it so pnpm's nested
+  # layout keeps it resolvable like npm's flat layout did.
   - "@marko/runtime-tags"
+  # Keep @micro-frame/marko's fetch chain externalized in SSR test builds;
+  # bundling it breaks on lru-cache ESM/CJS interop (see agent-feedback/bugs.md).
   - "make-fetch-happen"
