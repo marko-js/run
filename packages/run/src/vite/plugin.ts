@@ -116,6 +116,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let entryTemplateImporters: Set<string>;
   let routeData!: RouteData;
   let resolvedConfig: ResolvedConfig;
+  const buildId = Date.now().toString(36);
   let typesFile: string | undefined;
   let runtimeInclude: string | undefined;
 
@@ -555,6 +556,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           pluginConfig.define ??= {};
           pluginConfig.define["process.env.NODE_ENV"] ??= "'production'";
+          // One id per build, on both halves: a browser holding an older
+          // document is refused a patch and navigates instead.
+          const id = JSON.stringify(buildId);
+          pluginConfig.define["process.env.MARKO_RUN_BUILD_ID"] ??= id;
+          pluginConfig.define["globalThis.__MARKO_RUN_BUILD_ID__"] ??= id;
 
           pluginConfig.resolve ??= {};
           pluginConfig.resolve.mainFields ??= (

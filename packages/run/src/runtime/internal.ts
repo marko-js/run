@@ -2,7 +2,7 @@
 
 import { parseFormData } from "@remix-run/form-data-parser";
 
-import { httpVerbs } from "../vite/constants";
+import { buildIdHeader, httpVerbs, patchContentType } from "../vite/constants";
 import type {
   Awaitable,
   RouteHandler,
@@ -39,6 +39,26 @@ const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
 };
+
+const buildId = process.env.MARKO_RUN_BUILD_ID || "dev";
+
+// A patch is only ever an optimization: anything unproven renders the document
+// the browser would have asked for anyway.
+function wantsPatch(request: Request) {
+  return (
+    (request.method === "GET" || request.method === "HEAD") &&
+    request.headers.get("accept")?.includes(patchContentType) === true &&
+    request.headers.get(buildIdHeader) === buildId
+  );
+}
+
+function patchResponseInit(init: ResponseInit) {
+  const headers = new Headers(init.headers);
+  headers.set("content-type", `${patchContentType};charset=UTF-8`);
+  headers.set("cache-control", "no-store");
+  headers.append("vary", "accept");
+  return { ...init, headers };
+}
 
 globalThis.MarkoRun ??= {
   NotHandled,
@@ -239,15 +259,27 @@ export function createContext(
       );
     },
     render(template, input, init = pageResponseInit) {
-      return new Response(
-        toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
-        ),
-        init,
-      );
+      const templateInput = {
+        ...input,
+        $global: context as unknown as Marko.Global,
+      };
+      const renderPatch = (template as any).renderPatch as
+        | undefined
+        | ((input: unknown) => Rendered);
+
+      if (renderPatch && wantsPatch(request)) {
+        return new Response(
+          toReadable(renderPatch(templateInput)),
+          patchResponseInit(init),
+        );
+      }
+
+      const headers = new Headers(init.headers);
+      headers.append("vary", "accept");
+      return new Response(toReadable(template.render(templateInput)), {
+        ...init,
+        headers,
+      });
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {

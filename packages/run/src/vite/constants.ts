@@ -27,3 +27,9 @@ export const RoutableFileTypes = {
 
 export type RoutableFileType = ValuesOf<typeof RoutableFileTypes>;
 export type HttpVerb = (typeof httpVerbs)[number];
+
+/** Accept/content type that negotiates a patch instead of a document. */
+export const patchContentType = "text/marko-patch";
+
+/** Header carrying the build the browser holds, so a stale one is refused. */
+export const buildIdHeader = "x-marko-run-build";
