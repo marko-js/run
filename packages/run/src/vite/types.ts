@@ -77,6 +77,8 @@ export interface RouterOptions {
 }
 
 export interface MarkoRunOptions extends Partial<RouterOptions> {
+  /** Compiles for a document that survives navigation. Forwarded to @marko/vite. */
+  persisted?: boolean;
   routesDir?: string;
   emitRoutes?(routes: Route[]): void | Promise<void>;
   adapter?: Adapter | null;

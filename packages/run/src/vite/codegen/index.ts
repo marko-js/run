@@ -39,6 +39,7 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -51,7 +52,9 @@ export function renderRouteTemplate(
 
   const importWriter = writer.branch("imports");
 
-  if (dev) {
+  // A persisted page needs the client half in production too: it is what turns
+  // a navigation into a patch request.
+  if (dev || persisted) {
     importWriter.writeLines(
       `client import "virtual:marko-run/runtime/client";`,
     );

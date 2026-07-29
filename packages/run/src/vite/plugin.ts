@@ -328,6 +328,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 route,
                 await getMarkoApiForRoute(context, route),
                 !isBuild,
+                !!opts.persisted,
               ),
             );
           }
@@ -347,6 +348,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               route,
               await getMarkoApiForRoute(context, route),
               !isBuild,
+              !!opts.persisted,
             ),
           );
         }
@@ -797,6 +799,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
 
       generateBundle(options, bundle) {
+        if (isBuild && isSSRBuild) {
+          // Written out so a deploy (or a check like verify-persisted) can see
+          // which build a running server will accept patches for.
+          this.emitFile({
+            type: "asset",
+            fileName: "build-id",
+            source: buildId,
+          });
+        }
+
         if (options.sourcemap && options.sourcemap !== "inline") {
           // Iterate through bundle and remove source maps that don't have a corresponding source file
           for (const key of Object.keys(bundle)) {
