@@ -1,3 +1,7 @@
+export {
+  getArtifactEmissionForTest,
+  setArtifactEmissionForTest,
+} from "./persisted-plan/artifact-emission-test-hook";
 export { default, defaultConfigPlugin, getApi, getPackageData } from "./plugin";
 export type {
   Adapter,

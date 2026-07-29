@@ -1,0 +1,7 @@
+import Panel from "./tags/panel.marko" with { load: "idle" }
+static const step = 987654321;
+
+<let/count=0>
+<button onClick() { count += step }>${count}</button>
+<Panel label=input.label/>
+<${count % 2 ? Panel : null} label="odd"/>

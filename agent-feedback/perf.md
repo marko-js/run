@@ -43,3 +43,44 @@ The `marko-run-vite:post` transform bails with `if (!isBuild || isSSRBuild || !c
 `packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-08-03 | impact:low | effort:med
 
 `renderRouter` loops over `httpVerbs` and emits a complete trie matcher per verb, and since `hasVerb` (`packages/run/src/vite/utils/route.ts`) reports `head` for every route with a page or a `get` handler, the HEAD block is a byte-for-byte copy of the GET block modulo the `getN`/`headN` identifier prefix — `renderMatch` is the only verb-dependent part of `writeRouterVerb`. In the checked-in snapshot `packages/run/src/vite/__tests__/fixtures/build-routes/__snapshots__/build-routes.expected.router.js` (8,377 bytes) the copy costs 1,254 of 5,256 matcher bytes, and it grows linearly: a page-only app of 101 routes renders a 35,109-byte router whose GET and HEAD blocks are 11,388 and 11,591 bytes, so roughly two thirds of the module is duplicated matcher. The router is server-only and the duplicate compresses well (dropping the fixture's HEAD block moves gzip only 1,654 → 1,563), so the win is raw size and cold-start parse on large route tables, not transfer size. When the head-filtered and get-filtered route lists are identical — always, unless a `+handler` exports `head` without `get` — emit HEAD as a lookup over the GET match (`const m = match_internal('GET', pathname)` plus a path-keyed table of `headN`/`headN_options`/`headN_meta`, reusing `m.params`) and fall back to today's full block otherwise.
+
+## Restore the E2 kill switch's elision parity, or gate the claim-set channel off at the narrower digest width
+
+`packages/run/src/runtime/claim-sets.ts` › `claimSetsEnabled` | 2026-07-28 | impact:med | effort:med
+
+`MARKO_RUN_CLAIM_SETS=0` is the documented kill switch for the server-issued claim-set channel, and it is meant to leave a working E1 wire behind it. Measured on marko-ecommerce's appscape battery (browser-driven, curl-replay byte authority, MARKO_SRC build — magnitudes not canonical, the pass/fail pattern is): with the channel ON the battery is 22/22 at the shipped defaults (96-bit digests, `echoValuesCap` 720). With `MARKO_RUN_CLAIM_SETS=0` the same build is 21/22 — "feed: page 1 holds on load-more" elides 26.6% against its >=30% gate. The pre-widening shipped configuration (48-bit digests, `echoValuesCap` 360) passes 22/22 with the channel off, so the kill switch used to be gate-clean and is not any more. Mechanism: at 96 bits an enumerated claim costs 26 B, so the 495 B `E1.` field (`echoValueCap`) carries ~18 records instead of ~27, and without an id to redeem the committed store server-side the request can only assert that shed subset. Raising `echoValuesCap` to 720 recovers most of it (the feed-prepend gate goes 25.3% -> 57.3% with the channel off) but not the load-more gate. Directions: (a) let the E1 path spend more of the 511 B field on values when no claim-set id is in play, (b) have the client rotate which store records it echoes across hops so coverage accumulates, or (c) treat the narrower digest as the kill switch's companion setting and drop `MARKO_PERSISTED_DIGEST_WIDTH` to 8 when the channel is disabled. Re-verify by building marko-ecommerce and running `MARKO_RUN_CLAIM_SETS=0 node scripts/validate/appscape-probe.mjs`.
+
+## Lazy-island shells are outside the static shell manifest — a live wire shell per navigation
+
+`packages/run/src/vite/utils/static-shells.ts`; codegen route shell floor | 2026-07-28 | impact:med | effort:med
+
+Static shell collection walks the route's eager chunk closure, so a
+`load=` lazy island's shell ids are never in `__MARKO_RUN_SHELLS__` —
+every persisted navigation that re-delivers the island's branch ships
+its wire shell live (measured 198 B/nav for the docs `related` widget;
+the appscape route-floor check had to be rescoped to allow it). For
+content archetypes that lean on lazy islands this is a per-nav tax the
+manifest exists to avoid. Candidate fix rides the dual-entry artifact
+design: artifacts report owned shell ids as metadata per activation
+domain, letting the manifest cover lazy-domain shells the client can
+claim once the artifact has loaded (or immediately, since shells are
+just [template, walks] strings the eager manifest could carry). Until
+then the docs gate pins the cost (≤1 live shell, ≤250 B per patch).
+
+## Static shell manifest repeats shared tags' held ids per route
+
+`packages/run/src/vite/utils/static-shells.ts` › per-route held-id closure | 2026-07-28 | impact:med | effort:med
+
+The route-scale probe (persisted-pages-scratch/route-scale, gate 4)
+measured the shared-template shape: a tag shared by every route
+contributes its held shell ids to EVERY route's manifest entry — ids do
+not dedupe across routes (2 ids/route vs 1 on the flat shape, +43%
+manifest bytes on a docs-at-scale layout where hundreds of routes share
+one template). At ~14 raw B/held id this is linear but pays the shared
+closure N times. The dual-entry artifact design's capability metadata
+(artifact → shell ids, deduped by construction) is the structural fix;
+short of that, a shared-pool encoding (route → indices into a global id
+table) would remove the repetition. Also from the same probe: overall
+build time is superlinear in route count (marginal 19→33 ms/route to
+N=1000, all shapes) — likely bundler graph cost over ~3N chunks; worth
+profiling before any route-scale budget is enforced on CI.

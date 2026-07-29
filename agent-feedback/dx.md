@@ -209,3 +209,30 @@ CodeRabbit's pre-merge checks (configured in the organization UI; the repo has n
 `cspell.json` › `words` | 2026-08-11 | impact:med | effort:low
 
 `pnpm run lint` fails on a clean `main` with a single cspell error: `agent-feedback/cleanup.md` uses "macrotask", which is not in `cspell.json`'s `words` list. The word arrived with 445114c (#256) and the check covers `**/*.{md,ts,marko}`, so every branch cut from main inherits a red lint until the word is added. Re-verify: `npx cspell "**/*.{md,ts,marko}" --no-progress` on main reports one issue.
+
+## No fixture app exercises a persisted build end-to-end in this repo's suite
+
+`packages/run/src/__tests__/fixtures/` | 2026-07-24 | impact:med | effort:med
+
+The persisted client/render/codegen tests are unit-level; nothing in this
+repo builds a `persisted: true` fixture app through the real Vite/Rolldown
+pipeline. The round-4 shell manifest had to lock its chunk-closure walk as a
+pure function (`vite/utils/static-shells.ts` + tests) and rely on the
+external ecommerce testbed for the integration proof — a Rolldown change to
+`chunk.imports`/`facadeModuleId` semantics or the `.persisted-entry.marko`
+id shape would surface there, not here. A minimal persisted fixture app
+asserting the appended `__MARKO_RUN_SHELLS__` per route would close that.
+
+## `error-invalid-routes` dev snapshot fails when run from an agent terminal
+
+`packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` | 2026-07-28 | impact:low | effort:low
+
+The duplicate-route error page snapshot
+(`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md`)
+was recorded without the agent fix-guide line, but `appendAgentFixGuide`
+appends "Fix guide: READ … cheatsheet.md" whenever `CLAUDECODE`/`AI_AGENT`/
+etc. are set — so `npm test` fails that one fixture in any agent-driven
+terminal and passes with the markers scrubbed. Either scrub the marker env
+vars in `main.test.ts`'s dev-server spawn (snapshots then stay
+agent-agnostic) or record the guide line into the snapshot and scrub only
+the relative-path portion.

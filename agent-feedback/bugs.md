@@ -4,6 +4,18 @@ Out-of-scope defects noticed while working on something else. Format and rules: 
 
 ## Stop `mergeOptions` from mutating the shared `+middleware` options object — one route's body validator and limits leak into every later route
 
+## `error-invalid-routes` dev snapshot is stale on main after the error-page fix guide
+
+`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` | 2026-07-23 | impact:low | effort:low
+
+`npm test` fails on origin/main (verified in a clean worktree): the dev error
+page now appends "Fix guide: READ ../../../../cheatsheet.md before writing a
+fix." (added with the LLM routing cheatsheet, 225c2ee), but this fixture's
+`dev.expected.md` was never regenerated. `npm run test:update -- --grep
+error-invalid-routes` produces the two-line snapshot fix.
+
+## Serve the prerendered 404 page with a real 404 status in static-adapter preview
+
 `packages/run/src/runtime/internal.ts` › `mergeOptions` | 2026-08-03 | impact:high | effort:med
 
 `mergeOptions` seeds `merged[key]` with the first source's nested option object by reference and folds later sources in with `Object.assign(merged[key], option)`, so it writes into the objects it was handed — and generated code makes that first source a cross-route singleton, since `renderMiddleware` (`packages/run/src/vite/codegen/index.ts`) emits one module-scoped `mware<id> = normalizeHandler(...)` per `+middleware` (seven route modules merge `mware4` in `packages/run/src/vite/__tests__/fixtures/build-routes/__snapshots__/build-routes.expected.routes.md`). With `export default Run.ALL({ json: { maxBytes: 100 } }, fn)` in a root `+middleware`, merging one route's `Run.POST({ json: schema }, fn)` permanently rewrites the middleware's `options.json` to `{ maxBytes: 1048576, validator: schema }`, so every route merged afterwards — including routes that declare no body options — has `readBody` validate against that unrelated schema and inherit the wrong size limit. `createDefineHandler` compounds it by materializing `defaultMaxBytes`/`defaultMaxFiles`/`defaultMaxParts` plus an explicit `validator: undefined` into `handler.options`, so a handler declaring only `maxBytes` drops the middleware's validator, contradicting the README's "Options declared in middleware and handlers along a route are merged". Fix by shallow-copying nested option objects (`merged[key] = { ...(merged[key] as object), ...option }`) and splitting the raw merge from the defaulting step, so declared options stay un-defaulted until the per-route merge builds its result.
@@ -199,3 +211,30 @@ If `vite.config.ts` imports project source (e.g. to start a sidecar server from 
 `packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` › `error-invalid-routes` | 2026-08-11 | impact:med | effort:low
 
 `pnpm test` fails on `main` with one snapshot mismatch. `packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md before writing a fix." to route-conflict errors, but this fixture's committed snapshot predates that change and still holds the untagged message, so the rendered error page differs by those two lines. Re-verify: `pnpm test` on a clean `main`, "Duplicate routes for path /$" is the only failure. Fix with `pnpm run test:update` and review the diff for any other fixture that renders a tagged error.
+
+The sade program is initialized with `.version("0.0.1")`, so `npx marko-run --version` prints `marko-run, 0.0.1` regardless of the installed release — the literal ships verbatim in published `dist/cli/index.mjs` (confirmed in the 0.6.6 tarball, and the source line is unchanged at HEAD). This makes version checks during bug triage misleading: a user asked "what version of the CLI are you on?" gets a bogus answer. Inject the version from the package's own `package.json` at bundle time (a define/replace step in the dist build) or read it at runtime before constructing the sade program.
+
+## mergeValueFeedback corrupts the store when passed an empty feedback string
+
+`packages/run/src/runtime/persisted-protocol.ts` › `mergeValueFeedback` | 2026-07-27 | impact:low | effort:low
+
+`mergeValueFeedback(committed, "")` with a non-empty `committed` splits the empty feedback into `[""]`, deriving the empty key ( `"".slice(0, -digestWidth)` is `""` ) and appending an empty entry, so the returned store gains a trailing `.` (e.g. `"aAAAAAAAA."`). A later merge then re-parses that empty segment as an entry with an empty key, and the wire form grows a stray dot the decoder on the marko side treats as a malformed record (whole claim set dropped — a silent full miss). Every current call site guards with `if (feedback)`/`delta ? merge(...) : base` (persisted-navigation.ts commit path, internal.ts claim-set binding), so this is latent, but the function's contract should either treat `""` as a no-op (`if (!feedback) return committed`) or assert. The mirrored copy in marko's `common/value-claims.ts` › `_merge_value_feedback` has the same shape and should move in lockstep.
+
+## E2 claim-set server store outlives auth-boundary session flips
+
+`packages/run/src/runtime/persisted-protocol.ts` › claim-set store; `internal.ts` › claim-set binding | 2026-07-28 | impact:med | effort:med
+
+The spectrum auth-boundary gate (ecommerce auth-validate.mjs) verified
+that replaying a captured LOGGED-IN echo + claim-set id against a
+logged-OUT session returns `base=hit` and elides ~237 B of shared
+content while correctly not reconstructing private markup — because
+elision compares stored digests against the FRESH logged-out render,
+not against the session that minted the claims. Privacy therefore
+rests entirely on digest comparison at the configured width (a
+collision would resurrect a stale held region across the auth
+boundary), not on any invalidation of the server-side claim-set store
+when auth-relevant session state changes. Either key/invalidate the
+claim-set store on an auth generation (session principal hash in the
+id derivation), or document digest-gated privacy as the deliberate
+model with the collision odds at shipped width. The ecommerce gate
+pins today's behavior; it cannot distinguish the two designs.

@@ -1,0 +1,12 @@
+import Panel from "./tags/panel.marko" with { load: "idle" }
+import Widget from "./tags/widget.marko"
+import { accent } from "@ui/theme"
+static const step = 2;
+
+<let/count=0>
+<button onClick() { count += step }>${count} ${accent}</button>
+<Panel label=input.label/>
+<${count % 2 ? Panel : null} label="odd"/>
+<${count % 5 ? Widget : null}/>
+<counter-child start=count/>
+<stage view=Widget/>
