@@ -5,11 +5,11 @@ import { RolldownMagicString } from "rolldown";
 import { findHrefReplacements } from "../utils/href-replace";
 
 function apply(code: string) {
-  const ast = parseSync("test.js", code, {
+  const { program } = parseSync("test.js", code, {
     astType: "js",
     sourceType: "module",
   });
-  const replacements = findHrefReplacements(code, ast);
+  const replacements = findHrefReplacements(code, program);
   if (replacements.length) {
     const s = new RolldownMagicString(code);
     for (const { edits } of replacements) {

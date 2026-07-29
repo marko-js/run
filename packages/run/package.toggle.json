@@ -6,6 +6,11 @@
       "require": "./dist/runtime/index.cjs"
     },
     "./cheatsheet.md": "./cheatsheet.md",
+    "./protocol": {
+      "types": "./dist/runtime/persisted-protocol.d.ts",
+      "import": "./dist/runtime/persisted-protocol.js",
+      "require": "./dist/runtime/persisted-protocol.cjs"
+    },
     "./namespace": {
       "types": "./dist/runtime/namespace.d.ts"
     },

@@ -1,13 +1,30 @@
 /// <reference types="marko" />
 
+import { createHmac, randomBytes } from "node:crypto";
+
 import { parseFormData } from "@remix-run/form-data-parser";
 
 import { httpVerbs } from "../vite/constants";
+import { bindClaimSet, reserveClaimSetId, resolveClaimSet } from "./claim-sets";
 import type {
   Awaitable,
   RouteHandler,
   RouteHandlerResult,
 } from "./legacy-types";
+import {
+  acceptsPatch,
+  applyPersistedResponseHeaders,
+  type ClaimSetBase,
+  createPatchMismatchResponse,
+  decodeClaimSetRequest,
+  decodeEcho,
+  encodeClaimSetAck,
+  fingerprintValues,
+  matchesPatchRequest,
+  mergeValueFeedback,
+  patchResponseContentType,
+  persistedHeaders,
+} from "./persisted-protocol";
 import thenable from "./thenable";
 import type {
   Context,
@@ -33,11 +50,255 @@ export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
   "marko-run not matched",
 ) as any;
 
+// Private request facts forwarded to Marko's per-render options, not `$global`.
+interface MarkoRenderOptions {
+  persisted?: Omit<PersistedRequest, "buildId" | "claimSet"> & {
+    token?: (identity: string) => string;
+    onFeedback?: (delta: string) => void;
+  };
+}
+
+// Identities are opaque on the wire: an application key never leaves the
+// server, and a token from one build never resolves against another. The
+// secret is per-process (cryptographically random when unset), so a fleet
+// must set MARKO_RUN_INSTANCE_SECRET for its members to agree; without it
+// a client's echo simply misses whenever a different worker answers.
+const instanceEnv = (
+  globalThis as { process?: { env?: Record<string, string | undefined> } }
+).process?.env;
+const configuredInstanceSecret = instanceEnv?.MARKO_RUN_INSTANCE_SECRET;
+const instanceSecret =
+  configuredInstanceSecret || randomBytes(32).toString("base64url");
+let warnFallbackSecret =
+  !configuredInstanceSecret &&
+  !!instanceEnv?.NODE_ENV &&
+  instanceEnv.NODE_ENV !== "development";
+// HMAC-SHA-256 keyed by the secret: observed tokens reveal nothing about
+// the secret or any other identity's token. Truncating to 32 bits keeps
+// the previous wire width, and stays safe because a token alone elides
+// nothing — content digests co-gate every elision, so a forged or
+// colliding token can only ever miss (re-ship bytes), never corrupt.
+function computeInstanceToken(secret: string, identity: string) {
+  return createHmac("sha256", secret)
+    .update(identity)
+    .digest()
+    .readUInt32BE(0)
+    .toString(36);
+}
+// Purely a memo: `instanceToken` is deterministic, so a dropped entry is
+// recomputed identically. Identities are per item, per param and per user,
+// so an uncapped map grows for the life of the process.
+const INSTANCE_TOKEN_CAP = 10_000;
+const instanceTokens = new Map<string, string>();
+function instanceToken(identity: string) {
+  let token = instanceTokens.get(identity);
+  if (token === undefined) {
+    if (warnFallbackSecret) {
+      warnFallbackSecret = false;
+      console.warn(
+        "MARKO_RUN_INSTANCE_SECRET is not set: persisted instance tokens " +
+          "use a per-process random secret, so a multi-worker or restarted " +
+          "deployment never matches a client's echo and every navigation " +
+          "re-ships content it could have elided.",
+      );
+    }
+    token = computeInstanceToken(instanceSecret, identity);
+    // Insertion-ordered, so the first key is the least recently added.
+    if (instanceTokens.size >= INSTANCE_TOKEN_CAP) {
+      instanceTokens.delete(instanceTokens.keys().next().value!);
+    }
+    instanceTokens.set(identity, token);
+  }
+  return token;
+}
+
+/** Test seam: the memo is process-global, so suites must start clean. */
+export function resetInstanceTokens() {
+  instanceTokens.clear();
+}
+
+/** Test seam: proves the memo stays bounded without exposing its contents. */
+export function instanceTokenMemoSize() {
+  return instanceTokens.size;
+}
+
+export const instanceTokenForTest = instanceToken;
+
+/** Test seam: the PRF with an explicit secret, pinning the construction. */
+export const computeInstanceTokenForTest = computeInstanceToken;
+
+// Mirrors Marko's persisted contract without depending on its runtime types;
+// `buildId` stays run-side, echoed on patch responses rather than forwarded.
+export interface PersistedRequest {
+  buildId: string;
+  patch?: PersistedPatch;
+  /** The E2 channel facts for this response: an id reserved before
+   * rendering, the base the server resolved (acked to the client, with
+   * the e1 base's fingerprint), and the materialized store that base
+   * names — the merge base bound to the id once `onFeedback` fires. */
+  claimSet?: { id: string; base: ClaimSetBase; store?: string; fp?: string };
+}
+
+type PersistedPatch = {
+  fromRoute: string;
+  targetRoute: string;
+  heldRegions?: (token: string) => string | undefined;
+  heldShells?: (id: string) => boolean;
+  /** The request echo's value-claim section; the runtime elides claimed
+   * groups whose digests hold (same-route only, enforced marko-side). */
+  echoValues?: string;
+};
+
+declare global {
+  /** Build-static shell possession per route, appended to the built server
+   * entries by the browser build (absent in dev: full shells ship). */
+
+  var __MARKO_RUN_SHELLS__: Record<string, string[]> | undefined;
+}
+
+// The client provably registers the target route's static persisted closure
+// before it applies a frame (`navigate` awaits the entry), so its shells
+// need no wire entry and no echo bytes. The memo keys on the manifest
+// object so a replaced global (rebuild in a live process) never serves a
+// stale hold set.
+let heldShellSets = new Map<string, Set<string>>();
+let heldShellManifest: Record<string, string[]> | undefined;
+function heldShellsForRoute(route: string) {
+  const manifest = globalThis.__MARKO_RUN_SHELLS__;
+  if (manifest !== heldShellManifest) {
+    heldShellManifest = manifest;
+    heldShellSets = new Map();
+  }
+  const ids = manifest?.[route];
+  if (!ids) return;
+  let held = heldShellSets.get(route);
+  if (!held) heldShellSets.set(route, (held = new Set(ids)));
+  return (id: string) => held.has(id);
+}
+
+const persistedRequestLookup = new WeakMap<Context, PersistedRequest>();
+
+/** @internal Marks a generated-router request as part of persisted pages. */
+export function setPersisted(context: Context, persisted: PersistedRequest) {
+  persistedRequestLookup.set(context, persisted);
+}
+
+function getPersistedRoute(
+  persistedRoutes: readonly unknown[],
+  route: string | undefined,
+) {
+  return route && /^(?:0|[1-9]\d*)$/.test(route) && persistedRoutes[+route]
+    ? { route }
+    : undefined;
+}
+
+/** @internal Initializes and negotiates one generated-router request. */
+export function initializePersisted(
+  context: Context,
+  routeId: number | undefined,
+  buildId: string,
+  persistedRoutes: readonly unknown[],
+): Response | undefined {
+  const targetPersisted =
+    routeId !== undefined && persistedRoutes[routeId] !== undefined;
+  if (targetPersisted) {
+    setPersisted(context, { buildId });
+  }
+
+  const { request } = context;
+  const { method } = request;
+  if (
+    routeId !== undefined &&
+    (method === "GET" || method === "HEAD" || method === "POST") &&
+    acceptsPatch(request)
+  ) {
+    const targetRoute = "" + routeId;
+    const source = getPersistedRoute(
+      persistedRoutes,
+      request.headers.get(persistedHeaders.from) || undefined,
+    );
+    if (
+      targetPersisted &&
+      source &&
+      matchesPatchRequest(request, routeId, buildId)
+    ) {
+      // A malformed or oversize echo decodes to nothing: every claim it
+      // carried becomes a miss and the patch ships complete.
+      const echo = decodeEcho(request.headers.get(persistedHeaders.echo));
+      let echoValues = echo?.values;
+      // Claim-set channel (E2): base resolution is same-route only (marko
+      // refuses cross-route claims, so a cross-route id is ignored and the
+      // next store is route-clean). Known id → the exact store it names;
+      // else the hedged enumerated records actually transmitted; else empty.
+      // Either non-empty base is fingerprinted in the ack so the client can
+      // prove the server merged from the base it believes it sent.
+      let base: ClaimSetBase = "empty";
+      let store: string | undefined;
+      let fp: string | undefined;
+      if (source.route === targetRoute) {
+        const requestId = decodeClaimSetRequest(
+          request.headers.get(persistedHeaders.claimSet),
+        );
+        const resolved =
+          requestId && resolveClaimSet(buildId, source.route, requestId);
+        if (requestId && typeof resolved === "string") {
+          base = "hit";
+          echoValues = store = resolved;
+          fp = fingerprintValues(requestId);
+        } else if (echoValues) {
+          base = "e1";
+          store = echoValues;
+          fp = fingerprintValues(echoValues);
+        }
+      }
+      const claimSet: PersistedRequest["claimSet"] = {
+        id: reserveClaimSetId(buildId, targetRoute),
+        base,
+        store,
+        fp,
+      };
+      setPersisted(context, {
+        buildId,
+        patch: {
+          fromRoute: source.route,
+          targetRoute,
+          heldRegions: echo?.regions,
+          heldShells: heldShellsForRoute(targetRoute),
+          echoValues,
+        },
+        claimSet,
+      });
+    } else if (method !== "POST") {
+      // Mutations still reach their handler; mismatched reads fail before rendering.
+      return createPatchMismatchResponse();
+    }
+  }
+}
+
 const parentContextLookup = new WeakMap<Request, Context>();
 
 const pageResponseInit = {
   status: 200,
   headers: { "content-type": "text/html;charset=UTF-8" },
+};
+
+// Persisted pages vary on `accept`; patches are newline-delimited script frames.
+const persistedPageResponseInit = {
+  status: 200,
+  headers: { "content-type": "text/html;charset=UTF-8", vary: "accept" },
+};
+
+// Kept in sync with `applyPersistedResponseHeaders`: a patch is
+// personalized by construction, so it is uncacheable everywhere and keys
+// on every negotiation input it varies with.
+const patchResponseInit = {
+  status: 200,
+  headers: {
+    "cache-control": "private, no-store",
+    "cdn-cache-control": "no-store",
+    "content-type": patchResponseContentType,
+    vary: `accept, ${persistedHeaders.echo}, ${persistedHeaders.claimSet}, ${persistedHeaders.build}, ${persistedHeaders.route}, ${persistedHeaders.from}`,
+  },
 };
 
 globalThis.MarkoRun ??= {
@@ -238,16 +499,71 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
-      return new Response(
+    render<T>(
+      template: Marko.Template<T>,
+      input: T,
+      init: ResponseInit = pageResponseInit,
+    ) {
+      const persisted = persistedRequestLookup.get(context);
+      let options: MarkoRenderOptions | undefined;
+      const patch = persisted?.patch;
+      // Preserve custom response data while reapplying framework-owned headers.
+      const customInit = !!persisted && init !== pageResponseInit;
+      if (persisted) {
+        if (!customInit) {
+          init = patch ? patchResponseInit : persistedPageResponseInit;
+        }
+        const claimSet = patch && persisted.claimSet;
+        options = {
+          persisted: {
+            patch,
+            token: instanceToken,
+            // Bind the reserved id to the final store only when the render
+            // completes (marko fires this once, empty delta included); an
+            // aborted stream leaves the id an unbound miss.
+            onFeedback:
+              claimSet &&
+              ((delta) =>
+                bindClaimSet(
+                  persisted.buildId,
+                  patch.targetRoute,
+                  claimSet.id,
+                  delta
+                    ? mergeValueFeedback(claimSet.store, delta)
+                    : (claimSet.store ?? ""),
+                )),
+          },
+        };
+      }
+      const response = new Response(
+        // Ambient Marko 5 types omit Marko 6's per-render options overload.
         toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
+          (
+            template.render as (
+              input: Marko.TemplateInput<T>,
+              options?: MarkoRenderOptions,
+            ) => ReturnType<Marko.Template<T>["render"]>
+          )({ ...input, $global: context as unknown as Marko.Global }, options),
         ),
         init,
       );
+      // The client executes a patch body only when this echo names its build.
+      if (patch) {
+        response.headers.set(persistedHeaders.build, persisted!.buildId);
+        // The ack states which base this render merged from; the id was
+        // reserved before rendering, so a plain header (streaming-safe,
+        // proxy-strippable without harm) carries both.
+        const claimSet = persisted!.claimSet;
+        if (claimSet) {
+          response.headers.set(
+            persistedHeaders.claimSet,
+            encodeClaimSetAck(claimSet.id, claimSet.base, claimSet.fp),
+          );
+        }
+      }
+      return customInit
+        ? applyPersistedResponseHeaders(response, !!patch)
+        : response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {

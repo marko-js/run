@@ -1,0 +1,18 @@
+// Typechecks the package INCLUDING its mocha tests, which the build
+// config excludes and tsx strips types from at runtime — without this
+// gate a type error in a test (e.g. a wrong-arity assertion helper)
+// runs "green" forever. Wired into the root lint script.
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/__tests__/fixtures"],
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "emitDeclarationOnly": false,
+    "noEmit": true,
+    // The tests stream fetch bodies with for-await, which the base DOM
+    // libs predate (Node's ReadableStream is async-iterable at runtime).
+    "lib": ["DOM", "DOM.Iterable", "DOM.AsyncIterable", "ESNext"]
+  }
+}

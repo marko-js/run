@@ -26,8 +26,10 @@ import {
   renderMiddleware,
   renderRouteEntry,
   renderRouter,
+  renderRoutesClient,
   renderRouteTemplate,
   renderRouteTypeInfo,
+  ROUTES_CLIENT_FILENAME,
 } from "./codegen";
 import {
   httpVerbs,
@@ -35,6 +37,22 @@ import {
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
+import {
+  ARTIFACT_VIRTUAL_PREFIX,
+  type ArtifactEmission,
+  emitPartitionArtifacts,
+} from "./persisted-plan/artifact-emission";
+import { getArtifactEmissionForTest } from "./persisted-plan/artifact-emission-test-hook";
+import {
+  computeConfigEpoch,
+  configEpochSliceFromVite,
+} from "./persisted-plan/config-epoch";
+import {
+  createPersistedPlanHost,
+  normalizedEntrySpelling,
+  type PersistedPlanHost,
+} from "./persisted-plan/coordinator";
+import { createMarkoViteHost } from "./persisted-plan/vite-resolver";
 import { buildRoutes, matchRoutableFile } from "./routes/builder";
 import { createFSWalker } from "./routes/walk";
 import type {
@@ -58,6 +76,11 @@ import { findHrefReplacements } from "./utils/href-replace";
 import { logRoutesTable } from "./utils/log";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 import { getRouteVirtualFileName } from "./utils/route";
+import {
+  collectShellManifest,
+  findStaticShellIds,
+  recordStaticShellIds,
+} from "./utils/static-shells";
 
 const debug = createDebug("@marko/run");
 
@@ -93,7 +116,27 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let routesDir: NonNullable<(typeof opts)["routesDir"]>;
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
-  const { ...markoVitePluginOptions } = opts;
+  let persisted: boolean;
+  // Artifact emission is always on when persisted is on. Dual-entry remains
+  // only as fail-closed when seal is incomplete — not a user-facing mode.
+  // Measurement dual A/B uses setArtifactEmissionForTest (globalThis hook),
+  // never a config property.
+  let artifactEmissionActive = true;
+  let persistedPlanHost: PersistedPlanHost | undefined;
+  // Host fields for @marko/vite (typed here so run builds without waiting on
+  // a published vite types bump). Single persistedBuild object is the peer
+  // contract — not app Options.
+  const markoVitePluginOptions = { ...opts } as typeof opts & {
+    persisted?: boolean;
+    runtimeId?: string;
+    basePathVar?: string;
+    isEntry?: (importee: string, importer: string) => boolean;
+    persistedBuild?: {
+      planHost: unknown;
+      planEntries?: string[];
+      cutoverClientGraph: boolean;
+    };
+  };
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -118,10 +161,22 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
   let runtimeInclude: string | undefined;
+  // Browser-build collection for the persisted shell manifest: the ids each
+  // `?persisted` module registers, then per-route unions over static chunk
+  // closures (appended to the built server entries in writeBundle).
+  const staticShellIds = new Map<string, string[]>();
+  let shellManifest: Record<string, string[]> | undefined;
 
   const externalRoutes = new Set<ExternalRoutes>();
   const seenErrors = new Set<string>();
   const virtualFiles = new Map<string, string>();
+  const artifactVirtualFiles = new Map<string, string>();
+  const artifactAliases = new Map<string, string>();
+  const ordinaryCanonicalByVirtual = new Map<string, string>();
+  /** C3: marko source path → merge virtual for print-skip dual-entry stubs. */
+  const cutoverMergeBySource = new Map<string, string>();
+  let artifactEmission: ArtifactEmission | undefined;
+  let artifactPublicationToken: string | undefined;
 
   let times: TimeMetrics = {
     routesBuild: 0,
@@ -154,6 +209,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       resolveDependencies: false,
     });
     return result.exports || [];
+  }
+
+  // Persisted pages only exist for the tags API; refusing the combination
+  // here keeps every downstream persisted path free of class-API awareness.
+  function assertPersistedMarkoApi(markoApi: string | undefined, route: Route) {
+    if (persisted && markoApi === "class") {
+      throw new Error(
+        `The \`persisted\` option does not support class API routes (${path.relative(root, route.layouts[0]!.filePath)})`,
+      );
+    }
+    return markoApi;
   }
 
   let routeMarkoApiCache: Map<Route, string | undefined> | undefined;
@@ -260,6 +326,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
       }
       virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+      if (persisted) {
+        virtualFiles.set(path.posix.join(root, ROUTES_CLIENT_FILENAME), "");
+      }
 
       for (const externalRoute of externalRoutes) {
         for (const { entryFile } of externalRoute.routes) {
@@ -269,6 +338,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             entryTemplateImporters.add(normalizePath(entryFile));
           }
         }
+      }
+
+      if (persisted && persistedPlanHost) {
+        // Route structure is the partition's second input. A same-signature
+        // W3 rebuild stays warm; add/remove/template movement unpublishes
+        // before the next dev or build seal.
+        persistedPlanHost.notePartitionRoutes(partitionSealRoutes(routes));
       }
 
       return routes;
@@ -325,8 +401,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               route.templateFilePath,
               renderRouteTemplate(
                 route,
-                await getMarkoApiForRoute(context, route),
+                assertPersistedMarkoApi(
+                  await getMarkoApiForRoute(context, route),
+                  route,
+                ),
                 !isBuild,
+                persisted,
               ),
             );
           }
@@ -344,7 +424,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             route.templateFilePath!,
             renderRouteTemplate(
               route,
-              await getMarkoApiForRoute(context, route),
+              assertPersistedMarkoApi(
+                await getMarkoApiForRoute(context, route),
+                route,
+              ),
               !isBuild,
             ),
           );
@@ -374,8 +457,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           path.posix.join(root, ROUTER_FILENAME),
           renderRouter(routes, root, runtimeInclude, {
             trailingSlashes,
+            persisted,
           }),
         );
+
+        if (persisted) {
+          virtualFiles.set(
+            path.posix.join(root, ROUTES_CLIENT_FILENAME),
+            renderRoutesClient(routes, root),
+          );
+        }
 
         await writeTypesFile(routes);
         if (adapter?.routesGenerated) {
@@ -406,6 +497,101 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     })());
   }
 
+  function clearArtifactEmission() {
+    artifactEmission = undefined;
+    artifactPublicationToken = undefined;
+    artifactVirtualFiles.clear();
+    artifactAliases.clear();
+    ordinaryCanonicalByVirtual.clear();
+    cutoverMergeBySource.clear();
+    if (persisted && routes && root) {
+      virtualFiles.set(
+        path.posix.join(root, ROUTES_CLIENT_FILENAME),
+        renderRoutesClient(routes, root),
+      );
+    }
+  }
+
+  function publishArtifactEmission(
+    host: PersistedPlanHost,
+    currentRoutes: BuiltRoutes,
+    mode: "build" | "dev",
+  ) {
+    const sealed = sealPersistedPartition(host, currentRoutes, mode).state;
+    if (!sealed) {
+      clearArtifactEmission();
+      return;
+    }
+    const plans = host.snapshotCommitted("client").flatMap((set) => set.plans);
+    const next = emitPartitionArtifacts(
+      sealed,
+      plans,
+      host.snapshotVirtualSources("client"),
+    );
+    const nextVirtuals = new Map<string, string>();
+    for (const artifact of next.artifacts) {
+      nextVirtuals.set(artifact.virtualId, artifact.source);
+    }
+    for (const facade of next.facades) {
+      nextVirtuals.set(facade.virtualId, facade.source);
+    }
+    for (const passthrough of next.passthroughs) {
+      if (passthrough.source !== undefined) {
+        nextVirtuals.set(passthrough.virtualId, passthrough.source);
+      }
+    }
+
+    // Atomic publication: no consumer observes a partial new generation.
+    artifactVirtualFiles.clear();
+    artifactAliases.clear();
+    ordinaryCanonicalByVirtual.clear();
+    cutoverMergeBySource.clear();
+    for (const [id, source] of nextVirtuals) {
+      artifactVirtualFiles.set(id, source);
+    }
+    for (const alias of next.aliases) {
+      artifactAliases.set(alias.virtualId, alias.targetVirtualId);
+    }
+    for (const passthrough of next.passthroughs) {
+      ordinaryCanonicalByVirtual.set(
+        passthrough.virtualId,
+        passthrough.canonical,
+      );
+    }
+    for (const [moduleKey, virtualId] of Object.entries(
+      next.mergeVirtualByModuleKey,
+    )) {
+      // One canonical key (normalizedEntrySpelling) plus the raw key so
+      // absolute/posix callers still hit without inventing spellings.
+      const canon = normalizedEntrySpelling(moduleKey);
+      cutoverMergeBySource.set(canon, virtualId);
+      cutoverMergeBySource.set(normalizePath(canon), virtualId);
+      cutoverMergeBySource.set(moduleKey, virtualId);
+      cutoverMergeBySource.set(normalizePath(moduleKey), virtualId);
+    }
+    artifactEmission = next;
+    artifactPublicationToken = JSON.stringify(sealed.publicationToken);
+    virtualFiles.set(
+      path.posix.join(root, ROUTES_CLIENT_FILENAME),
+      renderRoutesClient(currentRoutes, root, {
+        routes: next.routes,
+        artifacts: next.registry,
+        capability: next.capability,
+      }),
+    );
+
+    // The partition projection replaces the scrape as production authority.
+    // Unknown possession is omitted by the emitter (underclaim/fail closed).
+    shellManifest = Object.fromEntries(
+      next.routes.map((route) => [
+        String(route.routeIndex),
+        route.possessionShellIndexes.map(
+          (index) => next.capability.shellIds[index],
+        ),
+      ]),
+    );
+  }
+
   return [
     defaultConfigPlugin,
     {
@@ -417,6 +603,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           return () => {
             externalRoutes.delete(routes);
           };
+        },
+        getPersistedPlanStats() {
+          return persistedPlanHost?.getGenerationStats();
+        },
+        getPersistedPartition() {
+          return persistedPlanHost?.getPublishedPartition();
         },
       },
       async config(config, env) {
@@ -448,6 +640,39 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         routesDir = opts.routesDir || "src/routes";
         trailingSlashes = opts.trailingSlashes || "RedirectWithout";
+        persisted = Boolean(opts.persisted);
+        // Product path: emission on whenever persisted is on. Measurement
+        // harness may force dual via setArtifactEmissionForTest(false).
+        const testOverride = getArtifactEmissionForTest();
+        artifactEmissionActive =
+          persisted && (testOverride === undefined ? true : testOverride);
+        markoVitePluginOptions.persisted = persisted || undefined;
+        if (persisted) {
+          // The plan coordinator (C0): `@marko/vite` hands every persisted
+          // entry's `metadata.marko.updatePlan` carrier (or its absence,
+          // under suppression) to this narrow host as a side channel. The
+          // cache is coordinator-private; served bytes never change.
+          // cutoverClientGraph tracks emission: true ⇒ prod client dual-entry
+          // bodies are plan-only + merge rewrites (vite also requires isBuild).
+          // Dual A/B (test hook false) keeps printed dual-entry modules.
+          persistedPlanHost = createPersistedPlanHost();
+          markoVitePluginOptions.persistedBuild = {
+            planHost: createMarkoViteHost(persistedPlanHost, {
+              resolveCutoverMerge(sourceFile: string) {
+                const canon = normalizedEntrySpelling(sourceFile);
+                return (
+                  cutoverMergeBySource.get(canon) ||
+                  cutoverMergeBySource.get(normalizePath(canon)) ||
+                  cutoverMergeBySource.get(sourceFile) ||
+                  cutoverMergeBySource.get(normalizePath(sourceFile))
+                );
+              },
+            }),
+            cutoverClientGraph: artifactEmissionActive,
+          };
+        } else {
+          delete markoVitePluginOptions.persistedBuild;
+        }
         store = new ReadOncePersistedStore(
           `vite-marko-run${opts.runtimeId ? `-${opts.runtimeId}` : ""}`,
         );
@@ -499,7 +724,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               },
               chunkFileNames: isSSRBuild
                 ? `_[hash].js`
-                : `${assetsDir}/_[hash].js`,
+                : (info) =>
+                    persisted &&
+                    info.moduleIds.some((id) =>
+                      id.includes(ARTIFACT_VIRTUAL_PREFIX),
+                    )
+                      ? `${assetsDir}/a_[hash].js`
+                      : `${assetsDir}/_[hash].js`,
             },
             rolldownOutputOptions,
           );
@@ -534,6 +765,21 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         pluginConfig.build.modulePreload ??= {};
         if (typeof pluginConfig.build.modulePreload !== "boolean") {
           pluginConfig.build.modulePreload.polyfill = false;
+          const configuredResolve =
+            pluginConfig.build.modulePreload.resolveDependencies ??
+            (typeof config.build?.modulePreload === "object"
+              ? config.build.modulePreload.resolveDependencies
+              : undefined);
+          pluginConfig.build.modulePreload.resolveDependencies = (
+            filename,
+            dependencies,
+            context,
+          ) => {
+            const resolved = configuredResolve
+              ? configuredResolve(filename, dependencies, context)
+              : dependencies;
+            return filename.startsWith(`${assetsDir}/a_`) ? [] : resolved;
+          };
         }
 
         pluginConfig.optimizeDeps ??= {};
@@ -579,6 +825,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       configResolved(config) {
         resolvedConfig = config;
+        // Class W2: the resolver-relevant config slice gates the warm path.
+        persistedPlanHost?.setConfigEpoch(
+          computeConfigEpoch(
+            configEpochSliceFromVite(config, {
+              runtimeId: opts.runtimeId,
+            }),
+          ),
+        );
         const {
           ssr,
           rolldownOptions: { input },
@@ -613,6 +867,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             const routableFileType = matchRoutableFile(
               path.parse(filename).base,
             );
+            const isRouteFanOutOnly =
+              filename === runtimeInclude ||
+              routableFileType === RoutableFileTypes.Handler ||
+              routableFileType === RoutableFileTypes.Middleware;
+            // Production W1: file events enter the coordinator's selective
+            // reverse index. Route handlers/middleware/runtimeInclude are
+            // W3 fan-out only: they rebuild route virtuals but never bump a
+            // plan epoch or re-finalize unchanged templates.
+            if (!isRouteFanOutOnly) {
+              persistedPlanHost?.handleFileChange(filename);
+            }
             if (
               (filename.startsWith(resolvedRoutesDir) && routableFileType) ||
               filename === runtimeInclude
@@ -672,6 +937,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
+          if (markoVitePluginOptions.persistedBuild) {
+            markoVitePluginOptions.persistedBuild.planEntries = routes.list
+              .filter((route) => route.page && route.templateFilePath)
+              .map((route) => normalizePath(route.templateFilePath!));
+          }
         } else {
           // Build routes and generate code
           // getExportsFromFile = isBuild
@@ -682,7 +952,26 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async resolveId(importee, importer) {
         let virtualFilePath: string | undefined;
 
-        if (importee === "@marko/run/router") {
+        const aliasTarget = artifactAliases.get(importee);
+        if (aliasTarget) {
+          return aliasTarget;
+        } else if (ordinaryCanonicalByVirtual.has(importee)) {
+          return importee;
+        } else if (
+          importer &&
+          ordinaryCanonicalByVirtual.has(importer) &&
+          (importee.startsWith(".") || importee.startsWith("/"))
+        ) {
+          return await this.resolve(
+            importee,
+            ordinaryCanonicalByVirtual.get(importer),
+            { skipSelf: true },
+          );
+        } else if (artifactVirtualFiles.has(importee)) {
+          // Artifact bodies have top-level registration side effects; keep
+          // bare importers (setup → merge) from tree-shaking them away.
+          return { id: importee, moduleSideEffects: true };
+        } else if (importee === "@marko/run/router") {
           return normalizePath(path.resolve(root, ROUTER_FILENAME));
         } else if (
           importee.endsWith(".marko") &&
@@ -719,6 +1008,19 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
       },
       async load(id) {
+        if (artifactVirtualFiles.has(id)) {
+          return artifactVirtualFiles.get(id)!;
+        } else if (ordinaryCanonicalByVirtual.has(id)) {
+          const canonical = ordinaryCanonicalByVirtual.get(id)!;
+          const loaded = await this.load({ id: canonical });
+          if (loaded?.code !== undefined) return loaded.code;
+          const passthrough = artifactEmission?.passthroughs.find(
+            (candidate) => candidate.virtualId === id,
+          );
+          this.error(
+            `@marko/run: residual dynamic import in ${JSON.stringify(passthrough?.requestingModule)} targets unavailable canonical ${JSON.stringify(canonical)}`,
+          );
+        }
         if (!renderVirtualFilesResult || virtualFiles.has(id)) {
           // Virtual files are seeded with empty placeholders until
           // `renderVirtualFiles` completes, and the bundler can request one
@@ -743,8 +1045,71 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       name: `${PLUGIN_NAME_PREFIX}:post`,
       enforce: "post",
 
-      async transform(code) {
-        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+      async buildStart() {
+        if (
+          !persisted ||
+          !artifactEmissionActive ||
+          !persistedPlanHost ||
+          !isBuild ||
+          isSSRBuild
+        ) {
+          return;
+        }
+        // @marko/vite's immediately preceding buildStart has compiled the
+        // generated page entries and their persisted closure through its
+        // authoritative compiler/resolver path.
+        if (!hasLivePersistedHarvest(persistedPlanHost)) {
+          this.error(
+            "@marko/run: pre-bundle harvest published no client plans",
+          );
+        }
+        publishArtifactEmission(persistedPlanHost, routes, "build");
+      },
+
+      async transform(code, id) {
+        if (
+          persisted &&
+          artifactEmissionActive &&
+          persistedPlanHost &&
+          !isBuild &&
+          routes &&
+          isPersistedPageEntry(id, routes)
+        ) {
+          // Dev seal: @marko/vite's transform has already awaited harvest.
+          // An incomplete streaming/HMR universe simply remains dirty; the
+          // final page entry publishes the complete state atomically.
+          const sealed = sealPersistedPartition(
+            persistedPlanHost,
+            routes,
+            "dev",
+          );
+          if (sealed.state) {
+            publishArtifactEmission(persistedPlanHost, routes, "dev");
+          } else {
+            clearArtifactEmission();
+          }
+        }
+        if (!isBuild || isSSRBuild) {
+          return;
+        }
+
+        // Record each persisted module's client shell registrations; the
+        // wire can then omit shells the target route's closure provably
+        // holds. Parsed, not pattern-matched: a template string containing
+        // a key-like sequence must never mint a phantom claim.
+        // `x.marko?persisted` resolves to `x.persisted-entry.marko`
+        // (see @marko/vite's persisted facade); tolerate a trailing query.
+        if (id.split("?")[0].endsWith(".persisted-entry.marko")) {
+          recordStaticShellIds(
+            staticShellIds,
+            id,
+            code.includes("_static_shells")
+              ? findStaticShellIds(this.parse(code, { lang: "js" }))
+              : undefined,
+          );
+        }
+
+        if (!code.includes("Run.href")) {
           return;
         }
 
@@ -791,6 +1156,77 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
 
       generateBundle(options, bundle) {
+        if (
+          persisted &&
+          artifactEmissionActive &&
+          persistedPlanHost &&
+          isBuild &&
+          !isSSRBuild &&
+          hasLivePersistedHarvest(persistedPlanHost)
+        ) {
+          // Q5: assert/re-seal only. First registration happened during the
+          // pre-plugin buildStart harvest, before routes.client loaded.
+          const sealed = sealPersistedPartition(
+            persistedPlanHost,
+            routes,
+            "build",
+          ).state!;
+          if (
+            !artifactEmission ||
+            artifactEmission.contentFingerprint !== sealed.inputFingerprint ||
+            artifactPublicationToken !== JSON.stringify(sealed.publicationToken)
+          ) {
+            this.error(
+              "@marko/run: generateBundle assertion failed: artifact emission generation does not match the sealed partition",
+            );
+          }
+          for (const artifact of artifactEmission.artifacts) {
+            if (!artifactVirtualFiles.has(artifact.virtualId)) {
+              this.error(
+                `@marko/run: generateBundle assertion failed: ${artifact.virtualId} was not registered`,
+              );
+            }
+          }
+          for (const facade of artifactEmission.facades) {
+            if (!artifactVirtualFiles.has(facade.virtualId)) {
+              this.error(
+                `@marko/run: generateBundle assertion failed: ${facade.virtualId} was not registered`,
+              );
+            }
+          }
+          for (const passthrough of artifactEmission.passthroughs) {
+            if (!ordinaryCanonicalByVirtual.has(passthrough.virtualId)) {
+              this.error(
+                `@marko/run: generateBundle assertion failed: ${passthrough.virtualId} was not registered for ${passthrough.canonical}`,
+              );
+            }
+          }
+          const emittedModules = new Set(
+            artifactEmission.artifacts.flatMap(
+              (artifact) => artifact.moduleKeys,
+            ),
+          );
+          for (const item of Object.values(bundle)) {
+            if (item.type !== "chunk") continue;
+            for (const moduleId of Object.keys(item.modules)) {
+              const normalized = normalizePath(moduleId);
+              if (
+                normalized.includes(".persisted-entry.marko") &&
+                [...emittedModules].some(
+                  (moduleKey) =>
+                    normalizePath(moduleKey).split("?")[0] ===
+                    normalized
+                      .split("?")[0]
+                      .replace(/\.persisted-entry\.marko$/, ".marko"),
+                )
+              ) {
+                this.error(
+                  `@marko/run: generateBundle assertion failed: residual eager dual-entry module ${moduleId}`,
+                );
+              }
+            }
+          }
+        }
         if (options.sourcemap && options.sourcemap !== "inline") {
           // Iterate through bundle and remove source maps that don't have a corresponding source file
           for (const key of Object.keys(bundle)) {
@@ -798,6 +1234,29 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               delete bundle[key];
             }
           }
+        }
+
+        // Per route, the shells provably registered by loading its persisted
+        // entry (the walk itself is unit-locked in utils/static-shells).
+        if (
+          isBuild &&
+          !isSSRBuild &&
+          !artifactEmission &&
+          staticShellIds.size
+        ) {
+          shellManifest = collectShellManifest(
+            routes.list
+              .filter((route) => route.page && route.templateFilePath)
+              .map((route) => ({
+                index: route.index,
+                entryModuleId: normalizePath(route.templateFilePath!).replace(
+                  /\.marko$/,
+                  ".persisted-entry.marko",
+                ),
+              })),
+            bundle,
+            staticShellIds,
+          );
         }
       },
       async writeBundle(options, bundle) {
@@ -828,6 +1287,33 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           await opts?.emitRoutes?.(routes.list);
         } else {
           logRoutesTable(routes, [...externalRoutes], bundle);
+
+          // Deliver the shell manifest the way @marko/vite delivers its
+          // asset manifest: appended to the already-built server entries
+          // (the SSR build runs first). The runtime reads it lazily per
+          // request, so import evaluation order never races the append.
+          if (shellManifest) {
+            debug("persisted shell manifest: %o", shellManifest);
+            const manifestStr = `\n;globalThis.__MARKO_RUN_SHELLS__=${JSON.stringify(
+              shellManifest,
+            )};\n`;
+            for (const entry of routeData.builtEntries) {
+              // Replace any prior append (a repeated browser build against
+              // the same server output must not stack assignments).
+              const source = await fs.promises.readFile(entry, "utf-8");
+              const previous = source.indexOf(
+                "\n;globalThis.__MARKO_RUN_SHELLS__=",
+              );
+              await fs.promises.writeFile(
+                entry,
+                (previous === -1
+                  ? source
+                  : source.slice(0, previous) +
+                    source.slice(source.indexOf("\n", previous + 1) + 1)) +
+                  manifestStr,
+              );
+            }
+          }
         }
       },
       async closeBundle() {
@@ -848,6 +1334,44 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
     },
   ];
+}
+
+function partitionSealRoutes(routes: BuiltRoutes) {
+  return routes.list
+    .filter((route) => route.page && route.templateFilePath)
+    .map((route) => ({
+      routeIndex: route.index,
+      templateFilePath: normalizePath(route.templateFilePath!),
+    }));
+}
+
+function sealPersistedPartition(
+  host: PersistedPlanHost,
+  routes: BuiltRoutes,
+  mode: "build" | "dev",
+) {
+  return host.sealPartition(partitionSealRoutes(routes), mode);
+}
+
+function hasLivePersistedHarvest(host: PersistedPlanHost) {
+  const stats = host.getGenerationStats().client;
+  // Stock @marko/vite@6.1.6 never calls the host. It remains an explicitly
+  // carried C0/C1 consumer residue; native C1 builds use the landed fork.
+  return (
+    stats.finalizeStarts > 0 ||
+    stats.finalizeCommits > 0 ||
+    stats.negativeEntries > 0
+  );
+}
+
+function isPersistedPageEntry(id: string, routes: BuiltRoutes) {
+  const moduleId = normalizePath(id.split("?")[0]).replace(
+    /\.persisted-entry\.marko$/,
+    ".marko",
+  );
+  return partitionSealRoutes(routes).some(
+    (route) => route.templateFilePath === moduleId,
+  );
 }
 
 function mergeOutputOptions(

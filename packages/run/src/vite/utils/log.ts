@@ -198,10 +198,23 @@ function computeChunkSize(
   const size: [number, number] = [byteSize(chunk.code), gzipSize(chunk.code)];
   for (const id of chunk.imports) {
     if (!seen.has(id)) {
-      const [bytes, compBytes] = computeChunkSize(bundle[id], bundle, seen);
+      seen.add(id);
+      const imported = bundle[id];
+      // Rolldown/vite may list imports that are not present as chunks
+      // (virtual no-ops, externalized URLs). Do not silently deflate the
+      // sizes ratchet — log once per missing id.
+      if (!imported) {
+        if (!seen.has(`missing:${id}`)) {
+          seen.add(`missing:${id}`);
+          console.warn(
+            `@marko/run: route size sum skipped missing bundle chunk ${JSON.stringify(id)}`,
+          );
+        }
+        continue;
+      }
+      const [bytes, compBytes] = computeChunkSize(imported, bundle, seen);
       size[0] += bytes;
       size[1] += compBytes;
-      seen.add(id);
     }
   }
   return size;

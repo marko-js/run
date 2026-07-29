@@ -143,3 +143,30 @@ The generated `invoke` only calls the composed middleware+handler chain inside `
 `packages/run/README.md` › `CLI` | 2026-07-18 | impact:low | effort:low
 
 The CLI section of `packages/run/README.md` documents only bare `marko-run dev|build|preview` invocations and never mentions any flag, even though `packages/run/src/cli/index.ts` implements `-p/--port` (with a `$PORT` env-var fallback for both dev and preview, default 3000), `-c/--config`, `-e/--env`, `-o/--output`, and `-f/--file`. The most common deployment question — how do I change the port? — is currently only answerable by reading the sade option strings in source (`PORT=4014 marko-run dev` does listen on 4014). Add a short options table under the CLI heading covering each command's flags and the `$PORT` fallback.
+
+## No fixture app exercises a persisted build end-to-end in this repo's suite
+
+`packages/run/src/__tests__/fixtures/` | 2026-07-24 | impact:med | effort:med
+
+The persisted client/render/codegen tests are unit-level; nothing in this
+repo builds a `persisted: true` fixture app through the real Vite/Rolldown
+pipeline. The round-4 shell manifest had to lock its chunk-closure walk as a
+pure function (`vite/utils/static-shells.ts` + tests) and rely on the
+external ecommerce testbed for the integration proof — a Rolldown change to
+`chunk.imports`/`facadeModuleId` semantics or the `.persisted-entry.marko`
+id shape would surface there, not here. A minimal persisted fixture app
+asserting the appended `__MARKO_RUN_SHELLS__` per route would close that.
+
+## `error-invalid-routes` dev snapshot fails when run from an agent terminal
+
+`packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` | 2026-07-28 | impact:low | effort:low
+
+The duplicate-route error page snapshot
+(`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md`)
+was recorded without the agent fix-guide line, but `appendAgentFixGuide`
+appends "Fix guide: READ … cheatsheet.md" whenever `CLAUDECODE`/`AI_AGENT`/
+etc. are set — so `npm test` fails that one fixture in any agent-driven
+terminal and passes with the markers scrubbed. Either scrub the marker env
+vars in `main.test.ts`'s dev-server spawn (snapshots then stay
+agent-agnostic) or record the guide line into the snapshot and scrub only
+the relative-path portion.

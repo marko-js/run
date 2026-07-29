@@ -31,3 +31,28 @@ Duplication, dead code, inconsistencies, refactor opportunities. Format and rule
 `packages/run/scripts/build.ts` › `opts` | 2026-07-18 | impact:low | effort:low
 
 The startup banner (`packages/run/src/adapter/utils.ts:38`) reads `process.env.npm_package_version`, which esbuild `define` freezes at package-build time; the published `0.11.0-rc.10` tarball contains the literal `v${"0.11.0-rc.9"}` in `dist/adapter/index.js`, so every rc.10 install printed the previous version at startup (verify with `npm pack @marko/run@0.11.0-rc.10` and grep the dist). The root `@ci:version` script runs the build before `changeset version`, so any release that publishes a dist built before the bump ships a stale banner again. Read the version from the package's own package.json at runtime, or have release CI assert the inlined value matches the manifest.
+
+## Route first-time value feedback through mergeValueFeedback's map path
+
+`packages/run/src/runtime/persisted-protocol.ts` › `mergeValueFeedback` | 2026-07-27 | impact:low | effort:low
+
+The `if (!committed) return feedback;` early return skips both the 96-entry cap and the by-key de-dup, so the very first merge stores the feedback string verbatim: a feedback line carrying more than 96 entries or a repeated key would land in the committed store even though every later merge enforces both invariants. Not reachable from a well-behaved server today (marko's FEEDBACK_CAP of 360 chars bounds a feedback line to ~36 entries, and marko emits unique keys), so the store cannot actually overflow — but the invariant is enforced in one branch and assumed in the other, and the fuzz suite's "duplicate key" assertion only holds on the early-return path because the corpus happens never to pair an empty committed store with colliding feedback keys. Dropping the early return and letting the single map-based path handle `committed === undefined` makes the invariants unconditional at negligible cost.
+
+---
+
+## Remove the TEST-ONLY MARKO*PERSISTED*\* overrides once the echo-channel decision lands
+
+`packages/run/src/runtime/persisted-protocol.ts` › `testOverride` | 2026-07-27 | impact:low | effort:low
+
+`echoValueCap`, `echoValuesCap`, `digestWidth`, and `valueStoreCap` read
+`globalThis.MARKO_PERSISTED_*` / env overrides so the N-scaling
+measurement matrix (marko-ecommerce scripts/experiments/nscale-matrix.mjs)
+can vary protocol caps without forking the wire. Deliberately inert by
+default (the mirrored-constant tripwires in
+**tests**/persisted-protocol.fuzz.test.ts pin the shipped values), but the
+read sites ride the eager router chunk of every persisted app (~0.3 kB
+raw). Once the channel architecture is decided and the matrix retires,
+fold the constants back to literals together with marko's mirrored
+`_test_override` in common/value-claims.ts. Verify: `grep -r
+MARKO_PERSISTED_ src/` in both repos returns nothing and both suites'
+pinned-default tests still pass.

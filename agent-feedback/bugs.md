@@ -2,6 +2,16 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
+## `error-invalid-routes` dev snapshot is stale on main after the error-page fix guide
+
+`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` | 2026-07-23 | impact:low | effort:low
+
+`npm test` fails on origin/main (verified in a clean worktree): the dev error
+page now appends "Fix guide: READ ../../../../cheatsheet.md before writing a
+fix." (added with the LLM routing cheatsheet, 225c2ee), but this fixture's
+`dev.expected.md` was never regenerated. `npm run test:update -- --grep
+error-invalid-routes` produces the two-line snapshot fix.
+
 ## Serve the prerendered 404 page with a real 404 status in static-adapter preview
 
 `packages/adapters/static/src/index.ts` › `startPreview` | 2026-07-18 | impact:low | effort:low
@@ -145,3 +155,28 @@ In `vite dev`, when an adapter's `plugins()` returns `cloudflare({ viteEnvironme
 `packages/run/src/cli/index.ts` › `prog` | 2026-07-18 | impact:med | effort:low
 
 The sade program is initialized with `.version("0.0.1")`, so `npx marko-run --version` prints `marko-run, 0.0.1` regardless of the installed release — the literal ships verbatim in published `dist/cli/index.mjs` (confirmed in the 0.6.6 tarball, and the source line is unchanged at HEAD). This makes version checks during bug triage misleading: a user asked "what version of the CLI are you on?" gets a bogus answer. Inject the version from the package's own `package.json` at bundle time (a define/replace step in the dist build) or read it at runtime before constructing the sade program.
+
+## mergeValueFeedback corrupts the store when passed an empty feedback string
+
+`packages/run/src/runtime/persisted-protocol.ts` › `mergeValueFeedback` | 2026-07-27 | impact:low | effort:low
+
+`mergeValueFeedback(committed, "")` with a non-empty `committed` splits the empty feedback into `[""]`, deriving the empty key ( `"".slice(0, -digestWidth)` is `""` ) and appending an empty entry, so the returned store gains a trailing `.` (e.g. `"aAAAAAAAA."`). A later merge then re-parses that empty segment as an entry with an empty key, and the wire form grows a stray dot the decoder on the marko side treats as a malformed record (whole claim set dropped — a silent full miss). Every current call site guards with `if (feedback)`/`delta ? merge(...) : base` (persisted-navigation.ts commit path, internal.ts claim-set binding), so this is latent, but the function's contract should either treat `""` as a no-op (`if (!feedback) return committed`) or assert. The mirrored copy in marko's `common/value-claims.ts` › `_merge_value_feedback` has the same shape and should move in lockstep.
+
+## E2 claim-set server store outlives auth-boundary session flips
+
+`packages/run/src/runtime/persisted-protocol.ts` › claim-set store; `internal.ts` › claim-set binding | 2026-07-28 | impact:med | effort:med
+
+The spectrum auth-boundary gate (ecommerce auth-validate.mjs) verified
+that replaying a captured LOGGED-IN echo + claim-set id against a
+logged-OUT session returns `base=hit` and elides ~237 B of shared
+content while correctly not reconstructing private markup — because
+elision compares stored digests against the FRESH logged-out render,
+not against the session that minted the claims. Privacy therefore
+rests entirely on digest comparison at the configured width (a
+collision would resurrect a stale held region across the auth
+boundary), not on any invalidation of the server-side claim-set store
+when auth-relevant session state changes. Either key/invalidate the
+claim-set store on an auth generation (session principal hash in the
+id derivation), or document digest-gated privacy as the deliberate
+model with the collision odds at shipped width. The ecommerce gate
+pins today's behavior; it cannot distinguish the two designs.

@@ -74,6 +74,16 @@ export interface RouterOptions {
     | "RedirectWith"
     | "RewriteWithout"
     | "RewriteWith";
+  /**
+   * Enables persisted pages (single-page navigation via server-rendered
+   * patches): templates compile persisted-capable (forwarded to
+   * `@marko/vite`'s `persisted` option), the generated router negotiates
+   * patch renders (`accept: text/marko-patch` + a matching `x-marko-route`
+   * and `x-marko-build`), and route wrapper templates register the client
+   * router with the generated route matcher and their route's index.
+   * Requires a Marko runtime with persisted support.
+   */
+  persisted?: boolean;
 }
 
 export interface MarkoRunOptions extends Partial<RouterOptions> {
