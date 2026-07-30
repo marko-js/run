@@ -161,8 +161,10 @@ export function createMiddleware(
       if (response) {
         res.statusCode = response.status;
         copyResponseHeaders(res, response.headers);
-        if (response.body) {
-          for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+
+        const body = getRender(response);
+        if (body) {
+          for await (const chunk of body) {
             if (res.destroyed) return;
             res.write(chunk);
             (res as any).flush?.();
@@ -200,6 +202,29 @@ export function createMiddleware(
       }
     }
   };
+}
+
+// A page `Response` carries its raw Marko render (HTML strings) under this
+// registry key (set in `runtime/internal`). Writing those strings straight to
+// the socket lets node encode UTF-8 natively, skipping the whatwg re-encode
+// that reading `response.body` would do.
+const kRender = Symbol.for("@marko/run.render");
+
+export function getRender(
+  response: Response,
+): AsyncIterable<string | Uint8Array> | null {
+  const direct = (response as any)[kRender] as
+    | { render: AsyncIterable<string>; body: ReadableStream }
+    | undefined;
+  // A render is single-use, and `response.clone()` tees the body out from under
+  // it, so it is only safe to take when the body it was stashed with is still
+  // there untouched. Otherwise the body holds the output and the render doesn't.
+  return direct &&
+    direct.body === response.body &&
+    !response.bodyUsed &&
+    !response.body.locked
+    ? direct.render
+    : (response.body as unknown as AsyncIterable<Uint8Array> | null);
 }
 
 const bodyConsumedErrorStream = new ReadableStream({

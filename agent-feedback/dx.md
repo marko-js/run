@@ -143,3 +143,9 @@ The generated `invoke` only calls the composed middleware+handler chain inside `
 `packages/run/README.md` › `CLI` | 2026-07-18 | impact:low | effort:low
 
 The CLI section of `packages/run/README.md` documents only bare `marko-run dev|build|preview` invocations and never mentions any flag, even though `packages/run/src/cli/index.ts` implements `-p/--port` (with a `$PORT` env-var fallback for both dev and preview, default 3000), `-c/--config`, `-e/--env`, `-o/--output`, and `-f/--file`. The most common deployment question — how do I change the port? — is currently only answerable by reading the sade option strings in source (`PORT=4014 marko-run dev` does listen on 4014). Add a short options table under the CLI heading covering each command's flags and the `$PORT` fallback.
+
+## Strip coding-agent env markers in the test suite so dev error-page snapshots are hermetic
+
+`packages/run/src/vite/utils/agent-fix-guide.ts` › `isCodingAgent` | 2026-07-30 | impact:med | effort:low
+
+`appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md ..." to compiler-level errors whenever an agent env marker (`CLAUDECODE`, `CLAUDE_CODE`, `AI_AGENT`, `CURSOR_AGENT`, ...) is set. Running `npm test` from inside any coding agent therefore fails snapshot tests whose expectations were recorded without the marker — e.g. `packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` gains the fix-guide line in the rendered dev error page and `main.test.ts` reports a diff, while the same suite passes in CI. Worse, an agent that "fixes" the failure by regenerating snapshots would break CI in the opposite direction. Delete these env vars in a test bootstrap (or gate `isCodingAgent` off when `NODE_ENV === "test"`) so the suite behaves identically regardless of who launches it.

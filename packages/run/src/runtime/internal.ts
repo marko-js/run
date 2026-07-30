@@ -58,6 +58,10 @@ globalThis.Run ??= {
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
+// Registry key (also read by `adapter/middleware`, which is bundled
+// separately) for the raw render carried on a page `Response`.
+const kRender = Symbol.for("@marko/run.render");
+
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   toReadable = (rendered as any).toReadable
     ? (rendered) => rendered.toReadable!()
@@ -87,6 +91,39 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
       };
   return toReadable(rendered);
 };
+
+// Lazy, no-read-ahead (highWaterMark 0) body over the render's iterator, so
+// constructing the `Response` doesn't pull anything and the node adapter can
+// take the render instead (see `kRender`). A render result is single-use, so
+// this must stay the only consumer of `iterator` -- mixing it with
+// `toReadable()` makes the tags-api runtime throw "consumed render result".
+function toResponseBody(
+  iterator: AsyncIterator<string>,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>(
+    {
+      // `next()` does not always return a promise, and a rejected `pull`
+      // errors the stream, which is what the failure should do anyway.
+      async pull(ctrl) {
+        const { done, value } = await iterator.next();
+        if (done) ctrl.close();
+        else ctrl.enqueue(encoder.encode(value));
+      },
+      async cancel(reason) {
+        // An abandoned render's cleanup failure has nowhere to surface --
+        // swallow it so it cannot become an unhandled rejection that takes
+        // down the process when a client disconnects mid-render.
+        try {
+          await iterator.return?.(reason);
+        } catch {
+          // ignored
+        }
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
 
 function searchParamsToObject(params: URLSearchParams | FormData) {
   const obj: Record<string, any> = {};
@@ -239,15 +276,32 @@ export function createContext(
       );
     },
     render(template, input, init = pageResponseInit) {
-      return new Response(
-        toReadable(
-          template.render({
-            ...input,
-            $global: context as unknown as Marko.Global,
-          }),
-        ),
-        init,
-      );
+      const rendered = template.render({
+        ...input,
+        $global: context as unknown as Marko.Global,
+      });
+
+      // Older/custom renders that cannot be iterated directly go through
+      // `toReadable`.
+      if (!(Symbol.asyncIterator in (rendered as object))) {
+        return new Response(toReadable(rendered), init);
+      }
+
+      // The render is consumed through a single iterator, created eagerly so
+      // marko attaches its error handling now: the body is lazy, so a render
+      // that fails before anything reads it would otherwise throw uncaught --
+      // eg. a HEAD request, whose body is stripped and never read at all.
+      const iterator = rendered[Symbol.asyncIterator]();
+      const response = new Response(toResponseBody(iterator), init);
+      // Let a byte-sink adapter (node) write the HTML strings straight to the
+      // socket. `body` pins the stream the render belongs to: `clone()` tees
+      // the body and drains the single-use render, so the adapter has to be
+      // able to tell that it can no longer take this shortcut.
+      (response as any)[kRender] = {
+        render: { [Symbol.asyncIterator]: () => iterator },
+        body: response.body,
+      };
+      return response;
     },
     redirect(to, status = 302) {
       if (typeof status !== "number") {
