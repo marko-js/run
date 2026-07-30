@@ -63,13 +63,21 @@ export function renderRouteTemplate(
   writer.writeLines("");
   writeEntryTemplateTag(
     writer,
-    [...route.layouts, route.page].map((file) =>
+    route.layouts.map((file) =>
       normalizedRelativePath(
         path.dirname(route.templateFilePath!),
         file.filePath,
       ),
     ),
     route.key === RoutableFileTypes.Error ? ["error"] : [],
+    // A persisted shell dispatches the page rather than naming it, so routes
+    // sharing a layout chain share this template — and its layout scopes.
+    persisted
+      ? undefined
+      : normalizedRelativePath(
+          path.dirname(route.templateFilePath!),
+          route.page.filePath,
+        ),
   );
 
   return writer.end();
@@ -79,28 +87,35 @@ function writeEntryTemplateTag(
   writer: Writer,
   [file, ...rest]: string[],
   pageInputs: string[],
+  pageFile: string | undefined,
   index: number = 1,
 ): void {
   if (file) {
-    const isLast = !rest.length;
-    const tag = isLast ? "Page" : `Layout${index}`;
-
+    const tag = `Layout${index}`;
     writer.branch("imports").writeLines(`import ${tag} from "${file}";`);
+    writer.writeBlockStart(`<${tag}>`);
+    writeEntryTemplateTag(writer, rest, pageInputs, pageFile, index + 1);
+    writer.writeBlockEnd(`</>`);
+    return;
+  }
 
-    if (isLast) {
-      const attributes = pageInputs.length
-        ? " " + pageInputs.map((name) => `${name}=input.${name}`).join(" ")
-        : "";
-      writer.writeLines(`<${tag}${attributes}/>`);
-    } else {
-      writer.writeBlockStart(`<${tag}>`);
-      writeEntryTemplateTag(writer, rest, pageInputs, index + 1);
-      writer.writeBlockEnd(`</>`);
-    }
+  const attributes = pageInputs.length
+    ? " " + pageInputs.map((name) => `${name}=input.${name}`).join(" ")
+    : "";
+
+  if (pageFile) {
+    writer.branch("imports").writeLines(`import Page from "${pageFile}";`);
+    writer.writeLines(`<Page${attributes}/>`);
+  } else {
+    writer.writeLines(`<\${input.page}${attributes}/>`);
   }
 }
 
-export function renderRouteEntry(route: Route, rootDir: string): string {
+export function renderRouteEntry(
+  route: Route,
+  rootDir: string,
+  persisted = false,
+): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
@@ -175,6 +190,12 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
     imports.writeLines(
       `import page from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
     );
+    if (persisted) {
+      // The shell is shared, so this route names its own page for the slot.
+      imports.writeLines(
+        `import pageContent from "${normalizedRelativePath(rootDir, page.filePath)}";`,
+      );
+    }
   }
   if (meta) {
     const metaName = `meta${index}`;
@@ -201,7 +222,7 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   for (const verb of verbs) {
     writeRouteOptions(optionsWriter, route, verb);
-    writeRouteEntryHandler(writer, route, verb);
+    writeRouteEntryHandler(writer, route, verb, persisted);
   }
 
   optionsWriter.join();
@@ -235,9 +256,11 @@ function writeRouteEntryHandler(
   writer: Writer,
   route: Route,
   verb: HttpVerb,
+  persisted: boolean,
 ): void {
   const { key, index, page, handler, middleware } = route;
   const len = middleware.length;
+  const pageInput = persisted ? "{ page: pageContent }" : "{}";
 
   let nextName: string;
   let currentName: string;
@@ -255,7 +278,7 @@ function writeRouteEntryHandler(
       const name = `${verb}Handler`;
 
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
 
       if (len) {
@@ -279,10 +302,10 @@ function writeRouteEntryHandler(
       hasBody = true;
     } else if (len) {
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
     } else {
-      writer.writeLines(`return render(context, page, {});`);
+      writer.writeLines(`return render(context, page, ${pageInput});`);
       hasBody = true;
     }
   } else if (handler?.verbs?.includes(verb)) {

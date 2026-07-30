@@ -20,6 +20,16 @@ const RoutableFileRegex = new RegExp(
   "i",
 );
 
+// Routes with the same layout chain share a shell, so they share a template id
+// and therefore the layout's scopes across a navigation.
+function shellName(layouts: RoutableFile[], suffix?: string) {
+  const chain = layouts.map((layout) => layout.id).join("+") || "root";
+  return `shell.${chain}${suffix ? `.${suffix}` : ""}.marko`.replace(
+    /[^a-zA-Z0-9_$.+-]/g,
+    "_",
+  );
+}
+
 export function isRoutableFile(filename: string) {
   return RoutableFileRegex.test(filename);
 }
@@ -74,6 +84,9 @@ export interface RouteSource {
 export async function buildRoutes(
   sources: RouteSource | RouteSource[],
   outDir: string,
+  // A persisted app shares one shell template per layout chain, so the layout
+  // is the same template instance either side of a navigation.
+  persisted = false,
 ): Promise<BuiltRoutes> {
   const uniqueRoutes = new Map<string, { dir: VDir; index: number }>();
   const routes: Route[] = [];
@@ -223,7 +236,12 @@ export async function buildRoutes(
               middleware: [],
               layouts: [...currentLayouts],
               page: file,
-              templateFilePath: path.join(outDir, `${type}.marko`),
+              templateFilePath: path.join(
+                outDir,
+                persisted
+                  ? shellName([...currentLayouts], type)
+                  : `${type}.marko`,
+              ),
             };
 
             layoutsUsed = true;
@@ -271,7 +289,12 @@ export async function buildRoutes(
           meta: dir.files.get(RoutableFileTypes.Meta),
           page,
           handler,
-          templateFilePath: page && path.join(outDir, key + ".marko"),
+          templateFilePath:
+            page &&
+            path.join(
+              outDir,
+              persisted ? shellName([...currentLayouts]) : key + ".marko",
+            ),
         });
 
         layoutsUsed = !!page;

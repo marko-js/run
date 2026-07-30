@@ -211,6 +211,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             walker: createFSWalker(resolvedRoutesDir),
           },
           entryFilesDir,
+          !!opts.persisted,
         );
 
         if (
@@ -335,7 +336,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root),
+            renderRouteEntry(route, root, !!opts.persisted),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
