@@ -1,5 +1,13 @@
 # @marko/run-adapter-static
 
+## 2.0.8
+
+### Patch Changes
+
+- 6769e8d: Stop crawling `<a download>` links, and honor `rel="nofollow"` (plus `enclosure` and `external`) when it appears alongside other `rel` tokens. A bare `download` attribute parses as an empty string, so the check meant to skip those links only ever matched `download="filename"`, and `rel` was compared as a whole string rather than a token list. Links to files the app server does not serve were followed, and each one wrote the 404 page out under that path.
+- 040e33c: Match `<link rel>` against each of its tokens when deciding what to crawl. `rel` is a space-separated token list, but it was compared as a whole string, so a page linked as `rel="alternate stylesheet"` fell through the allowlist and was left out of the static build.
+- 8f4f0c3: Resolve crawled links against the page they were found on rather than the origin. A relative href previously lost its directory, so `./sibling` on `/docs/reference/language` was crawled as `/sibling`, which 404s and wrote the 404 page out under that name.
+
 ## 2.0.7
 
 ### Patch Changes
