@@ -181,24 +181,28 @@ function getTagHref(tagName: string, attrs: Record<string, string>) {
       break;
     case "link":
       if (attrs.href) {
-        switch (attrs.rel) {
-          case "alternate":
-          case "author":
-          case "canonical":
-          case "help":
-          case "license":
-          case "next":
-          case "prefetch":
-          case "prerender":
-          case "prev":
-          case "search":
-          case "tag":
-            return attrs.href;
-          case "preload":
-            if (attrs.as === "document") {
+        // `rel` is a token list, so each token is matched on its own: a switch
+        // on the whole attribute misses `rel="alternate stylesheet"`.
+        for (const rel of relTokens(attrs.rel)) {
+          switch (rel) {
+            case "alternate":
+            case "author":
+            case "canonical":
+            case "help":
+            case "license":
+            case "next":
+            case "prefetch":
+            case "prerender":
+            case "prev":
+            case "search":
+            case "tag":
               return attrs.href;
-            }
-            break;
+            case "preload":
+              if (attrs.as === "document") {
+                return attrs.href;
+              }
+              break;
+          }
         }
       }
       break;
@@ -208,15 +212,17 @@ function getTagHref(tagName: string, attrs: Record<string, string>) {
 }
 
 function hasIgnoredRel(rel: string | undefined) {
-  if (rel) {
-    for (const value of rel.split(/\s+/)) {
-      if (ignoredRels.has(value)) {
-        return true;
-      }
+  for (const value of relTokens(rel)) {
+    if (ignoredRels.has(value)) {
+      return true;
     }
   }
 
   return false;
+}
+
+function relTokens(rel: string | undefined) {
+  return rel ? rel.split(/\s+/) : [];
 }
 
 /**
