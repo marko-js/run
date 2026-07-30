@@ -148,7 +148,7 @@ importers:
         version: 5.39.7
     devDependencies:
       '@marko/run':
-        specifier: ^0.11.6
+        specifier: ^0.11.7
         version: link:../../packages/run
       '@marko/run-adapter-netlify':
         specifier: ^3.0.6
@@ -188,7 +188,7 @@ importers:
         version: 5.39.7
     devDependencies:
       '@marko/run':
-        specifier: ^0.11.6
+        specifier: ^0.11.7
         version: link:../../packages/run
       '@marko/run-adapter-node':
         specifier: ^2.0.6
@@ -216,10 +216,10 @@ importers:
         version: 5.39.7
     devDependencies:
       '@marko/run':
-        specifier: ^0.11.6
+        specifier: ^0.11.7
         version: link:../../packages/run
       '@marko/run-adapter-static':
-        specifier: ^2.0.7
+        specifier: ^2.0.8
         version: link:../../packages/adapters/static
       '@types/mocha':
         specifier: ^10.0.10
