@@ -25,7 +25,15 @@ interface Reply {
   delay?: boolean;
 }
 
-function harness({ apply = true }: { apply?: boolean } = {}) {
+function harness({
+  apply = true,
+  applierLate = false,
+  applierNever = false,
+}: {
+  apply?: boolean;
+  applierLate?: boolean;
+  applierNever?: boolean;
+} = {}) {
   const dom = new JSDOM(`<body>${PAGE}</body>`, {
     url: "http://localhost/start",
   });
@@ -89,7 +97,12 @@ function harness({ apply = true }: { apply?: boolean } = {}) {
     },
   };
 
+  // The real page entry publishes the applier *after* the chunk holding this
+  // module has run, so installing must not depend on it being there yet.
+  const applier = (win as any).__marko_apply_patch__;
+  if (applierLate || applierNever) delete (win as any).__marko_apply_patch__;
   installPatchNavigation(win as any);
+  if (applierLate) (win as any).__marko_apply_patch__ = applier;
 
   const settle = () => new Promise((r) => setTimeout(r, 0));
 
@@ -152,6 +165,23 @@ describe("run/client-navigation", () => {
     assert.deepEqual(h.applied, ["FRAME"]);
     assert.deepEqual(h.navigated, ["push http://localhost/next"]);
     assert.deepEqual(h.assigned, []);
+  });
+
+  it("still intercepts when the applier is published after install", async () => {
+    const h = harness({ applierLate: true });
+    h.reply({ body: "FRAME", type: patchContentType });
+    const event = await h.click("#go");
+
+    assert.equal(event.defaultPrevented, true, "the click must be intercepted");
+    assert.deepEqual(h.applied, ["FRAME"]);
+  });
+
+  it("leaves navigation alone when no applier is ever published", async () => {
+    const h = harness({ applierNever: true });
+    const event = await h.click("#go");
+
+    assert.equal(event.defaultPrevented, false);
+    assert.deepEqual(h.requests, []);
   });
 
   it("turns a GET form into a patch navigation with its fields", async () => {

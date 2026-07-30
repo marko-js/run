@@ -18,13 +18,6 @@ if (typeof window !== "undefined") {
  * Takes its window so it can be driven against a test realm.
  */
 export function installPatchNavigation(win: Window & typeof globalThis) {
-  const applyPatch = (win as any).__marko_apply_patch__ as
-    | undefined
-    | ((frame: string) => boolean);
-  // Only a persisted build exposes an applier; without one there is nothing to
-  // intercept and the browser keeps doing ordinary document navigation.
-  if (!applyPatch) return;
-
   const buildId: string = (win as any).__MARKO_RUN_BUILD_ID__ || "dev";
   // Every navigation gets an epoch; a response that arrives after a later one
   // started is dropped rather than applied out of order.
@@ -40,8 +33,18 @@ export function installPatchNavigation(win: Window & typeof globalThis) {
   win.document.addEventListener("submit", onSubmit as EventListener);
   win.addEventListener("popstate", onPopState);
 
+  // Read per navigation, not at install: the page entry that publishes the
+  // applier runs after this module. Without one there is nothing to intercept
+  // and the browser keeps doing ordinary document navigation.
+  function getApplyPatch() {
+    return (win as any).__marko_apply_patch__ as
+      | undefined
+      | ((frame: string) => boolean);
+  }
+
   function onClick(event: MouseEvent) {
     if (
+      !getApplyPatch() ||
       event.defaultPrevented ||
       event.button !== 0 ||
       event.metaKey ||
@@ -77,7 +80,7 @@ export function installPatchNavigation(win: Window & typeof globalThis) {
   // browser: its handler has already run by the time a frame could be refused,
   // and a second request to recover would run the mutation twice.
   function onSubmit(event: SubmitEvent) {
-    if (event.defaultPrevented) return;
+    if (!getApplyPatch() || event.defaultPrevented) return;
 
     const form = event.target as HTMLFormElement;
     const submitter = event.submitter as
@@ -107,6 +110,7 @@ export function installPatchNavigation(win: Window & typeof globalThis) {
   }
 
   function onPopState() {
+    if (!getApplyPatch()) return;
     const url = sameOrigin(win.location.href);
     if (!url || target(url.href) === current) return;
     current = target(url.href);
@@ -146,7 +150,7 @@ export function installPatchNavigation(win: Window & typeof globalThis) {
     if (started !== epoch) return;
 
     for (const frame of frames) {
-      if (frame === REFUSED || !applyPatch!(frame)) {
+      if (frame === REFUSED || !getApplyPatch()!(frame)) {
         refusedPaths.add(settled.pathname);
         return fallback(url);
       }
