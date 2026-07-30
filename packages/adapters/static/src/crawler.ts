@@ -166,7 +166,9 @@ export default function createCrawler(
 function getTagHref(tagName: string, attrs: Record<string, string>) {
   switch (tagName) {
     case "a":
-      if (attrs.href && !(attrs.download || ignoredRels.has(attrs.rel))) {
+      // `download` on its own parses to an empty string, so presence is what
+      // decides here: a truthiness check only ever skipped `download="name"`.
+      if (attrs.href && attrs.download == null && !hasIgnoredRel(attrs.rel)) {
         return attrs.href;
       }
       break;
@@ -196,6 +198,18 @@ function getTagHref(tagName: string, attrs: Record<string, string>) {
     case "iframe":
       return attrs.src;
   }
+}
+
+function hasIgnoredRel(rel: string | undefined) {
+  if (rel) {
+    for (const value of rel.split(/\s+/)) {
+      if (ignoredRels.has(value)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function resolveUrl(href: string, origin: string) {
