@@ -19,7 +19,7 @@ export default function createCrawler(
   makeRequest: (request: Request) => Promise<Response>,
   opts: Options = {},
 ): Crawler {
-  const origin = opts.origin || `http://localhost`;
+  const origin = new URL(opts.origin || `http://localhost`);
   const out = nodePath.resolve(opts.out || "dist");
   const notFoundPath =
     opts.notFoundPath && resolvePath(opts.notFoundPath, origin)!;
@@ -28,14 +28,17 @@ export default function createCrawler(
   let pending: Promise<any> | undefined;
 
   async function visit(path: string) {
+    const url = new URL(path, origin);
     const parser = new Parser({
       onopentag(name, attrs) {
         const href = getTagHref(name, attrs);
-        const path = href && resolvePath(href, origin);
+        // Relative to the page it was found on, not the origin: `./sibling` on
+        // /docs/reference/language is /docs/reference/sibling, not /sibling.
+        const found = href && resolvePath(href, url);
 
-        if (path !== undefined && !seen.has(path)) {
-          seen.add(path);
-          queue.push(visit(path));
+        if (found !== undefined && !seen.has(found)) {
+          seen.add(found);
+          queue.push(visit(found));
         }
       },
     });
@@ -43,7 +46,6 @@ export default function createCrawler(
     const abortController = new AbortController();
     let pageWriter: fs.WriteStream | undefined;
     try {
-      const url = new URL(path, origin);
       const req = new Request(url, {
         method: "GET",
         signal: abortController.signal as any,
@@ -85,11 +87,16 @@ export default function createCrawler(
         case 302:
         case 307:
         case 308: {
-          const location = res.headers.get("location") || "";
-          redirect = resolvePathWithHash(location, origin);
+          const location = res.headers.get("location")?.trim();
+          if (!location) {
+            abortController.abort();
+            return;
+          }
+
+          redirect = resolvePathWithHash(location, url);
 
           if (redirect) {
-            const redirectPath = resolvePath(location, origin);
+            const redirectPath = resolvePath(location, url);
             if (redirectPath && !seen.has(redirectPath)) {
               seen.add(redirectPath);
               queue.push(visit(redirectPath));
@@ -212,10 +219,14 @@ function hasIgnoredRel(rel: string | undefined) {
   return false;
 }
 
-function resolveUrl(href: string, origin: string) {
+/**
+ * `base` is the page a link was found on, so that a relative href resolves the
+ * way a browser would. Links off-origin are skipped.
+ */
+function resolveUrl(href: string, base: URL) {
   try {
-    const url = new URL(href, origin);
-    if (url.origin === origin) {
+    const url = new URL(href, base);
+    if (url.origin === base.origin) {
       return url;
     }
   } catch {
@@ -223,12 +234,12 @@ function resolveUrl(href: string, origin: string) {
   }
 }
 
-function resolvePath(href: string, origin: string) {
-  const url = resolveUrl(href, origin);
+function resolvePath(href: string, base: URL) {
+  const url = resolveUrl(href, base);
   return url && url.pathname + url.search;
 }
 
-function resolvePathWithHash(href: string, origin: string) {
-  const url = resolveUrl(href, origin);
+function resolvePathWithHash(href: string, base: URL) {
+  const url = resolveUrl(href, base);
   return url && url.pathname + url.search + url.hash;
 }
