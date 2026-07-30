@@ -1050,6 +1050,7 @@ export type Invoke<TPlatform extends Platform = Platform> = (
   route: RouteMatch | null,
   request: Request,
   platform: TPlatform,
+  url?: URL,
 ) => Promise<Response | void>;
 export interface RuntimeModule {
   fetch<TPlatform extends Platform = Platform>(
