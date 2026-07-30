@@ -1,1 +1,1 @@
-npm exec -- lint-staged && npm run build
+pnpm exec lint-staged && pnpm run build
