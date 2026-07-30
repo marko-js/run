@@ -4,6 +4,7 @@ import http from "http";
 import { copyResponseHeaders, getRender } from "../adapter/middleware";
 
 const kRender = Symbol.for("@marko/run.render");
+const encoder = new TextEncoder();
 
 function pageResponse(html: string[]) {
   const render = (async function* () {
@@ -12,7 +13,9 @@ function pageResponse(html: string[]) {
   const response = new Response(
     new ReadableStream({
       pull(ctrl) {
-        ctrl.enqueue(new TextEncoder().encode(html.join("")));
+        for (const chunk of html) {
+          ctrl.enqueue(encoder.encode(chunk));
+        }
         ctrl.close();
       },
     }),
@@ -22,11 +25,15 @@ function pageResponse(html: string[]) {
 }
 
 async function collect(body: AsyncIterable<string | Uint8Array> | null) {
+  const decoder = new TextDecoder();
   let out = "";
   for await (const chunk of body!) {
-    out += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+    out +=
+      typeof chunk === "string"
+        ? chunk
+        : decoder.decode(chunk, { stream: true });
   }
-  return out;
+  return out + decoder.decode();
 }
 
 describe("Adapter Middleware", () => {

@@ -58,7 +58,9 @@
     "webworker",
     "workerd",
     "cheatsheet",
-    "factoried"
+    "factoried",
+    "unconfigured",
+    "unhashed"
   ],
   "ignoreRegExpList": [],
   "files": ["*", "src/**/*"],

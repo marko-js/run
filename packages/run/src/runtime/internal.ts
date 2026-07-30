@@ -273,30 +273,27 @@ export function createContext(
         ...input,
         $global: context as unknown as Marko.Global,
       });
-      // Renders that can be iterated directly are consumed through a single
-      // iterator, created eagerly so marko attaches its error handling now:
-      // the body is lazy, so a render that fails before anything reads it
-      // would otherwise throw uncaught -- eg. a HEAD request, whose body is
-      // stripped and never read at all. Older/custom renders may not be
-      // iterable, and keep going through `toReadable`.
-      const iterator =
-        Symbol.asyncIterator in (rendered as object)
-          ? rendered[Symbol.asyncIterator]()
-          : undefined;
-      const response = new Response(
-        iterator ? toResponseBody(iterator) : toReadable(rendered),
-        init,
-      );
-      if (iterator) {
-        // Let a byte-sink adapter (node) write the HTML strings straight to the
-        // socket. `body` pins the stream the render belongs to: `clone()` tees
-        // the body and drains the single-use render, so the adapter has to be
-        // able to tell that it can no longer take this shortcut.
-        (response as any)[kRender] = {
-          render: { [Symbol.asyncIterator]: () => iterator },
-          body: response.body,
-        };
+
+      // Older/custom renders that cannot be iterated directly go through
+      // `toReadable`.
+      if (!(Symbol.asyncIterator in (rendered as object))) {
+        return new Response(toReadable(rendered), init);
       }
+
+      // The render is consumed through a single iterator, created eagerly so
+      // marko attaches its error handling now: the body is lazy, so a render
+      // that fails before anything reads it would otherwise throw uncaught --
+      // eg. a HEAD request, whose body is stripped and never read at all.
+      const iterator = rendered[Symbol.asyncIterator]();
+      const response = new Response(toResponseBody(iterator), init);
+      // Let a byte-sink adapter (node) write the HTML strings straight to the
+      // socket. `body` pins the stream the render belongs to: `clone()` tees
+      // the body and drains the single-use render, so the adapter has to be
+      // able to tell that it can no longer take this shortcut.
+      (response as any)[kRender] = {
+        render: { [Symbol.asyncIterator]: () => iterator },
+        body: response.body,
+      };
       return response;
     },
     redirect(to, status = 302) {
