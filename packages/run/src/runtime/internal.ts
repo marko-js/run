@@ -110,8 +110,15 @@ function toResponseBody(
         if (done) ctrl.close();
         else ctrl.enqueue(encoder.encode(value));
       },
-      cancel(reason) {
-        iterator.return?.(reason);
+      async cancel(reason) {
+        // An abandoned render's cleanup failure has nowhere to surface --
+        // swallow it so it cannot become an unhandled rejection that takes
+        // down the process when a client disconnects mid-render.
+        try {
+          await iterator.return?.(reason);
+        } catch {
+          // ignored
+        }
       },
     },
     { highWaterMark: 0 },
