@@ -555,27 +555,43 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           pluginConfig.define ??= {};
           pluginConfig.define["process.env.NODE_ENV"] ??= "'production'";
-
-          pluginConfig.resolve ??= {};
-          pluginConfig.resolve.mainFields ??= (
-            isSSRBuild ? [] : ["browser"]
-          ).concat(["module", "jsnext:main", "jsnext", "main"]);
-
-          pluginConfig.resolve.conditions ??= [
-            isSSRBuild ? "node" : "browser",
-            "import",
-            "require",
-            "production",
-            "default",
-          ];
         }
 
         return setExternalPluginOptions(pluginConfig, opts);
       },
-      configEnvironment() {
+      configEnvironment(name, envConfig, env) {
         // `@marko/run/router` resolves to a virtual module, so no
         // environment's dependency scan may load it (or its graph) from disk.
-        return { optimizeDeps: { exclude: ["@marko/run/router"] } };
+        const optimizeDeps = { exclude: ["@marko/run/router"] };
+
+        // Vite drops top-level `resolve.conditions` for every non-client
+        // environment, so pinning how a build resolves has to happen per
+        // environment or the SSR build silently keeps Vite's defaults.
+        // `mainFields` is left alone: Vite's per-environment defaults already
+        // match what this build wants. Conditions merge by concatenation, so
+        // only contribute a list when the environment doesn't have one.
+        if (env.command !== "build" || envConfig.resolve?.conditions) {
+          return { optimizeDeps };
+        }
+
+        return {
+          optimizeDeps,
+          resolve: {
+            // `import`/`require` are intentionally omitted: Vite appends
+            // whichever one matches the importer, so listing both makes a
+            // package that declares `require` before `import` resolve to its
+            // CJS build.
+            conditions: [
+              "module",
+              env.isSsrTargetWebworker ||
+              (envConfig.consumer ?? name) === "client"
+                ? "browser"
+                : "node",
+              "production",
+              "default",
+            ],
+          },
+        };
       },
       configResolved(config) {
         resolvedConfig = config;
