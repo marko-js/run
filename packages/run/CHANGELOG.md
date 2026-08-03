@@ -1,5 +1,13 @@
 # @marko/run
 
+## 0.11.8
+
+### Patch Changes
+
+- 0dc1ab1: Stop forcing both `import` and `require` into `resolve.conditions`. Vite already appends whichever one matches the importer, so listing both made a dependency that declares `require` before `import` in its `exports` map resolve to its CommonJS build.
+- 0dc1ab1: Apply the build's `resolve.conditions` per environment. Vite drops the key for every non-client environment, so setting it at the top level left the SSR build on Vite's defaults and never applied the `node` condition it was meant to get. The accompanying `resolve.mainFields` override is dropped, having reproduced Vite's own per-environment defaults exactly.
+- a1bb588: Declare direct dependencies required by the Vite integration under pnpm.
+
 ## 0.11.7
 
 ### Patch Changes
