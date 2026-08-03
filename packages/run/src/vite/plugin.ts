@@ -568,40 +568,36 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           return { optimizeDeps };
         }
 
-        // Vite drops top-level `resolve.mainFields`/`conditions` for every
-        // non-client environment, so pinning how a build resolves has to
-        // happen per environment or the SSR build silently keeps Vite's
-        // defaults. Both merge by concatenation, so a list is only
-        // contributed when the environment doesn't already have one.
-        const resolve: { mainFields?: string[]; conditions?: string[] } = {};
+        // Vite drops top-level `resolve.conditions` for every non-client
+        // environment, so pinning how a build resolves has to happen per
+        // environment or the SSR build silently keeps Vite's defaults.
+        // `mainFields` is left alone: Vite's per-environment defaults already
+        // match what this build wants. Conditions merge by concatenation, so
+        // only contribute a list when the environment doesn't have one.
+        if (envConfig.resolve?.conditions) {
+          return { optimizeDeps };
+        }
+
         const browserLike =
           env.isSsrTargetWebworker ||
           (envConfig.consumer ?? (name === "client" ? "client" : "server")) ===
             "client";
 
-        if (!envConfig.resolve?.mainFields) {
-          resolve.mainFields = (browserLike ? ["browser"] : []).concat([
-            "module",
-            "jsnext:main",
-            "jsnext",
-            "main",
-          ]);
-        }
-
-        if (!envConfig.resolve?.conditions) {
-          // `import`/`require` are intentionally omitted: Vite appends
-          // whichever one matches the importer, so listing both makes a
-          // package that declares `require` before `import` resolve to its
-          // CJS build.
-          resolve.conditions = [
-            "module",
-            browserLike ? "browser" : "node",
-            "production",
-            "default",
-          ];
-        }
-
-        return { optimizeDeps, resolve };
+        return {
+          optimizeDeps,
+          resolve: {
+            // `import`/`require` are intentionally omitted: Vite appends
+            // whichever one matches the importer, so listing both makes a
+            // package that declares `require` before `import` resolve to its
+            // CJS build.
+            conditions: [
+              "module",
+              browserLike ? "browser" : "node",
+              "production",
+              "default",
+            ],
+          },
+        };
       },
       configResolved(config) {
         resolvedConfig = config;
