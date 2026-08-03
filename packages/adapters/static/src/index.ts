@@ -9,7 +9,7 @@ import type {
 import { getAvailablePort, loadEnv, spawnServer } from "@marko/run/vite";
 import compression from "compression";
 import fs from "fs/promises";
-import { createServer } from "http";
+import { createServer, type ServerResponse } from "http";
 import type { AddressInfo } from "net";
 import path from "path";
 import sirv from "sirv";
@@ -21,6 +21,23 @@ import createCrawler from "./crawler";
 
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
+
+/**
+ * Pin a response's status code across sirv's `send`, which ends with an
+ * unconditional `res.writeHead(200, headers)` and so discards anything assigned
+ * to `res.statusCode` from the `setHeaders` hook it calls first.
+ */
+function forceStatus(res: ServerResponse, status: number) {
+  const { writeHead } = res;
+  res.writeHead = function (this: ServerResponse, ...args: unknown[]) {
+    res.writeHead = writeHead;
+    args[0] = status;
+    return (writeHead as (...args: unknown[]) => ServerResponse).apply(
+      this,
+      args,
+    );
+  } as ServerResponse["writeHead"];
+}
 
 export interface Options {
   /**
@@ -85,9 +102,9 @@ export default function staticAdapter(options: Options = {}): Adapter {
       });
       const staticServe = sirv(path.join(dir, "public"), {
         extensions: ["html"],
-        setHeaders(res, path) {
-          if (path === "/404") {
-            res.statusCode = 404;
+        setHeaders(res, pathname) {
+          if (pathname === "/404") {
+            forceStatus(res, 404);
           }
         },
       });
