@@ -555,28 +555,53 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           pluginConfig.define ??= {};
           pluginConfig.define["process.env.NODE_ENV"] ??= "'production'";
+        }
 
-          pluginConfig.resolve ??= {};
-          pluginConfig.resolve.mainFields ??= (
-            isSSRBuild ? [] : ["browser"]
-          ).concat(["module", "jsnext:main", "jsnext", "main"]);
+        return setExternalPluginOptions(pluginConfig, opts);
+      },
+      configEnvironment(name, envConfig, env) {
+        // `@marko/run/router` resolves to a virtual module, so no
+        // environment's dependency scan may load it (or its graph) from disk.
+        const optimizeDeps = { exclude: ["@marko/run/router"] };
 
-          // `import`/`require` are intentionally omitted: Vite appends whichever
-          // one matches the importer, so listing both makes a package that
-          // declares `require` before `import` resolve to its CJS build.
-          pluginConfig.resolve.conditions ??= [
-            isSSRBuild ? "node" : "browser",
+        if (env.command !== "build") {
+          return { optimizeDeps };
+        }
+
+        // Vite drops top-level `resolve.mainFields`/`conditions` for every
+        // non-client environment, so pinning how a build resolves has to
+        // happen per environment or the SSR build silently keeps Vite's
+        // defaults. Both merge by concatenation, so a list is only
+        // contributed when the environment doesn't already have one.
+        const resolve: { mainFields?: string[]; conditions?: string[] } = {};
+        const browserLike =
+          env.isSsrTargetWebworker ||
+          (envConfig.consumer ?? (name === "client" ? "client" : "server")) ===
+            "client";
+
+        if (!envConfig.resolve?.mainFields) {
+          resolve.mainFields = (browserLike ? ["browser"] : []).concat([
+            "module",
+            "jsnext:main",
+            "jsnext",
+            "main",
+          ]);
+        }
+
+        if (!envConfig.resolve?.conditions) {
+          // `import`/`require` are intentionally omitted: Vite appends
+          // whichever one matches the importer, so listing both makes a
+          // package that declares `require` before `import` resolve to its
+          // CJS build.
+          resolve.conditions = [
+            "module",
+            browserLike ? "browser" : "node",
             "production",
             "default",
           ];
         }
 
-        return setExternalPluginOptions(pluginConfig, opts);
-      },
-      configEnvironment() {
-        // `@marko/run/router` resolves to a virtual module, so no
-        // environment's dependency scan may load it (or its graph) from disk.
-        return { optimizeDeps: { exclude: ["@marko/run/router"] } };
+        return { optimizeDeps, resolve };
       },
       configResolved(config) {
         resolvedConfig = config;
