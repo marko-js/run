@@ -579,9 +579,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         const browserLike =
-          env.isSsrTargetWebworker ||
-          (envConfig.consumer ?? (name === "client" ? "client" : "server")) ===
-            "client";
+          env.isSsrTargetWebworker || (envConfig.consumer ?? name) === "client";
 
         return {
           optimizeDeps,
