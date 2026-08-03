@@ -60,7 +60,17 @@
     "cheatsheet",
     "factoried",
     "unconfigured",
-    "unhashed"
+    "unhashed",
+    "backpressure",
+    "cacache",
+    "ENOENT",
+    "extensionless",
+    "mocharc",
+    "nycrc",
+    "subrequest",
+    "uncompiled",
+    "unflushed",
+    "unservable"
   ],
   "ignoreRegExpList": [],
   "files": ["*", "src/**/*"],
