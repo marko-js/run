@@ -561,10 +561,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             isSSRBuild ? [] : ["browser"]
           ).concat(["module", "jsnext:main", "jsnext", "main"]);
 
+          // `import`/`require` are intentionally omitted: Vite appends whichever
+          // one matches the importer, so listing both makes a package that
+          // declares `require` before `import` resolve to its CJS build.
           pluginConfig.resolve.conditions ??= [
             isSSRBuild ? "node" : "browser",
-            "import",
-            "require",
             "production",
             "default",
           ];
