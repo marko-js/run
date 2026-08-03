@@ -1,0 +1,6 @@
+# Loading
+
+```html
+Page rendered
+```
+

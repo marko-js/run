@@ -11,8 +11,25 @@ export interface Options {
   notFoundPath?: string;
 }
 
+/** The outcome of crawling a single path. */
+export interface VisitResult {
+  /** The path that was crawled. */
+  path: string;
+  /** The status the path answered with. */
+  status: number;
+  /**
+   * Whether the path was crawled without error. `false` means a page was
+   * expected here and failed to render, so nothing was written for it. A
+   * successful visit may still write no file — a redirect the crawler cannot
+   * resolve, or a success status with no page to prerender.
+   */
+  ok: boolean;
+  /** Absolute path of the file written, when the visit produced one. */
+  file?: string;
+}
+
 export interface Crawler {
-  crawl(paths: string[]): Promise<void>;
+  crawl(paths: string[]): Promise<VisitResult[]>;
 }
 
 export default function createCrawler(
@@ -24,10 +41,10 @@ export default function createCrawler(
   const notFoundPath =
     opts.notFoundPath && resolvePath(opts.notFoundPath, origin)!;
   let seen: Set<string>;
-  let queue: Promise<void>[];
+  let queue: Promise<VisitResult>[];
   let pending: Promise<any> | undefined;
 
-  async function visit(path: string) {
+  async function visit(path: string): Promise<VisitResult> {
     const url = new URL(path, origin);
     const parser = new Parser({
       onopentag(name, attrs) {
@@ -53,6 +70,7 @@ export default function createCrawler(
       });
 
       const res = await makeRequest(req);
+      const status = res.status;
       const htmlContentType = !!res.headers
         .get("content-type")
         ?.includes("text/html");
@@ -70,14 +88,14 @@ export default function createCrawler(
               filePath = nodePath.join(out, path);
             } else {
               abortController.abort();
-              return;
+              return { path, status, ok: true };
             }
           }
           break;
         case 404:
           if (!notFoundPath || !htmlContentType) {
             abortController.abort();
-            return;
+            return { path, status, ok: true };
           }
           if (path.endsWith("/")) {
             path = path.slice(0, -1);
@@ -90,7 +108,7 @@ export default function createCrawler(
           const location = res.headers.get("location")?.trim();
           if (!location) {
             abortController.abort();
-            return;
+            return { path, status, ok: true };
           }
 
           redirect = resolvePathWithHash(location, url);
@@ -109,9 +127,13 @@ export default function createCrawler(
         default: {
           abortController.abort();
           console.warn(
-            `Status code ${res.status} was while crawling: '${path}'`,
+            `Received status code ${status} while crawling: '${path}'`,
           );
-          return;
+          // Nothing is written for this path either way. Only an error status
+          // means a page was expected here and failed to render; a non-200
+          // success (the 204 a handler-only route falls back to, say) simply
+          // has nothing to prerender, which is not a build failure.
+          return { path, status, ok: status < 400 };
         }
       }
 
@@ -133,6 +155,8 @@ export default function createCrawler(
           }),
         );
       }
+
+      return { path, status, ok: true, file: filePath };
     } finally {
       parser.end();
       if (pageWriter) {
@@ -155,17 +179,39 @@ export default function createCrawler(
 
       seen = new Set(startPaths);
 
+      const results: VisitResult[] = [];
       try {
         queue = startPaths.map(visit);
 
         while (queue.length) {
           pending = Promise.all(queue);
           queue = [];
-          await pending;
+          // Appended one at a time: spreading a wave into `push` would cap the
+          // number of paths a single wave can carry at the engine's argument
+          // limit.
+          for (const result of await pending) results.push(result);
         }
       } finally {
         pending = undefined;
       }
+
+      // A failed path writes no file, so finishing green here would ship a
+      // site with that page missing. Reported together rather than failing on
+      // the first one, since paths are crawled concurrently and one broken
+      // route should not hide the rest.
+      const failed = results.filter((result) => !result.ok);
+      if (failed.length) {
+        throw new Error(
+          `Static build failed: ${failed.length} ${
+            failed.length === 1 ? "route" : "routes"
+          } did not render and ${
+            failed.length === 1 ? "was" : "were"
+          } left out of the build output.\n` +
+            failed.map(({ status, path }) => `  ${status} ${path}`).join("\n"),
+        );
+      }
+
+      return results;
     },
   };
 }
