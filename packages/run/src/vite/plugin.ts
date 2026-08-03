@@ -564,22 +564,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         // environment's dependency scan may load it (or its graph) from disk.
         const optimizeDeps = { exclude: ["@marko/run/router"] };
 
-        if (env.command !== "build") {
-          return { optimizeDeps };
-        }
-
         // Vite drops top-level `resolve.conditions` for every non-client
         // environment, so pinning how a build resolves has to happen per
         // environment or the SSR build silently keeps Vite's defaults.
         // `mainFields` is left alone: Vite's per-environment defaults already
         // match what this build wants. Conditions merge by concatenation, so
         // only contribute a list when the environment doesn't have one.
-        if (envConfig.resolve?.conditions) {
+        if (env.command !== "build" || envConfig.resolve?.conditions) {
           return { optimizeDeps };
         }
-
-        const browserLike =
-          env.isSsrTargetWebworker || (envConfig.consumer ?? name) === "client";
 
         return {
           optimizeDeps,
@@ -590,7 +583,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             // CJS build.
             conditions: [
               "module",
-              browserLike ? "browser" : "node",
+              env.isSsrTargetWebworker ||
+              (envConfig.consumer ?? name) === "client"
+                ? "browser"
+                : "node",
               "production",
               "default",
             ],
