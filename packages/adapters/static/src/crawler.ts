@@ -56,27 +56,6 @@ export default function createCrawler(
   let queue: Promise<VisitResult>[];
   let pending: Promise<any> | undefined;
 
-  function bucketFor({ ok, status, path }: VisitResult): keyof CrawlResults {
-    if (!ok) {
-      return "failure";
-    }
-    if (status >= 300 && status < 400) {
-      return "redirect";
-    }
-    // The 404 page is seeded by the crawl itself and answers 404 by design, so
-    // it prerendered like any other page rather than pointing nowhere. `visit`
-    // trims the trailing slash a 404 path may carry, so the configured path is
-    // matched both with and without one.
-    if (
-      status === 404 &&
-      path !== notFoundPath &&
-      `${path}/` !== notFoundPath
-    ) {
-      return "notFound";
-    }
-    return "success";
-  }
-
   async function visit(path: string): Promise<VisitResult> {
     const url = new URL(path, origin);
     const parser = new Parser({
@@ -228,7 +207,25 @@ export default function createCrawler(
           // number of paths a single wave can carry at the engine's argument
           // limit.
           for (const result of await pending) {
-            results[bucketFor(result)].push(result);
+            const { ok, status, path } = result;
+            if (!ok) {
+              results.failure.push(result);
+            } else if (status >= 300 && status < 400) {
+              results.redirect.push(result);
+            } else if (
+              // The 404 page is seeded by the crawl itself and answers 404 by
+              // design, so it prerendered like any other page rather than
+              // pointing nowhere. `visit` trims the trailing slash a 404 path
+              // may carry, so the configured path is matched both with and
+              // without one.
+              status === 404 &&
+              path !== notFoundPath &&
+              `${path}/` !== notFoundPath
+            ) {
+              results.notFound.push(result);
+            } else {
+              results.success.push(result);
+            }
           }
         }
       } finally {
