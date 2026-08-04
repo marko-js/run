@@ -262,7 +262,7 @@ export default function createCrawler(
           (records.length
             ? "\n" +
               records
-                .map(({ path, status }) => `${kleur.gray(path)}: ${status}`)
+                .map(({ path, status }) => `${kleur.gray(path)} ${status}`)
                 .join("\n")
             : ""),
       );

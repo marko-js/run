@@ -32,7 +32,7 @@ export const assert_preview: Assert = async (_, blocks) => {
   assert.equal(
     logs.find((entry) => entry.startsWith("Crawled")),
     "Crawled 3, success 2, failed 1, redirect 0, not found 0\n" +
-      "/boom: 503\n" +
-      "/quiet: 204",
+      "/boom 503\n" +
+      "/quiet 204",
   );
 };
