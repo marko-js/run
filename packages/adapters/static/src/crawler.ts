@@ -1,5 +1,6 @@
 import fs from "fs";
 import { WritableStream as Parser } from "htmlparser2/WritableStream";
+import kleur from "kleur";
 import nodePath from "path";
 import { finished } from "stream/promises";
 
@@ -240,12 +241,12 @@ export default function createCrawler(
       // even writes one for that path — but it is nearly always a link pointing
       // at a page that is gone, so those paths are listed and not just counted.
       console.log(
-        `Crawled ${plural(visited, "path")}: ${success.length} successful, ` +
-          `${plural(redirect.length, "redirect")}, ${notFound.length} not found, ` +
-          `${plural(failure.length, "failure")}` +
+        `Crawled ${kleur.yellow(visited)}, success ${kleur.green(success.length)}, ` +
+          `failed ${kleur.red(failure.length)}, redirect ${kleur.magenta(redirect.length)}, ` +
+          `not found ${kleur.cyan(notFound.length)}` +
           (notFound.length
-            ? `\nPaths that answered 404:\n` +
-              notFound.map(({ path }) => `  ${path}`).join("\n")
+            ? `\n404:\n` +
+              notFound.map(({ path }) => `  ${kleur.gray(path)}`).join("\n")
             : ""),
       );
 
@@ -255,7 +256,9 @@ export default function createCrawler(
       // route should not hide the rest.
       if (failure.length) {
         throw new Error(
-          `Static build failed: ${plural(failure.length, "route")} did not render and ${
+          `Static build failed: ${failure.length} ${
+            failure.length === 1 ? "route" : "routes"
+          } did not render and ${
             failure.length === 1 ? "was" : "were"
           } left out of the build output.\n` +
             failure.map(({ status, path }) => `  ${status} ${path}`).join("\n"),
@@ -265,10 +268,6 @@ export default function createCrawler(
       return results;
     },
   };
-}
-
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function getTagHref(tagName: string, attrs: Record<string, string>) {
