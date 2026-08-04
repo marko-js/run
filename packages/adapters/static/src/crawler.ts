@@ -116,9 +116,6 @@ export default function createCrawler(
             abortController.abort();
             return { path, status, ok: true };
           }
-          if (path.endsWith("/")) {
-            path = path.slice(0, -1);
-          }
           break;
         case 301:
         case 302:
@@ -215,12 +212,12 @@ export default function createCrawler(
             const { ok, status, path } = result;
             // The 404 page is seeded by the crawl itself and answers 404 by
             // design, so it prerendered like any other page rather than
-            // pointing nowhere. `visit` trims the trailing slash a 404 path
-            // may carry, so the configured path is matched both with and
-            // without one.
+            // pointing nowhere. The slash comes off both sides: `/404/` and
+            // `/404` are the same page, and either may be the configured one.
             const seeded404 =
               status === 404 &&
-              (path === notFoundPath || `${path}/` === notFoundPath);
+              !!notFoundPath &&
+              withoutTrailingSlash(path) === withoutTrailingSlash(notFoundPath);
 
             if (!ok) {
               results.failure.push(result);
@@ -368,4 +365,13 @@ function resolvePath(href: string, base: URL) {
 function resolvePathWithHash(href: string, base: URL) {
   const url = resolveUrl(href, base);
   return url && url.pathname + url.search + url.hash;
+}
+
+/**
+ * `/404/` and `/404` reach the same route, so the slash comes off before two
+ * paths are compared. The root keeps its slash — trimmed to `""` it would stop
+ * looking like a path at all.
+ */
+function withoutTrailingSlash(path: string) {
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
