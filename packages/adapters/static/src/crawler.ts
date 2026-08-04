@@ -28,8 +28,20 @@ export interface VisitResult {
   file?: string;
 }
 
+/** The visits of a crawl, bucketed by outcome. */
+export interface CrawlResults {
+  /** Paths crawled without error, including those with nothing to prerender. */
+  success: VisitResult[];
+  /** Paths that answered with a redirect. */
+  redirect: VisitResult[];
+  /** Paths that answered `404`, other than the crawled 404 page itself. */
+  notFound: VisitResult[];
+  /** Paths a page was expected at that failed to render. */
+  failure: VisitResult[];
+}
+
 export interface Crawler {
-  crawl(paths: string[]): Promise<VisitResult[]>;
+  crawl(paths: string[]): Promise<CrawlResults>;
 }
 
 export default function createCrawler(
@@ -43,6 +55,27 @@ export default function createCrawler(
   let seen: Set<string>;
   let queue: Promise<VisitResult>[];
   let pending: Promise<any> | undefined;
+
+  function bucketFor({ ok, status, path }: VisitResult): keyof CrawlResults {
+    if (!ok) {
+      return "failure";
+    }
+    if (status >= 300 && status < 400) {
+      return "redirect";
+    }
+    // The 404 page is seeded by the crawl itself and answers 404 by design, so
+    // it prerendered like any other page rather than pointing nowhere. `visit`
+    // trims the trailing slash a 404 path may carry, so the configured path is
+    // matched both with and without one.
+    if (
+      status === 404 &&
+      path !== notFoundPath &&
+      `${path}/` !== notFoundPath
+    ) {
+      return "notFound";
+    }
+    return "success";
+  }
 
   async function visit(path: string): Promise<VisitResult> {
     const url = new URL(path, origin);
@@ -179,41 +212,66 @@ export default function createCrawler(
 
       seen = new Set(startPaths);
 
-      const results: VisitResult[] = [];
+      const results: CrawlResults = {
+        success: [],
+        redirect: [],
+        notFound: [],
+        failure: [],
+      };
       try {
         queue = startPaths.map(visit);
 
         while (queue.length) {
           pending = Promise.all(queue);
           queue = [];
-          // Appended one at a time: spreading a wave into `push` would cap the
+          // Bucketed one at a time: spreading a wave into `push` would cap the
           // number of paths a single wave can carry at the engine's argument
           // limit.
-          for (const result of await pending) results.push(result);
+          for (const result of await pending) {
+            results[bucketFor(result)].push(result);
+          }
         }
       } finally {
         pending = undefined;
       }
 
+      const { success, redirect, notFound, failure } = results;
+      const visited =
+        success.length + redirect.length + notFound.length + failure.length;
+
+      // A 404 does not fail the build — with a 404 page configured the crawler
+      // even writes one for that path — but it is nearly always a link pointing
+      // at a page that is gone, so those paths are listed and not just counted.
+      console.log(
+        `Crawled ${plural(visited, "path")}: ${success.length} successful, ` +
+          `${plural(redirect.length, "redirect")}, ${notFound.length} not found, ` +
+          `${plural(failure.length, "failure")}` +
+          (notFound.length
+            ? `\nPaths that answered 404:\n` +
+              notFound.map(({ path }) => `  ${path}`).join("\n")
+            : ""),
+      );
+
       // A failed path writes no file, so finishing green here would ship a
       // site with that page missing. Reported together rather than failing on
       // the first one, since paths are crawled concurrently and one broken
       // route should not hide the rest.
-      const failed = results.filter((result) => !result.ok);
-      if (failed.length) {
+      if (failure.length) {
         throw new Error(
-          `Static build failed: ${failed.length} ${
-            failed.length === 1 ? "route" : "routes"
-          } did not render and ${
-            failed.length === 1 ? "was" : "were"
+          `Static build failed: ${plural(failure.length, "route")} did not render and ${
+            failure.length === 1 ? "was" : "were"
           } left out of the build output.\n` +
-            failed.map(({ status, path }) => `  ${status} ${path}`).join("\n"),
+            failure.map(({ status, path }) => `  ${status} ${path}`).join("\n"),
         );
       }
 
       return results;
     },
   };
+}
+
+function plural(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function getTagHref(tagName: string, attrs: Record<string, string>) {
