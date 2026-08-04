@@ -6,10 +6,10 @@ export const steps = [];
 
 // The crawl covers each bucket of the summary: `/` and `/other` render, `/away`
 // answers a redirect, and `/gone` -- linked from the page but matching no route
-// -- answers 404 without failing the build. The `/404` page the adapter seeds
-// answers 404 by design, so it counts as a page that prerendered rather than as
-// a path pointing nowhere. The counts are colored when stdout is a tty, so the
-// escapes are stripped before comparing.
+// -- answers 404 without failing the build, listed under the counts with its
+// status. The `/404` page the adapter seeds answers 404 by design, so it counts
+// as a page that prerendered and stays out of the listing. The output is
+// colored when stdout is a tty, so the escapes are stripped before comparing.
 export const assert_preview: Assert = async (_, blocks) => {
   const logs: string[] = [];
   const { log } = console;
@@ -27,7 +27,6 @@ export const assert_preview: Assert = async (_, blocks) => {
   assert.equal(
     logs.find((entry) => entry.startsWith("Crawled")),
     "Crawled 5, success 3, failed 0, redirect 1, not found 1\n" +
-      "404:\n" +
-      "  /gone",
+      "/gone: 404",
   );
 };

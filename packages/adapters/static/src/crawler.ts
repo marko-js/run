@@ -39,6 +39,12 @@ export interface CrawlResults {
   notFound: VisitResult[];
   /** Paths a page was expected at that failed to render. */
   failure: VisitResult[];
+  /**
+   * Paths listed under the logged summary — every path in `notFound`, plus
+   * every path whose status `visit` has no handling for. Overlaps the other
+   * buckets.
+   */
+  records: VisitResult[];
 }
 
 export interface Crawler {
@@ -139,9 +145,6 @@ export default function createCrawler(
         }
         default: {
           abortController.abort();
-          console.warn(
-            `Received status code ${status} while crawling: '${path}'`,
-          );
           // Nothing is written for this path either way. Only an error status
           // means a page was expected here and failed to render; a non-200
           // success (the 204 a handler-only route falls back to, say) simply
@@ -197,6 +200,7 @@ export default function createCrawler(
         redirect: [],
         notFound: [],
         failure: [],
+        records: [],
       };
       try {
         queue = startPaths.map(visit);
@@ -209,23 +213,40 @@ export default function createCrawler(
           // limit.
           for (const result of await pending) {
             const { ok, status, path } = result;
+            // The 404 page is seeded by the crawl itself and answers 404 by
+            // design, so it prerendered like any other page rather than
+            // pointing nowhere. `visit` trims the trailing slash a 404 path
+            // may carry, so the configured path is matched both with and
+            // without one.
+            const seeded404 =
+              status === 404 &&
+              (path === notFoundPath || `${path}/` === notFoundPath);
+
             if (!ok) {
               results.failure.push(result);
             } else if (status >= 300 && status < 400) {
               results.redirect.push(result);
-            } else if (
-              // The 404 page is seeded by the crawl itself and answers 404 by
-              // design, so it prerendered like any other page rather than
-              // pointing nowhere. `visit` trims the trailing slash a 404 path
-              // may carry, so the configured path is matched both with and
-              // without one.
-              status === 404 &&
-              path !== notFoundPath &&
-              `${path}/` !== notFoundPath
-            ) {
+            } else if (status === 404 && !seeded404) {
               results.notFound.push(result);
             } else {
               results.success.push(result);
+            }
+
+            switch (status) {
+              case 200:
+              case 301:
+              case 302:
+              case 307:
+              case 308:
+                break;
+              default:
+                // Worth eyes even when nothing failed: a 404 is nearly always
+                // a link pointing at a page that is gone, and any other status
+                // `visit` has no handling for wrote no file. Listed under the
+                // logged summary.
+                if (!seeded404) {
+                  results.records.push(result);
+                }
             }
           }
         }
@@ -233,20 +254,19 @@ export default function createCrawler(
         pending = undefined;
       }
 
-      const { success, redirect, notFound, failure } = results;
+      const { success, redirect, notFound, failure, records } = results;
       const visited =
         success.length + redirect.length + notFound.length + failure.length;
 
-      // A 404 does not fail the build — with a 404 page configured the crawler
-      // even writes one for that path — but it is nearly always a link pointing
-      // at a page that is gone, so those paths are listed and not just counted.
       console.log(
-        `Crawled ${kleur.yellow(visited)}, success ${kleur.green(success.length)}, ` +
+        `Crawled ${kleur.cyan(visited)}, success ${kleur.green(success.length)}, ` +
           `failed ${kleur.red(failure.length)}, redirect ${kleur.magenta(redirect.length)}, ` +
-          `not found ${kleur.cyan(notFound.length)}` +
-          (notFound.length
-            ? `\n404:\n` +
-              notFound.map(({ path }) => `  ${kleur.gray(path)}`).join("\n")
+          `not found ${kleur.yellow(notFound.length)}` +
+          (records.length
+            ? "\n" +
+              records
+                .map(({ path, status }) => `${kleur.gray(path)}: ${status}`)
+                .join("\n")
             : ""),
       );
 
