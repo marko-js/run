@@ -185,11 +185,13 @@ export function createMiddleware(
         // its body is still holding open; nothing else will ever read it.
         if (response) {
           const body = getRender(response);
-          Promise.resolve(
-            body instanceof ReadableStream
-              ? body.cancel()
-              : body?.[Symbol.asyncIterator]().return?.(),
-          ).catch(() => {});
+          if (body) {
+            try {
+              openBody(body).stop();
+            } catch {
+              // A body someone else holds a reader on is theirs to finish.
+            }
+          }
         }
         return;
       }
@@ -200,38 +202,22 @@ export function createMiddleware(
 
         const body = getRender(response);
         if (body) {
-          // Read through a reader rather than `for await`: the loop is parked
-          // in a pending read between chunks, and only `reader.cancel()`
-          // settles that one — ending an async iterator leaves it hanging and
-          // never runs the stream's `cancel()`. A stream that has gone idle is
-          // exactly the case that matters, since the `res.destroyed` check
-          // below is only reached once another chunk arrives.
-          const reader =
-            body instanceof ReadableStream
-              ? (body.getReader() as ReadableStreamDefaultReader<Uint8Array>)
-              : null;
-          const iterator = reader ? null : body[Symbol.asyncIterator]();
-
-          // Cancelling rejects if the stream already errored, and the request
-          // is over either way.
-          const stop = () => {
-            Promise.resolve(
-              reader ? reader.cancel() : iterator!.return?.(),
-            ).catch(() => {});
-          };
-          controller.signal.addEventListener("abort", stop, { once: true });
+          const source = openBody(body);
+          controller.signal.addEventListener("abort", source.stop, {
+            once: true,
+          });
 
           try {
             for (;;) {
-              const result = await (reader ? reader.read() : iterator!.next());
+              const result = await source.read();
               if (result.done) break;
               if (res.destroyed) return;
               res.write(result.value);
               (res as any).flush?.();
             }
           } finally {
-            controller.signal.removeEventListener("abort", stop);
-            stop();
+            controller.signal.removeEventListener("abort", source.stop);
+            source.stop();
           }
         } else if (!response.headers.has("content-length")) {
           res.setHeader("content-length", "0");
@@ -296,6 +282,37 @@ export function getRender(
     !response.body.locked
     ? direct.render
     : (response.body as unknown as AsyncIterable<Uint8Array> | null);
+}
+
+/**
+ * Opens a body for writing out, normalizing its two shapes behind one
+ * `read`/`stop` pair. A `ReadableStream` goes through a reader because only
+ * `reader.cancel()` settles a read parked between chunks and runs the
+ * stream's `cancel()` — ending an async iterator instead leaves both hanging,
+ * and a stream that has gone idle is exactly the one that matters on
+ * disconnect. The iterator path serves the stashed Marko render, an async
+ * generator, where `return()` is the right way to stop it. `stop` swallows
+ * rejections: a body that already errored has nothing left to release, and
+ * the caller is done with the request either way.
+ */
+function openBody(body: AsyncIterable<string | Uint8Array>) {
+  if (body instanceof ReadableStream) {
+    const reader = body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
+    return {
+      read: () => reader.read(),
+      stop() {
+        reader.cancel().catch(() => {});
+      },
+    };
+  }
+
+  const iterator = body[Symbol.asyncIterator]();
+  return {
+    read: () => iterator.next(),
+    stop() {
+      Promise.resolve(iterator.return?.()).catch(() => {});
+    },
+  };
 }
 
 const bodyConsumedErrorStream = new ReadableStream({
