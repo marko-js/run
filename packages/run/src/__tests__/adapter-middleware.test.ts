@@ -5,7 +5,7 @@ import type { AddressInfo } from "net";
 import {
   copyResponseHeaders,
   createMiddleware,
-  openBody,
+  getBodyReader,
 } from "../adapter/middleware";
 import type { Fetch } from "../runtime";
 
@@ -45,11 +45,11 @@ async function serve(fetch: Fetch<any>) {
   };
 }
 
-async function collect(source: ReturnType<typeof openBody>) {
+async function collect(reader: ReturnType<typeof getBodyReader>) {
   const decoder = new TextDecoder();
   let out = "";
   for (;;) {
-    const result = await source!.read();
+    const result = await reader!.read();
     if (result.done) break;
     out +=
       typeof result.value === "string"
@@ -84,17 +84,23 @@ describe("Adapter Middleware", () => {
     });
   });
 
-  describe("openBody", () => {
+  describe("getBodyReader", () => {
     it("should take the stashed render for an untouched page response", async () => {
-      assert.equal(await collect(openBody(pageResponse(["a", "b"]))), "ab");
+      assert.equal(
+        await collect(getBodyReader(pageResponse(["a", "b"]))),
+        "ab",
+      );
     });
 
     it("should read the body of a response without a render", async () => {
-      assert.equal(await collect(openBody(new Response("plain"))), "plain");
+      assert.equal(
+        await collect(getBodyReader(new Response("plain"))),
+        "plain",
+      );
     });
 
     it("should open nothing for a bodyless response", () => {
-      assert.equal(openBody(new Response(null, { status: 204 })), null);
+      assert.equal(getBodyReader(new Response(null, { status: 204 })), null);
     });
 
     it("should fall back to the body once `clone()` has teed it", async () => {
@@ -104,7 +110,7 @@ describe("Adapter Middleware", () => {
       const clone = response.clone();
 
       assert.equal(await clone.text(), "ab");
-      assert.equal(await collect(openBody(response)), "ab");
+      assert.equal(await collect(getBodyReader(response)), "ab");
     });
 
     it("should not take the render when something else holds the body", () => {
@@ -113,7 +119,7 @@ describe("Adapter Middleware", () => {
 
       // Taking the render would write a page whose body someone else owns;
       // refusing to open beats silently replaying it.
-      assert.throws(() => openBody(response), /locked/);
+      assert.throws(() => getBodyReader(response), /locked/);
     });
   });
 

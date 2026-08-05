@@ -185,7 +185,7 @@ export function createMiddleware(
         // its body is still holding open; nothing else will ever read it.
         if (response) {
           try {
-            openBody(response)?.stop();
+            getBodyReader(response)?.stop();
           } catch {
             // A body someone else holds a reader on is theirs to finish.
           }
@@ -197,23 +197,23 @@ export function createMiddleware(
         res.statusCode = response.status;
         copyResponseHeaders(res, response.headers);
 
-        const source = openBody(response);
-        if (source) {
-          controller.signal.addEventListener("abort", source.stop, {
+        const reader = getBodyReader(response);
+        if (reader) {
+          controller.signal.addEventListener("abort", reader.stop, {
             once: true,
           });
 
           try {
             for (;;) {
-              const result = await source.read();
+              const result = await reader.read();
               if (result.done) break;
               if (res.destroyed) return;
               res.write(result.value);
               (res as any).flush?.();
             }
           } finally {
-            controller.signal.removeEventListener("abort", source.stop);
-            source.stop();
+            controller.signal.removeEventListener("abort", reader.stop);
+            reader.stop();
           }
         } else if (!response.headers.has("content-length")) {
           res.setHeader("content-length", "0");
@@ -264,8 +264,8 @@ export function createMiddleware(
 const kRender = Symbol.for("@marko/run.render");
 
 /**
- * Opens a response's body for writing out as a `read`/`stop` pair, or `null`
- * when there is no body to write. A page response's stashed Marko render is
+ * Hands back a reader over a response's body — a `read`/`stop` pair — or
+ * `null` when there is no body to write. A page response's stashed Marko render is
  * taken over the body while that is still safe: a render is single-use, and
  * `response.clone()` tees the body out from under it, so the body must be the
  * one the render was stashed with, untouched. The render is an async
@@ -277,7 +277,7 @@ const kRender = Symbol.for("@marko/run.render");
  * rejections: a body that already errored has nothing left to release, and
  * the caller is done with the request either way.
  */
-export function openBody(response: Response) {
+export function getBodyReader(response: Response) {
   const direct = (response as any)[kRender] as
     | { render: AsyncIterable<string>; body: ReadableStream }
     | undefined;
