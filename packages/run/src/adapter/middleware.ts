@@ -154,9 +154,21 @@ export function createMiddleware(
         method: req.method,
         headers: req.headers as Record<string, string>,
         body,
-        signal: controller.signal,
         // @ts-expect-error: Node requires this for streams
         duplex: "half",
+      });
+
+      // The signal is attached as an own property rather than passed to the
+      // constructor: `new Request(url, { signal })` hands it to undici's
+      // signal-following machinery, which in a range of node releases retains
+      // the request (headers and buffered body included) until the *signal*
+      // is collected, and even where fixed the cleanup rides on GC
+      // finalization — a per-request retention on a server's hot path. The
+      // own property shadows the prototype getter, so handlers see a real
+      // `AbortSignal` that aborts on disconnect with none of that wiring.
+      Object.defineProperty(request, "signal", {
+        configurable: true,
+        value: controller.signal,
       });
 
       const platform = createPlatform({
@@ -167,6 +179,18 @@ export function createMiddleware(
       const response = await fetch(request, platform);
 
       if (res.destroyed || res.headersSent) {
+        // The handler answered a request that was already over — most often a
+        // disconnect while `fetch` was pending, from a handler that never
+        // observed the signal. The response is discarded, so stop whatever
+        // its body is still holding open; nothing else will ever read it.
+        if (response) {
+          const body = getRender(response);
+          Promise.resolve(
+            body instanceof ReadableStream
+              ? body.cancel()
+              : body?.[Symbol.asyncIterator]().return?.(),
+          ).catch(() => {});
+        }
         return;
       }
 

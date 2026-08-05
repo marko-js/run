@@ -154,6 +154,48 @@ describe("Adapter Middleware", () => {
       }
     });
 
+    it("should cancel the body of a response resolved after the client disconnected", async () => {
+      const cancelled = deferred();
+      const reachedHandler = deferred();
+      let cancelWasCalled = false;
+
+      // A handler still mid-`fetch` when the client leaves: it resolves only
+      // after its signal aborts, so the middleware's early return is the one
+      // and only place its stream can be released.
+      const server = await serve(async (request) => {
+        reachedHandler.resolve();
+        await new Promise<void>((resolve) =>
+          request.signal.addEventListener("abort", () => resolve(), {
+            once: true,
+          }),
+        );
+        return new Response(
+          new ReadableStream({
+            cancel() {
+              cancelWasCalled = true;
+              cancelled.resolve();
+            },
+          }),
+        );
+      });
+
+      try {
+        const req = http.request({ port: server.port, host: "127.0.0.1" });
+        // Destroying before any response arrives makes the client request
+        // itself error with a socket hang up; that is the point of the test.
+        req.on("error", () => {});
+        req.end();
+
+        await reachedHandler.promise;
+        req.destroy();
+        await cancelled.promise;
+
+        assert.equal(cancelWasCalled, true);
+      } finally {
+        await server.close();
+      }
+    });
+
     it("should not abort the signal when the response completes normally", async () => {
       let signal!: AbortSignal;
 
