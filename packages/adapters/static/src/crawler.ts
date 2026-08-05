@@ -1,5 +1,6 @@
 import fs from "fs";
 import { WritableStream as Parser } from "htmlparser2/WritableStream";
+import kleur from "kleur";
 import nodePath from "path";
 import { finished } from "stream/promises";
 
@@ -11,8 +12,43 @@ export interface Options {
   notFoundPath?: string;
 }
 
+/** The outcome of crawling a single path. */
+export interface VisitResult {
+  /** The path that was crawled. */
+  path: string;
+  /** The status the path answered with. */
+  status: number;
+  /**
+   * Whether the path was crawled without error. `false` means a page was
+   * expected here and failed to render, so nothing was written for it. A
+   * successful visit may still write no file — a redirect the crawler cannot
+   * resolve, or a success status with no page to prerender.
+   */
+  ok: boolean;
+  /** Absolute path of the file written, when the visit produced one. */
+  file?: string;
+}
+
+/** The visits of a crawl, bucketed by outcome. */
+export interface CrawlResults {
+  /** Paths crawled without error, including those with nothing to prerender. */
+  success: VisitResult[];
+  /** Paths that answered with a redirect. */
+  redirect: VisitResult[];
+  /** Paths that answered `404`, other than the crawled 404 page itself. */
+  notFound: VisitResult[];
+  /** Paths a page was expected at that failed to render. */
+  failure: VisitResult[];
+  /**
+   * Paths listed under the logged summary — every path in `notFound`, plus
+   * every path whose status `visit` has no handling for. Overlaps the other
+   * buckets.
+   */
+  records: VisitResult[];
+}
+
 export interface Crawler {
-  crawl(paths: string[]): Promise<void>;
+  crawl(paths: string[]): Promise<CrawlResults>;
 }
 
 export default function createCrawler(
@@ -24,10 +60,10 @@ export default function createCrawler(
   const notFoundPath =
     opts.notFoundPath && resolvePath(opts.notFoundPath, origin)!;
   let seen: Set<string>;
-  let queue: Promise<void>[];
+  let queue: Promise<VisitResult>[];
   let pending: Promise<any> | undefined;
 
-  async function visit(path: string) {
+  async function visit(path: string): Promise<VisitResult> {
     const url = new URL(path, origin);
     const parser = new Parser({
       onopentag(name, attrs) {
@@ -53,6 +89,7 @@ export default function createCrawler(
       });
 
       const res = await makeRequest(req);
+      const status = res.status;
       const htmlContentType = !!res.headers
         .get("content-type")
         ?.includes("text/html");
@@ -70,17 +107,14 @@ export default function createCrawler(
               filePath = nodePath.join(out, path);
             } else {
               abortController.abort();
-              return;
+              return { path, status, ok: true };
             }
           }
           break;
         case 404:
           if (!notFoundPath || !htmlContentType) {
             abortController.abort();
-            return;
-          }
-          if (path.endsWith("/")) {
-            path = path.slice(0, -1);
+            return { path, status, ok: true };
           }
           break;
         case 301:
@@ -90,7 +124,7 @@ export default function createCrawler(
           const location = res.headers.get("location")?.trim();
           if (!location) {
             abortController.abort();
-            return;
+            return { path, status, ok: true };
           }
 
           redirect = resolvePathWithHash(location, url);
@@ -108,10 +142,11 @@ export default function createCrawler(
         }
         default: {
           abortController.abort();
-          console.warn(
-            `Status code ${res.status} was while crawling: '${path}'`,
-          );
-          return;
+          // Nothing is written for this path either way. Only an error status
+          // means a page was expected here and failed to render; a non-200
+          // success (the 204 a handler-only route falls back to, say) simply
+          // has nothing to prerender, which is not a build failure.
+          return { path, status, ok: status < 400 };
         }
       }
 
@@ -133,6 +168,8 @@ export default function createCrawler(
           }),
         );
       }
+
+      return { path, status, ok: true, file: filePath };
     } finally {
       parser.end();
       if (pageWriter) {
@@ -155,17 +192,97 @@ export default function createCrawler(
 
       seen = new Set(startPaths);
 
+      const results: CrawlResults = {
+        success: [],
+        redirect: [],
+        notFound: [],
+        failure: [],
+        records: [],
+      };
       try {
         queue = startPaths.map(visit);
 
         while (queue.length) {
           pending = Promise.all(queue);
           queue = [];
-          await pending;
+          // Bucketed one at a time: spreading a wave into `push` would cap the
+          // number of paths a single wave can carry at the engine's argument
+          // limit.
+          for (const result of await pending) {
+            const { ok, status, path } = result;
+            // The 404 page is seeded by the crawl itself and answers 404 by
+            // design, so it prerendered like any other page rather than
+            // pointing nowhere. The slash comes off both sides: `/404/` and
+            // `/404` are the same page, and either may be the configured one.
+            const seeded404 =
+              status === 404 &&
+              !!notFoundPath &&
+              withoutTrailingSlash(path) === withoutTrailingSlash(notFoundPath);
+
+            if (!ok) {
+              results.failure.push(result);
+            } else if (status >= 300 && status < 400) {
+              results.redirect.push(result);
+            } else if (status === 404 && !seeded404) {
+              results.notFound.push(result);
+            } else {
+              results.success.push(result);
+            }
+
+            switch (status) {
+              case 200:
+              case 301:
+              case 302:
+              case 307:
+              case 308:
+                break;
+              default:
+                // Worth eyes even when nothing failed: a 404 is nearly always
+                // a link pointing at a page that is gone, and any other status
+                // `visit` has no handling for wrote no file. Listed under the
+                // logged summary.
+                if (!seeded404) {
+                  results.records.push(result);
+                }
+            }
+          }
         }
       } finally {
         pending = undefined;
       }
+
+      const { success, redirect, notFound, failure, records } = results;
+      const visited =
+        success.length + redirect.length + notFound.length + failure.length;
+
+      console.log(
+        `Crawled ${kleur.cyan(visited)}, success ${kleur.green(success.length)}, ` +
+          `failed ${kleur.red(failure.length)}, redirect ${kleur.magenta(redirect.length)}, ` +
+          `not found ${kleur.yellow(notFound.length)}` +
+          (records.length
+            ? "\n" +
+              records
+                .map(({ path, status }) => `${kleur.gray(path)} ${status}`)
+                .join("\n")
+            : ""),
+      );
+
+      // A failed path writes no file, so finishing green here would ship a
+      // site with that page missing. Reported together rather than failing on
+      // the first one, since paths are crawled concurrently and one broken
+      // route should not hide the rest.
+      if (failure.length) {
+        throw new Error(
+          `Static build failed: ${failure.length} ${
+            failure.length === 1 ? "route" : "routes"
+          } did not render and ${
+            failure.length === 1 ? "was" : "were"
+          } left out of the build output.\n` +
+            failure.map(({ status, path }) => `  ${status} ${path}`).join("\n"),
+        );
+      }
+
+      return results;
     },
   };
 }
@@ -248,4 +365,13 @@ function resolvePath(href: string, base: URL) {
 function resolvePathWithHash(href: string, base: URL) {
   const url = resolveUrl(href, base);
   return url && url.pathname + url.search + url.hash;
+}
+
+/**
+ * `/404/` and `/404` reach the same route, so the slash comes off before two
+ * paths are compared. The root keeps its slash — trimmed to `""` it would stop
+ * looking like a path at all.
+ */
+function withoutTrailingSlash(path: string) {
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
