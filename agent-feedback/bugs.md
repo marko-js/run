@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Abort request.signal and cancel the response stream on client disconnect in the node adapter
-
-`packages/run/src/adapter/middleware.ts` › `createMiddleware` | 2026-07-18 | impact:med | effort:low
-
-`createMiddleware` builds the WHATWG `Request` with no `signal` (middleware.ts:142-148), so `request.signal` is a permanently non-aborting signal and a handler cannot observe client disconnect via the standard `request.signal.addEventListener("abort", …)` SSE pattern. The only cancellation path is the response-body loop `for await (const chunk of response.body)` (middleware.ts:164-169), which returns when it observes `res.destroyed` — but that check (line 166) only runs when the next chunk is pulled. An idle stream (one doing timer work but not enqueuing, e.g. a "push only when data changes" feed) never pulls again, so it never observes the disconnect: its interval/cursor/upstream fetch keeps running and `ReadableStream.cancel()` never fires. An actively enqueuing stream is only cancelled on the first enqueue after disconnect (up to one interval late), and that post-disconnect callback still executes. No `req.on("close"|"aborted")` or `res.on("close")` is wired to an `AbortController` anywhere in the adapter request path (the only `res.on("close")`, logger.ts:50, feeds request logging). `createMiddleware` is shared by the dev server (adapter/dev-server.ts:62), the default preview entry (adapter/default-entry.mjs:13), and `@marko/run-adapter-node` (packages/adapters/node/src/middleware.ts:23), so dev, preview, and node-adapter production all leak. Fix (mirroring SvelteKit/Hono/Remix node adapters): create an `AbortController`, wire `req.on("close")`/`req.on("aborted")` (or `res.on("close")`) to `controller.abort()`, pass `signal: controller.signal` into `new Request(...)`, and cancel `response.body` when the signal aborts.
-
 ## Guard `form`/`json` handler options against primitives before the `~standard` membership test
 
 `packages/run/src/runtime/internal.ts` › `mergeOptions` | 2026-07-18 | impact:med | effort:low

@@ -112,6 +112,17 @@ export function createMiddleware(
   } = options;
 
   return async (req, res, next) => {
+    // Node reports a client disconnect as the response closing before it
+    // finished writing, and nothing else in the request path watches for it.
+    // Without this the request carries a signal that can never fire, so a
+    // handler has no way to observe that the client is gone.
+    const controller = new AbortController();
+    res.on("close", () => {
+      if (!res.writableFinished) {
+        controller.abort();
+      }
+    });
+
     try {
       if (
         (!process.env.NODE_ENV || process.env.NODE_ENV === "development") &&
@@ -143,6 +154,7 @@ export function createMiddleware(
         method: req.method,
         headers: req.headers as Record<string, string>,
         body,
+        signal: controller.signal,
         // @ts-expect-error: Node requires this for streams
         duplex: "half",
       });
@@ -164,10 +176,38 @@ export function createMiddleware(
 
         const body = getRender(response);
         if (body) {
-          for await (const chunk of body) {
-            if (res.destroyed) return;
-            res.write(chunk);
-            (res as any).flush?.();
+          // Read through a reader rather than `for await`: the loop is parked
+          // in a pending read between chunks, and only `reader.cancel()`
+          // settles that one — ending an async iterator leaves it hanging and
+          // never runs the stream's `cancel()`. A stream that has gone idle is
+          // exactly the case that matters, since the `res.destroyed` check
+          // below is only reached once another chunk arrives.
+          const reader =
+            body instanceof ReadableStream
+              ? (body.getReader() as ReadableStreamDefaultReader<Uint8Array>)
+              : null;
+          const iterator = reader ? null : body[Symbol.asyncIterator]();
+
+          // Cancelling rejects if the stream already errored, and the request
+          // is over either way.
+          const stop = () => {
+            Promise.resolve(
+              reader ? reader.cancel() : iterator!.return?.(),
+            ).catch(() => {});
+          };
+          controller.signal.addEventListener("abort", stop, { once: true });
+
+          try {
+            for (;;) {
+              const result = await (reader ? reader.read() : iterator!.next());
+              if (result.done) break;
+              if (res.destroyed) return;
+              res.write(result.value);
+              (res as any).flush?.();
+            }
+          } finally {
+            controller.signal.removeEventListener("abort", stop);
+            stop();
           }
         } else if (!response.headers.has("content-length")) {
           res.setHeader("content-length", "0");
@@ -178,6 +218,13 @@ export function createMiddleware(
         next();
       }
     } catch (err) {
+      // A disconnect now surfaces here as whatever the handler threw once its
+      // signal aborted. There is no client left to answer and nothing actually
+      // went wrong, so it is not the error path's business.
+      if (controller.signal.aborted && res.destroyed) {
+        return;
+      }
+
       const error = err as Error;
 
       if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {

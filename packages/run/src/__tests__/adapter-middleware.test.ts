@@ -1,7 +1,13 @@
 import assert from "assert";
 import http from "http";
+import type { AddressInfo } from "net";
 
-import { copyResponseHeaders, getRender } from "../adapter/middleware";
+import {
+  copyResponseHeaders,
+  createMiddleware,
+  getRender,
+} from "../adapter/middleware";
+import type { Fetch } from "../runtime";
 
 const kRender = Symbol.for("@marko/run.render");
 const encoder = new TextEncoder();
@@ -22,6 +28,21 @@ function pageResponse(html: string[]) {
   );
   (response as any)[kRender] = { render, body: response.body };
   return response;
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+async function serve(fetch: Fetch<any>) {
+  const server = http.createServer(createMiddleware(fetch));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return {
+    port: (server.address() as AddressInfo).port,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
 }
 
 async function collect(body: AsyncIterable<string | Uint8Array> | null) {
@@ -85,6 +106,73 @@ describe("Adapter Middleware", () => {
       await response.text();
 
       assert.equal(getRender(response), response.body);
+    });
+  });
+
+  describe("createMiddleware", () => {
+    it("should abort the request signal and cancel an idle stream when the client disconnects", async () => {
+      const cancelled = deferred();
+      let signal!: AbortSignal;
+      let cancelReason = "not cancelled";
+
+      // Enqueues once so the head is flushed, then goes quiet -- the "push only
+      // when data changes" shape. Nothing pulls again, so the write loop sits in
+      // `next()` and only the abort can end it.
+      const server = await serve(async (request) => {
+        signal = request.signal;
+        return new Response(
+          new ReadableStream({
+            start(ctrl) {
+              ctrl.enqueue(encoder.encode("open\n"));
+            },
+            cancel(reason) {
+              cancelReason = String(reason);
+              cancelled.resolve();
+            },
+          }),
+        );
+      });
+
+      try {
+        const req = http.request({ port: server.port, host: "127.0.0.1" });
+        req.end();
+
+        const res = await new Promise<http.IncomingMessage>((resolve) =>
+          req.on("response", resolve),
+        );
+        await new Promise<void>((resolve) => res.once("data", () => resolve()));
+
+        assert.equal(signal.aborted, false, "not aborted while connected");
+
+        req.destroy();
+        await cancelled.promise;
+
+        assert.equal(signal.aborted, true);
+        assert.notEqual(cancelReason, "not cancelled");
+      } finally {
+        await server.close();
+      }
+    });
+
+    it("should not abort the signal when the response completes normally", async () => {
+      let signal!: AbortSignal;
+
+      const server = await serve(async (request) => {
+        signal = request.signal;
+        return new Response("done");
+      });
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(await response.text(), "done");
+
+        // `close` lands after the body is delivered, so give it a turn: an abort
+        // here would fire cleanup on every successful request.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        assert.equal(signal.aborted, false);
+      } finally {
+        await server.close();
+      }
     });
   });
 });
