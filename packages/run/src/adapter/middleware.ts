@@ -184,13 +184,10 @@ export function createMiddleware(
         // observed the signal. The response is discarded, so stop whatever
         // its body is still holding open; nothing else will ever read it.
         if (response) {
-          const body = getRender(response);
-          if (body) {
-            try {
-              openBody(body).stop();
-            } catch {
-              // A body someone else holds a reader on is theirs to finish.
-            }
+          try {
+            openBody(response)?.stop();
+          } catch {
+            // A body someone else holds a reader on is theirs to finish.
           }
         }
         return;
@@ -200,9 +197,8 @@ export function createMiddleware(
         res.statusCode = response.status;
         copyResponseHeaders(res, response.headers);
 
-        const body = getRender(response);
-        if (body) {
-          const source = openBody(body);
+        const source = openBody(response);
+        if (source) {
           controller.signal.addEventListener("abort", source.stop, {
             once: true,
           });
@@ -267,50 +263,50 @@ export function createMiddleware(
 // that reading `response.body` would do.
 const kRender = Symbol.for("@marko/run.render");
 
-export function getRender(
-  response: Response,
-): AsyncIterable<string | Uint8Array> | null {
-  const direct = (response as any)[kRender] as
-    | { render: AsyncIterable<string>; body: ReadableStream }
-    | undefined;
-  // A render is single-use, and `response.clone()` tees the body out from under
-  // it, so it is only safe to take when the body it was stashed with is still
-  // there untouched. Otherwise the body holds the output and the render doesn't.
-  return direct &&
-    direct.body === response.body &&
-    !response.bodyUsed &&
-    !response.body.locked
-    ? direct.render
-    : (response.body as unknown as AsyncIterable<Uint8Array> | null);
-}
-
 /**
- * Opens a body for writing out, normalizing its two shapes behind one
- * `read`/`stop` pair. A `ReadableStream` goes through a reader because only
- * `reader.cancel()` settles a read parked between chunks and runs the
- * stream's `cancel()` — ending an async iterator instead leaves both hanging,
- * and a stream that has gone idle is exactly the one that matters on
- * disconnect. The iterator path serves the stashed Marko render, an async
- * generator, where `return()` is the right way to stop it. `stop` swallows
+ * Opens a response's body for writing out as a `read`/`stop` pair, or `null`
+ * when there is no body to write. A page response's stashed Marko render is
+ * taken over the body while that is still safe: a render is single-use, and
+ * `response.clone()` tees the body out from under it, so the body must be the
+ * one the render was stashed with, untouched. The render is an async
+ * generator, where `return()` is the right way to stop it. Anything else
+ * reads `response.body` through a reader, because only `reader.cancel()`
+ * settles a read parked between chunks and runs the stream's `cancel()` —
+ * ending an async iterator instead leaves both hanging, and a stream that has
+ * gone idle is exactly the one that matters on disconnect. `stop` swallows
  * rejections: a body that already errored has nothing left to release, and
  * the caller is done with the request either way.
  */
-function openBody(body: AsyncIterable<string | Uint8Array>) {
-  if (body instanceof ReadableStream) {
-    const reader = body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
+export function openBody(response: Response) {
+  const direct = (response as any)[kRender] as
+    | { render: AsyncIterable<string>; body: ReadableStream }
+    | undefined;
+
+  if (
+    direct &&
+    direct.body === response.body &&
+    !response.bodyUsed &&
+    !response.body.locked
+  ) {
+    const iterator = direct.render[Symbol.asyncIterator]();
     return {
-      read: () => reader.read(),
+      read: () => iterator.next(),
       stop() {
-        reader.cancel().catch(() => {});
+        Promise.resolve(iterator.return?.()).catch(() => {});
       },
     };
   }
 
-  const iterator = body[Symbol.asyncIterator]();
+  if (!response.body) {
+    return null;
+  }
+
+  const reader =
+    response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
   return {
-    read: () => iterator.next(),
+    read: () => reader.read(),
     stop() {
-      Promise.resolve(iterator.return?.()).catch(() => {});
+      reader.cancel().catch(() => {});
     },
   };
 }

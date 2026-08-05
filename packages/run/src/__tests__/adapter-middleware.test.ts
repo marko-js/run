@@ -5,7 +5,7 @@ import type { AddressInfo } from "net";
 import {
   copyResponseHeaders,
   createMiddleware,
-  getRender,
+  openBody,
 } from "../adapter/middleware";
 import type { Fetch } from "../runtime";
 
@@ -45,14 +45,16 @@ async function serve(fetch: Fetch<any>) {
   };
 }
 
-async function collect(body: AsyncIterable<string | Uint8Array> | null) {
+async function collect(source: ReturnType<typeof openBody>) {
   const decoder = new TextDecoder();
   let out = "";
-  for await (const chunk of body!) {
+  for (;;) {
+    const result = await source!.read();
+    if (result.done) break;
     out +=
-      typeof chunk === "string"
-        ? chunk
-        : decoder.decode(chunk, { stream: true });
+      typeof result.value === "string"
+        ? result.value
+        : decoder.decode(result.value, { stream: true });
   }
   return out + decoder.decode();
 }
@@ -82,13 +84,17 @@ describe("Adapter Middleware", () => {
     });
   });
 
-  describe("getRender", () => {
+  describe("openBody", () => {
     it("should take the stashed render for an untouched page response", async () => {
-      assert.equal(await collect(getRender(pageResponse(["a", "b"]))), "ab");
+      assert.equal(await collect(openBody(pageResponse(["a", "b"]))), "ab");
     });
 
-    it("should fall back to the body of a response without a render", async () => {
-      assert.equal(await collect(getRender(new Response("plain"))), "plain");
+    it("should read the body of a response without a render", async () => {
+      assert.equal(await collect(openBody(new Response("plain"))), "plain");
+    });
+
+    it("should open nothing for a bodyless response", () => {
+      assert.equal(openBody(new Response(null, { status: 204 })), null);
     });
 
     it("should fall back to the body once `clone()` has teed it", async () => {
@@ -98,14 +104,16 @@ describe("Adapter Middleware", () => {
       const clone = response.clone();
 
       assert.equal(await clone.text(), "ab");
-      assert.equal(await collect(getRender(response)), "ab");
+      assert.equal(await collect(openBody(response)), "ab");
     });
 
-    it("should fall back to the body once it has been read", async () => {
+    it("should not take the render when something else holds the body", () => {
       const response = pageResponse(["a", "b"]);
-      await response.text();
+      response.body!.getReader();
 
-      assert.equal(getRender(response), response.body);
+      // Taking the render would write a page whose body someone else owns;
+      // refusing to open beats silently replaying it.
+      assert.throws(() => openBody(response), /locked/);
     });
   });
 
