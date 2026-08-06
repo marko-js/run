@@ -645,13 +645,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 renderVirtualFilesResult = undefined;
                 routeMarkoApiCache = undefined;
 
-                // A deleted file's module chain vanishes with it; poking
-                // those modules invites an eager consumer to reload ids that
-                // no longer resolve.
+                // The importer poke is only sound for a change, where the
+                // file's module chain is live. A deleted file's chain
+                // vanishes with it, and poking invites an eager consumer to
+                // reload ids that no longer resolve; an added file that
+                // existed before leaves a stale chain the route table is no
+                // longer connected to, so the poke never reaches the router
+                // and the new route 404s until an unrelated rebuild.
                 const module =
-                  type === "unlink"
-                    ? undefined
-                    : devServer.moduleGraph.getModuleById(filename);
+                  type === "change"
+                    ? devServer.moduleGraph.getModuleById(filename)
+                    : undefined;
                 const importers = module && getImporters(module, filename);
                 if (importers?.size) {
                   for (const file of importers) {
