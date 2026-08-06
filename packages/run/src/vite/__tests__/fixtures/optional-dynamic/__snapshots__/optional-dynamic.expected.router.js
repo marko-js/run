@@ -29,11 +29,11 @@ function match_internal(method, pathname) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
 							if (s2) return { handler: get1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: get1_options, meta: {} };
 						}
-						return { handler: get2, path: '/$foo/$$rest', params: { foo: s1, rest: pathname.slice(i1) }, options: get2_options, meta: {} };
+						return { handler: get2, path: '/$foo/$$rest', params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: get2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: get4, path: '/$$rest', params: { rest: pathname.slice(1) }, options: get4_options, meta: {} };
+			return { handler: get4, path: '/$$rest', params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
@@ -50,11 +50,11 @@ function match_internal(method, pathname) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
 							if (s2) return { handler: head1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: head1_options, meta: {} };
 						}
-						return { handler: head2, path: '/$foo/$$rest', params: { foo: s1, rest: pathname.slice(i1) }, options: head2_options, meta: {} };
+						return { handler: head2, path: '/$foo/$$rest', params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: head4, path: '/$$rest', params: { rest: pathname.slice(1) }, options: head4_options, meta: {} };
+			return { handler: head4, path: '/$$rest', params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
 		}
 	}
 	return null;

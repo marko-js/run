@@ -730,9 +730,13 @@ function renderParams(
   }
 
   if (catchAll) {
+    // Decoded like the `s${n}` vars backing dynamic segments, so the two
+    // param kinds agree and `Run.href`'s encode round-trips. Decoding the
+    // whole slice equals decoding per segment: a raw `/` can never sit
+    // inside a `%XX` triple.
     result += `${sep} ${wrapPropertyName(
       catchAll,
-    )}: pathname.slice(${pathIndex})`;
+    )}: decodeURIComponent(pathname.slice(${pathIndex}))`;
   }
 
   return result ? result + " }" : "{}";
