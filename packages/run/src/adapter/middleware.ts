@@ -112,6 +112,15 @@ export function createMiddleware(
   } = options;
 
   return async (req, res, next) => {
+    // A client disconnect surfaces as the response closing before it
+    // finished; abort so handlers can observe it via `request.signal`.
+    const controller = new AbortController();
+    res.on("close", () => {
+      if (!res.writableFinished) {
+        controller.abort();
+      }
+    });
+
     try {
       if (
         (!process.env.NODE_ENV || process.env.NODE_ENV === "development") &&
@@ -147,6 +156,14 @@ export function createMiddleware(
         duplex: "half",
       });
 
+      // An own property because `new Request(url, { signal })` wires the
+      // signal into undici, which in a range of node releases retains the
+      // request until the signal itself is collected.
+      Object.defineProperty(request, "signal", {
+        configurable: true,
+        value: controller.signal,
+      });
+
       const platform = createPlatform({
         request: req,
         response: res,
@@ -155,6 +172,15 @@ export function createMiddleware(
       const response = await fetch(request, platform);
 
       if (res.destroyed || res.headersSent) {
+        // The request ended while `fetch` was pending; the response is
+        // discarded, so release whatever its body still holds open.
+        if (response) {
+          try {
+            getBodyReader(response)?.cancel();
+          } catch {
+            // A body someone else holds a reader on is theirs to finish.
+          }
+        }
         return;
       }
 
@@ -162,12 +188,23 @@ export function createMiddleware(
         res.statusCode = response.status;
         copyResponseHeaders(res, response.headers);
 
-        const body = getRender(response);
-        if (body) {
-          for await (const chunk of body) {
-            if (res.destroyed) return;
-            res.write(chunk);
-            (res as any).flush?.();
+        const reader = getBodyReader(response);
+        if (reader) {
+          controller.signal.addEventListener("abort", reader.cancel, {
+            once: true,
+          });
+
+          try {
+            for (;;) {
+              const result = await reader.read();
+              if (result.done) break;
+              if (res.destroyed) return;
+              res.write(result.value);
+              (res as any).flush?.();
+            }
+          } finally {
+            controller.signal.removeEventListener("abort", reader.cancel);
+            reader.cancel();
           }
         } else if (!response.headers.has("content-length")) {
           res.setHeader("content-length", "0");
@@ -178,6 +215,12 @@ export function createMiddleware(
         next();
       }
     } catch (err) {
+      // A disconnect surfaces here as whatever the handler threw once its
+      // signal aborted; there is no client left to answer.
+      if (controller.signal.aborted && res.destroyed) {
+        return;
+      }
+
       const error = err as Error;
 
       if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
@@ -210,21 +253,46 @@ export function createMiddleware(
 // that reading `response.body` would do.
 const kRender = Symbol.for("@marko/run.render");
 
-export function getRender(
-  response: Response,
-): AsyncIterable<string | Uint8Array> | null {
+/**
+ * Gets a `read`/`cancel` pair over the response's body, or `null` when there is
+ * none. The stashed Marko render is preferred while the body is still the
+ * untouched one it was stashed with (`clone()` tees it away). A stream goes
+ * through a reader because only `reader.cancel()` settles a read parked
+ * between chunks and runs the stream's `cancel()`. `cancel` swallows
+ * rejections — the request is over either way.
+ */
+export function getBodyReader(response: Response) {
   const direct = (response as any)[kRender] as
     | { render: AsyncIterable<string>; body: ReadableStream }
     | undefined;
-  // A render is single-use, and `response.clone()` tees the body out from under
-  // it, so it is only safe to take when the body it was stashed with is still
-  // there untouched. Otherwise the body holds the output and the render doesn't.
-  return direct &&
+
+  if (
+    direct &&
     direct.body === response.body &&
     !response.bodyUsed &&
     !response.body.locked
-    ? direct.render
-    : (response.body as unknown as AsyncIterable<Uint8Array> | null);
+  ) {
+    const iterator = direct.render[Symbol.asyncIterator]();
+    return {
+      read: () => iterator.next(),
+      cancel() {
+        Promise.resolve(iterator.return?.()).catch(() => {});
+      },
+    };
+  }
+
+  if (!response.body) {
+    return null;
+  }
+
+  const reader =
+    response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
+  return {
+    read: () => reader.read(),
+    cancel() {
+      reader.cancel().catch(() => {});
+    },
+  };
 }
 
 const bodyConsumedErrorStream = new ReadableStream({
