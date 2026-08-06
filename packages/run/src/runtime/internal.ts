@@ -510,17 +510,21 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
 }
 
 export function normalizeValidator<T>(validator: Validator<T> | undefined) {
-  return validator && typeof validator !== "function"
-    ? (input: T) => {
-        const result = validator["~standard"].validate(input);
-        if (result instanceof Promise) {
-          throw new TypeError("Schema validation must be synchronous");
-        }
-        return result.issues
-          ? [input, result.issues]
-          : [result.value, undefined];
-      }
-    : validator;
+  if (!isValidator(validator)) {
+    // Anything else means no validator. Wrapping it would not throw here but
+    // on the first validation, which is a far more confusing place.
+    return undefined;
+  }
+  if (typeof validator === "function") {
+    return validator;
+  }
+  return (input: T) => {
+    const result = validator["~standard"].validate(input);
+    if (result instanceof Promise) {
+      throw new TypeError("Schema validation must be synchronous");
+    }
+    return result.issues ? [input, result.issues] : [result.value, undefined];
+  };
 }
 
 const defaultMaxBytes = 1024 * 1024;

@@ -32,6 +32,36 @@ describe("mergeOptions", () => {
     assert.equal(typeof form!.validator, "function");
   });
 
+  it("should drop a validator that is neither a function nor a schema", () => {
+    // Wrapping one would defer the crash to the first validation.
+    const { params, search, json, form } = mergeOptions({
+      params: true,
+      search: "yes",
+      json: { validator: true },
+      form: { validator: 1, maxFiles: 2 },
+    } as any);
+
+    assert.equal(params, undefined);
+    assert.equal(search, undefined);
+    assert.equal(json!.validator, undefined);
+    assert.equal(form!.validator, undefined);
+    assert.equal(form!.maxFiles, 2);
+  });
+
+  it("should normalize params and search validators", () => {
+    const fn = (input: unknown) => [input, undefined];
+    const schema = {
+      "~standard": { validate: (value: unknown) => ({ value }) },
+    };
+    const { params, search } = mergeOptions({
+      params: fn,
+      search: schema,
+    } as any);
+
+    assert.equal(params, fn);
+    assert.equal(typeof search, "function");
+  });
+
   it("should take an options object as options", () => {
     const { json, form } = mergeOptions({
       json: { maxBytes: 5 },
