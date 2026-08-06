@@ -285,7 +285,16 @@ export interface Route<Def extends RouteDef = RouteDef, Data = unknown> {
   search: Def["search"];
   body: Fallback<
     Def["json"],
-    Fallback<Def["form"], undefined | Promise<unknown>>
+    Fallback<
+      Def["form"],
+      // The runtime only wires a body for POST/PUT/PATCH, so a def whose
+      // method cannot carry one reads `undefined` even with untyped options.
+      // A method union keeps the hedge while it contains a bodied verb, so
+      // the default `Route` stays `undefined | Promise<unknown>`.
+      [Extract<Def["method"], HttpVerbWithBody>] extends [never]
+        ? undefined
+        : undefined | Promise<unknown>
+    >
   >;
   data: Data extends [infer T extends Record<string, unknown>]
     ? T
