@@ -112,10 +112,8 @@ export function createMiddleware(
   } = options;
 
   return async (req, res, next) => {
-    // Node reports a client disconnect as the response closing before it
-    // finished writing, and nothing else in the request path watches for it.
-    // Without this the request carries a signal that can never fire, so a
-    // handler has no way to observe that the client is gone.
+    // A client disconnect surfaces as the response closing before it
+    // finished; abort so handlers can observe it via `request.signal`.
     const controller = new AbortController();
     res.on("close", () => {
       if (!res.writableFinished) {
@@ -158,14 +156,9 @@ export function createMiddleware(
         duplex: "half",
       });
 
-      // The signal is attached as an own property rather than passed to the
-      // constructor: `new Request(url, { signal })` hands it to undici's
-      // signal-following machinery, which in a range of node releases retains
-      // the request (headers and buffered body included) until the *signal*
-      // is collected, and even where fixed the cleanup rides on GC
-      // finalization — a per-request retention on a server's hot path. The
-      // own property shadows the prototype getter, so handlers see a real
-      // `AbortSignal` that aborts on disconnect with none of that wiring.
+      // An own property because `new Request(url, { signal })` wires the
+      // signal into undici, which in a range of node releases retains the
+      // request until the signal itself is collected.
       Object.defineProperty(request, "signal", {
         configurable: true,
         value: controller.signal,
@@ -179,10 +172,8 @@ export function createMiddleware(
       const response = await fetch(request, platform);
 
       if (res.destroyed || res.headersSent) {
-        // The handler answered a request that was already over — most often a
-        // disconnect while `fetch` was pending, from a handler that never
-        // observed the signal. The response is discarded, so stop whatever
-        // its body is still holding open; nothing else will ever read it.
+        // The request ended while `fetch` was pending; the response is
+        // discarded, so release whatever its body still holds open.
         if (response) {
           try {
             getBodyReader(response)?.stop();
@@ -224,9 +215,8 @@ export function createMiddleware(
         next();
       }
     } catch (err) {
-      // A disconnect now surfaces here as whatever the handler threw once its
-      // signal aborted. There is no client left to answer and nothing actually
-      // went wrong, so it is not the error path's business.
+      // A disconnect surfaces here as whatever the handler threw once its
+      // signal aborted; there is no client left to answer.
       if (controller.signal.aborted && res.destroyed) {
         return;
       }
@@ -264,18 +254,12 @@ export function createMiddleware(
 const kRender = Symbol.for("@marko/run.render");
 
 /**
- * Hands back a reader over a response's body — a `read`/`stop` pair — or
- * `null` when there is no body to write. A page response's stashed Marko render is
- * taken over the body while that is still safe: a render is single-use, and
- * `response.clone()` tees the body out from under it, so the body must be the
- * one the render was stashed with, untouched. The render is an async
- * generator, where `return()` is the right way to stop it. Anything else
- * reads `response.body` through a reader, because only `reader.cancel()`
- * settles a read parked between chunks and runs the stream's `cancel()` —
- * ending an async iterator instead leaves both hanging, and a stream that has
- * gone idle is exactly the one that matters on disconnect. `stop` swallows
- * rejections: a body that already errored has nothing left to release, and
- * the caller is done with the request either way.
+ * Gets a `read`/`stop` pair over the response's body, or `null` when there is
+ * none. The stashed Marko render is preferred while the body is still the
+ * untouched one it was stashed with (`clone()` tees it away). A stream goes
+ * through a reader because only `reader.cancel()` settles a read parked
+ * between chunks and runs the stream's `cancel()`. `stop` swallows
+ * rejections — the request is over either way.
  */
 export function getBodyReader(response: Response) {
   const direct = (response as any)[kRender] as

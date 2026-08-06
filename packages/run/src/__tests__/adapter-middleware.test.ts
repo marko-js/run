@@ -12,21 +12,23 @@ import type { Fetch } from "../runtime";
 const kRender = Symbol.for("@marko/run.render");
 const encoder = new TextEncoder();
 
-function pageResponse(html: string[]) {
-  const render = (async function* () {
-    yield* html;
+// The render and the body carry different payloads on purpose, so tests can
+// tell which source was picked.
+function pageResponse(render: string[], body: string[]) {
+  const iterable = (async function* () {
+    yield* render;
   })();
   const response = new Response(
     new ReadableStream({
       pull(ctrl) {
-        for (const chunk of html) {
+        for (const chunk of body) {
           ctrl.enqueue(encoder.encode(chunk));
         }
         ctrl.close();
       },
     }),
   );
-  (response as any)[kRender] = { render, body: response.body };
+  (response as any)[kRender] = { render: iterable, body: response.body };
   return response;
 }
 
@@ -87,7 +89,7 @@ describe("Adapter Middleware", () => {
   describe("getBodyReader", () => {
     it("should take the stashed render for an untouched page response", async () => {
       assert.equal(
-        await collect(getBodyReader(pageResponse(["a", "b"]))),
+        await collect(getBodyReader(pageResponse(["a", "b"], ["A", "B"]))),
         "ab",
       );
     });
@@ -106,19 +108,19 @@ describe("Adapter Middleware", () => {
     it("should fall back to the body once `clone()` has teed it", async () => {
       // Cloning drains the single-use render into the two teed branches, so the
       // render no longer holds the output and the body does.
-      const response = pageResponse(["a", "b"]);
+      const response = pageResponse(["a", "b"], ["A", "B"]);
       const clone = response.clone();
 
-      assert.equal(await clone.text(), "ab");
-      assert.equal(await collect(getBodyReader(response)), "ab");
+      assert.equal(await clone.text(), "AB");
+      assert.equal(await collect(getBodyReader(response)), "AB");
     });
 
     it("should not take the render when something else holds the body", () => {
-      const response = pageResponse(["a", "b"]);
+      const response = pageResponse(["a", "b"], ["A", "B"]);
       response.body!.getReader();
 
-      // Taking the render would write a page whose body someone else owns;
-      // refusing to open beats silently replaying it.
+      // Refusing to open beats replaying the render for a body someone
+      // else owns.
       assert.throws(() => getBodyReader(response), /locked/);
     });
   });
@@ -129,9 +131,8 @@ describe("Adapter Middleware", () => {
       let signal!: AbortSignal;
       let cancelReason = "not cancelled";
 
-      // Enqueues once so the head is flushed, then goes quiet -- the "push only
-      // when data changes" shape. Nothing pulls again, so the write loop sits in
-      // `next()` and only the abort can end it.
+      // Flushes one chunk then goes idle: nothing pulls again, so only the
+      // abort can end it.
       const server = await serve(async (request) => {
         signal = request.signal;
         return new Response(
@@ -173,9 +174,8 @@ describe("Adapter Middleware", () => {
       const reachedHandler = deferred();
       let cancelWasCalled = false;
 
-      // A handler still mid-`fetch` when the client leaves: it resolves only
-      // after its signal aborts, so the middleware's early return is the one
-      // and only place its stream can be released.
+      // Resolves only after the disconnect, so the early return is the only
+      // place this stream can be released.
       const server = await serve(async (request) => {
         reachedHandler.resolve();
         await new Promise<void>((resolve) =>
@@ -195,8 +195,7 @@ describe("Adapter Middleware", () => {
 
       try {
         const req = http.request({ port: server.port, host: "127.0.0.1" });
-        // Destroying before any response arrives makes the client request
-        // itself error with a socket hang up; that is the point of the test.
+        // Destroying pre-response errors the client request; expected here.
         req.on("error", () => {});
         req.end();
 
@@ -211,10 +210,14 @@ describe("Adapter Middleware", () => {
     });
 
     it("should not abort the signal when the response completes normally", async () => {
+      const closed = deferred();
       let signal!: AbortSignal;
 
-      const server = await serve(async (request) => {
+      // The middleware's own `close` listener registers first, so once this
+      // one fires the abort decision has already been made.
+      const server = await serve(async (request, platform) => {
         signal = request.signal;
+        platform.response.on("close", closed.resolve);
         return new Response("done");
       });
 
@@ -222,9 +225,7 @@ describe("Adapter Middleware", () => {
         const response = await fetch(`http://127.0.0.1:${server.port}/`);
         assert.equal(await response.text(), "done");
 
-        // `close` lands after the body is delivered, so give it a turn: an abort
-        // here would fire cleanup on every successful request.
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await closed.promise;
         assert.equal(signal.aborted, false);
       } finally {
         await server.close();
