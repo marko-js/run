@@ -22,9 +22,15 @@ describe("test sources type-check", () => {
         "--pretty",
         "false",
       ],
-      { encoding: "utf-8" },
+      // Bounded here because mocha's timeout cannot interrupt a synchronous
+      // spawn — a hung tsc would hang the whole runner.
+      { encoding: "utf-8", timeout: 90000 },
     );
 
-    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.equal(
+      result.status,
+      0,
+      result.error ? String(result.error) : result.stdout || result.stderr,
+    );
   });
 });
