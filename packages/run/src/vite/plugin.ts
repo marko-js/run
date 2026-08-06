@@ -645,7 +645,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 renderVirtualFilesResult = undefined;
                 routeMarkoApiCache = undefined;
 
-                const module = devServer.moduleGraph.getModuleById(filename);
+                // The importer poke is only sound for a change, where the
+                // file's module chain is live. A deleted file's chain
+                // vanishes with it, and poking invites an eager consumer to
+                // reload ids that no longer resolve; an added file that
+                // existed before leaves a stale chain the route table is no
+                // longer connected to, so the poke never reaches the router
+                // and the new route 404s until an unrelated rebuild.
+                const module =
+                  type === "change"
+                    ? devServer.moduleGraph.getModuleById(filename)
+                    : undefined;
                 const importers = module && getImporters(module, filename);
                 if (importers?.size) {
                   for (const file of importers) {
@@ -746,10 +756,22 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
-        } else if (
-          !id.startsWith(entryFilesDirPosix) &&
-          /[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)
-        ) {
+        } else if (id.startsWith(entryFilesDirPosix)) {
+          // Deleting a route removes its generated template from disk, but a
+          // stale importer — an adapter eagerly re-evaluating invalidated
+          // modules, say — can still reload its id, and answering `undefined`
+          // fails every SSR request. An empty module contains the damage to
+          // the route that is already gone. Marko's derived entries are
+          // virtual whether or not their route is live, so they pass through.
+          if (
+            id.endsWith(".marko") &&
+            !id.endsWith(".server-entry.marko") &&
+            !id.endsWith(".client-entry.marko") &&
+            !fs.existsSync(id)
+          ) {
+            return "";
+          }
+        } else if (/[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)) {
           return "";
         }
       },
