@@ -9,7 +9,7 @@ function apply(code: string) {
     astType: "js",
     sourceType: "module",
   });
-  const replacements = findHrefReplacements(code, ast);
+  const replacements = findHrefReplacements(code, ast.program);
   if (replacements.length) {
     const s = new RolldownMagicString(code);
     for (const { edits } of replacements) {
