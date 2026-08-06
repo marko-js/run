@@ -11,10 +11,12 @@ import type {
 import thenable from "./thenable";
 import type {
   Context,
+  FormBodyValidatorOptions,
   HandlerFunction,
   HandlerOptions,
   HttpVerb,
   HttpVerbOrAll,
+  JsonBodyValidatorOptions,
   NextFunction,
   NormalizedHandler,
   NormalizedHandlerOptions,
@@ -508,22 +510,35 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
 }
 
 export function normalizeValidator<T>(validator: Validator<T> | undefined) {
-  return validator && typeof validator !== "function"
-    ? (input: T) => {
-        const result = validator["~standard"].validate(input);
-        if (result instanceof Promise) {
-          throw new TypeError("Schema validation must be synchronous");
-        }
-        return result.issues
-          ? [input, result.issues]
-          : [result.value, undefined];
-      }
-    : validator;
+  if (!isValidator(validator)) {
+    // Anything else means no validator. Wrapping it would not throw here but
+    // on the first validation, which is a far more confusing place.
+    return undefined;
+  }
+  if (typeof validator === "function") {
+    return validator;
+  }
+  return (input: T) => {
+    const result = validator["~standard"].validate(input);
+    if (result instanceof Promise) {
+      throw new TypeError("Schema validation must be synchronous");
+    }
+    return result.issues ? [input, result.issues] : [result.value, undefined];
+  };
 }
 
 const defaultMaxBytes = 1024 * 1024;
 const defaultMaxParts = 1000;
 const defaultMaxFiles = 20;
+
+// The object check comes first so the `in` probe never runs on a primitive,
+// which throws.
+function isValidator(option: unknown): option is Validator<any> {
+  return (
+    typeof option === "function" ||
+    (typeof option === "object" && option !== null && "~standard" in option)
+  );
+}
 
 export function mergeOptions(
   ...arr: (
@@ -559,10 +574,13 @@ export function mergeOptions(
   } as NormalizedHandlerOptions;
 
   if (merged.json) {
-    const { maxBytes = defaultMaxBytes, validator } =
-      typeof merged.json === "function" || "~standard" in merged.json
-        ? { validator: merged.json }
-        : merged.json;
+    const { maxBytes = defaultMaxBytes, validator } = isValidator(merged.json)
+      ? { validator: merged.json }
+      : typeof merged.json === "object"
+        ? merged.json
+        : // Any other truthy value — `json: true` in an untyped project —
+          // enables parsing with the defaults.
+          ({} as JsonBodyValidatorOptions);
     result.json = {
       maxBytes,
       validator: normalizeValidator(validator),
@@ -577,9 +595,11 @@ export function mergeOptions(
       maxParts = defaultMaxParts,
       onFile,
       validator,
-    } = typeof merged.form === "function" || "~standard" in merged.form
+    } = isValidator(merged.form)
       ? { validator: merged.form }
-      : merged.form;
+      : typeof merged.form === "object"
+        ? merged.form
+        : ({} as FormBodyValidatorOptions<Context>);
     result.form = {
       maxBytes: maxBytes ?? maxFiles * maxFileBytes,
       maxFileBytes,

@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Guard `form`/`json` handler options against primitives before the `~standard` membership test
-
-`packages/run/src/runtime/internal.ts` › `mergeOptions` | 2026-07-18 | impact:med | effort:low
-
-`mergeOptions` distinguishes a Standard Schema validator from an options object by testing `typeof merged.form === "function" || "~standard" in merged.form` (`internal.ts:526`, with the identical json guard at `:509`). When a handler is defined with a primitive option value such as `Run.POST({ form: true }, handler)`, the merge loop at `internal.ts:491-499` copies the truthy `true` straight onto `merged.form`, so the `if (merged.form)` branch runs, `typeof true === "function"` is false, and `"~standard" in true` throws `TypeError: Cannot use 'in' operator to search for '~standard' in true`. The result is an opaque 500 whose stack points into the runtime's `mergeOptions`, naming neither the offending `form`/`json` option nor the route file. The guard should first check `merged.form && typeof merged.form === "object"` — falling through to treat a truthy non-object as "parse with defaults, no validator", matching what `form: {}` already does — or throw a clear error naming the bad option. The `FormBodyValidator` type (`packages/run/src/runtime/types.ts:11`) forbids `true`, so a type-checked project is protected, but marko-run officially supports plain-JS handlers with no type guard, and `form: true` is a very natural "enable form parsing" guess versus the awkward documented `form: {}`. Fix is a one-line guard at both `:509` and `:526`.
-
 ## URL-decode catch-all (`$$`) route params so they match dynamic (`$`) params and `Run.href` round-trips
 
 `packages/run/src/vite/codegen/index.ts` › `renderParams` | 2026-07-18 | impact:med | effort:low
