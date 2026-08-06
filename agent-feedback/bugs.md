@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## URL-decode catch-all (`$$`) route params so they match dynamic (`$`) params and `Run.href` round-trips
-
-`packages/run/src/vite/codegen/index.ts` › `renderParams` | 2026-07-18 | impact:med | effort:low
-
-The generated router decodes dynamic `$` segments but not `$$` catch-alls, so the two param kinds disagree and `Run.href`'s encode has no matching decode. In `renderParams`, a dynamic segment is emitted as `s${index + 1}`, whose backing variable is materialized with `decodeURIComponent(...)` at `codegen/index.ts:595` and `:649`; the catch-all is emitted verbatim as `pathname.slice(${pathIndex})` at `codegen/index.ts:739` with no decode. Nothing downstream compensates: `createContext` (`packages/run/src/runtime/internal.ts:204-216`) hands `route.params` straight through. Meanwhile `Run.href` encodes every param including catch-alls (`href_path` maps `encodeURIComponent` over each array element, `packages/run/src/runtime/url-builder.ts:71`), so `Run.href("/$$rest", { params: { rest: ["docs", "café"] } })` produces `/docs/caf%C3%A9`, but the page it links to reads back `params.rest === "docs/caf%C3%A9"` instead of `"docs/café"` — a request for `/caf%C3%A9` hitting a sibling `$locale` correctly yields `"café"`. The encode half exists with no decode half, so the documented href↔route round-trip silently breaks for catch-alls only. Fix by decoding the catch-all, but per `/`-split segment rather than the whole string: a whole-string `decodeURIComponent` would turn an encoded `%2F` inside one captured segment into a real separator, whereas decoding each element (mirroring how `href_path` joins an array with raw `/` while encoding each element) keeps the two halves symmetric.
-
 ## Deleting a route file wedges the dev server: every SSR route then 500s with "Does the file exist?" and never self-heals
 
 `packages/run/src/vite/plugin.ts` › `load` | 2026-07-18 | impact:high | effort:med

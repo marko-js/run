@@ -1,6 +1,6 @@
 # Loading
 
 ```html
-rest=foo/bar/baz
+rest=foo/café/baz
 ```
 

@@ -55,7 +55,7 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: get9, path: '/$$match', params: { match: pathname.slice(1) }, options: get9_options, meta: {} };
+			return { handler: get9, path: '/$$match', params: { match: decodeURIComponent(pathname.slice(1)) }, options: get9_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
@@ -83,7 +83,7 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: head9, path: '/$$match', params: { match: pathname.slice(1) }, options: head9_options, meta: {} };
+			return { handler: head9, path: '/$$match', params: { match: decodeURIComponent(pathname.slice(1)) }, options: head9_options, meta: {} };
 		}
 		case 'POST':
 		case 'post': {
