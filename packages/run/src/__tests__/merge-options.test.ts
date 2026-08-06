@@ -50,8 +50,12 @@ describe("mergeOptions", () => {
 
   it("should normalize params and search validators", () => {
     const fn = (input: unknown) => [input, undefined];
+    const issues = [{ message: "bad" }];
     const schema = {
-      "~standard": { validate: (value: unknown) => ({ value }) },
+      "~standard": {
+        validate: (value: any) =>
+          value.page ? { value: { page: Number(value.page) } } : { issues },
+      },
     };
     const { params, search } = mergeOptions({
       params: fn,
@@ -59,7 +63,10 @@ describe("mergeOptions", () => {
     } as any);
 
     assert.equal(params, fn);
-    assert.equal(typeof search, "function");
+    // Only the schema's own `validate` can transform the value, so these pin
+    // the wrapper's delegation along with both tuple shapes.
+    assert.deepEqual(search!({ page: "1" }), [{ page: 1 }, undefined]);
+    assert.deepEqual(search!({}), [{}, issues]);
   });
 
   it("should take an options object as options", () => {
