@@ -50,6 +50,17 @@ describe("normalizeHandler", () => {
     );
   });
 
+  it("should reject a non-function array element", () => {
+    assert.throws(
+      () => normalizeHandler([handler, {}] as any, "GET"),
+      /every element of the GET export of a handler to be a function, but one was object/,
+    );
+    assert.throws(
+      () => normalizeHandler([42] as any),
+      /every element of the middleware default export to be a function, but one was number/,
+    );
+  });
+
   it("should keep the passthrough for a nullish export", () => {
     assert.equal(normalizeHandler(undefined as any, "GET"), passthrough);
   });

@@ -448,7 +448,16 @@ export function normalizeHandler(
     assertExportedVerb(obj, verb);
     return obj;
   } else if (Array.isArray(obj)) {
-    for (const handler of obj) assertExportedVerb(handler, verb);
+    for (const handler of obj) {
+      if (typeof handler !== "function") {
+        // Left alone, an object element crashes on the first request and a
+        // primitive trips the `in` probe below with an opaque TypeError.
+        throw new Error(
+          `Expected every element of the ${verb ? `${verb} export of a handler` : "middleware default export"} to be a function, but one was ${typeof handler}`,
+        );
+      }
+      assertExportedVerb(handler, verb);
+    }
     return compose(obj as HandlerFunction[]) as RouteHandler;
   } else if (obj instanceof Promise) {
     const promise = obj.then((value) => {
