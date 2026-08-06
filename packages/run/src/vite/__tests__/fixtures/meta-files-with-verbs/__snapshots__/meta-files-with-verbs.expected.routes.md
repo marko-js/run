@@ -8,9 +8,9 @@ import { normalizeHandler, normalizeMeta, call, mergeOptions, noContent } from "
 import { PUT, POST, DELETE } from "./src/routes/foo/bar/+handler.ts";
 import meta1 from "./src/routes/foo/bar/+meta.ts";
 
-const putHandler = normalizeHandler(PUT);
-const postHandler = normalizeHandler(POST);
-const deleteHandler = normalizeHandler(DELETE);
+const putHandler = normalizeHandler(PUT, 'PUT');
+const postHandler = normalizeHandler(POST, 'POST');
+const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post1_meta, PUT: put1_meta, DELETE: delete1_meta } = normalizeMeta(meta1);
 
@@ -46,9 +46,9 @@ import { PUT, POST, DELETE } from "./src/routes/foo/baz/+handler.ts";
 import page from "./dist/.marko-run/foo.baz.marko";
 import meta2 from "./src/routes/foo/baz/+meta.json";
 
-const putHandler = normalizeHandler(PUT);
-const postHandler = normalizeHandler(POST);
-const deleteHandler = normalizeHandler(DELETE);
+const putHandler = normalizeHandler(PUT, 'PUT');
+const postHandler = normalizeHandler(POST, 'POST');
+const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { GET: get2_meta, GET: head2_meta, POST: post2_meta, PUT: put2_meta, DELETE: delete2_meta } = normalizeMeta(meta2);
 

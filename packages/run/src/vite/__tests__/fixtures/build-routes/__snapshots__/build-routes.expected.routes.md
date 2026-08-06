@@ -72,7 +72,7 @@ import { POST } from "./src/routes/_protected/_home/new/+handler.ts";
 import page from "./dist/.marko-run/new.marko";
 import meta4 from "./src/routes/_protected/_home/new/+meta.json";
 
-const postHandler = normalizeHandler(POST);
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const { GET: get4_meta, GET: head4_meta, POST: post4_meta } = normalizeMeta(meta4);
 
@@ -121,9 +121,9 @@ import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__
 import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/+handler.ts";
 import page from "./dist/.marko-run/notes.$.marko";
 
-const putHandler = normalizeHandler(PUT);
-const postHandler = normalizeHandler(POST);
-const deleteHandler = normalizeHandler(DELETE);
+const putHandler = normalizeHandler(PUT, 'PUT');
+const postHandler = normalizeHandler(POST, 'POST');
+const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const get5_options = mergeOptions(mware4, mware5, mware7, mware13);
 export const head5_options = mergeOptions(mware4, mware5, mware7, mware13);
@@ -178,9 +178,9 @@ import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__
 import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/comments/+handler.ts";
 import meta6 from "./src/routes/_protected/_home/notes/$id/comments/+meta.ts";
 
-const putHandler = normalizeHandler(PUT);
-const postHandler = normalizeHandler(POST);
-const deleteHandler = normalizeHandler(DELETE);
+const putHandler = normalizeHandler(PUT, 'PUT');
+const postHandler = normalizeHandler(POST, 'POST');
+const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post6_meta, PUT: put6_meta, DELETE: delete6_meta } = normalizeMeta(meta6);
 
@@ -221,7 +221,7 @@ import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } fr
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/callback/oauth2/+handler.ts";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get7_options = mergeOptions(mware4, getHandler);
 export const head7_options = mergeOptions(mware4);
@@ -254,8 +254,8 @@ import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, HEAD } from "./src/routes/my/+handler.ts";
 import page from "./dist/.marko-run/my.marko";
 
-const getHandler = normalizeHandler(GET);
-const headHandler = normalizeHandler(HEAD);
+const getHandler = normalizeHandler(GET, 'GET');
+const headHandler = normalizeHandler(HEAD, 'HEAD');
 
 export const get8_options = mergeOptions(mware4, getHandler);
 export const head8_options = mergeOptions(mware4, headHandler);
@@ -281,7 +281,7 @@ import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } fr
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/$$match/+handler.ts";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get9_options = mergeOptions(mware4, getHandler);
 export const head9_options = mergeOptions(mware4);

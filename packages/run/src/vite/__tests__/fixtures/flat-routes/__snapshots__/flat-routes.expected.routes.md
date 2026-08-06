@@ -48,8 +48,8 @@ import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from 
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 import page from "./dist/.marko-run/foo.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get2_options = mergeOptions(getHandler);
 export const head2_options = {};
@@ -129,8 +129,8 @@ export function head4(context) {
 import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get5_options = mergeOptions(getHandler);
 export const head5_options = {};
@@ -157,8 +157,8 @@ import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } fr
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get6_options = mergeOptions(mware3, getHandler);
 export const head6_options = mergeOptions(mware3);
@@ -186,8 +186,8 @@ export function post6(context) {
 import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get7_options = mergeOptions(getHandler);
 export const head7_options = {};
@@ -213,8 +213,8 @@ export function post7(context) {
 import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get8_options = mergeOptions(getHandler);
 export const head8_options = {};
