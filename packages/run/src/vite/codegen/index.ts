@@ -160,7 +160,7 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
       const importName = verb.toUpperCase();
       names.push(importName);
       writer.writeLines(
-        `const ${verb}Handler = normalizeHandler(${importName});`,
+        `const ${verb}Handler = normalizeHandler(${importName}, '${importName}');`,
       );
     }
     imports.writeLines(

@@ -442,24 +442,64 @@ export function compose(handlers: HandlerFunction[]): HandlerFunction {
 
 export function normalizeHandler(
   obj: RouteHandler | RouteHandler[] | Promise<RouteHandler | RouteHandler[]>,
+  verb?: string,
 ): RouteHandler {
   if (typeof obj === "function") {
+    assertExportedVerb(obj, verb);
     return obj;
   } else if (Array.isArray(obj)) {
+    for (const handler of obj) {
+      if (typeof handler !== "function") {
+        // Left alone, an object element crashes on the first request and a
+        // primitive trips the `in` probe below with an opaque TypeError.
+        throw new Error(
+          `Expected every element of the ${verb ? `${verb} export of a handler` : "middleware default export"} to be a function, but one was ${typeof handler}`,
+        );
+      }
+      assertExportedVerb(handler, verb);
+    }
     return compose(obj as HandlerFunction[]) as RouteHandler;
   } else if (obj instanceof Promise) {
     const promise = obj.then((value) => {
-      fn = (
-        Array.isArray(value) ? compose(value as HandlerFunction[]) : value
-      ) as RouteHandler;
+      fn = normalizeHandler(value, verb);
     });
+    // The rejection still reaches whoever calls the handler; this only keeps
+    // it from surfacing as unhandled before the first call.
+    promise.catch(passthrough);
     let fn: RouteHandler = async (context, next) => {
       await promise;
       return fn(context, next);
     };
     return (context, next) => fn(context, next);
+  } else if (obj) {
+    // Verb discovery goes by export name alone, so without this a truthy
+    // non-function would register the route and then quietly degrade to a
+    // no-op that answers 204.
+    throw new Error(
+      `Expected the ${verb ? `${verb} export of a handler` : "middleware default export"} to be a function or array of functions, but it was ${typeof obj}`,
+    );
   }
   return passthrough;
+}
+
+// A handler carrying a different verb than the export it was found under
+// never runs: the runtime gates it on its own verb, and the route answers a
+// bare 204 instead. `Run.ALL` handlers pass, since the gate lets them run
+// under any method.
+function assertExportedVerb(
+  handler: RouteHandler | HandlerFunction,
+  verb?: string,
+) {
+  if (
+    verb &&
+    "verb" in handler &&
+    handler.verb !== verb &&
+    handler.verb !== "ALL"
+  ) {
+    throw new Error(
+      `The ${verb} export of a handler was defined with Run.${handler.verb} — it would never run, since the runtime only invokes it for ${handler.verb} requests`,
+    );
+  }
 }
 
 export function assertHandlerVerb(

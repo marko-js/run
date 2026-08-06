@@ -24,8 +24,8 @@ import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/+handler.marko";
 import page from "./dist/.marko-run/index.marko";
 
-const getHandler = normalizeHandler(GET);
-const postHandler = normalizeHandler(POST);
+const getHandler = normalizeHandler(GET, 'GET');
+const postHandler = normalizeHandler(POST, 'POST');
 
 export const get1_options = mergeOptions(mware3, getHandler);
 export const head1_options = mergeOptions(mware3);

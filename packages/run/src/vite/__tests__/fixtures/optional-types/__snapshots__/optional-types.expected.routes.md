@@ -27,7 +27,7 @@ import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.marko";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get1_options = mergeOptions(mware2, getHandler);
 export const head1_options = mergeOptions(mware2);
@@ -61,7 +61,7 @@ import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.bbb.$.marko";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get2_options = mergeOptions(mware2, getHandler);
 export const head2_options = mergeOptions(mware2);
@@ -95,7 +95,7 @@ import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.bbb.$.ccc.$.marko";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get3_options = mergeOptions(mware2, getHandler);
 export const head3_options = mergeOptions(mware2);
@@ -129,7 +129,7 @@ import { mware2 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+handler.ts";
 import page from "./dist/.marko-run/aaa.$.ccc.$.marko";
 
-const getHandler = normalizeHandler(GET);
+const getHandler = normalizeHandler(GET, 'GET');
 
 export const get4_options = mergeOptions(mware2, getHandler);
 export const head4_options = mergeOptions(mware2);
