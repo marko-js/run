@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Deleting a route file wedges the dev server: every SSR route then 500s with "Does the file exist?" and never self-heals
-
-`packages/run/src/vite/plugin.ts` › `load` | 2026-07-18 | impact:high | effort:med
-
-Removing any `+page`/`+handler` file leaves the dev server returning HTTP 500 for every SSR route until a manual restart. The watcher (`configureServer`, `plugin.ts:602-639`) reacts to an `unlink` by clearing `buildVirtualFilesResult`/`renderVirtualFilesResult`/`routeMarkoApiCache` (`:620-622`) and rebuilding `virtualFiles` without the deleted route, but the `@marko/vite`-generated `<route>.server-entry.marko` stays in the SSR module graph and still imports `./<route>.marko`. When Vite reloads that importer, run's `load` hook (`plugin.ts:713-731`) no longer finds `<route>.marko` in `virtualFiles`, and the empty-string not-found fallback is gated on `!id.startsWith(entryFilesDirPosix)` (`:726`). Since `entryFilesDir` is `<outDir>/.marko-run` (`plugin.ts:459`), the vanished route id lives under that dir and is excluded from the fallback, so `load` returns `undefined` and Vite throws `Failed to load url .../.marko-run/<route>.marko ... Does the file exist?` on every request that pulls the route table. A subsequent `+page` `change` cannot heal it because the cache-clear branch only fires for `add`/`unlink` or `Handler`/`Middleware` changes (`:612-618`), never for `Page` changes, so the stale graph module is never re-resolved. The robust fix is to evict the removed route's `.marko`/`.server-entry.marko`/`.client-entry.marko` from `devServer.moduleGraph` on `unlink` so no stale importer reloads them; broadening the `load` fallback to return `""` for a missing `.marko-run/*.marko` id would also require relaxing both the `entryFilesDirPosix` guard and the accompanying `__marko-run__`-only regex at `:727` (which does not match the `.marko-run` entry dir). Confirmed under the Cloudflare adapter, but the mechanism (run's `load` returning `undefined` for a vanished entry-dir id) is adapter-independent.
-
 ## Narrow `Route["body"]` to `undefined` for bodyless verbs so `$global.body`/`ctx.parent.body` match the runtime
 
 `packages/run/src/runtime/types.ts` › `Route` | 2026-07-19 | impact:med | effort:low
