@@ -176,7 +176,7 @@ export function createMiddleware(
         // discarded, so release whatever its body still holds open.
         if (response) {
           try {
-            getBodyReader(response)?.stop();
+            getBodyReader(response)?.cancel();
           } catch {
             // A body someone else holds a reader on is theirs to finish.
           }
@@ -190,7 +190,7 @@ export function createMiddleware(
 
         const reader = getBodyReader(response);
         if (reader) {
-          controller.signal.addEventListener("abort", reader.stop, {
+          controller.signal.addEventListener("abort", reader.cancel, {
             once: true,
           });
 
@@ -203,8 +203,8 @@ export function createMiddleware(
               (res as any).flush?.();
             }
           } finally {
-            controller.signal.removeEventListener("abort", reader.stop);
-            reader.stop();
+            controller.signal.removeEventListener("abort", reader.cancel);
+            reader.cancel();
           }
         } else if (!response.headers.has("content-length")) {
           res.setHeader("content-length", "0");
@@ -254,11 +254,11 @@ export function createMiddleware(
 const kRender = Symbol.for("@marko/run.render");
 
 /**
- * Gets a `read`/`stop` pair over the response's body, or `null` when there is
+ * Gets a `read`/`cancel` pair over the response's body, or `null` when there is
  * none. The stashed Marko render is preferred while the body is still the
  * untouched one it was stashed with (`clone()` tees it away). A stream goes
  * through a reader because only `reader.cancel()` settles a read parked
- * between chunks and runs the stream's `cancel()`. `stop` swallows
+ * between chunks and runs the stream's `cancel()`. `cancel` swallows
  * rejections — the request is over either way.
  */
 export function getBodyReader(response: Response) {
@@ -275,7 +275,7 @@ export function getBodyReader(response: Response) {
     const iterator = direct.render[Symbol.asyncIterator]();
     return {
       read: () => iterator.next(),
-      stop() {
+      cancel() {
         Promise.resolve(iterator.return?.()).catch(() => {});
       },
     };
@@ -289,7 +289,7 @@ export function getBodyReader(response: Response) {
     response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
   return {
     read: () => reader.read(),
-    stop() {
+    cancel() {
       reader.cancel().catch(() => {});
     },
   };
