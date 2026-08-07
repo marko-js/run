@@ -160,13 +160,11 @@ export function findHrefReplacements(
             ],
           });
         } else {
-          // Tier 1b: href_values — wrap options in tagged template,
-          // delete params property
+          // Tier 1b: href_values — tag the options, drop the params property
           const props = optionsNode.properties;
           const remaining = props.filter((_, i) => i !== params.index);
 
-          // If after removing params only a single spread remains,
-          // unwrap it: { ...x } → x
+          // `{ ...x }` with params gone is just `x`.
           if (remaining.length === 1 && remaining[0].type === "SpreadElement") {
             replacements.push({
               helper: "href_values",
@@ -325,12 +323,13 @@ function walk(node: Node, visitor: (node: Node) => void) {
     }
   }
 }
+
 /**
- * Parse a route path pattern into its static segments and param descriptors.
+ * Parse a route path pattern into its static segments and param names.
  * Mirrors the parsing logic in url-builder.ts.
  *
  * Example: "/users/$id/posts/$$rest"
- * → segments: ["/users/", "/posts/"], params: [{name:"id",rest:false},{name:"rest",rest:true}]
+ * → { segments: ["/users/", "/posts/", ""], params: ["id", "rest"] }
  */
 function parsePathPattern(path: string): ParsedPath {
   const parts = parsePathParts(path);
@@ -442,7 +441,7 @@ function tryStaticEval(node: Node): { value: unknown } | null {
 function tryExtractObjectProperty(obj: ObjectExpression, propertyName: string) {
   const props = obj.properties;
 
-  // Walk backwards: a spread before finding the property means it could be overridden.
+  // Scanning from the end: a spread after the property would override it.
   for (let i = props.length - 1; i >= 0; i--) {
     const prop = props[i];
     if (prop.type === "SpreadElement") return null;

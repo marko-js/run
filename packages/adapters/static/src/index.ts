@@ -22,23 +22,6 @@ import createCrawler from "./crawler";
 const __dirname = fileURLToPath(path.dirname(import.meta.url));
 const defaultEntry = path.join(__dirname, "default-entry");
 
-/**
- * Pin a response's status code across sirv's `send`, which ends with an
- * unconditional `res.writeHead(200, headers)` and so discards anything assigned
- * to `res.statusCode` from the `setHeaders` hook it calls first.
- */
-function forceStatus(res: ServerResponse, status: number) {
-  const { writeHead } = res;
-  res.writeHead = function (this: ServerResponse, ...args: unknown[]) {
-    res.writeHead = writeHead;
-    args[0] = status;
-    return (writeHead as (...args: unknown[]) => ServerResponse).apply(
-      this,
-      args,
-    );
-  } as ServerResponse["writeHead"];
-}
-
 export interface Options {
   /**
    * Marko Run will automatically discover routes based on your file system and look for any relative anchor links to crawl for more static pages. This option provides additional entry points for site crawling other than those which are statically known.
@@ -227,4 +210,21 @@ export default function staticAdapter(options: Options = {}): Adapter {
       }
     },
   };
+}
+
+/**
+ * Pin a response's status code across sirv's `send`, which ends with an
+ * unconditional `res.writeHead(200, headers)` and so discards anything assigned
+ * to `res.statusCode` from the `setHeaders` hook it calls first.
+ */
+function forceStatus(res: ServerResponse, status: number) {
+  const { writeHead } = res;
+  res.writeHead = function (this: ServerResponse, ...args: unknown[]) {
+    res.writeHead = writeHead;
+    args[0] = status;
+    return (writeHead as (...args: unknown[]) => ServerResponse).apply(
+      this,
+      args,
+    );
+  } as ServerResponse["writeHead"];
 }

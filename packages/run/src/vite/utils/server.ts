@@ -103,7 +103,6 @@ export async function spawnServerWorker(
     }
     return worker;
   } finally {
-    // Reset cluster settings.
     cluster.settings.exec = originalExec;
     cluster.settings.execArgv = originalArgs;
   }
@@ -129,32 +128,6 @@ export function withTimeout<T>(promise: Promise<T>, ms: number) {
     promise,
     new Promise<void>((resolve) => setTimeout(resolve, ms).unref()),
   ]);
-}
-
-function killTree(proc: ChildProcess, signal: NodeJS.Signals) {
-  if (!proc.pid || proc.exitCode !== null || proc.signalCode) return;
-  if (process.platform === "win32") {
-    cp.spawnSync("taskkill", ["/pid", `${proc.pid}`, "/T", "/F"], {
-      windowsHide: true,
-    });
-  } else {
-    try {
-      process.kill(-proc.pid, signal);
-    } catch {
-      proc.kill(signal);
-    }
-  }
-}
-
-async function waitForExit(proc: ChildProcess, wait: number = 0) {
-  if (proc.exitCode !== null || proc.signalCode) return true;
-
-  return await new Promise<boolean>((resolve) => {
-    proc.once("exit", () => resolve(true));
-    if (wait) {
-      setTimeout(resolve, wait, false).unref();
-    }
-  });
 }
 
 export async function waitForError(
@@ -248,10 +221,6 @@ export async function getAvailablePort(port?: number): Promise<number> {
   });
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export function getInspectOptions(args: string[]):
   | {
       host: string | undefined;
@@ -269,4 +238,34 @@ export function getInspectOptions(args: string[]):
       };
     }
   }
+}
+
+function killTree(proc: ChildProcess, signal: NodeJS.Signals) {
+  if (!proc.pid || proc.exitCode !== null || proc.signalCode) return;
+  if (process.platform === "win32") {
+    cp.spawnSync("taskkill", ["/pid", `${proc.pid}`, "/T", "/F"], {
+      windowsHide: true,
+    });
+  } else {
+    try {
+      process.kill(-proc.pid, signal);
+    } catch {
+      proc.kill(signal);
+    }
+  }
+}
+
+async function waitForExit(proc: ChildProcess, wait: number = 0) {
+  if (proc.exitCode !== null || proc.signalCode) return true;
+
+  return await new Promise<boolean>((resolve) => {
+    proc.once("exit", () => resolve(true));
+    if (wait) {
+      setTimeout(resolve, wait, false).unref();
+    }
+  });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

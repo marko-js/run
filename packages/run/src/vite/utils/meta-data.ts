@@ -7,10 +7,6 @@ import { httpVerbs } from "../constants";
 
 const verbKeys = new Set(httpVerbs.map((v) => v.toUpperCase() as HttpVerb));
 
-function isObject(obj: any): obj is Record<PropertyKey, any> {
-  return obj && typeof obj === "object" && !Array.isArray(obj);
-}
-
 export function getMetaDataForVerb<T, TVerb extends HttpVerb>(
   data: T,
   verb: TVerb,
@@ -40,4 +36,8 @@ export function getMetaDataLookup<T>(data: T): NormalizedMetaLookup<T> {
     lookup[verb] = getMetaDataForVerb(data, verb);
   }
   return lookup;
+}
+
+function isObject(obj: any): obj is Record<PropertyKey, any> {
+  return obj && typeof obj === "object" && !Array.isArray(obj);
 }

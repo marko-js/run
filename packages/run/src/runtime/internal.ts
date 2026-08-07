@@ -60,8 +60,8 @@ globalThis.Run ??= {
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
-// Registry key (also read by `adapter/middleware`, which is bundled
-// separately) for the raw render carried on a page `Response`.
+// Registry key for the raw render carried on a page `Response`; also read by
+// `adapter/middleware`, which is bundled separately.
 const kRender = Symbol.for("@marko/run.render");
 
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
@@ -93,129 +93,6 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
       };
   return toReadable(rendered);
 };
-
-// Lazy, no-read-ahead (highWaterMark 0) body over the render's iterator, so
-// constructing the `Response` doesn't pull anything and the node adapter can
-// take the render instead (see `kRender`). A render result is single-use, so
-// this must stay the only consumer of `iterator` -- mixing it with
-// `toReadable()` makes the tags-api runtime throw "consumed render result".
-function toResponseBody(
-  iterator: AsyncIterator<string>,
-): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  return new ReadableStream<Uint8Array>(
-    {
-      // `next()` does not always return a promise, and a rejected `pull`
-      // errors the stream, which is what the failure should do anyway.
-      async pull(ctrl) {
-        const { done, value } = await iterator.next();
-        if (done) ctrl.close();
-        else ctrl.enqueue(encoder.encode(value));
-      },
-      async cancel(reason) {
-        // An abandoned render's cleanup failure has nowhere to surface --
-        // swallow it so it cannot become an unhandled rejection that takes
-        // down the process when a client disconnects mid-render.
-        try {
-          await iterator.return?.(reason);
-        } catch {
-          // ignored
-        }
-      },
-    },
-    { highWaterMark: 0 },
-  );
-}
-
-function searchParamsToObject(params: URLSearchParams | FormData) {
-  const obj: Record<string, any> = {};
-  for (const [key, value] of params) {
-    if (key in obj) {
-      const prev = obj[key];
-      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
-    } else {
-      obj[key] = value;
-    }
-  }
-  return obj;
-}
-
-async function readBodyWithLimit(request: Request, maxBytes: number) {
-  if (maxBytes < 0) {
-    return await request.text();
-  }
-
-  const contentLength = request.headers.get("content-length");
-
-  if (contentLength !== null && Number(contentLength) > maxBytes) {
-    throw new Error("Request body too large");
-  }
-
-  if (!request.body) {
-    throw new Error("Missing request body");
-  }
-
-  const reader = request.body.getReader();
-  const bytes = new Uint8Array(maxBytes);
-  let receivedBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      if (receivedBytes + value.byteLength > maxBytes) {
-        await reader.cancel();
-        throw new Error("Request body too large");
-      }
-
-      bytes.set(value, receivedBytes);
-      receivedBytes += value.byteLength;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  return new TextDecoder("utf-8", { fatal: true }).decode(
-    bytes.subarray(0, receivedBytes),
-  );
-}
-
-async function readBody(route: RouteMatch, context: Context) {
-  const { request } = context;
-  const contentType = request.headers.get("Content-Type");
-  if (contentType?.includes("application/json")) {
-    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
-    const json =
-      maxBytes < 0
-        ? await request.json()
-        : JSON.parse(await readBodyWithLimit(request, maxBytes));
-    return validator ? validator(json) : json;
-  }
-  const {
-    maxParts = defaultMaxParts,
-    maxFiles = defaultMaxFiles,
-    maxFileBytes = defaultMaxBytes,
-    maxBytes = maxFiles * maxFileBytes,
-    onFile,
-    validator,
-  } = route.options.form ?? {};
-  const data = searchParamsToObject(
-    contentType?.includes("multipart/form-data")
-      ? await parseFormData(
-          request,
-          {
-            maxParts,
-            maxFiles,
-            maxFileSize: maxFileBytes,
-            maxTotalSize: maxBytes,
-          },
-          onFile ? (file) => onFile!(context, file) : undefined,
-        )
-      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
-  );
-  return validator ? validator(data) : data;
-}
 
 export function createContext(
   route: RouteMatch | null,
@@ -289,16 +166,12 @@ export function createContext(
         return new Response(toReadable(rendered), init);
       }
 
-      // The render is consumed through a single iterator, created eagerly so
-      // marko attaches its error handling now: the body is lazy, so a render
-      // that fails before anything reads it would otherwise throw uncaught --
-      // eg. a HEAD request, whose body is stripped and never read at all.
+      // Created eagerly so marko attaches its error handling now: a lazy body
+      // nobody reads (a HEAD request) would otherwise throw uncaught.
       const iterator = rendered[Symbol.asyncIterator]();
       const response = new Response(toResponseBody(iterator), init);
-      // Let a byte-sink adapter (node) write the HTML strings straight to the
-      // socket. `body` pins the stream the render belongs to: `clone()` tees
-      // the body and drains the single-use render, so the adapter has to be
-      // able to tell that it can no longer take this shortcut.
+      // Lets the node adapter write the HTML strings straight to the socket.
+      // `body` pins the stream, since `clone()` drains the single-use render.
       (response as any)[kRender] = {
         render: { [Symbol.asyncIterator]: () => iterator },
         body: response.body,
@@ -472,34 +345,13 @@ export function normalizeHandler(
     };
     return (context, next) => fn(context, next);
   } else if (obj) {
-    // Verb discovery goes by export name alone, so without this a truthy
-    // non-function would register the route and then quietly degrade to a
-    // no-op that answers 204.
+    // Verb discovery goes by export name alone, so a truthy non-function
+    // would register the route and then quietly answer 204.
     throw new Error(
       `Expected the ${verb ? `${verb} export of a handler` : "middleware default export"} to be a function or array of functions, but it was ${typeof obj}`,
     );
   }
   return passthrough;
-}
-
-// A handler carrying a different verb than the export it was found under
-// never runs: the runtime gates it on its own verb, and the route answers a
-// bare 204 instead. `Run.ALL` handlers pass, since the gate lets them run
-// under any method.
-function assertExportedVerb(
-  handler: RouteHandler | HandlerFunction,
-  verb?: string,
-) {
-  if (
-    verb &&
-    "verb" in handler &&
-    handler.verb !== verb &&
-    handler.verb !== "ALL"
-  ) {
-    throw new Error(
-      `The ${verb} export of a handler was defined with Run.${handler.verb} — it would never run, since the runtime only invokes it for ${handler.verb} requests`,
-    );
-  }
 }
 
 export function assertHandlerVerb(
@@ -511,42 +363,6 @@ export function assertHandlerVerb(
       `Expected verb ${verb} but handler was defined with Run.${handler.verb}`,
     );
   }
-}
-
-function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
-  return (
-    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
-    handlers: undefined | HandlerFunction | HandlerFunction[],
-  ) => {
-    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
-
-    if (typeof optionsOrHandlers === "function") {
-      assertHandlerVerb(verb, optionsOrHandlers);
-      const _fn = optionsOrHandlers;
-      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = (_fn as any).options ?? {};
-    } else if (Array.isArray(optionsOrHandlers)) {
-      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
-      handler = compose(optionsOrHandlers) as any;
-      handler.options = mergeOptions(...optionsOrHandlers);
-    } else if (typeof handlers === "function") {
-      assertHandlerVerb(verb, handlers);
-      const _fn = handlers;
-      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = mergeOptions(_fn, optionsOrHandlers);
-    } else if (Array.isArray(handlers)) {
-      for (const h of handlers) assertHandlerVerb(verb, h);
-      handler = compose(handlers) as any;
-      handler.options = mergeOptions(...handlers, optionsOrHandlers);
-    } else {
-      handler = createPassthroughHandler() as any;
-      handler.options = mergeOptions(optionsOrHandlers);
-    }
-
-    handler.verb = verb;
-
-    return handler;
-  };
 }
 
 export function normalizeValidator<T>(validator: Validator<T> | undefined) {
@@ -570,15 +386,6 @@ export function normalizeValidator<T>(validator: Validator<T> | undefined) {
 const defaultMaxBytes = 1024 * 1024;
 const defaultMaxParts = 1000;
 const defaultMaxFiles = 20;
-
-// The object check comes first so the `in` probe never runs on a primitive,
-// which throws.
-function isValidator(option: unknown): option is Validator<any> {
-  return (
-    typeof option === "function" ||
-    (typeof option === "object" && option !== null && "~standard" in option)
-  );
-}
 
 export function mergeOptions(
   ...arr: (
@@ -667,10 +474,6 @@ export function stripResponseBody(
 
 export function passthrough() {}
 
-function createPassthroughHandler(): HandlerFunction {
-  return (_ctx, next) => next();
-}
-
 export function noContent() {
   return new Response(null, {
     status: 204,
@@ -683,4 +486,190 @@ export function notHandled() {
 
 export function notMatched() {
   return null;
+}
+
+// A lazy body, so constructing the `Response` pulls nothing and the node adapter
+// can take the render instead (see `kRender`). Must stay `iterator`'s only reader.
+function toResponseBody(
+  iterator: AsyncIterator<string>,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>(
+    {
+      // `next()` does not always return a promise, and a rejected `pull`
+      // errors the stream, which is what the failure should do anyway.
+      async pull(ctrl) {
+        const { done, value } = await iterator.next();
+        if (done) ctrl.close();
+        else ctrl.enqueue(encoder.encode(value));
+      },
+      async cancel(reason) {
+        // An abandoned render's cleanup failure has nowhere to surface, and
+        // unhandled it would take the process down on a mid-render disconnect.
+        try {
+          await iterator.return?.(reason);
+        } catch {
+          // ignored
+        }
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
+
+function searchParamsToObject(params: URLSearchParams | FormData) {
+  const obj: Record<string, any> = {};
+  for (const [key, value] of params) {
+    if (key in obj) {
+      const prev = obj[key];
+      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
+    } else {
+      obj[key] = value;
+    }
+  }
+  return obj;
+}
+
+async function readBodyWithLimit(request: Request, maxBytes: number) {
+  if (maxBytes < 0) {
+    return await request.text();
+  }
+
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength !== null && Number(contentLength) > maxBytes) {
+    throw new Error("Request body too large");
+  }
+
+  if (!request.body) {
+    throw new Error("Missing request body");
+  }
+
+  const reader = request.body.getReader();
+  const bytes = new Uint8Array(maxBytes);
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (receivedBytes + value.byteLength > maxBytes) {
+        await reader.cancel();
+        throw new Error("Request body too large");
+      }
+
+      bytes.set(value, receivedBytes);
+      receivedBytes += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return new TextDecoder("utf-8", { fatal: true }).decode(
+    bytes.subarray(0, receivedBytes),
+  );
+}
+
+async function readBody(route: RouteMatch, context: Context) {
+  const { request } = context;
+  const contentType = request.headers.get("Content-Type");
+  if (contentType?.includes("application/json")) {
+    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
+    const json =
+      maxBytes < 0
+        ? await request.json()
+        : JSON.parse(await readBodyWithLimit(request, maxBytes));
+    return validator ? validator(json) : json;
+  }
+  const {
+    maxParts = defaultMaxParts,
+    maxFiles = defaultMaxFiles,
+    maxFileBytes = defaultMaxBytes,
+    maxBytes = maxFiles * maxFileBytes,
+    onFile,
+    validator,
+  } = route.options.form ?? {};
+  const data = searchParamsToObject(
+    contentType?.includes("multipart/form-data")
+      ? await parseFormData(
+          request,
+          {
+            maxParts,
+            maxFiles,
+            maxFileSize: maxFileBytes,
+            maxTotalSize: maxBytes,
+          },
+          onFile ? (file) => onFile!(context, file) : undefined,
+        )
+      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+  );
+  return validator ? validator(data) : data;
+}
+
+// A handler whose verb disagrees with its export never runs — the runtime gates
+// on the handler's own verb and answers 204. `Run.ALL` passes any method.
+function assertExportedVerb(
+  handler: RouteHandler | HandlerFunction,
+  verb?: string,
+) {
+  if (
+    verb &&
+    "verb" in handler &&
+    handler.verb !== verb &&
+    handler.verb !== "ALL"
+  ) {
+    throw new Error(
+      `The ${verb} export of a handler was defined with Run.${handler.verb} — it would never run, since the runtime only invokes it for ${handler.verb} requests`,
+    );
+  }
+}
+
+function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
+  return (
+    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
+    handlers: undefined | HandlerFunction | HandlerFunction[],
+  ) => {
+    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
+
+    if (typeof optionsOrHandlers === "function") {
+      assertHandlerVerb(verb, optionsOrHandlers);
+      const _fn = optionsOrHandlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = (_fn as any).options ?? {};
+    } else if (Array.isArray(optionsOrHandlers)) {
+      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
+      handler = compose(optionsOrHandlers) as any;
+      handler.options = mergeOptions(...optionsOrHandlers);
+    } else if (typeof handlers === "function") {
+      assertHandlerVerb(verb, handlers);
+      const _fn = handlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = mergeOptions(_fn, optionsOrHandlers);
+    } else if (Array.isArray(handlers)) {
+      for (const h of handlers) assertHandlerVerb(verb, h);
+      handler = compose(handlers) as any;
+      handler.options = mergeOptions(...handlers, optionsOrHandlers);
+    } else {
+      handler = createPassthroughHandler() as any;
+      handler.options = mergeOptions(optionsOrHandlers);
+    }
+
+    handler.verb = verb;
+
+    return handler;
+  };
+}
+
+// The object check comes first so the `in` probe never runs on a primitive,
+// which throws.
+function isValidator(option: unknown): option is Validator<any> {
+  return (
+    typeof option === "function" ||
+    (typeof option === "object" && option !== null && "~standard" in option)
+  );
+}
+
+function createPassthroughHandler(): HandlerFunction {
+  return (_ctx, next) => next();
 }

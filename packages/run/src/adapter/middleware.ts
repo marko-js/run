@@ -43,18 +43,6 @@ export interface NodeMiddlewareOptions {
   createPlatform?(platform: NodePlatformInfo): Platform & NodePlatformInfo;
 }
 
-// TODO: Support the newer `Forwarded` standard header
-function getForwardedHeader(req: IncomingMessage, name: string) {
-  const value = req.headers["x-forwarded-" + name];
-  if (value) {
-    if (typeof value === "string") {
-      const index = value.indexOf(",");
-      return index < 0 ? value : value.slice(0, index);
-    }
-    return value[0];
-  }
-}
-
 export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
   const protocol =
     (trustProxy && getForwardedHeader(req, "proto")) ||
@@ -156,9 +144,8 @@ export function createMiddleware(
         duplex: "half",
       });
 
-      // An own property because `new Request(url, { signal })` wires the
-      // signal into undici, which in a range of node releases retains the
-      // request until the signal itself is collected.
+      // An own property because `new Request(url, { signal })` wires the signal
+      // into undici, which can retain the request until the signal is collected.
       Object.defineProperty(request, "signal", {
         configurable: true,
         value: controller.signal,
@@ -247,10 +234,8 @@ export function createMiddleware(
   };
 }
 
-// A page `Response` carries its raw Marko render (HTML strings) under this
-// registry key (set in `runtime/internal`). Writing those strings straight to
-// the socket lets node encode UTF-8 natively, skipping the whatwg re-encode
-// that reading `response.body` would do.
+// Set in `runtime/internal`: writing a page's raw render strings to the socket
+// lets node encode UTF-8 natively, skipping the re-encode `body` would do.
 const kRender = Symbol.for("@marko/run.render");
 
 /**
@@ -293,6 +278,18 @@ export function getBodyReader(response: Response) {
       reader.cancel().catch(() => {});
     },
   };
+}
+
+// TODO: Support the newer `Forwarded` standard header
+function getForwardedHeader(req: IncomingMessage, name: string) {
+  const value = req.headers["x-forwarded-" + name];
+  if (value) {
+    if (typeof value === "string") {
+      const index = value.indexOf(",");
+      return index < 0 ? value : value.slice(0, index);
+    }
+    return value[0];
+  }
 }
 
 const bodyConsumedErrorStream = new ReadableStream({

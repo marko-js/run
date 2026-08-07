@@ -45,7 +45,6 @@ export default globalThis.__marko_run_middleware__ ??=
 
         return (factory) =>
           (...args) => {
-            // Create the middleware defined by the user
             const middleware = factory(...args);
 
             return (req, res, next) => {

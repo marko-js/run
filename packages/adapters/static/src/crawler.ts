@@ -142,10 +142,8 @@ export default function createCrawler(
         }
         default: {
           abortController.abort();
-          // Nothing is written for this path either way. Only an error status
-          // means a page was expected here and failed to render; a non-200
-          // success (the 204 a handler-only route falls back to, say) simply
-          // has nothing to prerender, which is not a build failure.
+          // Only an error status means a page was expected here and failed; a
+          // non-200 success (a handler-only route's 204) has nothing to prerender.
           return { path, status, ok: status < 400 };
         }
       }
@@ -205,15 +203,12 @@ export default function createCrawler(
         while (queue.length) {
           pending = Promise.all(queue);
           queue = [];
-          // Bucketed one at a time: spreading a wave into `push` would cap the
-          // number of paths a single wave can carry at the engine's argument
-          // limit.
+          // Bucketed one at a time: spreading a wave into `push` would cap a
+          // wave's paths at the engine's argument limit.
           for (const result of await pending) {
             const { ok, status, path } = result;
-            // The 404 page is seeded by the crawl itself and answers 404 by
-            // design, so it prerendered like any other page rather than
-            // pointing nowhere. The slash comes off both sides: `/404/` and
-            // `/404` are the same page, and either may be the configured one.
+            // The 404 page is seeded by the crawl and answers 404 by design, so
+            // it prerendered like any other page rather than pointing nowhere.
             const seeded404 =
               status === 404 &&
               !!notFoundPath &&
@@ -237,10 +232,8 @@ export default function createCrawler(
               case 308:
                 break;
               default:
-                // Worth eyes even when nothing failed: a 404 is nearly always
-                // a link pointing at a page that is gone, and any other status
-                // `visit` has no handling for wrote no file. Listed under the
-                // logged summary.
+                // Worth eyes even when nothing failed: a 404 is nearly always a
+                // link to a page that is gone, and other statuses wrote no file.
                 if (!seeded404) {
                   results.records.push(result);
                 }
@@ -267,10 +260,8 @@ export default function createCrawler(
             : ""),
       );
 
-      // A failed path writes no file, so finishing green here would ship a
-      // site with that page missing. Reported together rather than failing on
-      // the first one, since paths are crawled concurrently and one broken
-      // route should not hide the rest.
+      // A failed path writes no file, so green here would ship the site missing
+      // that page. Reported together so one broken route cannot hide the rest.
       if (failure.length) {
         throw new Error(
           `Static build failed: ${failure.length} ${

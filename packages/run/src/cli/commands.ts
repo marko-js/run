@@ -218,7 +218,8 @@ export async function build(
       ssr: entry,
       rolldownOptions: {
         output: {
-          entryFileNames: "index.mjs", // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
+          // `.js` fails in zero-config projects where node runs in cjs mode.
+          entryFileNames: "index.mjs",
         },
       },
     },
@@ -228,20 +229,6 @@ export async function build(
   await viteBuild({
     ...buildConfig,
   });
-}
-
-function findFileWithExt(
-  dir: string,
-  base: string,
-  extensions: string[] = defaultConfigFileExts,
-): string | undefined {
-  for (const ext of extensions) {
-    const filePath = path.join(dir, base + ext);
-    if (fs.existsSync(filePath)) {
-      return filePath;
-    }
-  }
-  return undefined;
 }
 
 export async function getViteConfig(
@@ -266,4 +253,18 @@ export async function getViteConfig(
   }
 
   return fallback;
+}
+
+function findFileWithExt(
+  dir: string,
+  base: string,
+  extensions: string[] = defaultConfigFileExts,
+): string | undefined {
+  for (const ext of extensions) {
+    const filePath = path.join(dir, base + ext);
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  return undefined;
 }
