@@ -280,7 +280,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }));
   }
 
-  function writeEntryTemplate(filePath: string, source: string) {
+  async function writeEntryTemplate(context: PluginContext, route: Route) {
+    const filePath = route.templateFilePath!;
+    const source = renderRouteTemplate(
+      route,
+      await getMarkoApiForRoute(context, route),
+      !isBuild,
+    );
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, source);
@@ -337,14 +343,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (route.templateFilePath) {
-            writeEntryTemplate(
-              route.templateFilePath,
-              renderRouteTemplate(
-                route,
-                await getMarkoApiForRoute(context, route),
-                !isBuild,
-              ),
-            );
+            await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
@@ -353,14 +352,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          writeEntryTemplate(
-            route.templateFilePath!,
-            renderRouteTemplate(
-              route,
-              await getMarkoApiForRoute(context, route),
-              !isBuild,
-            ),
-          );
+          await writeEntryTemplate(context, route);
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
