@@ -63,9 +63,6 @@ export function logRoutesTable(
       let size = "";
       const verbCell = verbColor(verb)(verb.toUpperCase());
 
-      // if (verb === "get" && !verbs.includes("head")) {
-      //   verbCell += kleur.dim(`,${verbColor(verb)("HEAD")}`);
-      // }
       if (route.handler) {
         entryType.push(kleur.blue("handler"));
       }
@@ -218,11 +215,8 @@ function prettySize([bytes, compBytes]: [number, number]): string {
 
   let str = kleur.white(size) + kleur.gray("/");
 
-  // green for 0-20kb
   if (compBytes < 20 * 1000) str += kleur.green(compSize);
-  // yellow for 20-50kb
   else if (compBytes < 50 * 1000) str += kleur.yellow(compSize);
-  // red for >= 50kb
   else str += kleur.bold(kleur.red(compSize));
   return str;
 }

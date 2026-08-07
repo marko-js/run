@@ -218,7 +218,8 @@ export async function build(
       ssr: entry,
       rolldownOptions: {
         output: {
-          entryFileNames: "index.mjs", // Would rather build with `.js` extension but that will fail in zero-config projects where node runs in cjs mode
+          // `.js` fails in zero-config projects where node runs in cjs mode.
+          entryFileNames: "index.mjs",
         },
       },
     },

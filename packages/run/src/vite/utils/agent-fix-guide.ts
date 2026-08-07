@@ -16,10 +16,8 @@ export default function appendAgentFixGuide<T>(error: T): T {
     const cheatsheet = cheatsheetPath();
     if (cheatsheet) {
       try {
-        // `message` may be locked by the thrower (e.g. rolldown errors), so
-        // redefine rather than assign. Best-effort: a frozen or otherwise
-        // non-configurable error must never let augmentation mask the real
-        // route/codegen failure this runs inside the catch path of.
+        // `message` may be locked by the thrower (rolldown errors), so redefine
+        // rather than assign.
         Object.defineProperty(error, "message", {
           value: `${error.message}\n\nFix guide: READ ${cheatsheet} before writing a fix.`,
           enumerable: true,

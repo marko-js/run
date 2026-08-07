@@ -36,7 +36,7 @@ export type { NodePlatformInfo } from "./middleware";
 export type MarkoRunDevAccessor = () => MarkoRunDev;
 
 import { Server } from "http";
-// @ts-expect-error - no types 🥲
+// @ts-expect-error: package ships no types
 import parseNodeArgs from "parse-node-args";
 
 import { markoRunFilePrefix, virtualFilePrefix } from "../vite/constants";

@@ -24,9 +24,8 @@ export function isRoutableFile(filename: string) {
   return RoutableFileRegex.test(filename);
 }
 
-// @ebay/arc names adaptive variants `file[flag].ext` (flags combine with `+`,
-// e.g. `header[mobile+android].js`) and can bracket directories too. Strip those
-// groups before classifying so their brackets and `+` never read as routes.
+// @ebay/arc names adaptive variants `file[flag].ext` and brackets directories
+// too; stripped before classifying so `[` and `+` never read as route syntax.
 const bracketFlagReg = /\[[^\]]*\]/g;
 
 function warnLookalike(message: string): void {
@@ -34,11 +33,8 @@ function warnLookalike(message: string): void {
   console.warn(`[marko-run] ${message}${agentRouteFixGuide()}`);
 }
 
-// Warn (dev and build) about files that look like a botched route — a `+type`
-// marker matching no routable type, or a `$param` name missing its `+type` —
-// but silently are not routable. Brackets alone are never flagged: they aren't
-// Marko Run syntax (a `[id]` segment is just a literal), and arc gives them
-// meaning.
+// Flags a file that looks like a botched route yet silently is not routable.
+// Brackets alone never qualify: they are arc's syntax, not Marko Run's.
 function warnNonRoutableLookalike(name: string, filePath: string): void {
   // `+page[mobile].marko` is arc's variant of a real `+page.marko`, not a break.
   const base = name.replace(bracketFlagReg, "");

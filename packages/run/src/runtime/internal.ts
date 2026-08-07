@@ -60,8 +60,8 @@ globalThis.Run ??= {
 
 type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 
-// Registry key (also read by `adapter/middleware`, which is bundled
-// separately) for the raw render carried on a page `Response`.
+// Registry key for the raw render carried on a page `Response`; also read by
+// `adapter/middleware`, which is bundled separately.
 const kRender = Symbol.for("@marko/run.render");
 
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
@@ -94,11 +94,8 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   return toReadable(rendered);
 };
 
-// Lazy, no-read-ahead (highWaterMark 0) body over the render's iterator, so
-// constructing the `Response` doesn't pull anything and the node adapter can
-// take the render instead (see `kRender`). A render result is single-use, so
-// this must stay the only consumer of `iterator` -- mixing it with
-// `toReadable()` makes the tags-api runtime throw "consumed render result".
+// A lazy body, so constructing the `Response` pulls nothing and the node adapter
+// can take the render instead (see `kRender`). Must stay `iterator`'s only reader.
 function toResponseBody(
   iterator: AsyncIterator<string>,
 ): ReadableStream<Uint8Array> {
@@ -113,9 +110,8 @@ function toResponseBody(
         else ctrl.enqueue(encoder.encode(value));
       },
       async cancel(reason) {
-        // An abandoned render's cleanup failure has nowhere to surface --
-        // swallow it so it cannot become an unhandled rejection that takes
-        // down the process when a client disconnects mid-render.
+        // An abandoned render's cleanup failure has nowhere to surface, and
+        // unhandled it would take the process down on a mid-render disconnect.
         try {
           await iterator.return?.(reason);
         } catch {
@@ -289,16 +285,12 @@ export function createContext(
         return new Response(toReadable(rendered), init);
       }
 
-      // The render is consumed through a single iterator, created eagerly so
-      // marko attaches its error handling now: the body is lazy, so a render
-      // that fails before anything reads it would otherwise throw uncaught --
-      // eg. a HEAD request, whose body is stripped and never read at all.
+      // Created eagerly so marko attaches its error handling now: a lazy body
+      // nobody reads (a HEAD request) would otherwise throw uncaught.
       const iterator = rendered[Symbol.asyncIterator]();
       const response = new Response(toResponseBody(iterator), init);
-      // Let a byte-sink adapter (node) write the HTML strings straight to the
-      // socket. `body` pins the stream the render belongs to: `clone()` tees
-      // the body and drains the single-use render, so the adapter has to be
-      // able to tell that it can no longer take this shortcut.
+      // Lets the node adapter write the HTML strings straight to the socket.
+      // `body` pins the stream, since `clone()` drains the single-use render.
       (response as any)[kRender] = {
         render: { [Symbol.asyncIterator]: () => iterator },
         body: response.body,
@@ -472,9 +464,8 @@ export function normalizeHandler(
     };
     return (context, next) => fn(context, next);
   } else if (obj) {
-    // Verb discovery goes by export name alone, so without this a truthy
-    // non-function would register the route and then quietly degrade to a
-    // no-op that answers 204.
+    // Verb discovery goes by export name alone, so a truthy non-function
+    // would register the route and then quietly answer 204.
     throw new Error(
       `Expected the ${verb ? `${verb} export of a handler` : "middleware default export"} to be a function or array of functions, but it was ${typeof obj}`,
     );
@@ -482,10 +473,8 @@ export function normalizeHandler(
   return passthrough;
 }
 
-// A handler carrying a different verb than the export it was found under
-// never runs: the runtime gates it on its own verb, and the route answers a
-// bare 204 instead. `Run.ALL` handlers pass, since the gate lets them run
-// under any method.
+// A handler whose verb disagrees with its export never runs — the runtime gates
+// on the handler's own verb and answers 204. `Run.ALL` passes any method.
 function assertExportedVerb(
   handler: RouteHandler | HandlerFunction,
   verb?: string,

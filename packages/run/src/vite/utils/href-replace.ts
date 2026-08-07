@@ -160,13 +160,11 @@ export function findHrefReplacements(
             ],
           });
         } else {
-          // Tier 1b: href_values — wrap options in tagged template,
-          // delete params property
+          // Tier 1b: href_values — tag the options, drop the params property
           const props = optionsNode.properties;
           const remaining = props.filter((_, i) => i !== params.index);
 
-          // If after removing params only a single spread remains,
-          // unwrap it: { ...x } → x
+          // `{ ...x }` with params gone is just `x`.
           if (remaining.length === 1 && remaining[0].type === "SpreadElement") {
             replacements.push({
               helper: "href_values",
@@ -325,6 +323,7 @@ function walk(node: Node, visitor: (node: Node) => void) {
     }
   }
 }
+
 /**
  * Parse a route path pattern into its static segments and param descriptors.
  * Mirrors the parsing logic in url-builder.ts.
@@ -442,7 +441,7 @@ function tryStaticEval(node: Node): { value: unknown } | null {
 function tryExtractObjectProperty(obj: ObjectExpression, propertyName: string) {
   const props = obj.properties;
 
-  // Walk backwards: a spread before finding the property means it could be overridden.
+  // Backwards: a spread before the property could have overridden it.
   for (let i = props.length - 1; i >= 0; i--) {
     const prop = props[i];
     if (prop.type === "SpreadElement") return null;

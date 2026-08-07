@@ -103,7 +103,6 @@ export async function spawnServerWorker(
     }
     return worker;
   } finally {
-    // Reset cluster settings.
     cluster.settings.exec = originalExec;
     cluster.settings.execArgv = originalArgs;
   }

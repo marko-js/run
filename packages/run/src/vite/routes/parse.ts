@@ -187,9 +187,7 @@ export function parseFlatRoute(pattern: string): Path[] {
         }
 
         path.segments.push(segment);
-        //if (type !== "_") {
         path.id += path.id === "/" ? segment.name : `/${segment.name}`;
-        //}
         if (type === "$$") {
           path.isCatchall = true;
         }

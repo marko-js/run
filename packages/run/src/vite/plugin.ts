@@ -193,17 +193,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
   function buildVirtualFiles() {
     return (buildVirtualFilesResult ??= (async () => {
-      // const sources: RouteSource[] = [];
-
-      // if (true) {
-      //   const explorerRoutesDir = path.resolve(__dirname, '../components/routes-explorer');
-      //   const explorerImportPrefix = path.relative(root, explorerRoutesDir);
-      //   sources.push({
-      //     walker: createFSWalker(explorerRoutesDir),
-      //     importPrefix: explorerImportPrefix,
-      //     basePath: '_route-explorer.%2Broutes'
-      //   });
-      // }
       virtualFiles.clear();
       if (fs.existsSync(resolvedRoutesDir)) {
         routes = await buildRoutes(
@@ -292,9 +281,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     fs.writeFileSync(filePath, source);
     writtenEntryTemplates.set(filePath, source);
     if (devServer && previous !== undefined && previous !== source) {
-      // Tell Vite and @marko/vite the template changed so they drop what
-      // they cached for it. Rewriting the whole directory does not reliably
-      // produce the file events they listen for.
+      // Drops what Vite and @marko/vite cached for the template. Rewriting the
+      // directory does not reliably produce the events they listen for.
       devServer.watcher.emit("all", "change", filePath);
       devServer.watcher.emit("change", filePath);
     }
@@ -565,12 +553,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         // environment's dependency scan may load it (or its graph) from disk.
         const optimizeDeps = { exclude: ["@marko/run/router"] };
 
-        // Vite drops top-level `resolve.conditions` for every non-client
-        // environment, so pinning how a build resolves has to happen per
-        // environment or the SSR build silently keeps Vite's defaults.
-        // `mainFields` is left alone: Vite's per-environment defaults already
-        // match what this build wants. Conditions merge by concatenation, so
-        // only contribute a list when the environment doesn't have one.
+        // Vite drops top-level `resolve.conditions` for non-client environments,
+        // so the SSR build has to be pinned here or it keeps Vite's defaults.
         if (env.command !== "build" || envConfig.resolve?.conditions) {
           return { optimizeDeps };
         }
@@ -578,10 +562,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         return {
           optimizeDeps,
           resolve: {
-            // `import`/`require` are intentionally omitted: Vite appends
-            // whichever one matches the importer, so listing both makes a
-            // package that declares `require` before `import` resolve to its
-            // CJS build.
+            // `import`/`require` are omitted: Vite appends whichever matches the
+            // importer, and listing both resolves `require`-first packages to CJS.
             conditions: [
               "module",
               env.isSsrTargetWebworker ||
@@ -646,13 +628,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 renderVirtualFilesResult = undefined;
                 routeMarkoApiCache = undefined;
 
-                // The importer poke is only sound for a change, where the
-                // file's module chain is live. A deleted file's chain
-                // vanishes with it, and poking invites an eager consumer to
-                // reload ids that no longer resolve; an added file that
-                // existed before leaves a stale chain the route table is no
-                // longer connected to, so the poke never reaches the router
-                // and the new route 404s until an unrelated rebuild.
+                // Only a change leaves a live module chain to poke. A delete
+                // takes its chain, and an add can leave a stale one behind.
                 const module =
                   type === "change"
                     ? devServer.moduleGraph.getModuleById(filename)
@@ -682,7 +659,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         }
 
         if (isBuild && !isSSRBuild) {
-          // Routes and code should have been generated in the SSR build that ran previously
+          // The SSR build that ran previously generated the routes and code.
           try {
             routeData = await store.read();
           } catch {
@@ -699,11 +676,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
-        } else {
-          // Build routes and generate code
-          // getExportsFromFile = isBuild
-          //   ? getExportsFromFileBuild
-          //   : getExportsFromFileDev.bind(null, devServer);
         }
       },
       async resolveId(importee, importer) {
@@ -747,23 +719,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async load(id) {
         if (!renderVirtualFilesResult || virtualFiles.has(id)) {
-          // Virtual files are seeded with empty placeholders until
-          // `renderVirtualFiles` completes, and the bundler can request one
-          // while rendering is still in flight (eg. when a `+handler` or
-          // `+middleware` module loaded to inspect its exports transitively
-          // imports `@marko/run/router`), so a virtual file must always wait
-          // for rendering to finish before its content is read.
+          // Virtual files hold empty placeholders until rendering completes, and
+          // the bundler can ask for one while it is still in flight.
           await renderVirtualFiles(this);
         }
         if (virtualFiles.has(id)) {
           return virtualFiles.get(id)!;
         } else if (id.startsWith(entryFilesDirPosix)) {
-          // Deleting a route removes its generated template from disk, but a
-          // stale importer — an adapter eagerly re-evaluating invalidated
-          // modules, say — can still reload its id, and answering `undefined`
-          // fails every SSR request. An empty module contains the damage to
-          // the route that is already gone. Marko's derived entries are
-          // virtual whether or not their route is live, so they pass through.
+          // A stale importer can still reload a deleted route's template id, and
+          // answering `undefined` fails every SSR request. Derived entries pass.
           if (
             id.endsWith(".marko") &&
             !id.endsWith(".server-entry.marko") &&
@@ -831,7 +795,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
       generateBundle(options, bundle) {
         if (options.sourcemap && options.sourcemap !== "inline") {
-          // Iterate through bundle and remove source maps that don't have a corresponding source file
+          // Drop source maps whose source file is not in the bundle.
           for (const key of Object.keys(bundle)) {
             if (key.endsWith(".map") && !bundle[key.slice(0, -4)]) {
               delete bundle[key];
