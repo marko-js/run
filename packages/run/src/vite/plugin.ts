@@ -292,9 +292,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     fs.writeFileSync(filePath, source);
     writtenEntryTemplates.set(filePath, source);
     if (devServer && previous !== undefined && previous !== source) {
-      // Rewriting the templates dir wholesale gives at best a racy
-      // unlink/add pair, not the "change" Vite needs to invalidate. "all"
-      // is emitted too since @marko/vite drops its cached source there.
+      // Tell Vite and @marko/vite the template changed so they drop what
+      // they cached for it. Rewriting the whole directory does not reliably
+      // produce the file events they listen for.
       devServer.watcher.emit("all", "change", filePath);
       devServer.watcher.emit("change", filePath);
     }
