@@ -122,6 +122,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   const externalRoutes = new Set<ExternalRoutes>();
   const seenErrors = new Set<string>();
   const virtualFiles = new Map<string, string>();
+  const writtenEntryTemplates = new Map<string, string>();
 
   let times: TimeMetrics = {
     routesBuild: 0,
@@ -279,6 +280,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }));
   }
 
+  function writeEntryTemplate(filePath: string, source: string) {
+    const previous = writtenEntryTemplates.get(filePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, source);
+    writtenEntryTemplates.set(filePath, source);
+    if (devServer && previous !== undefined && previous !== source) {
+      // The templates dir is removed and rewritten wholesale, so a changed
+      // template (eg. an added +layout now wraps the page) yields at best a
+      // racy unlink/add pair instead of the "change" event Vite requires to
+      // invalidate its modules, and dev keeps serving the stale transform.
+      // "all" is emitted too because @marko/vite drops its cached copy of
+      // the source from an "all" listener, which real events fire but a
+      // synthetic "change" does not.
+      devServer.watcher.emit("all", "change", filePath);
+      devServer.watcher.emit("change", filePath);
+    }
+  }
+
   let renderVirtualFilesResult: Promise<void> | undefined;
   function renderVirtualFiles(context: PluginContext) {
     return (renderVirtualFilesResult ??= (async () => {
@@ -318,10 +337,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (route.templateFilePath) {
-            fs.mkdirSync(path.dirname(route.templateFilePath), {
-              recursive: true,
-            });
-            fs.writeFileSync(
+            writeEntryTemplate(
               route.templateFilePath,
               renderRouteTemplate(
                 route,
@@ -337,10 +353,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          fs.mkdirSync(path.dirname(route.templateFilePath!), {
-            recursive: true,
-          });
-          fs.writeFileSync(
+          writeEntryTemplate(
             route.templateFilePath!,
             renderRouteTemplate(
               route,

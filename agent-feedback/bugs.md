@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Invalidate the `.marko` server-entries when a `+layout` is added so it isn't silently ignored
-
-`packages/run/src/vite/plugin.ts` › `configureServer` | 2026-07-19 | impact:med | effort:med
-
-Adding a `+layout.marko` to an existing route directory in dev does not wrap that directory's routes until the layout is later edited again (or the server restarts): requests keep rendering without the layout. Layout composition lives in the generated `.marko` server-entry, which nests `[...route.layouts, route.page]` into `<Layout><Page/></Layout>` (`codegen/index.ts:60-70`, `writeEntryTemplateTag` at `:75-98`), not in the JS entry. When a file is added the watcher clears the virtual-file caches (`plugin.ts:620-622`) and, because a freshly-added file has no importers in the module graph, takes the else branch that synthetically invalidates virtual files: `for (const file of virtualFiles.keys()) if (!file.endsWith(".marko")) devServer.watcher.emit("change", file)` (`plugin.ts:630-636`). The `!file.endsWith(".marko")` guard explicitly SKIPS the `.marko` server-entries, which are exactly the modules whose layout wrapping changed, so Vite keeps serving the cached pre-layout transform until an independent content edit invalidates that `.marko` (a byte-identical rewrite does not, since it produces no change event). This is the same watcher else-branch as the dx entry "Adding or removing one route full-reloads every route module", but the opposite failure mode: that entry is about too-BROAD JS invalidation (reload noise); this is a correctness bug from too-NARROW `.marko` invalidation (an added layout silently does not render, so the developer thinks their layout is broken). A fix must both scope the JS invalidation AND still invalidate the affected `.marko` server-entries.
-
 ## Serve dotted dynamic/catch-all paths on the Netlify edge adapter instead of dropping them via `pattern: "^[^.]*$"`
 
 `packages/adapters/netlify/src/default-edge-entry.ts` › `config` | 2026-07-19 | impact:high | effort:med
