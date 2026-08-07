@@ -122,6 +122,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   const externalRoutes = new Set<ExternalRoutes>();
   const seenErrors = new Set<string>();
   const virtualFiles = new Map<string, string>();
+  const writtenEntryTemplates = new Map<string, string>();
 
   let times: TimeMetrics = {
     routesBuild: 0,
@@ -279,6 +280,26 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }));
   }
 
+  async function writeEntryTemplate(context: PluginContext, route: Route) {
+    const filePath = route.templateFilePath!;
+    const source = renderRouteTemplate(
+      route,
+      await getMarkoApiForRoute(context, route),
+      !isBuild,
+    );
+    const previous = writtenEntryTemplates.get(filePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, source);
+    writtenEntryTemplates.set(filePath, source);
+    if (devServer && previous !== undefined && previous !== source) {
+      // Tell Vite and @marko/vite the template changed so they drop what
+      // they cached for it. Rewriting the whole directory does not reliably
+      // produce the file events they listen for.
+      devServer.watcher.emit("all", "change", filePath);
+      devServer.watcher.emit("change", filePath);
+    }
+  }
+
   let renderVirtualFilesResult: Promise<void> | undefined;
   function renderVirtualFiles(context: PluginContext) {
     return (renderVirtualFilesResult ??= (async () => {
@@ -318,17 +339,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           if (route.templateFilePath) {
-            fs.mkdirSync(path.dirname(route.templateFilePath), {
-              recursive: true,
-            });
-            fs.writeFileSync(
-              route.templateFilePath,
-              renderRouteTemplate(
-                route,
-                await getMarkoApiForRoute(context, route),
-                !isBuild,
-              ),
-            );
+            await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
@@ -337,17 +348,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          fs.mkdirSync(path.dirname(route.templateFilePath!), {
-            recursive: true,
-          });
-          fs.writeFileSync(
-            route.templateFilePath!,
-            renderRouteTemplate(
-              route,
-              await getMarkoApiForRoute(context, route),
-              !isBuild,
-            ),
-          );
+          await writeEntryTemplate(context, route);
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
