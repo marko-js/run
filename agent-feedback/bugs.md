@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Narrow `Route["body"]` to `undefined` for bodyless verbs so `$global.body`/`ctx.parent.body` match the runtime
-
-`packages/run/src/runtime/types.ts` › `Route` | 2026-07-19 | impact:med | effort:low
-
-`Route["body"]` is `Fallback<Def["json"], Fallback<Def["form"], undefined | Promise<unknown>>>` (`types.ts:286-289`) with no verb check, so when a route declares no json/form validator (`Def["json"]`/`Def["form"]` are `never`) body widens to `undefined | Promise<unknown>` regardless of HTTP verb. Because `ContextForFile` (the `$global`/`Run.Context` type, `types.ts:870-897`), `GetContext`/`ContextForPath` (`types.ts:825-836`), and the default `ctx.parent: Context` (`types.ts:982`) all resolve `body` through `Route`, every GET page's `$global.body`, every `GetContext(...).body`, and every `ctx.parent.body` types as `Promise<unknown> | undefined` even though the runtime only creates a body thenable when `route.options.json || route.options.form` is set (`internal.ts:191-193`), so a GET body is always `undefined` at runtime. The sibling `RouteForFileDef["body"]` (`types.ts:536-546`) gets this right, guarding with `Verb extends HttpVerbWithBody ? (json?/form?) : undefined`, and it feeds the `DefineHandler` `ctx` param via `ContextForFileWithOptions` (`types.ts:553-563`). The result is an intra-file contradiction: inside one `Run.GET((ctx)=>...)` handler `ctx.body` is `undefined` while `$global.body`/`Run.Context.body` for the same GET route is `Promise<unknown> | undefined`, inviting dead `await ctx.body` handling where the runtime guarantees `undefined`. Fix: gate `Route["body"]`'s fallback on `Def["method"] extends HttpVerbWithBody` (or the presence of a body validator), returning `undefined` otherwise, mirroring `RouteForFileDef`. Distinct from the `ctx.search`-typed-`undefined` entry (`types.ts:246`) and the `data`-fallback-`unknown` entry (`types.ts:290`): this is the `body` field, and the novel angle is the same-file disagreement.
-
 ## Isolate route compile errors in dev so one broken `.marko` doesn't 500 every route
 
 `packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-07-19 | impact:med | effort:med

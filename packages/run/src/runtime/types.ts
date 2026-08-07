@@ -285,7 +285,12 @@ export interface Route<Def extends RouteDef = RouteDef, Data = unknown> {
   search: Def["search"];
   body: Fallback<
     Def["json"],
-    Fallback<Def["form"], undefined | Promise<unknown>>
+    Fallback<
+      Def["form"],
+      [Extract<Def["method"], HttpVerbWithBody>] extends [never]
+        ? undefined
+        : undefined | Promise<unknown>
+    >
   >;
   data: Data extends [infer T extends Record<string, unknown>]
     ? T

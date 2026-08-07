@@ -3,7 +3,6 @@ import snap from "mocha-snap";
 import path from "path";
 import url from "url";
 
-import type { RoutableFile } from "../../../dist/vite";
 import { prepareError } from "../../adapter/utils";
 import {
   renderMiddleware,
@@ -15,6 +14,7 @@ import {
 import { httpVerbs } from "../constants";
 import { buildRoutes, type RouteSource } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
+import type { RoutableFile } from "../types";
 import type { BuiltRoutes, HttpVerb, Route } from "../types";
 import { createDirectory } from "./utils/fakeFS";
 import { normalizeErrorStack } from "./utils/sanitize";

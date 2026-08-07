@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*"],
+  "exclude": ["src/__tests__/fixtures/**", "src/vite/__tests__/fixtures/**"],
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "emitDeclarationOnly": false
+  }
+}
