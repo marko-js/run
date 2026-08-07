@@ -8,8 +8,17 @@ report=report.2024.pdf
 ctx=>staticFileWins(ctx)
 
 # Step 1
-ctx=>dottedPathRoutes(ctx)
+ctx=>staticFileWinsForHead(ctx)
 
 # Step 2
-ctx=>unmatchedPathIs404(ctx)
+ctx=>extensionlessStaticFileServes(ctx)
+
+# Step 3
+ctx=>dottedPathRoutes(ctx)
+
+# Step 4
+ctx=>postSkipsTheStaticFile(ctx)
+
+# Step 5
+ctx=>unmatchedPathRendersThe404Page(ctx)
 
