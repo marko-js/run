@@ -4,10 +4,8 @@ import type { Config, Context } from "@netlify/edge-functions";
 import type { NetlifyEdgePlatformInfo } from "./types";
 
 export default async function (request: Request, context: Context) {
-  // Only a request the platform could answer with a file gets a `next()`, and
-  // only up front when the path looks like one -- that lookup races the
-  // router, so it costs no latency. Everything else asks only once the router
-  // has passed, which keeps the common route request down to a single pass.
+  // Race the platform's file lookup with the router when the path looks like
+  // a file; otherwise ask only after the router has no better answer.
   const mayBeStatic = request.method === "GET" || request.method === "HEAD";
   const [response, eagerFallback] = await Promise.all([
     fetch<NetlifyEdgePlatformInfo>(request, context),
@@ -18,7 +16,7 @@ export default async function (request: Request, context: Context) {
 
   const fallback =
     eagerFallback ||
-    (mayBeStatic && (!response || response.status === 404)
+    (!response || (mayBeStatic && response.status === 404)
       ? await context.next()
       : undefined);
 
