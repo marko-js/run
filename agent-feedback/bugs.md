@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Isolate route compile errors in dev so one broken `.marko` doesn't 500 every route
-
-`packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-07-19 | impact:med | effort:med
-
-A syntax error in a single route file makes every SSR route return HTTP 500 in dev, each 500's body being that one file's compile error. The generated router statically imports every route at top level, `for (const route of routes.list) imports.writeLines(import { get0, get0_options, ... } from '.../__marko-run__route')` (`codegen/index.ts:364-378`), and each route entry statically imports its page, `import page from "<+page.marko>"` (`codegen/index.ts:173`). The dev server loads this one router module on EVERY request via `await devServer.ssrLoadModule("@marko/run/router")` (`packages/run/src/adapter/dev-server.ts:66-72`) before dispatching to `globalThis.__marko_run__.fetch`. When any one route's `.marko` fails to transform, `ssrLoadModule` throws, `next(err)` runs, and the request 500s regardless of which route was requested; recovery is clean once the typo is fixed. Fix: dynamically import routes in dev (per-route `import()` behind the trie match) so a broken module fails only its own route, as SvelteKit/Next do. Distinct from the existing "Deleting a route file wedges the dev server" bug (`plugin.ts:726`): that is triggered by `unlink`, prints "Does the file exist?", and never self-heals; this is triggered by a compile error in an existing file, surfaces the Marko parse error, and self-heals on fix, with the eager router import graph (`codegen/index.ts:364-382` + `dev-server.ts:66-72`) as the mechanism rather than the load-hook fallback.
-
 ## Invalidate the `.marko` server-entries when a `+layout` is added so it isn't silently ignored
 
 `packages/run/src/vite/plugin.ts` › `configureServer` | 2026-07-19 | impact:med | effort:med
