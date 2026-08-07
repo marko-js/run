@@ -84,25 +84,3 @@ declare module "../src/routes/reports/$$rest/+page.marko" {
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
   }
 }
-
-declare module "../src/routes/+404.marko" {
-  const Run: $.Namespace<any>;
-  namespace Run {
-    type Context = $.ContextForFile<any> & Marko.Global;
-  }
-
-  /** @deprecated use `Run` namespace instead */
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = globalThis.MarkoRun.Route;
-    export type Context = Run.Context;
-    export type Handler = $.HandlerLike<Route>;
-    export type GET = $.HandlerLike<Route, "GET">;
-    export type HEAD = $.HandlerLike<Route, "HEAD">;
-    export type POST = $.HandlerLike<Route, "POST">;
-    export type PUT = $.HandlerLike<Route, "PUT">;
-    export type DELETE = $.HandlerLike<Route, "DELETE">;
-    export type PATCH = $.HandlerLike<Route, "PATCH">;
-    export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
-  }
-}

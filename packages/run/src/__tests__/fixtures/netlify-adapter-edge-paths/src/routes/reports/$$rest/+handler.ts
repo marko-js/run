@@ -1,5 +1,5 @@
 export const POST = Run.POST((context) => {
-  // Declining lets the platform answer -- covered by the passthrough step.
+  // Declining hands the path back to the platform, which has a file here.
   if (context.params.rest === "passthrough.bin") {
     throw null;
   }

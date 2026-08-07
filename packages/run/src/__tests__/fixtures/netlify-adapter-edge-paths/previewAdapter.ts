@@ -65,24 +65,36 @@ export default (): Adapter => ({
 interface EdgeConfig {
   path?: string | string[];
   pattern?: string | string[];
+  excludedPath?: string | string[];
 }
 type EdgeFunction = (
   request: Request,
   context: { next(): Promise<Response> },
 ) => Promise<Response>;
 
-// Enough of the declaration syntax to cover what the entry declares.
+// Enough of the declaration syntax to cover what the entry declares: a
+// literal path, `:name` for one segment, and `*` for the rest. An excluded
+// path keeps the platform's own handling whichever declaration matched it.
 function selects(config: EdgeConfig, pathname: string) {
-  const patterns = [
+  if (toMatchers(config.excludedPath).some((it) => it.test(pathname))) {
+    return false;
+  }
+  return [
     ...toArray(config.pattern).map((pattern) => new RegExp(pattern)),
-    ...toArray(config.path).map(
-      (glob) =>
-        new RegExp(
-          `^${glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`,
-        ),
-    ),
-  ];
-  return patterns.some((pattern) => pattern.test(pathname));
+    ...toMatchers(config.path),
+  ].some((it) => it.test(pathname));
+}
+
+function toMatchers(paths: string | string[] | undefined) {
+  return toArray(paths).map(
+    (declared) =>
+      new RegExp(
+        `^${declared
+          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/:[^/]+/g, "[^/]+")
+          .replace(/\*/g, ".*")}$`,
+      ),
+  );
 }
 
 function toArray(value: string | string[] | undefined) {

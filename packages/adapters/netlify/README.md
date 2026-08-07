@@ -60,4 +60,6 @@ The netlify.toml will also need to specify the edge `edge_functions` directory i
   edge_functions = "dist"
 ```
 
-The default edge function runs on every path, so routes may contain dots (`/reports/report.2024.pdf`, `/@jane.doe`) and the app's `+404` page applies to unmatched paths. A published static file still wins over a route — mirroring the functions adapter's `preferStatic` — because `GET` and `HEAD` requests also ask Netlify for a matching file: up front (in parallel with the router) when the path looks like a file, and otherwise only once the router has no answer. To skip the edge function entirely for paths you know are static, provide your own entry file and narrow its exported `config` with [`excludedPath`](https://docs.netlify.com/edge-functions/declarations/).
+The default edge function declares the app's routes as its [path declarations](https://docs.netlify.com/edge-functions/declarations/), so route paths may contain dots (`/reports/report.2024.pdf`, `/@jane.doe`) and every other path — published files included — stays with Netlify's own static handling. The build's assets directory is excluded from the declarations so a catch-all route cannot claim it.
+
+Two consequences are worth knowing. A catch-all route claims published files that fall under it; a handler can `throw null` to hand such a path back to Netlify. And because unmatched paths never reach the app, Netlify answers them rather than the app's `+404` page — publish a `404.html` to customize that.
