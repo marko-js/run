@@ -21,7 +21,8 @@ const resolvedRoutesId = `\0${routesId}`;
 // The CLI evaluates the vite config to resolve the adapter and the build
 // evaluates it again, so the instance that contributes the plugin is not the
 // one that receives the routes. Keyed by root so concurrent builds of
-// different apps stay apart.
+// different apps stay apart; the two sides spell that root differently on
+// windows, so both go through `path.resolve`.
 const declarationsByRoot = new Map<string, EdgeDeclaration>();
 
 interface EdgeDeclaration {
@@ -57,7 +58,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
             // the entry in `routesGenerated`.
             const router = await this.resolve("@marko/run/router");
             if (router) await this.load({ id: router.id });
-            const declaration = declarationsByRoot.get(root) || {
+            const declaration = declarationsByRoot.get(rootKey(root)) || {
               path: [],
               excludedPath: [],
             };
@@ -68,7 +69,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
 
     configure(config) {
-      root = config.root;
+      root = rootKey(config.root);
     },
 
     routesGenerated({ routes }) {
@@ -175,6 +176,12 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
   };
 }
+// The plugin side is handed the CLI's cwd and the adapter side a normalized
+// path, which are the same string everywhere but windows.
+function rootKey(root: string) {
+  return path.resolve(root).replace(/\\/g, "/");
+}
+
 // Netlify only runs an edge function for the paths its declaration selects,
 // so every route becomes a declaration and everything else -- published
 // files included -- stays with the platform's own static handling.
