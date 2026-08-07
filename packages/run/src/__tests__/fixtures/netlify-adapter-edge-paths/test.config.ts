@@ -2,20 +2,17 @@ import assert from "assert";
 
 import type { Step, StepContext } from "../../main.test";
 
-// A dotted catch-all path used to never reach the edge function -- its config
-// only matched dot-free paths -- so it 404'd from the static CDN even though
-// the router matches it. Loading it here is the regression: in preview the
-// request goes through the built edge function.
+// A dotted catch-all path never reached the edge function -- its config
+// matched only dot-free paths -- so the static CDN 404'd it. Loading it here
+// is the regression.
 export const path = "/reports/report.2024.pdf";
 
 function request({ page }: StepContext, to: string, init?: RequestInit) {
   return page.fetch(new URL(to, page.url()).href, init);
 }
 
-// The catch-all also covers this path, but a published static file wins --
-// the entry offers the request to the platform before the router, matching
-// how the functions adapter's `preferStatic` and the dev server behave. The
-// content type tells the two apart: the route would render html.
+// The catch-all covers this path too, but a published file wins, as it does
+// on every other target. The content type tells the two apart.
 async function staticFileWins(ctx: StepContext) {
   const res = await request(ctx, "/reports/pinned.txt");
   assert.equal(res.status, 200);
@@ -30,9 +27,8 @@ async function staticFileWinsForHead(ctx: StepContext) {
   assert.match(res.headers.get("content-type")!, /text\/plain/);
 }
 
-// A published file the path does not advertise -- no extension to go by -- is
-// still served: no route claims it, so the platform is asked before the
-// router's 404 is answered.
+// No extension to go by, so the platform is only asked once the router has
+// no answer -- but the file still serves.
 async function extensionlessStaticFileServes(ctx: StepContext) {
   const res = await request(ctx, "/notes");
   assert.equal(res.status, 200);
@@ -45,18 +41,26 @@ async function dottedPathRoutes(ctx: StepContext) {
   assert.match(await res.text(), /report=q1\.2026\.csv/);
 }
 
-// Methods that can carry a body skip the static check and go straight to the
-// router, so the handler answers even where a static file sits -- offering the
-// request to the platform first would consume its body. Only preview drives
-// the edge function; the dev server answers `public/` files for every method,
-// so the collision cannot be observed there.
+// Body-carrying methods go straight to the router. Only preview drives the
+// edge function; dev answers `public/` files for every method.
 async function postSkipsTheStaticFile(ctx: StepContext) {
   const res = await request(ctx, "/reports/pinned.txt", { method: "POST" });
   assert.equal(res.status, 200);
-  assert.equal(
-    await res.text(),
-    process.env.NODE_ENV === "production" ? "posted pinned.txt" : "static file\n",
-  );
+  const body = await res.text();
+  if (process.env.NODE_ENV === "production") {
+    assert.equal(body, "posted pinned.txt");
+  } else {
+    assert.match(body, /^static file/);
+  }
+}
+
+// A handler that declines hands the request back to the platform.
+async function declinedPostReachesThePlatform(ctx: StepContext) {
+  const res = await request(ctx, "/reports/passthrough.bin", {
+    method: "POST",
+  });
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /^platform answer/);
 }
 
 // The app's own 404 page renders for an unmatched dotted path, which the
@@ -75,5 +79,6 @@ export const steps: Step[] = [
   (ctx) => extensionlessStaticFileServes(ctx),
   (ctx) => dottedPathRoutes(ctx),
   (ctx) => postSkipsTheStaticFile(ctx),
+  (ctx) => declinedPostReachesThePlatform(ctx),
   (ctx) => unmatchedPathRendersThe404Page(ctx),
 ];

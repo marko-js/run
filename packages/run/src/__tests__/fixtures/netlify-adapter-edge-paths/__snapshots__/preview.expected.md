@@ -20,5 +20,8 @@ ctx=>dottedPathRoutes(ctx)
 ctx=>postSkipsTheStaticFile(ctx)
 
 # Step 5
+ctx=>declinedPostReachesThePlatform(ctx)
+
+# Step 6
 ctx=>unmatchedPathRendersThe404Page(ctx)
 
