@@ -59,3 +59,5 @@ The netlify.toml will also need to specify the edge `edge_functions` directory i
   publish = "dist/public"
   edge_functions = "dist"
 ```
+
+The default edge function runs on every path. For `GET` and `HEAD` requests it first lets Netlify serve a matching static file — mirroring the functions adapter's `preferStatic` — and otherwise hands the request to the app's router, so routes may contain dots (`/reports/report.2024.pdf`, `/@jane.doe`) and the app's `+404` page applies to unmatched paths. To skip the edge function entirely for paths you know are static, provide your own entry file and narrow its exported `config` with [`excludedPath`](https://docs.netlify.com/edge-functions/declarations/).
