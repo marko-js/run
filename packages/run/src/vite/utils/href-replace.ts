@@ -325,11 +325,11 @@ function walk(node: Node, visitor: (node: Node) => void) {
 }
 
 /**
- * Parse a route path pattern into its static segments and param descriptors.
+ * Parse a route path pattern into its static segments and param names.
  * Mirrors the parsing logic in url-builder.ts.
  *
  * Example: "/users/$id/posts/$$rest"
- * → segments: ["/users/", "/posts/"], params: [{name:"id",rest:false},{name:"rest",rest:true}]
+ * → { segments: ["/users/", "/posts/", ""], params: ["id", "rest"] }
  */
 function parsePathPattern(path: string): ParsedPath {
   const parts = parsePathParts(path);
@@ -441,7 +441,7 @@ function tryStaticEval(node: Node): { value: unknown } | null {
 function tryExtractObjectProperty(obj: ObjectExpression, propertyName: string) {
   const props = obj.properties;
 
-  // Backwards: a spread before the property could have overridden it.
+  // Scanning from the end: a spread after the property would override it.
   for (let i = props.length - 1; i >= 0; i--) {
     const prop = props[i];
     if (prop.type === "SpreadElement") return null;

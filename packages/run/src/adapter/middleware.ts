@@ -145,7 +145,7 @@ export function createMiddleware(
       });
 
       // An own property because `new Request(url, { signal })` wires the signal
-      // into undici, which on some node releases retains the request until it.
+      // into undici, which can retain the request until the signal is collected.
       Object.defineProperty(request, "signal", {
         configurable: true,
         value: controller.signal,
