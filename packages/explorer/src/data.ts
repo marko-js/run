@@ -51,35 +51,6 @@ export interface RouteListItem {
   size?: [string, string];
 }
 
-const HttpVerbOrder = {
-  get: 0,
-  post: 1,
-  put: 2,
-  patch: 3,
-  delete: 4,
-  head: 5,
-  options: 6,
-};
-
-function getVerbs(route: Route) {
-  const verbs = route.handler?.verbs?.slice() || [];
-  if (route.page && !verbs.includes("get")) {
-    verbs.unshift("get");
-  }
-  return verbs.sort((a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]);
-}
-
-function formatPath(path: string) {
-  return path
-    .replace(/\/\$\$(.*)$/, (_, p) => "/" + `*${p}`) // replace /$$ catch-alls
-    .replace(/\/\$([^/]+)/g, (_, p) => "/" + `:${p}`); // replace parameters
-}
-
-async function getData() {
-  const json = await fs.promises.readFile(dataFilePath, "utf-8");
-  return JSON.parse(json) as ExplorerData;
-}
-
 export async function getRoutes() {
   const data = await getData();
 
@@ -175,4 +146,33 @@ export function getFileStream(name: string) {
     return fs.createReadStream(filePath, { encoding: "utf-8" });
   }
   return undefined;
+}
+
+const HttpVerbOrder = {
+  get: 0,
+  post: 1,
+  put: 2,
+  patch: 3,
+  delete: 4,
+  head: 5,
+  options: 6,
+};
+
+function getVerbs(route: Route) {
+  const verbs = route.handler?.verbs?.slice() || [];
+  if (route.page && !verbs.includes("get")) {
+    verbs.unshift("get");
+  }
+  return verbs.sort((a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]);
+}
+
+function formatPath(path: string) {
+  return path
+    .replace(/\/\$\$(.*)$/, (_, p) => "/" + `*${p}`) // replace /$$ catch-alls
+    .replace(/\/\$([^/]+)/g, (_, p) => "/" + `:${p}`); // replace parameters
+}
+
+async function getData() {
+  const json = await fs.promises.readFile(dataFilePath, "utf-8");
+  return JSON.parse(json) as ExplorerData;
 }

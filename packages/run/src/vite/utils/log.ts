@@ -18,12 +18,6 @@ const HttpVerbColors = {
   options: kleur.grey,
 };
 
-function verbColor(verb: HttpVerb) {
-  return verb in HttpVerbColors
-    ? HttpVerbColors[verb as keyof typeof HttpVerbColors]
-    : kleur.gray;
-}
-
 export function logRoutesTable(
   routes: BuiltRoutes,
   externalRoutes: ExternalRoutes[],
@@ -227,4 +221,10 @@ function prettyPath(path: string) {
     (_, type, tick, key) =>
       "/" + type + tick + kleur.bold(kleur.dim(key)) + tick,
   );
+}
+
+function verbColor(verb: HttpVerb) {
+  return verb in HttpVerbColors
+    ? HttpVerbColors[verb as keyof typeof HttpVerbColors]
+    : kleur.gray;
 }

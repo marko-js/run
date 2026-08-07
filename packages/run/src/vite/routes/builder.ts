@@ -24,39 +24,6 @@ export function isRoutableFile(filename: string) {
   return RoutableFileRegex.test(filename);
 }
 
-// @ebay/arc names adaptive variants `file[flag].ext` and brackets directories
-// too; stripped before classifying so `[` and `+` never read as route syntax.
-const bracketFlagReg = /\[[^\]]*\]/g;
-
-function warnLookalike(message: string): void {
-  // The cheat-sheet pointer is agent-gated; humans just see the convention.
-  console.warn(`[marko-run] ${message}${agentRouteFixGuide()}`);
-}
-
-// Flags a file that looks like a botched route yet silently is not routable.
-// Brackets alone never qualify: they are arc's syntax, not Marko Run's.
-function warnNonRoutableLookalike(name: string, filePath: string): void {
-  // `+page[mobile].marko` is arc's variant of a real `+page.marko`, not a break.
-  const base = name.replace(bracketFlagReg, "");
-  if (RoutableFileRegex.test(base)) return;
-
-  const relativeFilePath = path.relative(process.cwd(), filePath);
-  if (base.includes("+")) {
-    const hint = /^\+server\./i.test(base)
-      ? "request handlers are named `+handler.<ext>`"
-      : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko` and `+500.marko`";
-    warnLookalike(`${relativeFilePath} is not routable; ${hint}.`);
-  } else if (base[0] === "$") {
-    const stem = base.replace(/\.[^.]+$/, "");
-    const suggestion = /\.marko$/i.test(base)
-      ? `${stem}+page.marko`
-      : `${stem}+handler${base.slice(base.lastIndexOf("."))}`;
-    warnLookalike(
-      `${relativeFilePath} is not routable; route files need a \`+type\` suffix after their path segments, e.g. \`${suggestion}\`.`,
-    );
-  }
-}
-
 export function matchRoutableFile(filename: string) {
   const match = filename.match(RoutableFileRegex);
   return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
@@ -299,4 +266,37 @@ export async function buildRoutes(
 
 function replaceInvalidFilenameChars(str: string) {
   return str.replace(/[<>:"/\\|?*_]+/g, "-");
+}
+
+// @ebay/arc names adaptive variants `file[flag].ext` and brackets directories
+// too; stripped before classifying so `[` and `+` never read as route syntax.
+const bracketFlagReg = /\[[^\]]*\]/g;
+
+function warnLookalike(message: string): void {
+  // The cheat-sheet pointer is agent-gated; humans just see the convention.
+  console.warn(`[marko-run] ${message}${agentRouteFixGuide()}`);
+}
+
+// Flags a file that looks like a botched route yet silently is not routable.
+// Brackets alone never qualify: they are arc's syntax, not Marko Run's.
+function warnNonRoutableLookalike(name: string, filePath: string): void {
+  // `+page[mobile].marko` is arc's variant of a real `+page.marko`, not a break.
+  const base = name.replace(bracketFlagReg, "");
+  if (RoutableFileRegex.test(base)) return;
+
+  const relativeFilePath = path.relative(process.cwd(), filePath);
+  if (base.includes("+")) {
+    const hint = /^\+server\./i.test(base)
+      ? "request handlers are named `+handler.<ext>`"
+      : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko` and `+500.marko`";
+    warnLookalike(`${relativeFilePath} is not routable; ${hint}.`);
+  } else if (base[0] === "$") {
+    const stem = base.replace(/\.[^.]+$/, "");
+    const suggestion = /\.marko$/i.test(base)
+      ? `${stem}+page.marko`
+      : `${stem}+handler${base.slice(base.lastIndexOf("."))}`;
+    warnLookalike(
+      `${relativeFilePath} is not routable; route files need a \`+type\` suffix after their path segments, e.g. \`${suggestion}\`.`,
+    );
+  }
 }

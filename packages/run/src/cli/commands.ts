@@ -231,20 +231,6 @@ export async function build(
   });
 }
 
-function findFileWithExt(
-  dir: string,
-  base: string,
-  extensions: string[] = defaultConfigFileExts,
-): string | undefined {
-  for (const ext of extensions) {
-    const filePath = path.join(dir, base + ext);
-    if (fs.existsSync(filePath)) {
-      return filePath;
-    }
-  }
-  return undefined;
-}
-
 export async function getViteConfig(
   dir: string,
   configFile?: string,
@@ -267,4 +253,18 @@ export async function getViteConfig(
   }
 
   return fallback;
+}
+
+function findFileWithExt(
+  dir: string,
+  base: string,
+  extensions: string[] = defaultConfigFileExts,
+): string | undefined {
+  for (const ext of extensions) {
+    const filePath = path.join(dir, base + ext);
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  return undefined;
 }

@@ -4,21 +4,6 @@ import type { Rolldown } from "vite";
 
 type RolldownError = Rolldown.RolldownError;
 
-function stripAnsi(string: string) {
-  return string.replace(
-    /* cspell:disable-next-line */
-    /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
-    "",
-  );
-}
-
-function cleanStack(stack: string) {
-  return stack
-    .split(/\n/)
-    .filter((l) => /^\s*at/.test(l))
-    .join("\n");
-}
-
 export function prepareError(err: Error | RolldownError) {
   return {
     message: stripAnsi(err.message),
@@ -202,4 +187,19 @@ B╲   ╲ GG‾‾‾‾ O╱   ╱ P╱   ╱
   }
 
   return { lines, width };
+}
+
+function stripAnsi(string: string) {
+  return string.replace(
+    /* cspell:disable-next-line */
+    /([\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><])/g,
+    "",
+  );
+}
+
+function cleanStack(stack: string) {
+  return stack
+    .split(/\n/)
+    .filter((l) => /^\s*at/.test(l))
+    .join("\n");
 }

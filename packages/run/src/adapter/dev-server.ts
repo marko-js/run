@@ -75,19 +75,6 @@ export async function createDevServer(
   return devServer;
 }
 
-const ClientIdCookieName = "marko-run-client-id";
-
-function getClientId(req: IncomingMessage) {
-  if (req.headers.cookie) {
-    const cookie = req.headers.cookie
-      .split(/;\s+/)
-      .find((c) => c.startsWith(ClientIdCookieName));
-    if (cookie) {
-      return cookie.slice(ClientIdCookieName.length + 1);
-    }
-  }
-}
-
 let devGlobal: MarkoRunDev | undefined;
 export function getDevGlobal(): MarkoRunDev {
   if (!devGlobal) {
@@ -199,4 +186,17 @@ export function createErrorMiddleware(
 
 function stripHtml(string: string) {
   return string.replace(/</g, "\\u003c");
+}
+
+const ClientIdCookieName = "marko-run-client-id";
+
+function getClientId(req: IncomingMessage) {
+  if (req.headers.cookie) {
+    const cookie = req.headers.cookie
+      .split(/;\s+/)
+      .find((c) => c.startsWith(ClientIdCookieName));
+    if (cookie) {
+      return cookie.slice(ClientIdCookieName.length + 1);
+    }
+  }
 }

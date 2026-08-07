@@ -853,34 +853,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   ];
 }
 
-function mergeOutputOptions(
-  defaults: OutputOptions | OutputOptions[],
-  existing: OutputOptions | OutputOptions[] | undefined,
-): OutputOptions | OutputOptions[] {
-  if (!existing) {
-    return defaults;
-  } else if (Array.isArray(existing)) {
-    return existing.map((options) => ({
-      ...defaults,
-      ...options,
-    }));
-  }
-  return {
-    ...defaults,
-    ...existing,
-  };
-}
-
-async function globFileExists(root: string, pattern: string) {
-  return (await glob(pattern, { root })).length > 0;
-}
-
-async function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) {
-    await fs.promises.mkdir(dir, { recursive: true });
-  }
-}
-
 export async function getPackageData(dir: string): Promise<PackageData | null> {
   do {
     const pkgPath = path.join(dir, "package.json");
@@ -931,30 +903,6 @@ export async function resolveAdapter(
   return module.default();
 }
 
-const markoEntryFileRegex = /([^/\\]+)\.marko$/;
-function getEntryFileName(file: string | undefined | null) {
-  const match = file && markoEntryFileRegex.exec(file);
-  return match ? match[1] : undefined;
-}
-
-function cleanFileName(name: string) {
-  return name
-    .replace(/\.[^/.]+$/, "")
-    .replace(/[^a-zA-Z0-9._[\]-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function getPlugin(config: ResolvedConfig):
-  | Plugin<{
-      addExternalRoutes(routes: ExternalRoutes): () => void;
-    }>
-  | undefined {
-  return config.plugins.find(
-    (plugin) => plugin.name === `${PLUGIN_NAME_PREFIX}:pre`,
-  );
-}
-
 export function isPluginIncluded(config: ResolvedConfig) {
   return !!getPlugin(config);
 }
@@ -965,20 +913,6 @@ export function getApi(config: ResolvedConfig) {
     throw new Error("Marko Run vite plugin not found");
   }
   return plugin.api!;
-}
-
-function getImporters(
-  module: ModuleNode,
-  fileName: string,
-  seen: Set<string> = new Set(),
-) {
-  for (const importer of module.importers) {
-    if (importer.id && !seen.has(importer.id)) {
-      seen.add(importer.id);
-      getImporters(importer, fileName, seen);
-    }
-  }
-  return seen;
 }
 
 export const defaultConfigPlugin: Plugin = {
@@ -1021,4 +955,70 @@ function getBrowserslistTargets(path: string) {
       return targets;
     }
   }
+}
+
+function mergeOutputOptions(
+  defaults: OutputOptions | OutputOptions[],
+  existing: OutputOptions | OutputOptions[] | undefined,
+): OutputOptions | OutputOptions[] {
+  if (!existing) {
+    return defaults;
+  } else if (Array.isArray(existing)) {
+    return existing.map((options) => ({
+      ...defaults,
+      ...options,
+    }));
+  }
+  return {
+    ...defaults,
+    ...existing,
+  };
+}
+
+async function globFileExists(root: string, pattern: string) {
+  return (await glob(pattern, { root })).length > 0;
+}
+
+async function ensureDir(dir: string) {
+  if (!fs.existsSync(dir)) {
+    await fs.promises.mkdir(dir, { recursive: true });
+  }
+}
+
+const markoEntryFileRegex = /([^/\\]+)\.marko$/;
+function getEntryFileName(file: string | undefined | null) {
+  const match = file && markoEntryFileRegex.exec(file);
+  return match ? match[1] : undefined;
+}
+
+function cleanFileName(name: string) {
+  return name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9._[\]-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function getPlugin(config: ResolvedConfig):
+  | Plugin<{
+      addExternalRoutes(routes: ExternalRoutes): () => void;
+    }>
+  | undefined {
+  return config.plugins.find(
+    (plugin) => plugin.name === `${PLUGIN_NAME_PREFIX}:pre`,
+  );
+}
+
+function getImporters(
+  module: ModuleNode,
+  fileName: string,
+  seen: Set<string> = new Set(),
+) {
+  for (const importer of module.importers) {
+    if (importer.id && !seen.has(importer.id)) {
+      seen.add(importer.id);
+      getImporters(importer, fileName, seen);
+    }
+  }
+  return seen;
 }

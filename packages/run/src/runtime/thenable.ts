@@ -9,6 +9,16 @@ export interface Thenable<T = any> extends Promise<T> {
   finally: Promise<T>["finally"];
 }
 
+export default function thenable<T>(fn: () => Promise<T>) {
+  return {
+    [kPromise]: null,
+    [kReadFn]: fn,
+    then: thenFn,
+    catch: catchFn,
+    finally: finallyFn,
+  } as Thenable<T>;
+}
+
 function thenFn(
   this: Thenable,
   resolve: Parameters<Thenable["then"]>[0],
@@ -26,14 +36,4 @@ function finallyFn(
   resolve: Parameters<Thenable["finally"]>[0],
 ) {
   return (this[kPromise] ||= this[kReadFn]()).finally(resolve);
-}
-
-export default function thenable<T>(fn: () => Promise<T>) {
-  return {
-    [kPromise]: null,
-    [kReadFn]: fn,
-    then: thenFn,
-    catch: catchFn,
-    finally: finallyFn,
-  } as Thenable<T>;
 }

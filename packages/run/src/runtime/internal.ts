@@ -94,125 +94,6 @@ let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   return toReadable(rendered);
 };
 
-// A lazy body, so constructing the `Response` pulls nothing and the node adapter
-// can take the render instead (see `kRender`). Must stay `iterator`'s only reader.
-function toResponseBody(
-  iterator: AsyncIterator<string>,
-): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  return new ReadableStream<Uint8Array>(
-    {
-      // `next()` does not always return a promise, and a rejected `pull`
-      // errors the stream, which is what the failure should do anyway.
-      async pull(ctrl) {
-        const { done, value } = await iterator.next();
-        if (done) ctrl.close();
-        else ctrl.enqueue(encoder.encode(value));
-      },
-      async cancel(reason) {
-        // An abandoned render's cleanup failure has nowhere to surface, and
-        // unhandled it would take the process down on a mid-render disconnect.
-        try {
-          await iterator.return?.(reason);
-        } catch {
-          // ignored
-        }
-      },
-    },
-    { highWaterMark: 0 },
-  );
-}
-
-function searchParamsToObject(params: URLSearchParams | FormData) {
-  const obj: Record<string, any> = {};
-  for (const [key, value] of params) {
-    if (key in obj) {
-      const prev = obj[key];
-      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
-    } else {
-      obj[key] = value;
-    }
-  }
-  return obj;
-}
-
-async function readBodyWithLimit(request: Request, maxBytes: number) {
-  if (maxBytes < 0) {
-    return await request.text();
-  }
-
-  const contentLength = request.headers.get("content-length");
-
-  if (contentLength !== null && Number(contentLength) > maxBytes) {
-    throw new Error("Request body too large");
-  }
-
-  if (!request.body) {
-    throw new Error("Missing request body");
-  }
-
-  const reader = request.body.getReader();
-  const bytes = new Uint8Array(maxBytes);
-  let receivedBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      if (receivedBytes + value.byteLength > maxBytes) {
-        await reader.cancel();
-        throw new Error("Request body too large");
-      }
-
-      bytes.set(value, receivedBytes);
-      receivedBytes += value.byteLength;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  return new TextDecoder("utf-8", { fatal: true }).decode(
-    bytes.subarray(0, receivedBytes),
-  );
-}
-
-async function readBody(route: RouteMatch, context: Context) {
-  const { request } = context;
-  const contentType = request.headers.get("Content-Type");
-  if (contentType?.includes("application/json")) {
-    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
-    const json =
-      maxBytes < 0
-        ? await request.json()
-        : JSON.parse(await readBodyWithLimit(request, maxBytes));
-    return validator ? validator(json) : json;
-  }
-  const {
-    maxParts = defaultMaxParts,
-    maxFiles = defaultMaxFiles,
-    maxFileBytes = defaultMaxBytes,
-    maxBytes = maxFiles * maxFileBytes,
-    onFile,
-    validator,
-  } = route.options.form ?? {};
-  const data = searchParamsToObject(
-    contentType?.includes("multipart/form-data")
-      ? await parseFormData(
-          request,
-          {
-            maxParts,
-            maxFiles,
-            maxFileSize: maxFileBytes,
-            maxTotalSize: maxBytes,
-          },
-          onFile ? (file) => onFile!(context, file) : undefined,
-        )
-      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
-  );
-  return validator ? validator(data) : data;
-}
-
 export function createContext(
   route: RouteMatch | null,
   request: Request,
@@ -473,24 +354,6 @@ export function normalizeHandler(
   return passthrough;
 }
 
-// A handler whose verb disagrees with its export never runs — the runtime gates
-// on the handler's own verb and answers 204. `Run.ALL` passes any method.
-function assertExportedVerb(
-  handler: RouteHandler | HandlerFunction,
-  verb?: string,
-) {
-  if (
-    verb &&
-    "verb" in handler &&
-    handler.verb !== verb &&
-    handler.verb !== "ALL"
-  ) {
-    throw new Error(
-      `The ${verb} export of a handler was defined with Run.${handler.verb} — it would never run, since the runtime only invokes it for ${handler.verb} requests`,
-    );
-  }
-}
-
 export function assertHandlerVerb(
   verb: HttpVerbOrAll,
   handler: HandlerFunction,
@@ -500,42 +363,6 @@ export function assertHandlerVerb(
       `Expected verb ${verb} but handler was defined with Run.${handler.verb}`,
     );
   }
-}
-
-function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
-  return (
-    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
-    handlers: undefined | HandlerFunction | HandlerFunction[],
-  ) => {
-    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
-
-    if (typeof optionsOrHandlers === "function") {
-      assertHandlerVerb(verb, optionsOrHandlers);
-      const _fn = optionsOrHandlers;
-      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = (_fn as any).options ?? {};
-    } else if (Array.isArray(optionsOrHandlers)) {
-      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
-      handler = compose(optionsOrHandlers) as any;
-      handler.options = mergeOptions(...optionsOrHandlers);
-    } else if (typeof handlers === "function") {
-      assertHandlerVerb(verb, handlers);
-      const _fn = handlers;
-      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = mergeOptions(_fn, optionsOrHandlers);
-    } else if (Array.isArray(handlers)) {
-      for (const h of handlers) assertHandlerVerb(verb, h);
-      handler = compose(handlers) as any;
-      handler.options = mergeOptions(...handlers, optionsOrHandlers);
-    } else {
-      handler = createPassthroughHandler() as any;
-      handler.options = mergeOptions(optionsOrHandlers);
-    }
-
-    handler.verb = verb;
-
-    return handler;
-  };
 }
 
 export function normalizeValidator<T>(validator: Validator<T> | undefined) {
@@ -559,15 +386,6 @@ export function normalizeValidator<T>(validator: Validator<T> | undefined) {
 const defaultMaxBytes = 1024 * 1024;
 const defaultMaxParts = 1000;
 const defaultMaxFiles = 20;
-
-// The object check comes first so the `in` probe never runs on a primitive,
-// which throws.
-function isValidator(option: unknown): option is Validator<any> {
-  return (
-    typeof option === "function" ||
-    (typeof option === "object" && option !== null && "~standard" in option)
-  );
-}
 
 export function mergeOptions(
   ...arr: (
@@ -656,10 +474,6 @@ export function stripResponseBody(
 
 export function passthrough() {}
 
-function createPassthroughHandler(): HandlerFunction {
-  return (_ctx, next) => next();
-}
-
 export function noContent() {
   return new Response(null, {
     status: 204,
@@ -672,4 +486,190 @@ export function notHandled() {
 
 export function notMatched() {
   return null;
+}
+
+// A lazy body, so constructing the `Response` pulls nothing and the node adapter
+// can take the render instead (see `kRender`). Must stay `iterator`'s only reader.
+function toResponseBody(
+  iterator: AsyncIterator<string>,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>(
+    {
+      // `next()` does not always return a promise, and a rejected `pull`
+      // errors the stream, which is what the failure should do anyway.
+      async pull(ctrl) {
+        const { done, value } = await iterator.next();
+        if (done) ctrl.close();
+        else ctrl.enqueue(encoder.encode(value));
+      },
+      async cancel(reason) {
+        // An abandoned render's cleanup failure has nowhere to surface, and
+        // unhandled it would take the process down on a mid-render disconnect.
+        try {
+          await iterator.return?.(reason);
+        } catch {
+          // ignored
+        }
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
+
+function searchParamsToObject(params: URLSearchParams | FormData) {
+  const obj: Record<string, any> = {};
+  for (const [key, value] of params) {
+    if (key in obj) {
+      const prev = obj[key];
+      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
+    } else {
+      obj[key] = value;
+    }
+  }
+  return obj;
+}
+
+async function readBodyWithLimit(request: Request, maxBytes: number) {
+  if (maxBytes < 0) {
+    return await request.text();
+  }
+
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength !== null && Number(contentLength) > maxBytes) {
+    throw new Error("Request body too large");
+  }
+
+  if (!request.body) {
+    throw new Error("Missing request body");
+  }
+
+  const reader = request.body.getReader();
+  const bytes = new Uint8Array(maxBytes);
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (receivedBytes + value.byteLength > maxBytes) {
+        await reader.cancel();
+        throw new Error("Request body too large");
+      }
+
+      bytes.set(value, receivedBytes);
+      receivedBytes += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return new TextDecoder("utf-8", { fatal: true }).decode(
+    bytes.subarray(0, receivedBytes),
+  );
+}
+
+async function readBody(route: RouteMatch, context: Context) {
+  const { request } = context;
+  const contentType = request.headers.get("Content-Type");
+  if (contentType?.includes("application/json")) {
+    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
+    const json =
+      maxBytes < 0
+        ? await request.json()
+        : JSON.parse(await readBodyWithLimit(request, maxBytes));
+    return validator ? validator(json) : json;
+  }
+  const {
+    maxParts = defaultMaxParts,
+    maxFiles = defaultMaxFiles,
+    maxFileBytes = defaultMaxBytes,
+    maxBytes = maxFiles * maxFileBytes,
+    onFile,
+    validator,
+  } = route.options.form ?? {};
+  const data = searchParamsToObject(
+    contentType?.includes("multipart/form-data")
+      ? await parseFormData(
+          request,
+          {
+            maxParts,
+            maxFiles,
+            maxFileSize: maxFileBytes,
+            maxTotalSize: maxBytes,
+          },
+          onFile ? (file) => onFile!(context, file) : undefined,
+        )
+      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+  );
+  return validator ? validator(data) : data;
+}
+
+// A handler whose verb disagrees with its export never runs — the runtime gates
+// on the handler's own verb and answers 204. `Run.ALL` passes any method.
+function assertExportedVerb(
+  handler: RouteHandler | HandlerFunction,
+  verb?: string,
+) {
+  if (
+    verb &&
+    "verb" in handler &&
+    handler.verb !== verb &&
+    handler.verb !== "ALL"
+  ) {
+    throw new Error(
+      `The ${verb} export of a handler was defined with Run.${handler.verb} — it would never run, since the runtime only invokes it for ${handler.verb} requests`,
+    );
+  }
+}
+
+function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
+  return (
+    optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
+    handlers: undefined | HandlerFunction | HandlerFunction[],
+  ) => {
+    let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
+
+    if (typeof optionsOrHandlers === "function") {
+      assertHandlerVerb(verb, optionsOrHandlers);
+      const _fn = optionsOrHandlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = (_fn as any).options ?? {};
+    } else if (Array.isArray(optionsOrHandlers)) {
+      for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
+      handler = compose(optionsOrHandlers) as any;
+      handler.options = mergeOptions(...optionsOrHandlers);
+    } else if (typeof handlers === "function") {
+      assertHandlerVerb(verb, handlers);
+      const _fn = handlers;
+      handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
+      handler.options = mergeOptions(_fn, optionsOrHandlers);
+    } else if (Array.isArray(handlers)) {
+      for (const h of handlers) assertHandlerVerb(verb, h);
+      handler = compose(handlers) as any;
+      handler.options = mergeOptions(...handlers, optionsOrHandlers);
+    } else {
+      handler = createPassthroughHandler() as any;
+      handler.options = mergeOptions(optionsOrHandlers);
+    }
+
+    handler.verb = verb;
+
+    return handler;
+  };
+}
+
+// The object check comes first so the `in` probe never runs on a primitive,
+// which throws.
+function isValidator(option: unknown): option is Validator<any> {
+  return (
+    typeof option === "function" ||
+    (typeof option === "object" && option !== null && "~standard" in option)
+  );
+}
+
+function createPassthroughHandler(): HandlerFunction {
+  return (_ctx, next) => next();
 }
