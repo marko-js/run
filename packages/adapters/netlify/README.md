@@ -59,3 +59,7 @@ The netlify.toml will also need to specify the edge `edge_functions` directory i
   publish = "dist/public"
   edge_functions = "dist"
 ```
+
+The default edge function declares the app's routes as its [path declarations](https://docs.netlify.com/edge-functions/declarations/), so route paths may contain dots (`/reports/report.2024.pdf`, `/@jane.doe`) and every other path — published files included — stays with Netlify's own static handling. The build's assets directory is excluded from the declarations so a catch-all route cannot claim it.
+
+Two consequences are worth knowing. A catch-all route claims published files that fall under it; a handler can `throw null` to hand such a path back to Netlify. And because unmatched paths never reach the app, Netlify answers them rather than the app's `+404` page — publish a `404.html` to customize that.
