@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Serve dotted dynamic/catch-all paths on the Netlify edge adapter instead of dropping them via `pattern: "^[^.]*$"`
-
-`packages/adapters/netlify/src/default-edge-entry.ts` › `config` | 2026-07-19 | impact:high | effort:med
-
-The Netlify edge entry hardcodes `export const config = { pattern: "^[^.]*$" }` (`default-edge-entry.ts:12-14`). Netlify runs the edge function only when the request pathname matches this regex, and `^[^.]*$` matches only paths with zero dots, so any dotted URL never reaches the function; Netlify then serves it from the static publish dir and, with no matching asset, 404s. This silently drops every legitimate dynamic/catch-all route whose URL contains a dot: a `$$rest` catch-all serving `report.2024.pdf`, a `$handle` segment holding a username/slug/email (`jane.doe`), version params, or a handler emitting `.xml`/`.json`/`.txt`. The generated router matches those paths fine, and the same routes serve 200 in dev and on a workerd/Cloudflare build. The functions adapter gets this right with `{ path: "/*", preferStatic: true }` (`default-functions-entry.ts:4-6`), delegating static-vs-dynamic to Netlify's real file check instead of a path regex; the edge dot-heuristic was meant to skip asset paths but over-excludes all dotted paths, which also makes the `|| context.next()` fallback (`default-edge-entry.ts:8`) effectively dead for any app with routes. Fix: use Netlify's `excludedPath`/`excludedPattern` for real asset prefixes, or narrow the pattern to known static extensions, rather than a global dot exclusion. Undocumented: the Netlify section of `website/docs/marko-run/adapters.md` shows `edge: true` with no mention of the limitation. (@marko/run-adapter-netlify 3.0.6, @netlify/edge-functions 3.x.)
-
 ## Assert a `+handler` returned a `Response` (not a plain object) in dev, instead of failing later with `headers is not iterable` from an internal adapter helper
 
 `packages/run/src/runtime/internal.ts` › `call` | 2026-07-19 | impact:med | effort:low
