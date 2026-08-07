@@ -12,8 +12,31 @@ declare module "@marko/run" {
 
 	interface App extends $.DefineRoutes<{
 		"/": [P1];
-		"/reports/$$rest": [P2];
+		"/reports/$$rest": [H1, P2];
 	}> {}
+}
+
+type H1 = $.Handler<"H1", typeof import("../src/routes/reports/$$rest/+handler")>;
+declare module "../src/routes/reports/$$rest/+handler" {
+  const Run: $.Namespace<H1>;
+  namespace Run {
+    type Context = $.ContextForFile<H1>;
+  }
+
+  /** @deprecated use `Run` namespace instead */
+  namespace MarkoRun {
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    export type Route = $.Routes["/reports/$$rest"];
+    export type Context = $.MultiRouteContext<Route>;
+    export type Handler = $.HandlerLike<Route>;
+    export type GET = $.HandlerLike<Route, "GET">;
+    export type HEAD = $.HandlerLike<Route, "HEAD">;
+    export type POST = $.HandlerLike<Route, "POST">;
+    export type PUT = $.HandlerLike<Route, "PUT">;
+    export type DELETE = $.HandlerLike<Route, "DELETE">;
+    export type PATCH = $.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+  }
 }
 
 type P1 = $.Template<"P1", typeof import("../src/routes/+page.marko")>;
@@ -50,6 +73,28 @@ declare module "../src/routes/reports/$$rest/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = $.Routes["/reports/$$rest"];
+    export type Context = Run.Context;
+    export type Handler = $.HandlerLike<Route>;
+    export type GET = $.HandlerLike<Route, "GET">;
+    export type HEAD = $.HandlerLike<Route, "HEAD">;
+    export type POST = $.HandlerLike<Route, "POST">;
+    export type PUT = $.HandlerLike<Route, "PUT">;
+    export type DELETE = $.HandlerLike<Route, "DELETE">;
+    export type PATCH = $.HandlerLike<Route, "PATCH">;
+    export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+  }
+}
+
+declare module "../src/routes/+404.marko" {
+  const Run: $.Namespace<any>;
+  namespace Run {
+    type Context = $.ContextForFile<any> & Marko.Global;
+  }
+
+  /** @deprecated use `Run` namespace instead */
+  namespace MarkoRun {
+    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    export type Route = globalThis.MarkoRun.Route;
     export type Context = Run.Context;
     export type Handler = $.HandlerLike<Route>;
     export type GET = $.HandlerLike<Route, "GET">;
