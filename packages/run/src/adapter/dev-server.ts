@@ -9,6 +9,7 @@ import {
   type ViteDevServer,
 } from "vite";
 
+import { getAvailablePort } from "../vite/utils/server";
 import logger from "./logger";
 import { createMiddleware } from "./middleware";
 import { prepareError } from "./utils";
@@ -44,6 +45,22 @@ export async function createViteDevServer(
     finalConfig.server.cors = { preflightContinue: true };
   } else if (typeof cors === "object") {
     cors.preflightContinue ??= true;
+  }
+
+  // In middleware mode Vite binds its HMR websocket to a fixed default port,
+  // so a second dev server on the same machine fails to bind and its live
+  // reload silently attaches to the first. A config that names no port (nor a
+  // server or client port to honor) gets a free one instead.
+  const { hmr } = finalConfig.server;
+  if (
+    hmr === undefined ||
+    hmr === true ||
+    (hmr && !hmr.port && !hmr.server && !hmr.clientPort)
+  ) {
+    finalConfig.server.hmr = {
+      ...(typeof hmr === "object" ? hmr : undefined),
+      port: await getAvailablePort(),
+    };
   }
 
   const devServer = await createServer(finalConfig);
