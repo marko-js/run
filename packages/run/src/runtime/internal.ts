@@ -155,6 +155,10 @@ export function createContext(
       );
     },
     render(template, input, init = pageResponseInit) {
+      if (context.method === "HEAD") {
+        return new Response(null, init);
+      }
+
       const rendered = template.render({
         ...input,
         $global: context as unknown as Marko.Global,
@@ -245,7 +249,13 @@ export async function call(
   }
 
   if (method && method !== context.method) {
-    return (next as any as NextDataFunction)(data);
+    // HEAD is served by the auto-generated head<N> entry, which delegates to
+    // get<N> and suppresses the body.  call() must not then skip GET-stamped
+    // handlers when context.method is "HEAD"; an explicit HEAD export gets its
+    // own entry so there is no risk of double-running it.
+    if (!(method === "GET" && context.method === "HEAD")) {
+      return (next as any as NextDataFunction)(data);
+    }
   }
 
   if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
