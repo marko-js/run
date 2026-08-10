@@ -31,10 +31,10 @@ export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 // Registered rather than unique: a build can load more than one copy of this
 // module, and the sentinels must compare equal across all of them.
 export const NotHandled: typeof MarkoRun.NotHandled = Symbol.for(
-  "marko-run not handled",
+  "Run.Response.NotHandled",
 ) as any;
 export const NotMatched: typeof MarkoRun.NotMatched = Symbol.for(
-  "marko-run not matched",
+  "Run.Response.NotMatched",
 ) as any;
 
 const parentContextLookup = new WeakMap<Request, Context>();

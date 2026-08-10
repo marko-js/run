@@ -43,11 +43,11 @@ describe("call return value", () => {
   // sentinel is not always the instance this copy created.
   it("should recognize a sentinel from another copy of the runtime", async () => {
     await assert.rejects(
-      () => callWith(Symbol.for("marko-run not handled")),
+      () => callWith(Symbol.for("Run.Response.NotHandled")),
       (error) => error === NotHandled,
     );
     await assert.rejects(
-      () => callWith(Symbol.for("marko-run not matched")),
+      () => callWith(Symbol.for("Run.Response.NotMatched")),
       (error) => error === NotMatched,
     );
   });
