@@ -289,6 +289,20 @@ export async function call(
         );
       }
     }
+
+    if (
+      response &&
+      response !== NotHandled &&
+      response !== NotMatched &&
+      !(response instanceof Response)
+    ) {
+      // Left alone this reaches the adapter, which fails reading `headers`
+      // off it and names its own internals rather than the handler.
+      throw new Error(
+        `${handler.name ? `Handler '${handler.name}'` : "A handler"} for ${context.method} ${context.route} returned a value of type "${typeof response}" instead of a Response. ` +
+          "Return `Response.json(value)` to send JSON, return a `new Response(...)`, or call `next()` to continue.",
+      );
+    }
   } else {
     try {
       response = await handler(context, next);
@@ -304,18 +318,6 @@ export async function call(
 
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
-  }
-  if (
-    response &&
-    !(response instanceof Response) &&
-    (!process.env.NODE_ENV || process.env.NODE_ENV === "development")
-  ) {
-    // Left alone this reaches the adapter, which fails reading `headers` off
-    // it and names its own internals rather than the handler.
-    throw new Error(
-      `${handler.name ? `Handler '${handler.name}'` : "A handler"} for ${context.method} ${context.route} returned a value of type "${typeof response}" instead of a Response. ` +
-        "Return `Response.json(value)` to send JSON, return a `new Response(...)`, or call `next()` to continue.",
-    );
   }
   return response || (next as any as NextDataFunction)(data);
 }
