@@ -28,10 +28,12 @@ import { href } from "./url-builder";
 
 export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 
-export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
+// Registered rather than unique: a build can load more than one copy of this
+// module, and the sentinels must compare equal across all of them.
+export const NotHandled: typeof MarkoRun.NotHandled = Symbol.for(
   "marko-run not handled",
 ) as any;
-export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
+export const NotMatched: typeof MarkoRun.NotMatched = Symbol.for(
   "marko-run not matched",
 ) as any;
 
@@ -302,6 +304,18 @@ export async function call(
 
   if (response === null || response === NotMatched || response === NotHandled) {
     throw response || NotMatched;
+  }
+  if (
+    response &&
+    !(response instanceof Response) &&
+    (!process.env.NODE_ENV || process.env.NODE_ENV === "development")
+  ) {
+    // Left alone this reaches the adapter, which fails reading `headers` off
+    // it and names its own internals rather than the handler.
+    throw new Error(
+      `${handler.name ? `Handler '${handler.name}'` : "A handler"} for ${context.method} ${context.route} returned a value of type "${typeof response}" instead of a Response. ` +
+        "Return `Response.json(value)` to send JSON, return a `new Response(...)`, or call `next()` to continue.",
+    );
   }
   return response || (next as any as NextDataFunction)(data);
 }
