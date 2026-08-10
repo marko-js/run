@@ -193,7 +193,12 @@ export function createMiddleware(
             controller.signal.removeEventListener("abort", reader.cancel);
             reader.cancel();
           }
-        } else if (!response.headers.has("content-length")) {
+        } else if (
+          !response.headers.has("content-length") &&
+          req.method !== "HEAD" &&
+          response.status !== 204 &&
+          response.status !== 304
+        ) {
           res.setHeader("content-length", "0");
         }
 
