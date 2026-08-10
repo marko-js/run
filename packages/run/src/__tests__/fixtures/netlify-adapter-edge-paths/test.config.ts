@@ -17,9 +17,8 @@ async function dottedPathRoutes(ctx: StepContext) {
   assert.match(await res.text(), /report=q1\.2026\.csv/);
 }
 
-// No route declares this path, so the edge function never runs for it and
-// the platform serves the published file.
-async function publishedFileSkipsTheApp(ctx: StepContext) {
+// No route answers this path, so the platform's published file does.
+async function publishedFileServes(ctx: StepContext) {
   const res = await request(ctx, "/pinned.txt");
   assert.equal(res.status, 200);
   assert.match(res.headers.get("content-type")!, /text\/plain/);
@@ -33,9 +32,7 @@ async function extensionlessPublishedFileServes(ctx: StepContext) {
   assert.match(await res.text(), /^extensionless file/);
 }
 
-// The build's own assets are excluded from the declaration, so they serve
-// even when a catch-all route would otherwise claim them.
-async function buildAssetsSkipTheApp(ctx: StepContext) {
+async function buildAssetServes(ctx: StepContext) {
   const res = await request(ctx, "/assets/pinned.js");
   assert.equal(res.status, 200);
   assert.match(await res.text(), /asset file/);
@@ -47,8 +44,8 @@ async function postRoutes(ctx: StepContext) {
   assert.equal(await res.text(), "posted q1.2026.csv");
 }
 
-// A catch-all route claims published files under it, so declining is how a
-// handler hands one of those paths back to the platform.
+// A catch-all route covers this path, so only declining lets the published
+// file underneath it answer.
 async function declinedRequestReachesThePlatform(ctx: StepContext) {
   const res = await request(ctx, "/reports/passthrough.bin", {
     method: "POST",
@@ -57,11 +54,22 @@ async function declinedRequestReachesThePlatform(ctx: StepContext) {
   assert.match(await res.text(), /^platform answer/);
 }
 
+// Neither the app nor the platform has the path, and the app's own 404 page
+// answers rather than the platform's.
+async function unmatchedPathRendersThe404Page(ctx: StepContext) {
+  const res = await request(ctx, "/nothing.here", {
+    headers: { accept: "text/html" },
+  });
+  assert.equal(res.status, 404);
+  assert.match(await res.text(), /app 404 page/);
+}
+
 export const steps: Step[] = [
   (ctx) => dottedPathRoutes(ctx),
-  (ctx) => publishedFileSkipsTheApp(ctx),
+  (ctx) => publishedFileServes(ctx),
   (ctx) => extensionlessPublishedFileServes(ctx),
-  (ctx) => buildAssetsSkipTheApp(ctx),
+  (ctx) => buildAssetServes(ctx),
   (ctx) => postRoutes(ctx),
   (ctx) => declinedRequestReachesThePlatform(ctx),
+  (ctx) => unmatchedPathRendersThe404Page(ctx),
 ];

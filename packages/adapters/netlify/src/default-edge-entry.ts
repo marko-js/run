@@ -1,15 +1,20 @@
 import { fetch } from "@marko/run/router";
 import type { Config, Context } from "@netlify/edge-functions";
-import declaration from "virtual:marko-run-adapter-netlify/routes";
 
 import type { NetlifyEdgePlatformInfo } from "./types";
 
 export default async function (request: Request, context: Context) {
-  return (
-    (await fetch<NetlifyEdgePlatformInfo>(request, context)) || context.next()
-  );
+  const response = await fetch<NetlifyEdgePlatformInfo>(request, context);
+  if (response && response.status !== 404) {
+    return response;
+  }
+
+  // Nothing was routed, so let the platform answer -- a published file lives
+  // here, or nothing does and the app's own 404 page stands.
+  const fallback = await context.next();
+  return response && fallback.status === 404 ? response : fallback;
 }
 
-// Declaring the app's routes leaves every other path -- published files
-// included -- to Netlify's own static handling.
-export const config: Config = declaration;
+export const config: Config = {
+  path: "/*",
+};
