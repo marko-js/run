@@ -28,11 +28,13 @@ import { href } from "./url-builder";
 
 export { getMetaDataLookup as normalizeMeta } from "../vite/utils/meta-data";
 
-export const NotHandled: typeof MarkoRun.NotHandled = Symbol(
-  "marko-run not handled",
+// Registered rather than unique: a build can load more than one copy of this
+// module, and the sentinels must compare equal across all of them.
+export const NotHandled: typeof MarkoRun.NotHandled = Symbol.for(
+  "Run.Response.NotHandled",
 ) as any;
-export const NotMatched: typeof MarkoRun.NotMatched = Symbol(
-  "marko-run not matched",
+export const NotMatched: typeof MarkoRun.NotMatched = Symbol.for(
+  "Run.Response.NotMatched",
 ) as any;
 
 const parentContextLookup = new WeakMap<Request, Context>();
@@ -286,6 +288,20 @@ export async function call(
             "Make sure this is intentional because it is inefficient.",
         );
       }
+    }
+
+    if (
+      response &&
+      response !== NotHandled &&
+      response !== NotMatched &&
+      !(response instanceof Response)
+    ) {
+      // Left alone this reaches the adapter, which fails reading `headers`
+      // off it and names its own internals rather than the handler.
+      throw new Error(
+        `${handler.name ? `Handler '${handler.name}'` : "A handler"} for ${context.method} ${context.route} returned a value of type "${typeof response}" instead of a Response. ` +
+          "Return `Response.json(value)` to send JSON, return a `new Response(...)`, or call `next()` to continue.",
+      );
     }
   } else {
     try {
