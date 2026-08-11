@@ -218,7 +218,7 @@ export function createMiddleware(
       const error =
         err instanceof Error
           ? err
-          : new Error("Handler threw a non-Error value");
+          : new Error("Unknown error handling request");
 
       if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
         if (error.cause && !error.message) {

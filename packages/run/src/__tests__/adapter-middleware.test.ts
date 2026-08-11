@@ -269,7 +269,7 @@ describe("Adapter Middleware", () => {
 
         const error = server.passedToNext;
         assert.ok(error instanceof Error);
-        assert.equal(error.message, "Handler threw a non-Error value");
+        assert.equal(error.message, "Unknown error handling request");
       } finally {
         await server.close();
       }
