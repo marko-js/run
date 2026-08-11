@@ -5,6 +5,9 @@ import path from "path";
 import type { ViteDevServer } from "vite";
 
 import { createViteDevServer } from "../adapter/dev-server";
+import { isPortInUse } from "../vite/utils/server";
+
+const viteDefaultHmrPort = 24678;
 
 function connects(port: number) {
   return new Promise<boolean>((resolve) => {
@@ -50,6 +53,19 @@ describe("dev server hmr port", () => {
     assert.notEqual(ports[0], ports[1]);
     assert.equal(await connects(ports[0]), true);
     assert.equal(await connects(ports[1]), true);
+  });
+
+  it("should keep Vite's default port while it is free", async function () {
+    if (await isPortInUse(viteDefaultHmrPort)) {
+      this.skip();
+    }
+    const server = await create(roots[0]);
+    servers.push(server);
+    assert.equal(
+      (server.config.server.hmr as { port: number }).port,
+      viteDefaultHmrPort,
+    );
+    assert.equal(await connects(viteDefaultHmrPort), true);
   });
 
   it("should leave a configured hmr port alone", async () => {
