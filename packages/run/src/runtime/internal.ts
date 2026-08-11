@@ -74,10 +74,8 @@ type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 // `adapter/middleware`, which is bundled separately.
 const kRender = Symbol.for("@marko/run.render");
 
-// Marks an error as a client fault: `call()` answers with a bare response of
-// this status instead of letting it surface as a server error. Kept on plain
-// `Error`s so an author's try/catch around `await context.body` sees a normal
-// error rather than a thrown `Response`.
+// Marks an error as a client fault; `call()` answers with a bare response of
+// this status instead of letting it surface as a server error.
 const kErrorStatus = Symbol.for("@marko/run.errorStatus");
 
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
@@ -289,9 +287,7 @@ export async function call(
       } else if (error instanceof Response) {
         return error;
       } else if (typeof error === "object" && kErrorStatus in error) {
-        return new Response((error as unknown as Error).message, {
-          status: (error as any)[kErrorStatus],
-        });
+        return new Response(null, { status: (error as any)[kErrorStatus] });
       }
       throw error;
     } finally {
@@ -332,9 +328,7 @@ export async function call(
       } else if (error instanceof Response) {
         return error;
       } else if (typeof error === "object" && kErrorStatus in error) {
-        return new Response((error as unknown as Error).message, {
-          status: (error as any)[kErrorStatus],
-        });
+        return new Response(null, { status: (error as any)[kErrorStatus] });
       }
       throw error;
     }
@@ -582,57 +576,60 @@ function searchParamsToObject(params: URLSearchParams | FormData) {
 
 // Failures here are the client's fault, so they throw status-stamped errors
 // (see `kErrorStatus`) instead of surfacing as server errors.
+// Fatal decode, so malformed UTF-8 is a client error rather than U+FFFD noise.
+const bodyDecoder = new TextDecoder("utf-8", { fatal: true });
+
 async function readBodyWithLimit(request: Request, maxBytes: number) {
+  let bytes: ArrayBuffer | Uint8Array;
+
   if (maxBytes < 0) {
-    return await request.text();
-  }
+    bytes = await request.arrayBuffer();
+  } else {
+    const contentLength = request.headers.get("content-length");
 
-  const contentLength = request.headers.get("content-length");
-
-  if (contentLength !== null && Number(contentLength) > maxBytes) {
-    throw bodyTooLarge();
-  }
-
-  if (!request.body) {
-    throw clientError("Missing request body", 400);
-  }
-
-  const reader = request.body.getReader();
-  const bytes = new Uint8Array(maxBytes);
-  let receivedBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      if (receivedBytes + value.byteLength > maxBytes) {
-        await reader.cancel();
-        throw bodyTooLarge();
-      }
-
-      bytes.set(value, receivedBytes);
-      receivedBytes += value.byteLength;
+    if (contentLength !== null && Number(contentLength) > maxBytes) {
+      throw clientError("Request body too large", 413);
     }
-  } finally {
-    reader.releaseLock();
+
+    if (!request.body) {
+      throw clientError("Missing request body", 400);
+    }
+
+    const reader = request.body.getReader();
+    const buffer = new Uint8Array(maxBytes);
+    let receivedBytes = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (receivedBytes + value.byteLength > maxBytes) {
+          await reader.cancel();
+          throw clientError("Request body too large", 413);
+        }
+
+        buffer.set(value, receivedBytes);
+        receivedBytes += value.byteLength;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    bytes = buffer.subarray(0, receivedBytes);
   }
 
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
-      bytes.subarray(0, receivedBytes),
-    );
+    return bodyDecoder.decode(bytes);
   } catch (error) {
     throw clientError("Invalid request body encoding", 400, error);
   }
 }
 
-function bodyTooLarge() {
-  return clientError("Request body too large", 413);
-}
-
-function clientError(message: string, status: number, cause?: unknown) {
-  const error = new Error(message, cause === undefined ? undefined : { cause });
+// Stamps the thrown error itself when there is one, keeping its message and
+// stack; `message` describes the failure for everything else.
+function clientError(message: string, status: number, thrown?: unknown) {
+  const error = thrown instanceof Error ? thrown : new Error(message);
   (error as any)[kErrorStatus] = status;
   return error;
 }
@@ -644,10 +641,7 @@ async function readBody(route: RouteMatch, context: Context) {
     const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
     let json;
     try {
-      json =
-        maxBytes < 0
-          ? await request.json()
-          : JSON.parse(await readBodyWithLimit(request, maxBytes));
+      json = JSON.parse(await readBodyWithLimit(request, maxBytes));
     } catch (error) {
       if (typeof error === "object" && error && kErrorStatus in error)
         throw error;
@@ -686,7 +680,7 @@ async function readBody(route: RouteMatch, context: Context) {
       error instanceof MaxPartsExceededError ||
       error instanceof MaxTotalSizeExceededError
     ) {
-      throw bodyTooLarge();
+      throw clientError("Request body too large", 413, error);
     }
     if (
       error instanceof FormDataParseError ||
