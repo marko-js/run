@@ -2,6 +2,12 @@
 
 Duplication, dead code, inconsistencies, refactor opportunities. Format and rules: [README.md](README.md).
 
+## Wire the real `build.assetsDir` into the Netlify edge entry's `excludedPath`
+
+`packages/adapters/netlify/src/default-edge-entry.ts` › `config` | 2026-08-11 | impact:low | effort:med
+
+The edge entry's `excludedPath: ["/assets/*"]` hardcodes Vite's default `build.assetsDir`, so a project that overrides `assetsDir` invokes the edge function for every asset request; each still serves correctly via `context.next()`, it just loses the skip. The entry is a static file copied by `getEntryFile()`, so honoring the option means templating the entry at build time (or generating the config from the resolved Vite config) — plumbing that doesn't exist today.
+
 ## Build the crawler's initial queue from the deduped `seen` set, not the raw start-path array
 
 `packages/adapters/static/src/crawler.ts` › `crawl` | 2026-07-18 | impact:low | effort:low
