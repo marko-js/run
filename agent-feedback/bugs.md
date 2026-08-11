@@ -253,3 +253,9 @@ Dev runs Vite in middleware mode behind marko-run's own listener (`devServer.mid
 `packages/run/src/vite/plugin.ts` › `virtualFiles` | 2026-08-10 | impact:med | effort:med
 
 If `vite.config.ts` imports project source (e.g. to start a sidecar server from `configureServer`), editing any file in that import graph makes Vite restart in place — and after that restart every route answers 404 until the whole `marko-run dev` process is killed and restarted. Observed repeatedly in a real app; the workaround was spawning the sidecar as a child process (`spawn(process.execPath, [entry])`) so the config graph never touches server code, plus explicit `.ts` extensions to keep imports out of the graph. Suspect the `virtualFiles` map / route-walker state is not rebuilt on Vite's in-place restart path the way it is on first boot. Re-verify: a `marko-run dev` app whose `vite.config.ts` imports any file under `src/`; touch that file, wait for Vite's restart log, then curl any route — 404 until process restart.
+
+## Regenerate the `error-invalid-routes` dev snapshot for the appended agent fix guide
+
+`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` › `error-invalid-routes` | 2026-08-11 | impact:med | effort:low
+
+`pnpm test` fails on `main` with one snapshot mismatch. `packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md before writing a fix." to route-conflict errors, but this fixture's committed snapshot predates that change and still holds the untagged message, so the rendered error page differs by those two lines. Re-verify: `pnpm test` on a clean `main`, "Duplicate routes for path /$" is the only failure. Fix with `pnpm run test:update` and review the diff for any other fixture that renders a tagged error.
