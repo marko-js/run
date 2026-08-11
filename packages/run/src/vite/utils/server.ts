@@ -18,16 +18,22 @@ export interface SpawnedServer {
  * server unregisters the handlers.
  */
 export function closeOnExit(server: SpawnedServer): SpawnedServer {
+  let closing: Promise<void> | undefined;
   const onSignal = async () => {
-    await wrapped.close();
-    process.exit();
+    try {
+      await wrapped.close();
+    } finally {
+      process.exit();
+    }
   };
   const wrapped: SpawnedServer = {
     port: server.port,
-    async close() {
-      process.off("SIGINT", onSignal);
-      process.off("SIGTERM", onSignal);
-      await server.close();
+    close() {
+      return (closing ??= (async () => {
+        process.off("SIGINT", onSignal);
+        process.off("SIGTERM", onSignal);
+        await server.close();
+      })());
     },
   };
   process.once("SIGINT", onSignal);

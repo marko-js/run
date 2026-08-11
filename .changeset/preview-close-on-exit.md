@@ -2,4 +2,4 @@
 "@marko/run": patch
 ---
 
-Ctrl+C on `marko-run preview` now shuts down the spawned server; previously it survived the CLI and kept its port.
+The servers spawned by `marko-run preview` and `marko-run dev` now shut down when the CLI receives SIGINT or SIGTERM; previously they survived the CLI and kept their port.
