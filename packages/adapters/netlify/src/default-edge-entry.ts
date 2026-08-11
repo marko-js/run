@@ -10,5 +10,8 @@ export default async function (request: Request, context: Context) {
 }
 
 export const config: Config = {
-  pattern: "^[^.]*$",
+  path: "/*",
+  // Skips Vite's default assets dir; a custom `build.assetsDir` still serves
+  // correctly via `context.next()`, it just doesn't get this shortcut.
+  excludedPath: ["/assets/*"],
 };
