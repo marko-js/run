@@ -47,6 +47,29 @@ async function serve(fetch: Fetch<any>) {
   };
 }
 
+async function serveWithNext(fetch: Fetch<any>) {
+  const handled = deferred();
+  let passedToNext: unknown;
+  const middleware = createMiddleware(fetch);
+  const server = http.createServer((req, res) => {
+    middleware(req, res, (err) => {
+      passedToNext = err;
+      res.statusCode = 500;
+      res.end("next");
+      handled.resolve();
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return {
+    port: (server.address() as AddressInfo).port,
+    handled: handled.promise,
+    get passedToNext() {
+      return passedToNext;
+    },
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
 async function collect(reader: ReturnType<typeof getBodyReader>) {
   const decoder = new TextDecoder();
   let out = "";
@@ -227,6 +250,26 @@ describe("Adapter Middleware", () => {
 
         await closed.promise;
         assert.equal(signal.aborted, false);
+      } finally {
+        await server.close();
+      }
+    });
+
+    it("should pass a non-Error throw to next as an Error", async () => {
+      // A null-prototype object has no primitive conversion, so building the
+      // message out of the thrown value would throw inside the error path.
+      const server = await serveWithNext(async () => {
+        throw Object.create(null);
+      });
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(await response.text(), "next");
+        await server.handled;
+
+        const error = server.passedToNext;
+        assert.ok(error instanceof Error);
+        assert.equal(error.message, "Unknown error handling request");
       } finally {
         await server.close();
       }

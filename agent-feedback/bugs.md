@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Normalize `throw null` in the dev handler path so it cannot crash the dev server
-
-`packages/run/src/runtime/internal.ts` › `call` | 2026-07-18 | impact:high | effort:low
-
-The dev-mode warning in `call()` tells users to "finally `throw null` to skip handling the request", but only the production branch normalizes a nullish thrown value to `NotHandled` (line 355); the dev branch's catch (lines 330-335) rethrows raw `null`. The generated router only recognizes the `NotHandled`/`NotMatched` symbols (`packages/run/src/vite/codegen/index.ts:438`), so `null` reaches the node middleware's error handler, which reads `error.cause` on it (`packages/run/src/adapter/middleware.ts:182`) — the resulting `TypeError: Cannot read properties of null (reading 'cause')` escapes as an unhandled rejection and exits the whole process. Repro: `export const GET = Run.GET(() => { throw null; });` in any `+handler.js`, run `marko-run dev`, curl the route once — the server dies. Add the same `error == null → throw NotHandled` normalization to the dev branch, and consider a defensive null guard in middleware.ts.
-
 ## Fix the preview server's 302-to-/404 losing its Location header under compression
 
 `packages/adapters/static/src/index.ts` › `startPreview` | 2026-07-18 | impact:med | effort:low
@@ -259,3 +253,9 @@ Dev runs Vite in middleware mode behind marko-run's own listener (`devServer.mid
 `packages/run/src/vite/plugin.ts` › `virtualFiles` | 2026-08-10 | impact:med | effort:med
 
 If `vite.config.ts` imports project source (e.g. to start a sidecar server from `configureServer`), editing any file in that import graph makes Vite restart in place — and after that restart every route answers 404 until the whole `marko-run dev` process is killed and restarted. Observed repeatedly in a real app; the workaround was spawning the sidecar as a child process (`spawn(process.execPath, [entry])`) so the config graph never touches server code, plus explicit `.ts` extensions to keep imports out of the graph. Suspect the `virtualFiles` map / route-walker state is not rebuilt on Vite's in-place restart path the way it is on first boot. Re-verify: a `marko-run dev` app whose `vite.config.ts` imports any file under `src/`; touch that file, wait for Vite's restart log, then curl any route — 404 until process restart.
+
+## Regenerate the `error-invalid-routes` dev snapshot for the appended agent fix guide
+
+`packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` › `error-invalid-routes` | 2026-08-11 | impact:med | effort:low
+
+`pnpm test` fails on `main` with one snapshot mismatch. `packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md before writing a fix." to route-conflict errors, but this fixture's committed snapshot predates that change and still holds the untagged message, so the rendered error page differs by those two lines. Re-verify: `pnpm test` on a clean `main`, "Duplicate routes for path /$" is the only failure. Fix with `pnpm run test:update` and review the diff for any other fixture that renders a tagged error.

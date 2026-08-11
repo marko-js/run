@@ -30,7 +30,11 @@ describe("dev server hmr port", () => {
 
   beforeEach(() => {
     for (const name of ["a", "b"]) {
-      const root = fs.mkdtempSync(path.join(os.tmpdir(), `hmr-${name}-`));
+      // The real path keeps Windows 8.3 short names (RUNNER~1 on CI) out of
+      // the watched root, where they abort node in libuv's fs-event assert.
+      const root = fs.mkdtempSync(
+        path.join(fs.realpathSync.native(os.tmpdir()), `hmr-${name}-`),
+      );
       roots.push(root);
     }
   });
