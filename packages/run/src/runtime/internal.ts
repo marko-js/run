@@ -270,7 +270,9 @@ export async function call(
       }) as NextFunction);
     } catch (error) {
       didThrow = true;
-      if (error instanceof Response) {
+      if (error == null) {
+        throw NotHandled;
+      } else if (error instanceof Response) {
         return error;
       }
       throw error;

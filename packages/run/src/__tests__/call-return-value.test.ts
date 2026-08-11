@@ -52,6 +52,17 @@ describe("call return value", () => {
     );
   });
 
+  it("should normalize a thrown nullish value to NotHandled", async () => {
+    await assert.rejects(
+      () => throwWith(null),
+      (error) => error === NotHandled,
+    );
+    await assert.rejects(
+      () => throwWith(undefined),
+      (error) => error === NotHandled,
+    );
+  });
+
   describe("in production", () => {
     withNodeEnv("production");
 
@@ -59,5 +70,22 @@ describe("call return value", () => {
       const items = { items: [] };
       assert.equal(await callWith(items), items as never);
     });
+
+    it("should normalize a thrown nullish value to NotHandled", async () => {
+      await assert.rejects(
+        () => throwWith(null),
+        (error) => error === NotHandled,
+      );
+    });
   });
 });
+
+function throwWith(thrown: unknown) {
+  return call(
+    (() => {
+      throw thrown;
+    }) as any,
+    next,
+    context,
+  );
+}

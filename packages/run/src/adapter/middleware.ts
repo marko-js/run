@@ -213,7 +213,9 @@ export function createMiddleware(
         return;
       }
 
-      const error = err as Error;
+      // Nothing stops a handler from throwing a primitive; reading properties
+      // off it here would crash the process as an unhandled rejection.
+      const error = err instanceof Error ? err : new Error(String(err));
 
       if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
         if (error.cause && !error.message) {

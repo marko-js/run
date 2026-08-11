@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Normalize `throw null` in the dev handler path so it cannot crash the dev server
-
-`packages/run/src/runtime/internal.ts` › `call` | 2026-07-18 | impact:high | effort:low
-
-The dev-mode warning in `call()` tells users to "finally `throw null` to skip handling the request", but only the production branch normalizes a nullish thrown value to `NotHandled` (line 355); the dev branch's catch (lines 330-335) rethrows raw `null`. The generated router only recognizes the `NotHandled`/`NotMatched` symbols (`packages/run/src/vite/codegen/index.ts:438`), so `null` reaches the node middleware's error handler, which reads `error.cause` on it (`packages/run/src/adapter/middleware.ts:182`) — the resulting `TypeError: Cannot read properties of null (reading 'cause')` escapes as an unhandled rejection and exits the whole process. Repro: `export const GET = Run.GET(() => { throw null; });` in any `+handler.js`, run `marko-run dev`, curl the route once — the server dies. Add the same `error == null → throw NotHandled` normalization to the dev branch, and consider a defensive null guard in middleware.ts.
-
 ## Fix the preview server's 302-to-/404 losing its Location header under compression
 
 `packages/adapters/static/src/index.ts` › `startPreview` | 2026-07-18 | impact:med | effort:low
