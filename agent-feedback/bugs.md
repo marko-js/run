@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Fix the preview server's 302-to-/404 losing its Location header under compression
-
-`packages/adapters/static/src/index.ts` › `startPreview` | 2026-07-18 | impact:med | effort:low
-
-The static adapter's preview server answers unmatched paths with `res.writeHead(302, undefined, { location: "/404" })`. Every request first passes through `compression()`, and its `on-headers` writeHead wrapper only honors a third headers argument when the second argument is a string (`setWriteHeadHeaders` in on-headers@1.1.0 treats a non-string second arg as the headers slot and truncates the rest), so the headers object is silently dropped. The result — verified with `curl -D -` against a `marko-run preview` of a static build — is `HTTP/1.1 302 Found` with no `Location` header, leaving browsers on a blank page instead of the 404 page. Use the two-argument form `res.writeHead(302, { location: "/404" })`, which the wrapper handles correctly.
-
 ## Clean up the spawned preview server on CLI exit — Ctrl+C orphans it and it keeps the port
 
 `packages/run/src/vite/utils/server.ts` › `spawnServer` | 2026-07-18 | impact:med | effort:med

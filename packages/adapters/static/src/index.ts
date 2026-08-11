@@ -97,9 +97,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
             if (req.url === "/404") {
               res.writeHead(404);
             } else {
-              res.writeHead(302, undefined, {
-                location: "/404",
-              });
+              res.writeHead(302, { location: "/404" });
             }
             res.end();
           }),
