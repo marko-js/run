@@ -2,6 +2,12 @@
 
 Duplication, dead code, inconsistencies, refactor opportunities. Format and rules: [README.md](README.md).
 
+## Revisit: surface pre-stream page-render errors to the +500 page
+
+`packages/run/src/runtime/internal.ts` › `createContext.render` | 2026-08-11 | impact:med | effort:med
+
+An error thrown during a page's synchronous render pass escapes the generated `invoke`'s try/catch because the response body is lazy; the node middleware hits it mid-iteration and hands it to the host framework, so an Express custom entry serves its default error page (stack trace included with `NODE_ENV` unset) and `+500.marko` never renders. A working approach was prototyped and shelved in PR #255: make `context.render` async, eagerly pull/replay the sync render pass (bounded by one macrotask), and await it so the rejection reaches `invoke`'s existing catch — mid-stream errors stay the territory of `<try>`/`<@catch>`. Notes from that spike: the client-entry `<script>` preamble flushes as a chunk before the page body, so a one-chunk peek is not enough; and a `<const/x=(() => { throw })()>` never surfaces its error to the stream at all (separate marko behavior — repro with a throw in a rendered expression instead).
+
 ## Wire the real `build.assetsDir` into the Netlify edge entry's `excludedPath`
 
 `packages/adapters/netlify/src/default-edge-entry.ts` › `config` | 2026-08-11 | impact:low | effort:med

@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Catch page-render stream errors so +500.marko applies and stacks don't reach clients
-
-`packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-07-18 | impact:high | effort:med
-
-The generated `invoke` only try/catches `await route.handler(context)` (with the outer catch at codegen/index.ts:476 rendering page500), but `context.render` (packages/run/src/runtime/internal.ts:241) returns a Response whose body is a lazily-produced Marko stream, so an error thrown while rendering the page — e.g. a `+page.marko` containing `<const/x=(() => { throw new Error("boom") })()>` — escapes that catch entirely. The node adapter middleware then hits the error while iterating `response.body` (packages/run/src/adapter/middleware.ts:165) and calls `next(error)`, so under an Express custom entry with `NODE_ENV` unset (plain `node dist/index.mjs`) the client receives Express's default error page with the full stack trace and absolute server paths; with `NODE_ENV=production` the stack is hidden but +500.marko is still never rendered — only middleware/handler-phase errors reach it. Repro: build, run, `curl -H 'accept: text/html' /boom`. Consider catching errors from the render stream and, when no bytes have flushed, substituting the page500 render (or at minimum a generic 500 body) instead of propagating to the host framework's error handler.
-
 ## Return 400/413 instead of 500 for malformed or oversized request bodies
 
 `packages/run/src/runtime/internal.ts` › `readBody` | 2026-07-18 | impact:med | effort:low
