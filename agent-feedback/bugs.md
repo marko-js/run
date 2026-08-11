@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Return 400/413 instead of 500 for malformed or oversized request bodies
-
-`packages/run/src/runtime/internal.ts` › `readBody` | 2026-07-18 | impact:med | effort:low
-
-When a route configures the `json` body option, `readBody` does a bare `JSON.parse` (internal.ts:153) on the request body, and `readBodyWithLimit` throws a plain `Error("Request body too large")` (internal.ts:112 and :130); both propagate as uncaught server errors, so a client sending `{oops` or an over-limit body gets a 500 (and the +500 HTML page when Accept includes text/html) rather than 400/413. Repro: `curl -X POST -H 'content-type: application/json' -d '{oops' /any-json-route` returns HTTP 500 in both dev and production builds. Client-input errors surfacing as server faults also pollute error monitoring, and packages/run/README.md:572 only says oversized requests "are rejected". Since thrown `Response` objects are already honored (internal.ts:332 and :357 — a validator throwing `Response.json(..., { status: 400 })` works today), throwing `Response` instances with status 400/413 from `readBody`/`readBodyWithLimit` would fix this cleanly.
-
 ## Reject unconfigured content-types in readBody instead of falling back to form parsing
 
 `packages/run/src/runtime/internal.ts` › `readBody` | 2026-07-18 | impact:med | effort:med
