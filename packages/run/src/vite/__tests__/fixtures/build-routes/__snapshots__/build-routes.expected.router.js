@@ -177,7 +177,7 @@ export async function invoke(route, request, platform, url) {
 		}
     
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, page404ResponseInit);
+      return await context.render(page404, {}, page404ResponseInit);
     }	
     return new Response(null, {
       status: 404,

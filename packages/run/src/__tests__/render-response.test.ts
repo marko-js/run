@@ -10,12 +10,12 @@ function render(rendered: () => unknown) {
 }
 
 describe("Context Render", () => {
-  it("should create the render's iterator eagerly and stash it with the body", () => {
+  it("should create the render's iterator eagerly and stash it with the body", async () => {
     // Marko attaches its error handling when the iterator is created; the
     // body is lazy, so without the eager iterator a render that fails before
     // anything reads it (eg. a HEAD request) would throw uncaught.
     let iterators = 0;
-    const response = render(() => ({
+    const response = await render(() => ({
       [Symbol.asyncIterator]() {
         iterators++;
         return (async function* () {})();
@@ -32,19 +32,43 @@ describe("Context Render", () => {
     );
   });
 
-  it("should not read from the render until the body is read", async () => {
-    let pulled = false;
-    const response = render(() => ({
+  it("should replay eagerly peeked chunks when the body is read", async () => {
+    const response = await render(() => ({
       async *[Symbol.asyncIterator]() {
-        pulled = true;
         yield "hi";
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        yield " there";
       },
     }));
 
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(pulled, false);
-    assert.equal(await response.text(), "hi");
-    assert.equal(pulled, true);
+    assert.equal(await response.text(), "hi there");
+  });
+
+  it("should reject for an error from the sync render pass", async () => {
+    await assert.rejects(
+      () =>
+        render(() => ({
+          // eslint-disable-next-line require-yield
+          async *[Symbol.asyncIterator]() {
+            throw new Error("boom");
+          },
+        })),
+      /boom/,
+    );
+  });
+
+  it("should not wait for chunks that are not synchronously available", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const response = await render(() => ({
+      async *[Symbol.asyncIterator]() {
+        await gate;
+        yield "streamed";
+      },
+    }));
+
+    release();
+    assert.equal(await response.text(), "streamed");
   });
 
   it("should not leak an unhandled rejection when cancelling a render whose cleanup fails", async () => {
@@ -52,7 +76,7 @@ describe("Context Render", () => {
     const onUnhandled = (reason: unknown) => rejections.push(reason);
     process.on("unhandledRejection", onUnhandled);
     try {
-      const response = render(() => ({
+      const response = await render(() => ({
         [Symbol.asyncIterator]: () => ({
           next: () => new Promise<never>(() => {}),
           return: () => Promise.reject(new Error("cleanup failed")),
@@ -70,7 +94,7 @@ describe("Context Render", () => {
   });
 
   it("should fall back to `toReadable` for renders that cannot be iterated directly", async () => {
-    const response = render(() => ({
+    const response = await render(() => ({
       toReadable: () => new Response("legacy").body,
     }));
 

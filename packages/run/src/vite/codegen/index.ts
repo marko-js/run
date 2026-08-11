@@ -290,7 +290,7 @@ const page404ResponseInit = {
 
     writer.write(`    
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, page404ResponseInit);
+      return await context.render(page404, {}, page404ResponseInit);
     }`);
   }
 

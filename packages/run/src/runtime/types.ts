@@ -994,7 +994,7 @@ export interface Context<T extends Route = Route> {
     template: Marko.Template<T>,
     input: T,
     init?: ResponseInit,
-  ): Response;
+  ): Promise<Response>;
   redirect(to: string | URL, status?: number): Response;
   back(fallback?: string | URL, status?: number): Response;
 }

@@ -156,7 +156,7 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
+    async render(template, input, init = pageResponseInit) {
       if (context.method === "HEAD") {
         return new Response(null, init);
       }
@@ -173,8 +173,10 @@ export function createContext(
       }
 
       // Created eagerly so marko attaches its error handling now: a lazy body
-      // nobody reads (a HEAD request) would otherwise throw uncaught.
-      const iterator = rendered[Symbol.asyncIterator]();
+      // nobody reads (a HEAD request) would otherwise throw uncaught. The
+      // sync render pass is pulled eagerly too and awaited below, so its
+      // errors reject here and the router can render the +500 page instead.
+      const iterator = peekFirstChunks(rendered[Symbol.asyncIterator]());
       const response = new Response(toResponseBody(iterator), init);
       // Lets the node adapter write the HTML strings straight to the socket.
       // `body` pins the stream, since `clone()` drains the single-use render.
@@ -182,6 +184,7 @@ export function createContext(
         render: { [Symbol.asyncIterator]: () => iterator },
         body: response.body,
       };
+      await iterator.first;
       return response;
     },
     redirect(to, status = 302) {
@@ -514,6 +517,46 @@ export function notHandled() {
 
 export function notMatched() {
   return null;
+}
+
+const kStreaming = Symbol();
+
+// Pulls and replays everything the synchronous render pass produced, so an
+// error thrown before any real streaming — even queued behind already-emitted
+// chunks — is awaitable (via `first`) ahead of sending the response.
+function peekFirstChunks(
+  iterator: AsyncIterator<string>,
+): AsyncIterator<string> & { first: Promise<unknown> } {
+  const buffered: Promise<IteratorResult<string>>[] = [];
+  const first = (async () => {
+    // One macrotask bounds the peek: the sync render and its error have
+    // settled by then, while awaited async content has not — that streams.
+    const streaming = new Promise<typeof kStreaming>((resolve) =>
+      setTimeout(resolve, 0, kStreaming),
+    );
+    for (;;) {
+      const next = Promise.resolve(iterator.next());
+      // The rejection replays to whoever reads the body; this only keeps it
+      // from reporting as unhandled when nothing ever reads it.
+      next.catch(passthrough);
+      buffered.push(next);
+      const result = await Promise.race([next, streaming]);
+      if (result === kStreaming || result.done) return;
+    }
+  })();
+  first.catch(passthrough);
+  return {
+    first,
+    next() {
+      return buffered.length ? buffered.shift()! : iterator.next();
+    },
+    return(reason?: unknown) {
+      buffered.length = 0;
+      return iterator.return
+        ? iterator.return(reason)
+        : Promise.resolve({ done: true, value: undefined });
+    },
+  };
 }
 
 // A lazy body, so constructing the `Response` pulls nothing and the node adapter
