@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Move dev's generated route entries out of the build outDir so `marko-run build` can't break a running dev server
-
-`packages/run/src/vite/plugin.ts` › `config` | 2026-07-18 | impact:med | effort:med
-
-Dev-time route entry templates are written to `path.join(outputDir, ".marko-run")` where `outputDir` defaults to `<root>/dist` (`plugin.ts:458-459`), and the SSR half of `marko-run build` deletes that whole directory in `buildStart` (`fs.rmSync(outputDir, { recursive: true })`, `plugin.ts:643-646`). Running `marko-run build` while `marko-run dev` is serving the same project therefore deletes `dist/.marko-run/*.marko` out from under the dev server: every subsequent request 500s (`Failed to load url /dist/.marko-run/index.server-entry.marko`) until the dev server is restarted — verified against @marko/run 0.11.5. Since building while dev runs is routine, dev entry files should live outside the build output (the project-root `.marko-run` types dir at `plugin.ts:465` is a natural home) or the dev server should regenerate them on demand.
-
 ## Catch page-render stream errors so +500.marko applies and stacks don't reach clients
 
 `packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-07-18 | impact:high | effort:med

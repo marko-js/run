@@ -453,6 +453,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         resolvedRoutesDir = path.resolve(root, routesDir);
         outputDir = path.join(root, config.build?.outDir || "dist");
+        // Dev entries intentionally live in the build outDir: a build deletes
+        // them out from under a running dev server, and that is accepted.
         entryFilesDir = path.join(outputDir, ".marko-run");
         entryFilesDirPosix = normalizePath(entryFilesDir);
         relativeEntryFilesDirPosix = normalizePath(
