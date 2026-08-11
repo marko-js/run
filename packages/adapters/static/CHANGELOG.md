@@ -1,5 +1,13 @@
 # @marko/run-adapter-static
 
+## 2.0.9
+
+### Patch Changes
+
+- 4fd421f: Fail the build when a route answers with a client or server error while crawling. Such a path writes no file, so the build previously finished green with the page missing from `dist/public` and only a `console.warn` to show for it. `crawl` now collects every failed path and throws once crawling settles, listing each status and path. A success status with nothing to prerender — the 204 a handler-only route falls back to, say — still only warns.
+- ec72878: Serve the prerendered `+404` page from `marko-run preview` with a real 404 status. sirv's `send` ends with an unconditional `writeHead(200, …)` that overwrote the status assigned from its `setHeaders` hook, so `GET /404` answered 200 with the 404 body and no request ever produced a 404 status.
+- 4fd421f: Log a summary once the static build finishes crawling: how many paths succeeded, failed, redirected and answered `404`, followed by each path that answered `404` or a status the crawler has no handling for, with its status. Those paths still do not fail the build, but they were previously invisible (a `404`) or a lone warning per path (everything else), so they are now listed together under the counts.
+
 ## 2.0.8
 
 ### Patch Changes

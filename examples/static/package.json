@@ -12,8 +12,8 @@
     "marko": "^5.38.35"
   },
   "devDependencies": {
-    "@marko/run": "^0.11.8",
-    "@marko/run-adapter-static": "^2.0.8",
+    "@marko/run": "^0.11.9",
+    "@marko/run-adapter-static": "^2.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.5.2",
     "prettier": "^3.8.1",
