@@ -10,6 +10,31 @@ export interface SpawnedServer {
   close(): Promise<void> | void;
 }
 
+/**
+ * Closes the server before exiting on SIGINT/SIGTERM. The spawned server is
+ * detached into its own process group on posix so its whole tree can be
+ * killed, which also means a terminal Ctrl+C never reaches it — without this
+ * it outlives its parent and keeps its port. Calling `close` on the returned
+ * server unregisters the handlers.
+ */
+export function closeOnExit(server: SpawnedServer): SpawnedServer {
+  const onSignal = async () => {
+    await wrapped.close();
+    process.exit();
+  };
+  const wrapped: SpawnedServer = {
+    port: server.port,
+    async close() {
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+      await server.close();
+    },
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  return wrapped;
+}
+
 export async function parseEnv(envFile: string) {
   if (fs.existsSync(envFile)) {
     const content = await fs.promises.readFile(envFile, "utf8");
