@@ -14,7 +14,11 @@ import {
 } from "../vite/plugin";
 import type { StartDevOptions, StartPreviewOptions } from "../vite/types";
 import { setExternalAdapterOptions } from "../vite/utils/config";
-import { getAvailablePort, type SpawnedServer } from "../vite/utils/server";
+import {
+  closeOnExit,
+  getAvailablePort,
+  type SpawnedServer,
+} from "../vite/utils/server";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -79,10 +83,12 @@ export async function preview(
     entry,
   };
 
-  return await adapter.startPreview({
-    entry: entryFile,
-    options,
-  });
+  return closeOnExit(
+    await adapter.startPreview({
+      entry: entryFile,
+      options,
+    }),
+  );
 }
 
 export async function dev(
@@ -149,7 +155,7 @@ export async function dev(
     envFile,
   };
 
-  return await adapter.startDev({ entry, config, options });
+  return closeOnExit(await adapter.startDev({ entry, config, options }));
 }
 
 export async function build(

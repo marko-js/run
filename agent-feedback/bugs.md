@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Clean up the spawned preview server on CLI exit — Ctrl+C orphans it and it keeps the port
-
-`packages/run/src/vite/utils/server.ts` › `spawnServer` | 2026-07-18 | impact:med | effort:med
-
-`spawnServer` launches the built server `detached` (its own process group) on posix, and the CLI (packages/run/src/cli/index.ts) installs no SIGINT/SIGTERM/exit handling and never calls the returned `close()`. Sending SIGINT to `marko-run preview` terminates the CLI, but the detached `node dist/index.mjs` child survives indefinitely and keeps serving its port; a terminal Ctrl+C behaves the same because the child's process group never receives the signal. Combined with the silent busy-port fallback in `getAvailablePort`, every restart then binds a new ephemeral port while orphaned servers accumulate. Trap signals in the CLI and invoke the existing `closeSpawnedProcess`/`killTree` cleanup, or stop detaching the child on posix.
-
 ## Move dev's generated route entries out of the build outDir so `marko-run build` can't break a running dev server
 
 `packages/run/src/vite/plugin.ts` › `config` | 2026-07-18 | impact:med | effort:med
