@@ -7,6 +7,7 @@ export const steps: Step[] = [
   postMalformed,
   postTooLarge,
   postBadEncoding,
+  postUnconfiguredContentType,
 ];
 
 async function postMalformed({ page }: StepContext) {
@@ -53,4 +54,13 @@ async function post({ page }: StepContext) {
   const json = await response.json();
 
   assert.equal(json.issues, null);
+}
+
+async function postUnconfiguredContentType({ page }: StepContext) {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: "hi",
+  });
+  assert.equal(response.status, 415);
 }

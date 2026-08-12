@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { Step, StepContext } from "../../main.test";
 
-export const steps: Step[] = [post];
+export const steps: Step[] = [post, postUnconfiguredContentType];
 
 async function post({ page }: StepContext) {
   const response = await page.fetch(page.url(), {
@@ -17,4 +17,13 @@ async function post({ page }: StepContext) {
   const json = await response.json();
 
   assert.equal(json.issues, null);
+}
+
+async function postUnconfiguredContentType({ page }: StepContext) {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "MarkoRun", age: "7" }),
+  });
+  assert.equal(response.status, 415);
 }

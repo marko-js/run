@@ -626,6 +626,16 @@ async function readBodyWithLimit(request: Request, maxBytes: number) {
   }
 }
 
+// The `Content-Type` media type, normalized per RFC 9110: parameters dropped,
+// case-insensitive. `undefined` when the request carries no content type.
+function getMediaType(request: Request) {
+  return request.headers
+    .get("Content-Type")
+    ?.split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+}
+
 // Stamps the thrown error itself when there is one, keeping its message and
 // stack; `message` describes the failure for everything else.
 function clientError(message: string, status: number, thrown?: unknown) {
@@ -636,9 +646,9 @@ function clientError(message: string, status: number, thrown?: unknown) {
 
 async function readBody(route: RouteMatch, context: Context) {
   const { request } = context;
-  const contentType = request.headers.get("Content-Type");
-  if (contentType?.includes("application/json")) {
-    const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
+  const mediaType = getMediaType(request);
+  if (route.options.json && mediaType === "application/json") {
+    const { maxBytes = defaultMaxBytes, validator } = route.options.json;
     let json;
     try {
       json = JSON.parse(await readBodyWithLimit(request, maxBytes));
@@ -649,6 +659,13 @@ async function readBody(route: RouteMatch, context: Context) {
     }
     return validator ? validator(json) : json;
   }
+  const isMultipart = mediaType === "multipart/form-data";
+  if (
+    !route.options.form ||
+    !(isMultipart || mediaType === "application/x-www-form-urlencoded")
+  ) {
+    throw clientError("Unsupported content type", 415);
+  }
   const {
     maxParts = defaultMaxParts,
     maxFiles = defaultMaxFiles,
@@ -656,11 +673,11 @@ async function readBody(route: RouteMatch, context: Context) {
     maxBytes = maxFiles * maxFileBytes,
     onFile,
     validator,
-  } = route.options.form ?? {};
+  } = route.options.form;
   let data;
   try {
     data = searchParamsToObject(
-      contentType?.includes("multipart/form-data")
+      isMultipart
         ? await parseFormData(
             request,
             {
