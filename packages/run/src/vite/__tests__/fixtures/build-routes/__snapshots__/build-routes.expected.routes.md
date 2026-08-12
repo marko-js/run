@@ -31,12 +31,12 @@ import Page from "../../src/routes/_protected/_home/+page.marko";
 ```
 ### Handler
 ```js
-import { call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import page from "./dist/.marko-run/index.marko";
 
-export const get3_options = mergeOptions(mware4, mware5, mware7);
-export const head3_options = mergeOptions(mware4, mware5, mware7);
+export const get3_options = normalizeOptions(mware4, mware5, mware7);
+export const head3_options = normalizeOptions(mware4, mware5, mware7);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -66,7 +66,7 @@ import Page from "../../src/routes/_protected/_home/new/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, normalizeMeta, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, normalizeMeta, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import { POST } from "./src/routes/_protected/_home/new/+handler.ts";
 import page from "./dist/.marko-run/new.marko";
@@ -76,9 +76,9 @@ const postHandler = normalizeHandler(POST, 'POST');
 
 export const { GET: get4_meta, GET: head4_meta, POST: post4_meta } = normalizeMeta(meta4);
 
-export const get4_options = mergeOptions(mware4, mware5, mware7);
-export const head4_options = mergeOptions(mware4, mware5, mware7);
-export const post4_options = mergeOptions(mware4, mware5, mware7, postHandler);
+export const get4_options = normalizeOptions(mware4, mware5, mware7);
+export const head4_options = normalizeOptions(mware4, mware5, mware7);
+export const post4_options = normalizeOptions(mware4, mware5, mware7, postHandler);
 
 export function get4(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -116,7 +116,7 @@ import Page from "../../src/routes/_protected/_home/notes/$id/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__middleware.js";
 import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/+handler.ts";
 import page from "./dist/.marko-run/notes.$.marko";
@@ -125,11 +125,11 @@ const putHandler = normalizeHandler(PUT, 'PUT');
 const postHandler = normalizeHandler(POST, 'POST');
 const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
-export const get5_options = mergeOptions(mware4, mware5, mware7, mware13);
-export const head5_options = mergeOptions(mware4, mware5, mware7, mware13);
-export const post5_options = mergeOptions(mware4, mware5, mware7, mware13, postHandler);
-export const put5_options = mergeOptions(mware4, mware5, mware7, mware13, putHandler);
-export const delete5_options = mergeOptions(mware4, mware5, mware7, mware13, deleteHandler);
+export const get5_options = normalizeOptions(mware4, mware5, mware7, mware13);
+export const head5_options = normalizeOptions(mware4, mware5, mware7, mware13);
+export const post5_options = normalizeOptions(mware4, mware5, mware7, mware13, postHandler);
+export const put5_options = normalizeOptions(mware4, mware5, mware7, mware13, putHandler);
+export const delete5_options = normalizeOptions(mware4, mware5, mware7, mware13, deleteHandler);
 
 export function get5(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -173,7 +173,7 @@ export function delete5(context) {
 ### Path: ``/notes/$id/comments``
 ### Handler
 ```js
-import { normalizeHandler, normalizeMeta, call, mergeOptions, noContent } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, normalizeMeta, call, normalizeOptions, noContent } from "virtual:marko-run/runtime/internal";
 import { mware4, mware5, mware7, mware13 } from "virtual:marko-run/__marko-run__middleware.js";
 import { PUT, POST, DELETE } from "./src/routes/_protected/_home/notes/$id/comments/+handler.ts";
 import meta6 from "./src/routes/_protected/_home/notes/$id/comments/+meta.ts";
@@ -184,9 +184,9 @@ const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post6_meta, PUT: put6_meta, DELETE: delete6_meta } = normalizeMeta(meta6);
 
-export const post6_options = mergeOptions(mware4, mware5, mware7, mware13, postHandler);
-export const put6_options = mergeOptions(mware4, mware5, mware7, mware13, putHandler);
-export const delete6_options = mergeOptions(mware4, mware5, mware7, mware13, deleteHandler);
+export const post6_options = normalizeOptions(mware4, mware5, mware7, mware13, postHandler);
+export const put6_options = normalizeOptions(mware4, mware5, mware7, mware13, putHandler);
+export const delete6_options = normalizeOptions(mware4, mware5, mware7, mware13, deleteHandler);
 
 export function post6(context) {
 	const __postHandler = (data) => call(postHandler, noContent, context, data);
@@ -217,14 +217,14 @@ export function delete6(context) {
 ### Path: ``/callback/oauth2``
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/callback/oauth2/+handler.ts";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get7_options = mergeOptions(mware4, getHandler);
-export const head7_options = mergeOptions(mware4);
+export const get7_options = normalizeOptions(mware4, getHandler);
+export const head7_options = normalizeOptions(mware4);
 
 export function get7(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);
@@ -249,7 +249,7 @@ import Page from "../../src/routes/my/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, HEAD } from "./src/routes/my/+handler.ts";
 import page from "./dist/.marko-run/my.marko";
@@ -257,8 +257,8 @@ import page from "./dist/.marko-run/my.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const headHandler = normalizeHandler(HEAD, 'HEAD');
 
-export const get8_options = mergeOptions(mware4, getHandler);
-export const head8_options = mergeOptions(mware4, headHandler);
+export const get8_options = normalizeOptions(mware4, getHandler);
+export const head8_options = normalizeOptions(mware4, headHandler);
 
 export function get8(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -277,14 +277,14 @@ export function head8(context) {
 ### Path: ``/$$match``
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware4 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET } from "./src/routes/$$match/+handler.ts";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get9_options = mergeOptions(mware4, getHandler);
-export const head9_options = mergeOptions(mware4);
+export const get9_options = normalizeOptions(mware4, getHandler);
+export const head9_options = normalizeOptions(mware4);
 
 export function get9(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);

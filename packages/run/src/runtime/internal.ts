@@ -431,13 +431,16 @@ const defaultMaxBytes = 1024 * 1024;
 const defaultMaxParts = 1000;
 const defaultMaxFiles = 20;
 
-export function mergeOptions(
-  ...arr: (
-    | NormalizedHandler<Context, "ALL", any, HandlerOptions>
-    | HandlerFunction
-    | HandlerOptions
-  )[]
-) {
+type MergeOptionsInput =
+  | NormalizedHandler<Context, "ALL", any, HandlerOptions>
+  | HandlerFunction
+  | HandlerOptions;
+
+// Merges without defaulting or normalizing, so intermediate merges (a
+// handler's own options) stay exactly what was declared and only the final
+// per-route merge materializes defaults. Never writes into its inputs — the
+// first source is often a `+middleware` options object shared across routes.
+export function mergeOptions(...arr: MergeOptionsInput[]) {
   const merged: HandlerOptions = {};
   for (const item of arr) {
     let options: HandlerOptions;
@@ -450,14 +453,27 @@ export function mergeOptions(
     }
     for (const k in options) {
       const key = k as keyof typeof options;
-      const option = options[key];
-      if (typeof option === "object" && typeof merged[key] === "object") {
-        Object.assign(merged[key], option);
-      } else if (option) {
-        merged[key] = option as any;
+      let option: unknown = options[key];
+      // A bare validator merges with an options object instead of replacing
+      // it, matching the documented middleware/handler option merging.
+      if ((key === "json" || key === "form") && isValidator(option)) {
+        option = { validator: option };
       }
+      const prev = merged[key];
+      // A key explicitly present with a falsy value overrides the inherited
+      // one — different from the key being absent, which leaves it alone.
+      merged[key] = (
+        option && typeof option === "object" && prev && typeof prev === "object"
+          ? { ...prev, ...option }
+          : option
+      ) as any;
     }
   }
+  return merged;
+}
+
+export function normalizeOptions(...arr: MergeOptionsInput[]) {
+  const merged = mergeOptions(...arr);
 
   const result = {
     params: normalizeValidator(merged.params),

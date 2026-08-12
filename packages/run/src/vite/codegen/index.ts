@@ -88,7 +88,7 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
     runtimeImports.push("normalizeMeta");
   }
   if (handler || middleware.length) {
-    runtimeImports.push("call", "mergeOptions");
+    runtimeImports.push("call", "normalizeOptions");
   }
   if (page) {
     runtimeImports.push("render");
@@ -630,7 +630,7 @@ function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
   writer.write(`export const ${verb}${route.index}_options = `);
 
   if (route.middleware.length || hasHandler) {
-    writer.write(`mergeOptions(`);
+    writer.write(`normalizeOptions(`);
 
     let sep = "";
     for (const { id } of route.middleware) {
