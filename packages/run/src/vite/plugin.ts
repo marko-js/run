@@ -553,11 +553,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       configEnvironment(name, envConfig, env) {
         // `@marko/run/router` resolves to a virtual module, so no
         // environment's dependency scan may load it (or its graph) from disk.
-        const optimizeDeps = { exclude: ["@marko/run/router"] };
+        const optimizeDeps: NonNullable<typeof envConfig.optimizeDeps> = {
+          exclude: ["@marko/run/router"],
+        };
+
+        if (env.command !== "build") {
+          // Since vite 8.1.4 a client dep discovered before the optimizer
+          // finishes init keeps a permanently stale hash under multi-environment
+          // plugins (e.g. @cloudflare/vite-plugin), 504ing every request for it.
+          if (name === "client") {
+            optimizeDeps.ignoreOutdatedRequests =
+              envConfig.optimizeDeps?.ignoreOutdatedRequests ?? true;
+          }
+          return { optimizeDeps };
+        }
 
         // Vite drops top-level `resolve.conditions` for non-client environments,
         // so the SSR build has to be pinned here or it keeps Vite's defaults.
-        if (env.command !== "build" || envConfig.resolve?.conditions) {
+        if (envConfig.resolve?.conditions) {
           return { optimizeDeps };
         }
 
