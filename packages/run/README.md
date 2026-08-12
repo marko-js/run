@@ -570,6 +570,7 @@ export const POST = Run.POST(
 - `form` handles `application/x-www-form-urlencoded` and `multipart/form-data` requests. It can be a validator, or an options object `{ validator?, maxBytes?, maxParts?, maxFiles?, maxFileBytes?, onFile? }`. Repeated fields become arrays, and `onFile(context, file)` is called for each uploaded file in multipart requests.
 - Function validators resolve `context.body` to their return value; Standard Schema validators resolve it to a `[value, issues]` tuple; with no validator it resolves to the raw parsed body.
 - Requests exceeding the configured size limits are rejected with a `413` response; malformed bodies (invalid JSON, invalid encoding, unparsable multipart) are rejected with a `400`.
+- Requests whose `Content-Type` matches no configured body option are rejected with a `415`.
 
 ### Loading Data
 

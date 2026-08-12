@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Reject unconfigured content-types in readBody instead of falling back to form parsing
-
-`packages/run/src/runtime/internal.ts` › `readBody` | 2026-07-18 | impact:med | effort:med
-
-In `readBody`, the form branch (internal.ts:156-178) is the unconditional fallback for every non-`application/json` content-type and uses `route.options.form ?? {}` — so on a route that declares only the `json` body option, a POST with `content-type: text/plain` (or anything else) is parsed as urlencoded and `context.body` resolves to an object that skipped the json validator entirely. Repro: on a `Run.POST({ json: validator }, ...)` handler, `curl -X POST -H 'content-type: text/plain' -d 'hi' ...` yields `context.body = {"hi":""}` with a 200 and the validator never runs. This contradicts packages/run/README.md:569-570 ("`json` handles `application/json` requests; `form` handles `application/x-www-form-urlencoded` and `multipart/form-data`") and makes the inferred TypeScript type of `context.body` (the json validator's return type) unsound. Respond 415 Unsupported Media Type for content-types no configured option handles — or at minimum only take the form path when the `form` option is actually configured.
-
 ## Pass the error message to buildErrorMessage in the dedup error logger
 
 `packages/run/src/vite/plugin.ts` › `configResolved` | 2026-07-18 | impact:med | effort:low
