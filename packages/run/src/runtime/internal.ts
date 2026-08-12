@@ -1,6 +1,14 @@
 /// <reference types="marko" />
 
-import { parseFormData } from "@remix-run/form-data-parser";
+import {
+  FormDataParseError,
+  MaxFilesExceededError,
+  MaxFileSizeExceededError,
+  MaxPartsExceededError,
+  MaxTotalSizeExceededError,
+  MultipartParseError,
+  parseFormData,
+} from "@remix-run/form-data-parser";
 
 import { httpVerbs } from "../vite/constants";
 import type {
@@ -65,6 +73,10 @@ type Rendered = ReturnType<Marko.Template["render"]> & AsyncIterable<string>;
 // Registry key for the raw render carried on a page `Response`; also read by
 // `adapter/middleware`, which is bundled separately.
 const kRender = Symbol.for("@marko/run.render");
+
+// Marks an error as a client fault; `call()` answers with a bare response of
+// this status instead of letting it surface as a server error.
+const kErrorStatus = Symbol.for("@marko/run.errorStatus");
 
 let toReadable = (rendered: Rendered): ReadableStream<Uint8Array> => {
   toReadable = (rendered as any).toReadable
@@ -274,6 +286,8 @@ export async function call(
         throw NotHandled;
       } else if (error instanceof Response) {
         return error;
+      } else if (typeof error === "object" && kErrorStatus in error) {
+        return new Response(null, { status: (error as any)[kErrorStatus] });
       }
       throw error;
     } finally {
@@ -313,6 +327,8 @@ export async function call(
         throw NotHandled;
       } else if (error instanceof Response) {
         return error;
+      } else if (typeof error === "object" && kErrorStatus in error) {
+        return new Response(null, { status: (error as any)[kErrorStatus] });
       }
       throw error;
     }
@@ -558,45 +574,64 @@ function searchParamsToObject(params: URLSearchParams | FormData) {
   return obj;
 }
 
+// Failures here are the client's fault, so they throw status-stamped errors
+// (see `kErrorStatus`) instead of surfacing as server errors.
+// Fatal decode, so malformed UTF-8 is a client error rather than U+FFFD noise.
+const bodyDecoder = new TextDecoder("utf-8", { fatal: true });
+
 async function readBodyWithLimit(request: Request, maxBytes: number) {
+  let bytes: ArrayBuffer | Uint8Array;
+
   if (maxBytes < 0) {
-    return await request.text();
+    bytes = await request.arrayBuffer();
+  } else {
+    const contentLength = request.headers.get("content-length");
+
+    if (contentLength !== null && Number(contentLength) > maxBytes) {
+      throw clientError("Request body too large", 413);
+    }
+
+    if (!request.body) {
+      throw clientError("Missing request body", 400);
+    }
+
+    const reader = request.body.getReader();
+    const buffer = new Uint8Array(maxBytes);
+    let receivedBytes = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (receivedBytes + value.byteLength > maxBytes) {
+          await reader.cancel();
+          throw clientError("Request body too large", 413);
+        }
+
+        buffer.set(value, receivedBytes);
+        receivedBytes += value.byteLength;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    bytes = buffer.subarray(0, receivedBytes);
   }
-
-  const contentLength = request.headers.get("content-length");
-
-  if (contentLength !== null && Number(contentLength) > maxBytes) {
-    throw new Error("Request body too large");
-  }
-
-  if (!request.body) {
-    throw new Error("Missing request body");
-  }
-
-  const reader = request.body.getReader();
-  const bytes = new Uint8Array(maxBytes);
-  let receivedBytes = 0;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      if (receivedBytes + value.byteLength > maxBytes) {
-        await reader.cancel();
-        throw new Error("Request body too large");
-      }
-
-      bytes.set(value, receivedBytes);
-      receivedBytes += value.byteLength;
-    }
-  } finally {
-    reader.releaseLock();
+    return bodyDecoder.decode(bytes);
+  } catch (error) {
+    throw clientError("Invalid request body encoding", 400, error);
   }
+}
 
-  return new TextDecoder("utf-8", { fatal: true }).decode(
-    bytes.subarray(0, receivedBytes),
-  );
+// Stamps the thrown error itself when there is one, keeping its message and
+// stack; `message` describes the failure for everything else.
+function clientError(message: string, status: number, thrown?: unknown) {
+  const error = thrown instanceof Error ? thrown : new Error(message);
+  (error as any)[kErrorStatus] = status;
+  return error;
 }
 
 async function readBody(route: RouteMatch, context: Context) {
@@ -604,10 +639,14 @@ async function readBody(route: RouteMatch, context: Context) {
   const contentType = request.headers.get("Content-Type");
   if (contentType?.includes("application/json")) {
     const { maxBytes = defaultMaxBytes, validator } = route.options.json ?? {};
-    const json =
-      maxBytes < 0
-        ? await request.json()
-        : JSON.parse(await readBodyWithLimit(request, maxBytes));
+    let json;
+    try {
+      json = JSON.parse(await readBodyWithLimit(request, maxBytes));
+    } catch (error) {
+      if (typeof error === "object" && error && kErrorStatus in error)
+        throw error;
+      throw clientError("Invalid JSON body", 400, error);
+    }
     return validator ? validator(json) : json;
   }
   const {
@@ -618,20 +657,41 @@ async function readBody(route: RouteMatch, context: Context) {
     onFile,
     validator,
   } = route.options.form ?? {};
-  const data = searchParamsToObject(
-    contentType?.includes("multipart/form-data")
-      ? await parseFormData(
-          request,
-          {
-            maxParts,
-            maxFiles,
-            maxFileSize: maxFileBytes,
-            maxTotalSize: maxBytes,
-          },
-          onFile ? (file) => onFile!(context, file) : undefined,
-        )
-      : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
-  );
+  let data;
+  try {
+    data = searchParamsToObject(
+      contentType?.includes("multipart/form-data")
+        ? await parseFormData(
+            request,
+            {
+              maxParts,
+              maxFiles,
+              maxFileSize: maxFileBytes,
+              maxTotalSize: maxBytes,
+            },
+            onFile ? (file) => onFile!(context, file) : undefined,
+          )
+        : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+    );
+  } catch (error) {
+    if (
+      error instanceof MaxFilesExceededError ||
+      error instanceof MaxFileSizeExceededError ||
+      error instanceof MaxPartsExceededError ||
+      error instanceof MaxTotalSizeExceededError
+    ) {
+      throw clientError("Request body too large", 413, error);
+    }
+    if (
+      error instanceof FormDataParseError ||
+      error instanceof MultipartParseError
+    ) {
+      throw clientError("Invalid form body", 400, error);
+    }
+    // Anything else — an `onFile` handler failure, a thrown `Response` — is
+    // not a malformed-body case and keeps its meaning.
+    throw error;
+  }
   return validator ? validator(data) : data;
 }
 

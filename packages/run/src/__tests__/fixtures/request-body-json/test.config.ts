@@ -2,7 +2,42 @@ import assert from "assert";
 
 import { Step, StepContext } from "../../main.test";
 
-export const steps: Step[] = [post];
+export const steps: Step[] = [
+  post,
+  postMalformed,
+  postTooLarge,
+  postBadEncoding,
+];
+
+async function postMalformed({ page }: StepContext) {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{oops",
+  });
+  assert.equal(response.status, 400);
+  assert.equal(await response.text(), "");
+}
+
+async function postTooLarge({ page }: StepContext) {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "x".repeat(300), age: 7 }),
+  });
+  assert.equal(response.status, 413);
+  assert.equal(await response.text(), "");
+}
+
+async function postBadEncoding({ page }: StepContext) {
+  const response = await page.fetch(page.url(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    // `"x` followed by an invalid UTF-8 sequence.
+    body: new Uint8Array([0x22, 0x78, 0xc3, 0x28]),
+  });
+  assert.equal(response.status, 400);
+}
 
 async function post({ page }: StepContext) {
   const response = await page.fetch(page.url(), {

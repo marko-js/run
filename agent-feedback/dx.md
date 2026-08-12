@@ -203,3 +203,9 @@ The root `lint` script is `eslint --format unix . && prettier . --check --log-le
 `AGENTS.md` › `## Conventions` | 2026-08-07 | impact:low | effort:low
 
 CodeRabbit's pre-merge checks (configured in the organization UI; the repo has no `.coderabbit.yaml`) require 80% docstring coverage and flagged PR #243 at 13.33% with "Write docstrings for the functions missing them", while `AGENTS.md` treats comments as a last resort and only guarantees JSDoc where it earns its place — so the two policies will disagree on nearly every code PR, and following the bot's resolution would violate the repo's own conventions. Lower or disable the docstring-coverage threshold in the CodeRabbit organization settings, or add a repo `.coderabbit.yaml` that overrides it, so reviews stop prompting for docstrings the conventions reject.
+
+## Add "macrotask" to the cspell dictionary so `pnpm run lint` passes on main
+
+`cspell.json` › `words` | 2026-08-11 | impact:med | effort:low
+
+`pnpm run lint` fails on a clean `main` with a single cspell error: `agent-feedback/cleanup.md` uses "macrotask", which is not in `cspell.json`'s `words` list. The word arrived with 445114c (#256) and the check covers `**/*.{md,ts,marko}`, so every branch cut from main inherits a red lint until the word is added. Re-verify: `npx cspell "**/*.{md,ts,marko}" --no-progress` on main reports one issue.
