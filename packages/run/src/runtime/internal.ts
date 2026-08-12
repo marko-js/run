@@ -440,13 +440,25 @@ type MergeOptionsInput =
 // handler's own options) stay exactly what was declared and only the final
 // per-route merge materializes defaults. Never writes into its inputs — the
 // first source is often a `+middleware` options object shared across routes.
-export function mergeOptions(...arr: MergeOptionsInput[]) {
+// With a `verb`, inputs stamped with a verb that would not run for it are
+// skipped; GET-stamped inputs still apply to HEAD, mirroring `call()`.
+export function mergeOptions(items: MergeOptionsInput[], verb?: HttpVerb) {
   const merged: HandlerOptions = {};
-  for (const item of arr) {
+  for (const item of items) {
     let options: HandlerOptions;
     if (typeof item === "object") {
       options = item;
     } else if ("options" in item) {
+      if (verb && item.verb) {
+        const itemVerb = item.verb as HttpVerbOrAll;
+        if (
+          itemVerb !== "ALL" &&
+          itemVerb !== verb &&
+          !(itemVerb === "GET" && verb === "HEAD")
+        ) {
+          continue;
+        }
+      }
       options = item.options;
     } else {
       continue;
@@ -472,8 +484,11 @@ export function mergeOptions(...arr: MergeOptionsInput[]) {
   return merged;
 }
 
-export function normalizeOptions(...arr: MergeOptionsInput[]) {
-  const merged = mergeOptions(...arr);
+export function normalizeOptions(
+  verb: HttpVerb,
+  ...items: MergeOptionsInput[]
+) {
+  const merged = mergeOptions(items, verb);
 
   const result = {
     params: normalizeValidator(merged.params),
@@ -761,19 +776,19 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
     } else if (Array.isArray(optionsOrHandlers)) {
       for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
       handler = compose(optionsOrHandlers) as any;
-      handler.options = mergeOptions(...optionsOrHandlers);
+      handler.options = mergeOptions(optionsOrHandlers);
     } else if (typeof handlers === "function") {
       assertHandlerVerb(verb, handlers);
       const _fn = handlers;
       handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = mergeOptions(_fn, optionsOrHandlers);
+      handler.options = mergeOptions([_fn, optionsOrHandlers]);
     } else if (Array.isArray(handlers)) {
       for (const h of handlers) assertHandlerVerb(verb, h);
       handler = compose(handlers) as any;
-      handler.options = mergeOptions(...handlers, optionsOrHandlers);
+      handler.options = mergeOptions([...handlers, optionsOrHandlers]);
     } else {
       handler = createPassthroughHandler() as any;
-      handler.options = mergeOptions(optionsOrHandlers);
+      handler.options = mergeOptions([optionsOrHandlers]);
     }
 
     handler.verb = verb;

@@ -14,9 +14,9 @@ const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post1_meta, PUT: put1_meta, DELETE: delete1_meta } = normalizeMeta(meta1);
 
-export const post1_options = normalizeOptions(postHandler);
-export const put1_options = normalizeOptions(putHandler);
-export const delete1_options = normalizeOptions(deleteHandler);
+export const post1_options = normalizeOptions('POST', postHandler);
+export const put1_options = normalizeOptions('PUT', putHandler);
+export const delete1_options = normalizeOptions('DELETE', deleteHandler);
 
 export function post1(context) {
 	return call(postHandler, noContent, context);
@@ -54,9 +54,9 @@ export const { GET: get2_meta, GET: head2_meta, POST: post2_meta, PUT: put2_meta
 
 export const get2_options = {};
 export const head2_options = {};
-export const post2_options = normalizeOptions(postHandler);
-export const put2_options = normalizeOptions(putHandler);
-export const delete2_options = normalizeOptions(deleteHandler);
+export const post2_options = normalizeOptions('POST', postHandler);
+export const put2_options = normalizeOptions('PUT', putHandler);
+export const delete2_options = normalizeOptions('DELETE', deleteHandler);
 
 export function get2(context) {
 	return render(context, page, {});

@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Skip a verb-specific middleware's validation options for the verbs it doesn't run on
-
-`packages/run/src/vite/codegen/index.ts` › `writeRouteOptions` | 2026-08-03 | impact:med | effort:med
-
-`writeRouteOptions` emits `mergeOptions(mware…, <verb>Handler)` for every verb of a route with every `+middleware` included unconditionally (`get1_options`, `head1_options` and `post1_options` all contain `mware3` in `packages/run/src/vite/__tests__/fixtures/get-post/__snapshots__/get-post.expected.routes.md`), and `mergeOptions` (`packages/run/src/runtime/internal.ts`) ignores the `verb` stamp `createDefineHandler` puts on the middleware. So a `+middleware.ts` of `export default Run.POST({ search, form })` still rewrites `ctx.search` for GET — `GET /?page=3&sort=asc` resolves `ctx.search` to `{ page: 3 }` with `sort` silently dropped — and still enables form/json body parsing on PUT and PATCH, even though `call` skips the middleware _function_ for those methods and the README states that middleware created with a specific verb helper is skipped for other methods. The generated types follow the README rather than the runtime: `TypesFromHandler` (`packages/run/src/runtime/types.ts`) drops a handler whose verb is not `Verb | "ALL"`, so under that middleware a GET handler's `ctx.search` type-checks as exactly `undefined` while the request really receives the transformed object. Codegen cannot fix this by filtering `route.middleware` — `RoutableFile.verbs` is only populated for `+handler` exports and pages, and a middleware's verb exists only at runtime — so pass the target verb from `writeRouteOptions` into `mergeOptions` and have it skip inputs whose `verb` is neither that verb nor `"ALL"`. Nothing covers this today: `packages/run/src/__tests__/fixtures/route-options` uses a `Run.ALL` middleware and `fixtures/verb-specific-middleware` asserts only the `data` half of verb gating.
-
 ## Preserve handler options when a `+handler`/`+middleware` exports an array of handlers
 
 `packages/run/src/runtime/internal.ts` › `normalizeHandler` | 2026-08-03 | impact:med | effort:low

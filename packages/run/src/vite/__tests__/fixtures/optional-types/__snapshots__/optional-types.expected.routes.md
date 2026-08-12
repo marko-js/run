@@ -29,8 +29,8 @@ import page from "./dist/.marko-run/aaa.$.marko";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get1_options = normalizeOptions(mware2, getHandler);
-export const head1_options = normalizeOptions(mware2);
+export const get1_options = normalizeOptions('GET', mware2, getHandler);
+export const head1_options = normalizeOptions('HEAD', mware2);
 
 export function get1(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -63,8 +63,8 @@ import page from "./dist/.marko-run/aaa.$.bbb.$.marko";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get2_options = normalizeOptions(mware2, getHandler);
-export const head2_options = normalizeOptions(mware2);
+export const get2_options = normalizeOptions('GET', mware2, getHandler);
+export const head2_options = normalizeOptions('HEAD', mware2);
 
 export function get2(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -97,8 +97,8 @@ import page from "./dist/.marko-run/aaa.$.bbb.$.ccc.$.marko";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get3_options = normalizeOptions(mware2, getHandler);
-export const head3_options = normalizeOptions(mware2);
+export const get3_options = normalizeOptions('GET', mware2, getHandler);
+export const head3_options = normalizeOptions('HEAD', mware2);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -131,8 +131,8 @@ import page from "./dist/.marko-run/aaa.$.ccc.$.marko";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get4_options = normalizeOptions(mware2, getHandler);
-export const head4_options = normalizeOptions(mware2);
+export const get4_options = normalizeOptions('GET', mware2, getHandler);
+export const head4_options = normalizeOptions('HEAD', mware2);
 
 export function get4(context) {
 	const __page = (data) => render(context, page, {}, data);
