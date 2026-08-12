@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Preserve handler options when a `+handler`/`+middleware` exports an array of handlers
-
-`packages/run/src/runtime/internal.ts` › `normalizeHandler` | 2026-08-03 | impact:med | effort:low
-
-`normalizeHandler`'s array branch returns `compose(arr)`, a closure with no `options` property, and `mergeOptions` skips any function lacking one — so the `post1_options = mergeOptions(mware3, postHandler)` that `writeRouteOptions` (`packages/run/src/vite/codegen/index.ts`) emits discards every `json`/`form`/`params`/`search` option declared inside the array. `packages/run/README.md` documents that shape for `+handler.*` and `+middleware.*`, so `export const POST = [Run.POST({ json: schema }, fn), other]` leaves `context.body` as `undefined` and never runs the validator while `fn` still type-checks with `ctx.body` as the validated tuple; the documented `const [body, issues] = await ctx.body` then throws `TypeError: undefined is not iterable` and 500s with no build-time or dev diagnostic. Attach `options: mergeOptions(...arr)` to the composed function there; the Promise branch has the same hole but route options are read synchronously at module scope, so it should at least warn. Separately, `compose` returns `handlers[0]` unchanged for a single-element array and `createDefineHandler` stamps `verb`/`options` onto that object, so `Run.GET([shared])` mutates the caller's function and a later `Run.POST([shared])` throws "Expected verb POST but handler was defined with Run.GET" — wrap it as the single-function branches do, since `packages/run/src/__tests__/fixtures/shared-handler-reuse` covers only arrays of length ≥ 2.
-
 ## Apply the configured `trailingSlashes` policy in `match`/`invoke`, not just in the generated `fetch`
 
 `packages/adapters/node/src/middleware.ts` › `invokeMiddleware` | 2026-08-03 | impact:med | effort:med

@@ -1,6 +1,10 @@
 import assert from "assert";
 
-import { mergeOptions, normalizeOptions } from "../runtime/internal";
+import {
+  mergeOptions,
+  normalizeHandler,
+  normalizeOptions,
+} from "../runtime/internal";
 
 describe("normalizeOptions", () => {
   it("should enable body parsing with the defaults for a bare truthy option", () => {
@@ -186,5 +190,45 @@ describe("normalizeOptions verb gating", () => {
     const { search } = normalizeOptions("HEAD", get);
 
     assert.equal(typeof search, "function");
+  });
+});
+
+describe("array export options", () => {
+  it("should surface options declared inside an array export", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const composed = normalizeHandler([
+      (Run.POST as any)({ json: validator }, () => {}),
+      () => {},
+    ] as any);
+    const { json } = normalizeOptions("POST", composed as any);
+
+    assert.equal(typeof json!.validator, "function");
+  });
+
+  it("should gate array elements by their own verb stamps", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const composed = normalizeHandler([
+      (Run.GET as any)({ search: validator }, () => {}),
+      (Run.POST as any)({ form: true }, () => {}),
+    ] as any);
+
+    const get = normalizeOptions("GET", composed as any);
+    assert.equal(typeof get.search, "function");
+    assert.equal(get.form, undefined);
+
+    const post = normalizeOptions("POST", composed as any);
+    assert.equal(post.search, undefined);
+    assert.notEqual(post.form, undefined);
+  });
+
+  it("should not stamp a shared handler reused in single-element arrays", () => {
+    const shared = () => {};
+    const get = (Run.GET as any)([shared]);
+    const post = (Run.POST as any)([shared]);
+
+    assert.equal((shared as any).verb, undefined);
+    assert.equal((shared as any).options, undefined);
+    assert.equal(get.verb, "GET");
+    assert.equal(post.verb, "POST");
   });
 });

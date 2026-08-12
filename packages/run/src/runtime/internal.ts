@@ -340,14 +340,20 @@ export async function call(
   return response || (next as any as NextDataFunction)(data);
 }
 
+// The elements behind a composed handler, so the options merge can gate each
+// by its own verb stamp. Keyed off-object: the closure is stamped by callers
+// and the elements are not part of its public shape.
+const composedItems = new WeakMap<HandlerFunction, HandlerFunction[]>();
+
 export function compose(handlers: HandlerFunction[]): HandlerFunction {
   const len = handlers.length;
   if (!len) {
     return createPassthroughHandler();
-  } else if (len === 1) {
+  }
+  if (len === 1) {
     return handlers[0];
   }
-  return (context, next) => {
+  const composed: HandlerFunction = (context, next) => {
     let i = 0;
     return (function nextHandler(data) {
       return i < len
@@ -355,6 +361,8 @@ export function compose(handlers: HandlerFunction[]): HandlerFunction {
         : (next as any as NextDataFunction)(data);
     })();
   };
+  composedItems.set(composed, handlers);
+  return composed;
 }
 
 export function normalizeHandler(
@@ -461,7 +469,9 @@ export function mergeOptions(items: MergeOptionsInput[], verb?: HttpVerb) {
       }
       options = item.options;
     } else {
-      continue;
+      const composed = composedItems.get(item);
+      if (!composed) continue;
+      options = mergeOptions(composed, verb);
     }
     for (const k in options) {
       const key = k as keyof typeof options;
@@ -762,10 +772,10 @@ function assertExportedVerb(
 }
 
 function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
-  return (
+  return function define(
     optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
     handlers: undefined | HandlerFunction | HandlerFunction[],
-  ) => {
+  ): NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions> {
     let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
 
     if (typeof optionsOrHandlers === "function") {
@@ -774,6 +784,11 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
       handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
       handler.options = (_fn as any).options ?? {};
     } else if (Array.isArray(optionsOrHandlers)) {
+      // A single-element array is the single function: the plain-function
+      // path wraps before stamping, so the author's handler is never mutated.
+      if (optionsOrHandlers.length === 1) {
+        return define(optionsOrHandlers[0], handlers);
+      }
       for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
       handler = compose(optionsOrHandlers) as any;
       handler.options = mergeOptions(optionsOrHandlers);
@@ -783,6 +798,9 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
       handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
       handler.options = mergeOptions([_fn, optionsOrHandlers]);
     } else if (Array.isArray(handlers)) {
+      if (handlers.length === 1) {
+        return define(optionsOrHandlers, handlers[0]);
+      }
       for (const h of handlers) assertHandlerVerb(verb, h);
       handler = compose(handlers) as any;
       handler.options = mergeOptions([...handlers, optionsOrHandlers]);
