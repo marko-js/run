@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## `@marko/run` SSR build can bundle a dependency's private transitive CJS deps under pnpm and crash on ESM/CJS interop
-
-`packages/run/src/vite/plugin.ts` › `config` (ssr.noExternal / resolve.conditions) | 2026-07-23 | impact:med | effort:med
-
-Under pnpm, a bundled dependency's _private_ transitive CJS dep can be pulled into the SSR bundle and crash the built server at startup. Repro: the `micro-frame-fetch` fixture depends on `@micro-frame/marko`, which ships uncompiled `.marko` files, so the Marko plugin must pull it into the bundle. `@micro-frame/marko` imports `make-fetch-happen@12` → `cacache@17` → `lru-cache@7`. Because `make-fetch-happen` is _private_ to `@micro-frame/marko` under pnpm (`.pnpm/@micro-frame+marko@…/node_modules/make-fetch-happen`) it is not resolvable from the app root, so Vite cannot externalize it and bundles the whole chain. `resolve.conditions` lists `import` before `require`, so rolldown bundles `lru-cache@7`'s dual-published _ESM_ build (`index.mjs`, `export default LRUCache`) for cacache's CJS `require("lru-cache")`; the interop wrapper then evaluates `new __toCommonJS({ default: LRUCache })(…)` → `TypeError: … is not a constructor` and the server exits 1. On npm's flat `node_modules` the chain externalizes and Node loads lru-cache's CJS build, so it only fails under pnpm. This repo's suite is unblocked by declaring `make-fetch-happen` in the workspace-root `devDependencies` (making it root-resolvable so Vite externalizes it), but any pnpm consumer of `@marko/run` whose app pulls a `.marko`-shipping package with a private dual-published CJS transitive dep hits the same crash. Durable fix: externalize such nested transitive deps in the SSR build even under pnpm's layout, or prefer the `require` condition ahead of `import` for the Node SSR target so a bundled `require()` resolves the CJS build.
-
 ## Stop `mergeOptions` from mutating the shared `+middleware` options object — one route's body validator and limits leak into every later route
 
 `packages/run/src/runtime/internal.ts` › `mergeOptions` | 2026-08-03 | impact:high | effort:med
