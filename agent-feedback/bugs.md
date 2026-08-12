@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Fix permanent 504 "Outdated Optimize Dep" for marko/debug/dom in dev when @cloudflare/vite-plugin shares the ssr environment
-
-`packages/run/src/vite/plugin.ts` › `config` | 2026-07-18 | impact:high | effort:high
-
-In `vite dev`, when an adapter's `plugins()` returns `cloudflare({ viteEnvironment: { name: "ssr" } })` (@cloudflare/vite-plugin 1.44, vite 8.1.5, @marko/vite 6.1.6, marko 6.3.14, @marko/run 0.11.5, wrangler config with `main` forwarding to `@marko/run/router`), the served client entry (`/dist/.marko-run/index.client-entry.marko`) rewrites `marko/debug/dom` to `/node_modules/.vite/deps/marko_debug_dom.js?v=HASH` where HASH differs on every server start, but every request for it — including with the browserHash written to `node_modules/.vite/deps/_metadata.json` — returns `504 Outdated Optimize Dep`, and the served entry never updates its hash on reload, so the outdated-dep reload loop never converges and the dev server has zero hydration (builds/preview are fine; only the unhashed URL returns 200). Two optimizer states disagree: the one the client-entry transform embeds vs the one validating `/node_modules/.vite/deps` requests. It is not caused by the CLI resolving the config twice (once for adapter discovery in `packages/run/src/cli/commands.ts`, once in the adapter's `createServer`): plain `vite dev` with `marko({ adapter })` plus the cloudflare plugin in one config reproduces it identically from a clean `node_modules/.vite`, while removing the cloudflare plugin makes the same request return 200. The remaining suspect is @marko/vite's dev doc-manifest generation (marko-js/vite `src/index.ts`, `devServer.transformIndexHtml` called from inside the ssr-side transform) interleaving client-environment optimizer state with the cloudflare plugin's multi-environment setup — debugging which DepsOptimizer instance serves each side, and covering this combination with an official adapter in CI, is the concrete direction.
-
 ## Report the real package version from the marko-run CLI instead of hardcoded "0.0.1"
 
 `packages/run/src/cli/index.ts` › `prog` | 2026-07-18 | impact:med | effort:low
