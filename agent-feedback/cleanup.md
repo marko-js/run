@@ -38,12 +38,6 @@ The edge entry's `excludedPath: ["/assets/*"]` hardcodes Vite's default `build.a
 
 `logRoutesTable` pushes "handler" into a row's entry chain whenever `route.handler` exists, regardless of verb: a route with `+page.marko` and a `+handler.ts` exporting only `POST` prints its GET row as `handler -> page`, implying a GET handler runs before the page when none exists. The per-verb information is already available — `getVerbs` derives verbs from `route.handler?.verbs` (packages/run/src/vite/utils/route.ts:13) — so the cell could check `route.handler.verbs.includes(verb)` before pushing. Cosmetic, but the table is the main at-a-glance view of each route's execution chain.
 
-## Read the banner version at runtime instead of inlining npm_package_version at build time
-
-`packages/run/scripts/build.ts` › `opts` | 2026-07-18 | impact:low | effort:low
-
-The startup banner (`packages/run/src/adapter/utils.ts:38`) reads `process.env.npm_package_version`, which esbuild `define` freezes at package-build time; the published `0.11.0-rc.10` tarball contains the literal `v${"0.11.0-rc.9"}` in `dist/adapter/index.js`, so every rc.10 install printed the previous version at startup (verify with `npm pack @marko/run@0.11.0-rc.10` and grep the dist). The root `@ci:version` script runs the build before `changeset version`, so any release that publishes a dist built before the bump ships a stale banner again. Read the version from the package's own package.json at runtime, or have release CI assert the inlined value matches the manifest.
-
 ## Reconcile the two in-flight-slot guards in the dev request logger so the `⁺` slot stops leaking
 
 `packages/run/src/adapter/logger.ts` › `logger` | 2026-08-03 | impact:low | effort:low

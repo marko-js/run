@@ -2,6 +2,7 @@
 
 import sade from "sade";
 
+import { getPackageVersion } from "../adapter/utils";
 import {
   build,
   defaultConfigFileBases,
@@ -12,7 +13,7 @@ import {
 } from "./commands";
 
 const prog = sade("marko-run")
-  .version("0.0.1")
+  .version(getPackageVersion())
   .option(
     "-c, --config",
     `Provide path to a Vite config file (by default looks for a file starting with ${defaultConfigFileBases.join(

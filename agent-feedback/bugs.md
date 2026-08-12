@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Report the real package version from the marko-run CLI instead of hardcoded "0.0.1"
-
-`packages/run/src/cli/index.ts` › `prog` | 2026-07-18 | impact:med | effort:low
-
-The sade program is initialized with `.version("0.0.1")`, so `npx marko-run --version` prints `marko-run, 0.0.1` regardless of the installed release — the literal ships verbatim in published `dist/cli/index.mjs` (confirmed in the 0.6.6 tarball, and the source line is unchanged at HEAD). This makes version checks during bug triage misleading: a user asked "what version of the CLI are you on?" gets a bogus answer. Inject the version from the package's own `package.json` at bundle time (a define/replace step in the dist build) or read it at runtime before constructing the sade program.
-
 ## `@marko/run` SSR build can bundle a dependency's private transitive CJS deps under pnpm and crash on ESM/CJS interop
 
 `packages/run/src/vite/plugin.ts` › `config` (ssr.noExternal / resolve.conditions) | 2026-07-23 | impact:med | effort:med

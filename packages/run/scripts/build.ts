@@ -22,11 +22,6 @@ const opts: BuildOptions = {
   target: ["node14"],
   bundle: true,
   treeShaking: true,
-  define: {
-    "process.env.npm_package_version": JSON.stringify(
-      process.env.npm_package_version || "",
-    ),
-  },
   plugins: [
     {
       name: "external-modules",
