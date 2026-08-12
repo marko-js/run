@@ -19,7 +19,7 @@ import Page from "../../src/routes/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, mergeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/+handler.marko";
 import page from "./dist/.marko-run/index.marko";
@@ -27,9 +27,9 @@ import page from "./dist/.marko-run/index.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get1_options = mergeOptions(mware3, getHandler);
-export const head1_options = mergeOptions(mware3);
-export const post1_options = mergeOptions(mware3, postHandler);
+export const get1_options = normalizeOptions(mware3, getHandler);
+export const head1_options = normalizeOptions(mware3);
+export const post1_options = normalizeOptions(mware3, postHandler);
 
 export function get1(context) {
 	const __page = (data) => render(context, page, {}, data);

@@ -4,7 +4,7 @@
 ### Path: ``/foo/bar``
 ### Handler
 ```js
-import { normalizeHandler, normalizeMeta, call, mergeOptions, noContent } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, normalizeMeta, call, normalizeOptions, noContent } from "virtual:marko-run/runtime/internal";
 import { PUT, POST, DELETE } from "./src/routes/foo/bar/+handler.ts";
 import meta1 from "./src/routes/foo/bar/+meta.ts";
 
@@ -14,9 +14,9 @@ const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post1_meta, PUT: put1_meta, DELETE: delete1_meta } = normalizeMeta(meta1);
 
-export const post1_options = mergeOptions(postHandler);
-export const put1_options = mergeOptions(putHandler);
-export const delete1_options = mergeOptions(deleteHandler);
+export const post1_options = normalizeOptions(postHandler);
+export const put1_options = normalizeOptions(putHandler);
+export const delete1_options = normalizeOptions(deleteHandler);
 
 export function post1(context) {
 	return call(postHandler, noContent, context);
@@ -41,7 +41,7 @@ import Page from "../../src/routes/foo/baz/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, normalizeMeta, call, mergeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, normalizeMeta, call, normalizeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { PUT, POST, DELETE } from "./src/routes/foo/baz/+handler.ts";
 import page from "./dist/.marko-run/foo.baz.marko";
 import meta2 from "./src/routes/foo/baz/+meta.json";
@@ -54,9 +54,9 @@ export const { GET: get2_meta, GET: head2_meta, POST: post2_meta, PUT: put2_meta
 
 export const get2_options = {};
 export const head2_options = {};
-export const post2_options = mergeOptions(postHandler);
-export const put2_options = mergeOptions(putHandler);
-export const delete2_options = mergeOptions(deleteHandler);
+export const post2_options = normalizeOptions(postHandler);
+export const put2_options = normalizeOptions(putHandler);
+export const delete2_options = normalizeOptions(deleteHandler);
 
 export function get2(context) {
 	return render(context, page, {});

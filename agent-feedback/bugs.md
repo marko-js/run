@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Stop `mergeOptions` from mutating the shared `+middleware` options object — one route's body validator and limits leak into every later route
-
-`packages/run/src/runtime/internal.ts` › `mergeOptions` | 2026-08-03 | impact:high | effort:med
-
-`mergeOptions` seeds `merged[key]` with the first source's nested option object by reference and folds later sources in with `Object.assign(merged[key], option)`, so it writes into the objects it was handed — and generated code makes that first source a cross-route singleton, since `renderMiddleware` (`packages/run/src/vite/codegen/index.ts`) emits one module-scoped `mware<id> = normalizeHandler(...)` per `+middleware` (seven route modules merge `mware4` in `packages/run/src/vite/__tests__/fixtures/build-routes/__snapshots__/build-routes.expected.routes.md`). With `export default Run.ALL({ json: { maxBytes: 100 } }, fn)` in a root `+middleware`, merging one route's `Run.POST({ json: schema }, fn)` permanently rewrites the middleware's `options.json` to `{ maxBytes: 1048576, validator: schema }`, so every route merged afterwards — including routes that declare no body options — has `readBody` validate against that unrelated schema and inherit the wrong size limit. `createDefineHandler` compounds it by materializing `defaultMaxBytes`/`defaultMaxFiles`/`defaultMaxParts` plus an explicit `validator: undefined` into `handler.options`, so a handler declaring only `maxBytes` drops the middleware's validator, contradicting the README's "Options declared in middleware and handlers along a route are merged". Fix by shallow-copying nested option objects (`merged[key] = { ...(merged[key] as object), ...option }`) and splitting the raw merge from the defaulting step, so declared options stay un-defaulted until the per-route merge builds its result.
-
 ## Skip a verb-specific middleware's validation options for the verbs it doesn't run on
 
 `packages/run/src/vite/codegen/index.ts` › `writeRouteOptions` | 2026-08-03 | impact:med | effort:med

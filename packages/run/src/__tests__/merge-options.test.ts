@@ -1,12 +1,12 @@
 import assert from "assert";
 
-import { mergeOptions } from "../runtime/internal";
+import { mergeOptions, normalizeOptions } from "../runtime/internal";
 
-describe("mergeOptions", () => {
+describe("normalizeOptions", () => {
   it("should enable body parsing with the defaults for a bare truthy option", () => {
     // The types forbid `json: true`, but plain-JS handlers have no type
     // guard and it is the natural way to write "parse the body".
-    const { json, form } = mergeOptions({ json: true, form: true } as any);
+    const { json, form } = normalizeOptions({ json: true, form: true } as any);
 
     assert.equal(json!.maxBytes, 1024 * 1024);
     assert.equal(json!.validator, undefined);
@@ -17,7 +17,7 @@ describe("mergeOptions", () => {
 
   it("should treat a function as the validator", () => {
     const validator = (input: unknown) => [input, undefined];
-    const { json } = mergeOptions({ json: validator } as any);
+    const { json } = normalizeOptions({ json: validator } as any);
 
     assert.equal(json!.validator, validator);
     assert.equal(json!.maxBytes, 1024 * 1024);
@@ -27,14 +27,14 @@ describe("mergeOptions", () => {
     const schema = {
       "~standard": { validate: (value: unknown) => ({ value }) },
     };
-    const { form } = mergeOptions({ form: schema } as any);
+    const { form } = normalizeOptions({ form: schema } as any);
 
     assert.equal(typeof form!.validator, "function");
   });
 
   it("should drop a validator that is neither a function nor a schema", () => {
     // Wrapping one would defer the crash to the first validation.
-    const { params, search, json, form } = mergeOptions({
+    const { params, search, json, form } = normalizeOptions({
       params: true,
       search: "yes",
       json: { validator: true },
@@ -57,7 +57,7 @@ describe("mergeOptions", () => {
           value.page ? { value: { page: Number(value.page) } } : { issues },
       },
     };
-    const { params, search } = mergeOptions({
+    const { params, search } = normalizeOptions({
       params: fn,
       search: schema,
     } as any);
@@ -70,7 +70,7 @@ describe("mergeOptions", () => {
   });
 
   it("should take an options object as options", () => {
-    const { json, form } = mergeOptions({
+    const { json, form } = normalizeOptions({
       json: { maxBytes: 5 },
       form: { maxFiles: 2, maxFileBytes: 10 },
     } as any);
@@ -78,5 +78,70 @@ describe("mergeOptions", () => {
     assert.equal(json!.maxBytes, 5);
     assert.equal(form!.maxFiles, 2);
     assert.equal(form!.maxBytes, 20);
+  });
+});
+
+describe("mergeOptions", () => {
+  it("should not mutate the source options", () => {
+    // A root +middleware's options object is a module-scoped singleton merged
+    // into every route below it.
+    const middleware = { json: { maxBytes: 100 } };
+    const validator = (input: unknown) => [input, undefined];
+    mergeOptions(middleware, { json: { validator } });
+
+    assert.deepEqual(middleware, { json: { maxBytes: 100 } });
+  });
+
+  it("should keep a middleware validator when the handler sets only limits", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const middleware = { json: { validator, maxBytes: 100 } };
+    const handler = (Run.POST as any)({ json: { maxBytes: 200 } }, () => {});
+    const { json } = normalizeOptions(middleware as any, handler as any);
+
+    assert.equal(json!.validator, validator);
+    assert.equal(json!.maxBytes, 200);
+  });
+
+  it("should merge a bare validator with an options object", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const { json } = normalizeOptions(
+      { json: { maxBytes: 100 } } as any,
+      { json: validator } as any,
+    );
+
+    assert.equal(json!.validator, validator);
+    assert.equal(json!.maxBytes, 100);
+  });
+
+  it("should let an explicitly present undefined key override an inherited option", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const { json, search } = normalizeOptions(
+      { json: validator, search: validator } as any,
+      { json: undefined } as any,
+    );
+
+    assert.equal(json, undefined);
+    assert.equal(typeof search, "function");
+  });
+
+  it("should leave inherited options alone when the key is absent", () => {
+    const validator = (input: unknown) => [input, undefined];
+    const { json } = normalizeOptions({ json: validator } as any, {} as any);
+
+    assert.equal(typeof json!.validator, "function");
+  });
+
+  it("should not leak one route's options into a sibling merge", () => {
+    const middleware = { json: { maxBytes: 100 } };
+    const validator = (input: unknown) => [input, undefined];
+    const routeA = normalizeOptions(
+      middleware as any,
+      { json: { validator } } as any,
+    );
+    const routeB = normalizeOptions(middleware as any, {} as any);
+
+    assert.equal(routeA.json!.validator, validator);
+    assert.equal(routeB.json!.validator, undefined);
+    assert.equal(routeB.json!.maxBytes, 100);
   });
 });
