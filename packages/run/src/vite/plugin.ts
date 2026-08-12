@@ -602,7 +602,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             baseError.call(this, msg, options);
           } else if (!seenErrors.has(options.error.message)) {
             seenErrors.add(options.error.message);
-            console.error(buildErrorMessage(options.error));
+            console.error(
+              buildErrorMessage(options.error, [
+                `\x1b[31;1m${options.error.message}\x1b[0m`,
+              ]),
+            );
           }
         };
       },

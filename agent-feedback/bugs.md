@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Pass the error message to buildErrorMessage in the dedup error logger
-
-`packages/run/src/vite/plugin.ts` › `configResolved` | 2026-07-18 | impact:med | effort:low
-
-The `configResolved` logger override dedupes repeated errors but re-renders them with `buildErrorMessage(options.error)` and no `args`. Vite puts the human-readable message into that second parameter (it calls `buildErrorMessage(err, [red("Internal server error: " + err.message)])`) and its `cleanStack` keeps only `    at ...` frames, so the printed output contains no message line at all. Concretely: when the HMR websocket port 24678 is already taken (e.g. a second `marko-run dev` instance), the terminal shows a bare `at Server.setupListenHandle ... DevEnvironment.listen` stack with no `Error: listen EADDRINUSE` text, which is nearly undiagnosable. Fix: `buildErrorMessage(options.error, [options.error.message])`, mirroring `packages/run/src/adapter/dev-server.ts:163` which already passes a message line.
-
 ## Fix permanent 504 "Outdated Optimize Dep" for marko/debug/dom in dev when @cloudflare/vite-plugin shares the ssr environment
 
 `packages/run/src/vite/plugin.ts` › `config` | 2026-07-18 | impact:high | effort:high
