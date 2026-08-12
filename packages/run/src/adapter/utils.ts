@@ -1,8 +1,31 @@
+import fs from "fs";
 import kleur from "kleur";
+import path from "path";
 import supportsColor from "supports-color";
+import { fileURLToPath } from "url";
 import type { Rolldown } from "vite";
 
 type RolldownError = Rolldown.RolldownError;
+
+let version: string | undefined;
+
+/**
+ * The version of the installed `@marko/run` package, read at runtime from its
+ * own package.json — a build-time inline goes stale whenever a release builds
+ * before the version bump. Works from both the CJS and ESM dist outputs.
+ */
+export function getPackageVersion() {
+  if (version === undefined) {
+    const dir =
+      typeof __dirname === "string"
+        ? __dirname
+        : path.dirname(fileURLToPath(import.meta.url));
+    version = JSON.parse(
+      fs.readFileSync(path.join(dir, "../../package.json"), "utf8"),
+    ).version as string;
+  }
+  return version;
+}
 
 export function prepareError(err: Error | RolldownError) {
   return {
@@ -20,9 +43,7 @@ export function logInfoBox(address: string, explorer?: string) {
   const color = !!supportsColor.stdout;
 
   let message = kleur.bold("Marko Run");
-  if (process.env.npm_package_version !== "") {
-    message += ` v${process.env.npm_package_version}`;
-  }
+  message += ` v${getPackageVersion()}`;
   message += "\n\n";
   message += kleur.dim("Server listening at");
   message += "\n";
