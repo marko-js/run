@@ -704,7 +704,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // In dev, module imports get the runtime facade, which defers to
           // the __marko_run__ global so app code reachable from middleware
           // can't create an evaluation cycle with the generated router.
-          if (!isBuild && importer && !importer.endsWith(".html")) {
+          if (
+            !isBuild &&
+            importer &&
+            importer !== devEntryFile &&
+            normalizePath(importer) !== devEntryFilePosix
+          ) {
             return await this.resolve(
               path.resolve(__dirname, "../runtime/router"),
               importer,
