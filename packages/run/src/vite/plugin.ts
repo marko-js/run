@@ -662,7 +662,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 } else {
                   // Rebuild before invalidating: a restored route's entry must
                   // be evicted too, and only the fresh map knows its key.
-                  await buildVirtualFiles();
+                  try {
+                    await buildVirtualFiles();
+                  } catch {
+                    // Nothing awaits this listener; the next request's
+                    // renderVirtualFiles surfaces the build error instead.
+                  }
                   for (const file of virtualFiles.keys()) {
                     staleFiles.add(file);
                   }
