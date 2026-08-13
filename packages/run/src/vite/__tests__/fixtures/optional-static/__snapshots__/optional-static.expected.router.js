@@ -99,6 +99,16 @@ function match_internal(method, pathname) {
 }
 
 export async function invoke(route, request, platform, url) {
+	if (route) {
+		url ??= new URL(request.url);
+		const { pathname } = url;
+		const last = pathname.length - 1;
+		const hasTrailingSlash = last && pathname.charAt(last) === '/';
+		if (hasTrailingSlash) {
+			url.pathname = pathname.slice(0, last);
+			return Response.redirect(url);
+		}
+	}
 	const context = createContext(route, request, platform, url);
 	if (route) {
 		try {
@@ -120,13 +130,7 @@ export async function fetch(request, platform) {
     const url = new URL(request.url);
     const { pathname } = url;
     const last = pathname.length - 1;
-    const hasTrailingSlash = last && pathname.charAt(last) === '/';
-    const normalizedPathname = hasTrailingSlash ? pathname.slice(0, last) : pathname;
-    const route = match_internal(request.method, normalizedPathname);
-    if (route && hasTrailingSlash) {
-      url.pathname = normalizedPathname
-      return Response.redirect(url);
-    }   
+    const route = match_internal(request.method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {

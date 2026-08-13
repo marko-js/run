@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Apply the configured `trailingSlashes` policy in `match`/`invoke`, not just in the generated `fetch`
-
-`packages/adapters/node/src/middleware.ts` › `invokeMiddleware` | 2026-08-03 | impact:med | effort:med
-
-`renderRouter` in `packages/run/src/vite/codegen/index.ts` emits the entire `trailingSlashes` policy inside its `renderFetch` helper, so only the generated `fetch` redirects or rewrites; the exported `match` merely strips a trailing slash before lookup and the exported `invoke` has no trailing-slash logic at all, as `packages/run/src/vite/__tests__/fixtures/basic/__snapshots__/basic.expected.router.js` shows. `routerMiddleware` goes through `fetch` and honors the policy, but the `matchMiddleware` + `invokeMiddleware` pair — and any consumer of the public `match`/`invoke` re-exported from `packages/run/src/runtime/router.ts` — silently drops it: executing that snapshot router, `fetch(new Request("http://x/fOoBaR/"))` returns a 302 to `/fOoBaR` while `invoke(match("GET", "/fOoBaR/"), request, platform)` returns a 200 render whose `context.url` still ends in `/`, because `invokeMiddleware` passes no `url` and `createContext` defaults to `new URL(request.url)`. All four non-`Ignore` modes diverge, so the same app serves duplicate-content URLs — or skips a configured rewrite — purely based on how it was mounted, and since `trailingSlashes` is a build-time Vite option the mounting code cannot reapply it. Move the normalization into the generated `invoke`, or emit a shared normalize helper adapters call before invoking, so `fetch`, `match`, and `invoke` agree; expect to regenerate the `*.expected.router.js` snapshots. Nothing covers this: the `node-adapter-express-match` fixture only requests `/?foo=bar`, where the check is a no-op.
-
 ## Merge the HTML defaults into a caller-supplied init in `context.render`
 
 `packages/run/src/runtime/internal.ts` › `createContext` | 2026-08-03 | impact:med | effort:low
