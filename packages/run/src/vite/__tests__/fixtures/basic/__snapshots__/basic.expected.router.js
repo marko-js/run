@@ -37,8 +37,7 @@ export async function invoke(route, request, platform, url) {
 	if (route) {
 		url ??= new URL(request.url);
 		const { pathname } = url;
-		const hasTrailingSlash = pathname.length > 1 && pathname.endsWith('/');
-		if (hasTrailingSlash) {
+		if (pathname.length > 1 && pathname.endsWith('/')) {
 			url.pathname = pathname.slice(0, -1);
 			return Response.redirect(url);
 		}

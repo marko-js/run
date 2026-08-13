@@ -781,16 +781,12 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
 
   writer
     .writeBlockStart("if (route) {")
-    .writeLines(
-      "url ??= new URL(request.url);",
-      "const { pathname } = url;",
-      "const hasTrailingSlash = pathname.length > 1 && pathname.endsWith('/');",
-    );
+    .writeLines("url ??= new URL(request.url);", "const { pathname } = url;");
 
   switch (options.trailingSlashes) {
     case "RedirectWithout":
       writer
-        .writeBlockStart("if (hasTrailingSlash) {")
+        .writeBlockStart("if (pathname.length > 1 && pathname.endsWith('/')) {")
         .writeLines(
           "url.pathname = pathname.slice(0, -1);",
           "return Response.redirect(url);",
@@ -799,19 +795,19 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
       break;
     case "RedirectWith":
       writer
-        .writeBlockStart("if (pathname !== '/' && !hasTrailingSlash) {")
+        .writeBlockStart("if (!pathname.endsWith('/')) {")
         .writeLines("url.pathname += '/';", "return Response.redirect(url);")
         .writeBlockEnd("}");
       break;
     case "RewriteWithout":
       writer
-        .writeBlockStart("if (hasTrailingSlash) {")
+        .writeBlockStart("if (pathname.length > 1 && pathname.endsWith('/')) {")
         .writeLines("url.pathname = pathname.slice(0, -1);")
         .writeBlockEnd("}");
       break;
     case "RewriteWith":
       writer
-        .writeBlockStart("if (pathname !== '/' && !hasTrailingSlash) {")
+        .writeBlockStart("if (!pathname.endsWith('/')) {")
         .writeLines("url.pathname += '/';")
         .writeBlockEnd("}");
       break;
