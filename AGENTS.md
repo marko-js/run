@@ -17,6 +17,8 @@ pnpm run change           # add a changeset (required for user-facing changes)
 
 Organize files top-down (progressive disclosure): public API/exports first, then orchestration, helpers, and low-level detail last — use function-declaration hoisting.
 
+One changeset per PR — merge additions into the existing document instead of adding another. Keep the description to 1–2 succinct lines describing the purpose of the change, not the implementation.
+
 Comments are a last resort and never exceed two lines: prefer self-describing code, and when one is needed it captures intent — never what the code was or what was removed. Comments use direct succinct wording and avoid jargon or cute phrasing. JSDoc is always fine, as are comments describing properties within objects, types, and interfaces.
 
 ## Agent feedback
