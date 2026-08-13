@@ -701,7 +701,20 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         let virtualFilePath: string | undefined;
 
         if (importee === "@marko/run/router") {
-          return normalizePath(path.resolve(root, ROUTER_FILENAME));
+          // In dev, only entry loads get the generated router; app imports
+          // keep the lazy runtime shim so a module reachable from middleware
+          // can't create an evaluation cycle with the router.
+          if (
+            isBuild ||
+            !importer ||
+            importer.endsWith(".html") ||
+            importer === devEntryFile ||
+            normalizePath(importer) === devEntryFilePosix ||
+            normalizePath(importer).endsWith("/adapter/default-entry.mjs")
+          ) {
+            return normalizePath(path.resolve(root, ROUTER_FILENAME));
+          }
+          return;
         } else if (
           importee.endsWith(".marko") &&
           importee.includes(relativeEntryFilesDirPosix)
