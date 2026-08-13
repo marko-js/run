@@ -5,8 +5,7 @@ import { get2, get2_options, get2_meta, head2, head2_options, head2_meta, post2,
 globalThis.__marko_run__ = { match, fetch, invoke };
     
 export function match(method, pathname) {
-	const last = pathname.length - 1;
-  return match_internal(method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname)
+	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
   
 function match_internal(method, pathname) {
@@ -104,10 +103,9 @@ export async function invoke(route, request, platform, url) {
 	if (route) {
 		url ??= new URL(request.url);
 		const { pathname } = url;
-		const last = pathname.length - 1;
-		const hasTrailingSlash = last && pathname.charAt(last) === '/';
+		const hasTrailingSlash = pathname.length > 1 && pathname.endsWith('/');
 		if (hasTrailingSlash) {
-			url.pathname = pathname.slice(0, last);
+			url.pathname = pathname.slice(0, -1);
 			return Response.redirect(url);
 		}
 	}
@@ -131,8 +129,7 @@ export async function fetch(request, platform) {
   try {
     const url = new URL(request.url);
     const { pathname } = url;
-    const last = pathname.length - 1;
-    const route = match_internal(request.method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname);
+    const route = match_internal(request.method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {

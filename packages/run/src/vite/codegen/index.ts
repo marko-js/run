@@ -228,8 +228,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
-      `const last = pathname.length - 1;
-  return match_internal(method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname)
+      `return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
   
 function match_internal(method, pathname) {
@@ -760,8 +759,7 @@ export async function fetch(request, platform) {
   try {
     const url = new URL(request.url);
     const { pathname } = url;
-    const last = pathname.length - 1;
-    const route = match_internal(request.method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname);
+    const route = match_internal(request.method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {
@@ -786,8 +784,7 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
     .writeLines(
       "url ??= new URL(request.url);",
       "const { pathname } = url;",
-      "const last = pathname.length - 1;",
-      "const hasTrailingSlash = last && pathname.charAt(last) === '/';",
+      "const hasTrailingSlash = pathname.length > 1 && pathname.endsWith('/');",
     );
 
   switch (options.trailingSlashes) {
@@ -795,7 +792,7 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
       writer
         .writeBlockStart("if (hasTrailingSlash) {")
         .writeLines(
-          "url.pathname = pathname.slice(0, last);",
+          "url.pathname = pathname.slice(0, -1);",
           "return Response.redirect(url);",
         )
         .writeBlockEnd("}");
@@ -809,7 +806,7 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
     case "RewriteWithout":
       writer
         .writeBlockStart("if (hasTrailingSlash) {")
-        .writeLines("url.pathname = pathname.slice(0, last);")
+        .writeLines("url.pathname = pathname.slice(0, -1);")
         .writeBlockEnd("}");
       break;
     case "RewriteWith":
