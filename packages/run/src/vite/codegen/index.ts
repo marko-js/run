@@ -228,8 +228,7 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     )
     .writeBlockStart(`export function match(method, pathname) {`)
     .writeLines(
-      `const last = pathname.length - 1;
-  return match_internal(method, last && pathname.charAt(last) === '/' ? pathname.slice(0, last) : pathname)
+      `return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
   
 function match_internal(method, pathname) {
@@ -254,10 +253,13 @@ function match_internal(method, pathname) {
     .writeLines("")
     .writeBlockStart(
       "export async function invoke(route, request, platform, url) {",
-    )
-    .writeLines(
-      "const context = createContext(route, request, platform, url);",
     );
+
+  renderTrailingSlashPolicy(writer, options);
+
+  writer.writeLines(
+    "const context = createContext(route, request, platform, url);",
+  );
 
   if (hasErrorPage) {
     writer.writeBlockStart("try {");
@@ -325,7 +327,7 @@ const page500ResponseInit = {
 
   writer.writeBlockEnd("}");
 
-  renderFetch(writer, options);
+  renderFetch(writer);
 
   return writer.end();
 }
@@ -751,47 +753,13 @@ function writeRouteEntryHandler(
   writer.writeBlockEnd("}");
 }
 
-function renderFetch(writer: Writer, options: RouterOptions) {
+function renderFetch(writer: Writer) {
   writer.write(`
 export async function fetch(request, platform) {
   try {
     const url = new URL(request.url);
     const { pathname } = url;
-    const last = pathname.length - 1;
-    const hasTrailingSlash = last && pathname.charAt(last) === '/';
-    const normalizedPathname = hasTrailingSlash ? pathname.slice(0, last) : pathname;
-    const route = match_internal(request.method, normalizedPathname);`);
-
-  switch (options.trailingSlashes) {
-    case "RedirectWithout":
-      writer.write(`
-    if (route && hasTrailingSlash) {
-      url.pathname = normalizedPathname
-      return Response.redirect(url);
-    }`);
-      break;
-    case "RedirectWith":
-      writer.write(`
-    if (route && pathname !== '/' && !hasTrailingSlash) {
-      url.pathname += '/';
-      return Response.redirect(url);
-    }`);
-      break;
-    case "RewriteWithout":
-      writer.write(`
-    if (route && hasTrailingSlash) {
-      url.pathname = normalizedPathname;
-    }`);
-      break;
-    case "RewriteWith":
-      writer.write(`
-    if (route && pathname !== '/' && !hasTrailingSlash) {
-      url.pathname += '/';
-    }`);
-      break;
-  }
-
-  writer.write(`   
+    const route = match_internal(request.method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname);
     return await invoke(route, request, platform, url);
   } catch (error) {
     if (import.meta.env.DEV) {
@@ -802,6 +770,50 @@ export async function fetch(request, platform) {
     });
   }
 }`);
+}
+
+// The policy lives in `invoke` so every entry point — the generated `fetch`
+// and the public `match`/`invoke` pair adapters compose — applies it.
+function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
+  if (!options.trailingSlashes || options.trailingSlashes === "Ignore") {
+    return;
+  }
+
+  writer
+    .writeBlockStart("if (route) {")
+    .writeLines("url ??= new URL(request.url);", "const { pathname } = url;");
+
+  switch (options.trailingSlashes) {
+    case "RedirectWithout":
+      writer
+        .writeBlockStart("if (pathname.length > 1 && pathname.endsWith('/')) {")
+        .writeLines(
+          "url.pathname = pathname.slice(0, -1);",
+          "return Response.redirect(url);",
+        )
+        .writeBlockEnd("}");
+      break;
+    case "RedirectWith":
+      writer
+        .writeBlockStart("if (!pathname.endsWith('/')) {")
+        .writeLines("url.pathname += '/';", "return Response.redirect(url);")
+        .writeBlockEnd("}");
+      break;
+    case "RewriteWithout":
+      writer
+        .writeBlockStart("if (pathname.length > 1 && pathname.endsWith('/')) {")
+        .writeLines("url.pathname = pathname.slice(0, -1);")
+        .writeBlockEnd("}");
+      break;
+    case "RewriteWith":
+      writer
+        .writeBlockStart("if (!pathname.endsWith('/')) {")
+        .writeLines("url.pathname += '/';")
+        .writeBlockEnd("}");
+      break;
+  }
+
+  writer.writeBlockEnd("}");
 }
 
 function writeRouterVerb(

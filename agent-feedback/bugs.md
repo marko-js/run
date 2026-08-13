@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Apply the configured `trailingSlashes` policy in `match`/`invoke`, not just in the generated `fetch`
-
-`packages/adapters/node/src/middleware.ts` › `invokeMiddleware` | 2026-08-03 | impact:med | effort:med
-
-`renderRouter` in `packages/run/src/vite/codegen/index.ts` emits the entire `trailingSlashes` policy inside its `renderFetch` helper, so only the generated `fetch` redirects or rewrites; the exported `match` merely strips a trailing slash before lookup and the exported `invoke` has no trailing-slash logic at all, as `packages/run/src/vite/__tests__/fixtures/basic/__snapshots__/basic.expected.router.js` shows. `routerMiddleware` goes through `fetch` and honors the policy, but the `matchMiddleware` + `invokeMiddleware` pair — and any consumer of the public `match`/`invoke` re-exported from `packages/run/src/runtime/router.ts` — silently drops it: executing that snapshot router, `fetch(new Request("http://x/fOoBaR/"))` returns a 302 to `/fOoBaR` while `invoke(match("GET", "/fOoBaR/"), request, platform)` returns a 200 render whose `context.url` still ends in `/`, because `invokeMiddleware` passes no `url` and `createContext` defaults to `new URL(request.url)`. All four non-`Ignore` modes diverge, so the same app serves duplicate-content URLs — or skips a configured rewrite — purely based on how it was mounted, and since `trailingSlashes` is a build-time Vite option the mounting code cannot reapply it. Move the normalization into the generated `invoke`, or emit a shared normalize helper adapters call before invoking, so `fetch`, `match`, and `invoke` agree; expect to regenerate the `*.expected.router.js` snapshots. Nothing covers this: the `node-adapter-express-match` fixture only requests `/?foo=bar`, where the check is a no-op.
-
 ## Merge the HTML defaults into a caller-supplied init in `context.render`
 
 `packages/run/src/runtime/internal.ts` › `createContext` | 2026-08-03 | impact:med | effort:low
@@ -181,3 +175,15 @@ If `vite.config.ts` imports project source (e.g. to start a sidecar server from 
 `packages/run/src/__tests__/fixtures/error-invalid-routes/__snapshots__/dev.expected.md` › `error-invalid-routes` | 2026-08-11 | impact:med | effort:low
 
 `pnpm test` fails on `main` with one snapshot mismatch. `packages/run/src/vite/utils/agent-fix-guide.ts` › `appendAgentFixGuide` appends "Fix guide: READ <path>/cheatsheet.md before writing a fix." to route-conflict errors, but this fixture's committed snapshot predates that change and still holds the untagged message, so the rendered error page differs by those two lines. Re-verify: `pnpm test` on a clean `main`, "Duplicate routes for path /$" is the only failure. Fix with `pnpm run test:update` and review the diff for any other fixture that renders a tagged error.
+
+## Break the generated router's import cycle so `@marko/run/router` imports don't race middleware initialization
+
+`packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-08-13 | impact:high | effort:med
+
+Any app module that imports `@marko/run/router` and is itself reachable from a `+middleware`/`+handler` file creates a genuine ES module cycle in dev, and its evaluation order is not stable: generated router → route entry (`__marko-run__index.js`) → `__marko-run__middleware.js` → `+middleware.ts` → app helper → `@marko/run/router` → back to the generated router. When evaluation happens to enter at the middleware module rather than the router, the route entry runs `normalizeOptions('GET', mware1)` while `mware1` is still uninitialized, and `mergeOptions` (`packages/run/src/runtime/internal.ts`) throws `TypeError: Cannot use 'in' operator to search for 'options' in undefined` — the request 500s with an error overlay instead of rendering. The `import-router` fixture exercises exactly this shape and fails ~80% of runs on a clean `main` (measured 8/10 with the Vite cache cleared before each run; the ~20% pass is why it reads as an intermittent flake rather than a broken feature). `packages/run/src/runtime/router.ts` already defers to `globalThis.__marko_run__` at call time, so the fix is to stop having the plugin alias `@marko/run/router` onto the generated router module in dev and let it keep resolving to that lazy shim — the generated router already assigns `globalThis.__marko_run__` at module top, so nothing needs the direct binding. Re-verify: `rm -rf packages/run/node_modules/.vite && pnpm test --grep import-router`, repeated — dev fails most runs, preview always passes.
+
+## Fix the flaky `dev-delete-route` dev test
+
+`packages/run/src/__tests__/fixtures/dev-delete-route/test.config.ts` › `restoreThePage` | 2026-08-13 | impact:med | effort:med
+
+`pnpm test --grep dev-delete-route` fails on a clean `main` with `Error: Timed out waiting for restored page to serve its content` from the `until` helper, after the fixture deletes a route file and writes it back. Measured 3/3 failures on unmodified `main` with the Vite cache cleared before each run, so it is not purely load-dependent, though it does pass occasionally on other trees — the route-restore HMR path appears to need longer than the fixture's timeout to re-register the deleted route, or never re-registers it without a further trigger. This is the second dev-server test that fails on `main` for reasons unrelated to any change under review, which trains contributors to ignore `pnpm test` failures. Either raise the wait bound if this is genuinely slow, or treat a never-restoring route as the real defect and fix the watcher path.
