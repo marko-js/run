@@ -51,9 +51,9 @@ import page from "./dist/.marko-run/foo.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get2_options = normalizeOptions(getHandler);
+export const get2_options = normalizeOptions('GET', getHandler);
 export const head2_options = {};
-export const post2_options = normalizeOptions(postHandler);
+export const post2_options = normalizeOptions('POST', postHandler);
 
 export function get2(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -84,8 +84,8 @@ import { call, normalizeOptions, render, stripResponseBody } from "virtual:marko
 import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import page from "./dist/.marko-run/$.marko";
 
-export const get3_options = normalizeOptions(mware3);
-export const head3_options = normalizeOptions(mware3);
+export const get3_options = normalizeOptions('GET', mware3);
+export const head3_options = normalizeOptions('HEAD', mware3);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -132,9 +132,9 @@ import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get5_options = normalizeOptions(getHandler);
+export const get5_options = normalizeOptions('GET', getHandler);
 export const head5_options = {};
-export const post5_options = normalizeOptions(postHandler);
+export const post5_options = normalizeOptions('POST', postHandler);
 
 export function get5(context) {
 	return call(getHandler, noContent, context);
@@ -160,9 +160,9 @@ import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get6_options = normalizeOptions(mware3, getHandler);
-export const head6_options = normalizeOptions(mware3);
-export const post6_options = normalizeOptions(mware3, postHandler);
+export const get6_options = normalizeOptions('GET', mware3, getHandler);
+export const head6_options = normalizeOptions('HEAD', mware3);
+export const post6_options = normalizeOptions('POST', mware3, postHandler);
 
 export function get6(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);
@@ -189,9 +189,9 @@ import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get7_options = normalizeOptions(getHandler);
+export const get7_options = normalizeOptions('GET', getHandler);
 export const head7_options = {};
-export const post7_options = normalizeOptions(postHandler);
+export const post7_options = normalizeOptions('POST', postHandler);
 
 export function get7(context) {
 	return call(getHandler, noContent, context);
@@ -216,9 +216,9 @@ import { GET, POST } from "./src/routes/foo,(a,b).(c,d)+handler.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get8_options = normalizeOptions(getHandler);
+export const get8_options = normalizeOptions('GET', getHandler);
 export const head8_options = {};
-export const post8_options = normalizeOptions(postHandler);
+export const post8_options = normalizeOptions('POST', postHandler);
 
 export function get8(context) {
 	return call(getHandler, noContent, context);

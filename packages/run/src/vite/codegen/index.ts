@@ -630,15 +630,13 @@ function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
   writer.write(`export const ${verb}${route.index}_options = `);
 
   if (route.middleware.length || hasHandler) {
-    writer.write(`normalizeOptions(`);
+    writer.write(`normalizeOptions('${verb.toUpperCase()}'`);
 
-    let sep = "";
     for (const { id } of route.middleware) {
-      writer.write(`${sep}mware${id}`);
-      sep = ", ";
+      writer.write(`, mware${id}`);
     }
     if (hasHandler) {
-      writer.write(`${sep}${verb}Handler`);
+      writer.write(`, ${verb}Handler`);
     }
     writer.write(");");
   } else {

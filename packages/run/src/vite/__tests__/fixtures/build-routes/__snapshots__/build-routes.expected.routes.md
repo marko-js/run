@@ -35,8 +35,8 @@ import { call, normalizeOptions, render, stripResponseBody } from "virtual:marko
 import { mware4, mware5, mware7 } from "virtual:marko-run/__marko-run__middleware.js";
 import page from "./dist/.marko-run/index.marko";
 
-export const get3_options = normalizeOptions(mware4, mware5, mware7);
-export const head3_options = normalizeOptions(mware4, mware5, mware7);
+export const get3_options = normalizeOptions('GET', mware4, mware5, mware7);
+export const head3_options = normalizeOptions('HEAD', mware4, mware5, mware7);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -76,9 +76,9 @@ const postHandler = normalizeHandler(POST, 'POST');
 
 export const { GET: get4_meta, GET: head4_meta, POST: post4_meta } = normalizeMeta(meta4);
 
-export const get4_options = normalizeOptions(mware4, mware5, mware7);
-export const head4_options = normalizeOptions(mware4, mware5, mware7);
-export const post4_options = normalizeOptions(mware4, mware5, mware7, postHandler);
+export const get4_options = normalizeOptions('GET', mware4, mware5, mware7);
+export const head4_options = normalizeOptions('HEAD', mware4, mware5, mware7);
+export const post4_options = normalizeOptions('POST', mware4, mware5, mware7, postHandler);
 
 export function get4(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -125,11 +125,11 @@ const putHandler = normalizeHandler(PUT, 'PUT');
 const postHandler = normalizeHandler(POST, 'POST');
 const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
-export const get5_options = normalizeOptions(mware4, mware5, mware7, mware13);
-export const head5_options = normalizeOptions(mware4, mware5, mware7, mware13);
-export const post5_options = normalizeOptions(mware4, mware5, mware7, mware13, postHandler);
-export const put5_options = normalizeOptions(mware4, mware5, mware7, mware13, putHandler);
-export const delete5_options = normalizeOptions(mware4, mware5, mware7, mware13, deleteHandler);
+export const get5_options = normalizeOptions('GET', mware4, mware5, mware7, mware13);
+export const head5_options = normalizeOptions('HEAD', mware4, mware5, mware7, mware13);
+export const post5_options = normalizeOptions('POST', mware4, mware5, mware7, mware13, postHandler);
+export const put5_options = normalizeOptions('PUT', mware4, mware5, mware7, mware13, putHandler);
+export const delete5_options = normalizeOptions('DELETE', mware4, mware5, mware7, mware13, deleteHandler);
 
 export function get5(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -184,9 +184,9 @@ const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
 export const { POST: post6_meta, PUT: put6_meta, DELETE: delete6_meta } = normalizeMeta(meta6);
 
-export const post6_options = normalizeOptions(mware4, mware5, mware7, mware13, postHandler);
-export const put6_options = normalizeOptions(mware4, mware5, mware7, mware13, putHandler);
-export const delete6_options = normalizeOptions(mware4, mware5, mware7, mware13, deleteHandler);
+export const post6_options = normalizeOptions('POST', mware4, mware5, mware7, mware13, postHandler);
+export const put6_options = normalizeOptions('PUT', mware4, mware5, mware7, mware13, putHandler);
+export const delete6_options = normalizeOptions('DELETE', mware4, mware5, mware7, mware13, deleteHandler);
 
 export function post6(context) {
 	const __postHandler = (data) => call(postHandler, noContent, context, data);
@@ -223,8 +223,8 @@ import { GET } from "./src/routes/callback/oauth2/+handler.ts";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get7_options = normalizeOptions(mware4, getHandler);
-export const head7_options = normalizeOptions(mware4);
+export const get7_options = normalizeOptions('GET', mware4, getHandler);
+export const head7_options = normalizeOptions('HEAD', mware4);
 
 export function get7(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);
@@ -257,8 +257,8 @@ import page from "./dist/.marko-run/my.marko";
 const getHandler = normalizeHandler(GET, 'GET');
 const headHandler = normalizeHandler(HEAD, 'HEAD');
 
-export const get8_options = normalizeOptions(mware4, getHandler);
-export const head8_options = normalizeOptions(mware4, headHandler);
+export const get8_options = normalizeOptions('GET', mware4, getHandler);
+export const head8_options = normalizeOptions('HEAD', mware4, headHandler);
 
 export function get8(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -283,8 +283,8 @@ import { GET } from "./src/routes/$$match/+handler.ts";
 
 const getHandler = normalizeHandler(GET, 'GET');
 
-export const get9_options = normalizeOptions(mware4, getHandler);
-export const head9_options = normalizeOptions(mware4);
+export const get9_options = normalizeOptions('GET', mware4, getHandler);
+export const head9_options = normalizeOptions('HEAD', mware4);
 
 export function get9(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);

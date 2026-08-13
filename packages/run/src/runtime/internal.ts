@@ -340,14 +340,20 @@ export async function call(
   return response || (next as any as NextDataFunction)(data);
 }
 
+// The elements behind a composed handler, so the options merge can gate each
+// by its own verb stamp. Keyed off-object: the closure is stamped by callers
+// and the elements are not part of its public shape.
+const composedItems = new WeakMap<HandlerFunction, HandlerFunction[]>();
+
 export function compose(handlers: HandlerFunction[]): HandlerFunction {
   const len = handlers.length;
   if (!len) {
     return createPassthroughHandler();
-  } else if (len === 1) {
+  }
+  if (len === 1) {
     return handlers[0];
   }
-  return (context, next) => {
+  const composed: HandlerFunction = (context, next) => {
     let i = 0;
     return (function nextHandler(data) {
       return i < len
@@ -355,6 +361,8 @@ export function compose(handlers: HandlerFunction[]): HandlerFunction {
         : (next as any as NextDataFunction)(data);
     })();
   };
+  composedItems.set(composed, handlers);
+  return composed;
 }
 
 export function normalizeHandler(
@@ -440,16 +448,30 @@ type MergeOptionsInput =
 // handler's own options) stay exactly what was declared and only the final
 // per-route merge materializes defaults. Never writes into its inputs — the
 // first source is often a `+middleware` options object shared across routes.
-export function mergeOptions(...arr: MergeOptionsInput[]) {
+// With a `verb`, inputs stamped with a verb that would not run for it are
+// skipped; GET-stamped inputs still apply to HEAD, mirroring `call()`.
+export function mergeOptions(items: MergeOptionsInput[], verb?: HttpVerb) {
   const merged: HandlerOptions = {};
-  for (const item of arr) {
+  for (const item of items) {
     let options: HandlerOptions;
     if (typeof item === "object") {
       options = item;
     } else if ("options" in item) {
+      if (verb && item.verb) {
+        const itemVerb = item.verb as HttpVerbOrAll;
+        if (
+          itemVerb !== "ALL" &&
+          itemVerb !== verb &&
+          !(itemVerb === "GET" && verb === "HEAD")
+        ) {
+          continue;
+        }
+      }
       options = item.options;
     } else {
-      continue;
+      const composed = composedItems.get(item);
+      if (!composed) continue;
+      options = mergeOptions(composed, verb);
     }
     for (const k in options) {
       const key = k as keyof typeof options;
@@ -472,8 +494,11 @@ export function mergeOptions(...arr: MergeOptionsInput[]) {
   return merged;
 }
 
-export function normalizeOptions(...arr: MergeOptionsInput[]) {
-  const merged = mergeOptions(...arr);
+export function normalizeOptions(
+  verb: HttpVerb,
+  ...items: MergeOptionsInput[]
+) {
+  const merged = mergeOptions(items, verb);
 
   const result = {
     params: normalizeValidator(merged.params),
@@ -747,10 +772,10 @@ function assertExportedVerb(
 }
 
 function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
-  return (
+  return function define(
     optionsOrHandlers: HandlerOptions | HandlerFunction | HandlerFunction[],
     handlers: undefined | HandlerFunction | HandlerFunction[],
-  ) => {
+  ): NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions> {
     let handler: NormalizedHandler<Context, HttpVerbOrAll, any, HandlerOptions>;
 
     if (typeof optionsOrHandlers === "function") {
@@ -759,21 +784,29 @@ function createDefineHandler<Verb extends HttpVerbOrAll>(verb: Verb) {
       handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
       handler.options = (_fn as any).options ?? {};
     } else if (Array.isArray(optionsOrHandlers)) {
+      // A single-element array is the single function: the plain-function
+      // path wraps before stamping, so the author's handler is never mutated.
+      if (optionsOrHandlers.length === 1) {
+        return define(optionsOrHandlers[0], handlers);
+      }
       for (const h of optionsOrHandlers) assertHandlerVerb(verb, h);
       handler = compose(optionsOrHandlers) as any;
-      handler.options = mergeOptions(...optionsOrHandlers);
+      handler.options = mergeOptions(optionsOrHandlers);
     } else if (typeof handlers === "function") {
       assertHandlerVerb(verb, handlers);
       const _fn = handlers;
       handler = ((ctx: Context, next: NextFunction) => _fn(ctx, next)) as any;
-      handler.options = mergeOptions(_fn, optionsOrHandlers);
+      handler.options = mergeOptions([_fn, optionsOrHandlers]);
     } else if (Array.isArray(handlers)) {
+      if (handlers.length === 1) {
+        return define(optionsOrHandlers, handlers[0]);
+      }
       for (const h of handlers) assertHandlerVerb(verb, h);
       handler = compose(handlers) as any;
-      handler.options = mergeOptions(...handlers, optionsOrHandlers);
+      handler.options = mergeOptions([...handlers, optionsOrHandlers]);
     } else {
       handler = createPassthroughHandler() as any;
-      handler.options = mergeOptions(optionsOrHandlers);
+      handler.options = mergeOptions([optionsOrHandlers]);
     }
 
     handler.verb = verb;
