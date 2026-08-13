@@ -699,7 +699,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         let virtualFilePath: string | undefined;
-        const importerIsDevEntry =
+        const isDevEntry =
+          !isBuild &&
           !!importer &&
           (importer === devEntryFile ||
             normalizePath(importer) === devEntryFilePosix);
@@ -708,7 +709,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // In dev, module imports get the runtime facade, which defers to
           // the __marko_run__ global so app code reachable from middleware
           // can't create an evaluation cycle with the generated router.
-          if (isBuild || !importer || importerIsDevEntry) {
+          if (isBuild || !importer || isDevEntry) {
             return normalizePath(path.resolve(root, ROUTER_FILENAME));
           }
           return await this.resolve(
@@ -727,8 +728,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           virtualFilePath = importee.slice(virtualFilePrefix.length + 1);
           importee = path.resolve(root, virtualFilePath);
         } else if (
-          !isBuild &&
-          importerIsDevEntry &&
+          isDevEntry &&
           importee.startsWith(`/${markoRunFilePrefix}`)
         ) {
           importee = path.resolve(root, "." + importee);
