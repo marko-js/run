@@ -643,6 +643,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     routableFileType === RoutableFileTypes.Middleware ||
                     filename === runtimeInclude))
               ) {
+                const staleFiles = new Set(virtualFiles.keys());
                 buildVirtualFilesResult = undefined;
                 renderVirtualFilesResult = undefined;
                 routeMarkoApiCache = undefined;
@@ -659,7 +660,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     devServer.watcher.emit("change", file);
                   }
                 } else {
+                  // Rebuild before invalidating: a restored route's entry must
+                  // be evicted too, and only the fresh map knows its key.
+                  await buildVirtualFiles();
                   for (const file of virtualFiles.keys()) {
+                    staleFiles.add(file);
+                  }
+                  for (const file of staleFiles) {
                     if (!file.endsWith(".marko")) {
                       devServer.watcher.emit("change", file);
                     }
