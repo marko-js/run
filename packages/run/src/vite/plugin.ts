@@ -67,6 +67,7 @@ const PLUGIN_NAME_PREFIX = "marko-run-vite";
 const CLIENT_OUT_DIR = "public";
 const MIDDLEWARE_FILENAME = `${markoRunFilePrefix}middleware.js`;
 const ROUTER_FILENAME = `${markoRunFilePrefix}router.js`;
+const ROUTER_SHIM_FILENAME = `${markoRunFilePrefix}router-shim.js`;
 
 export const defaultPort = Number(process.env.PORT || 3000);
 
@@ -250,6 +251,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
       }
       virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+      if (!isBuild) {
+        virtualFiles.set(
+          path.posix.join(root, ROUTER_SHIM_FILENAME),
+          renderRouterShim(path.posix.join(root, ROUTER_FILENAME)),
+        );
+      }
 
       for (const externalRoute of externalRoutes) {
         for (const { entryFile } of externalRoute.routes) {
@@ -701,20 +708,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         let virtualFilePath: string | undefined;
 
         if (importee === "@marko/run/router") {
-          // In dev, only entry loads get the generated router; app imports
-          // keep the lazy runtime shim so a module reachable from middleware
+          // In dev, module imports get a shim that loads the generated
+          // router dynamically, so app code reachable from middleware
           // can't create an evaluation cycle with the router.
-          if (
-            isBuild ||
-            !importer ||
-            importer.endsWith(".html") ||
-            importer === devEntryFile ||
-            normalizePath(importer) === devEntryFilePosix ||
-            normalizePath(importer).endsWith("/adapter/default-entry.mjs")
-          ) {
-            return normalizePath(path.resolve(root, ROUTER_FILENAME));
-          }
-          return;
+          const filename =
+            !isBuild && importer && !importer.endsWith(".html")
+              ? ROUTER_SHIM_FILENAME
+              : ROUTER_FILENAME;
+          return normalizePath(path.resolve(root, filename));
         } else if (
           importee.endsWith(".marko") &&
           importee.includes(relativeEntryFilesDirPosix)
@@ -1053,4 +1054,23 @@ function getImporters(
     }
   }
   return seen;
+}
+
+function renderRouterShim(routerId: string): string {
+  const id = JSON.stringify(routerId);
+  return `let loading;
+const load = () => globalThis.__marko_run__ || (loading ??= import(${id}));
+load();
+export async function fetch(request, platform) {
+  await load();
+  return globalThis.__marko_run__.fetch(request, platform);
+}
+export async function invoke(route, request, platform, url) {
+  await load();
+  return globalThis.__marko_run__.invoke(route, request, platform, url);
+}
+export function match(method, pathname) {
+  return globalThis.__marko_run__.match(method, pathname);
+}
+`;
 }
