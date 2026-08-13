@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
+import { AGENT_ENV_VARS } from "../vite/utils/agent-fix-guide";
 import { SpawnedServer, waitForServer } from "../vite/utils/server";
 import { BrowserPage } from "./utils/browser";
 
@@ -36,6 +37,11 @@ let page: BrowserPage;
 
 before(() => {
   process.env.TRUST_PROXY = "1";
+  // Fixture output must not depend on the terminal driving the suite: the
+  // agent-gated fix guide would otherwise leak into rendered-error snapshots.
+  for (const key of AGENT_ENV_VARS) {
+    delete process.env[key];
+  }
 });
 
 async function getHTML(settle = true) {
