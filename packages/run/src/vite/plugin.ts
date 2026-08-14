@@ -191,82 +191,102 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   }
 
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
+  let buildVirtualFilesQueue: Promise<unknown> = Promise.resolve();
   function buildVirtualFiles() {
-    return (buildVirtualFilesResult ??= (async () => {
-      virtualFiles.clear();
-      if (fs.existsSync(resolvedRoutesDir)) {
-        routes = await buildRoutes(
-          {
-            walker: createFSWalker(resolvedRoutesDir),
-          },
-          entryFilesDir,
-        );
+    if (!buildVirtualFilesResult) {
+      // Serialized: a rebuild requested while one is in flight waits for it,
+      // so two walks never interleave their commits into the shared state.
+      const build = buildVirtualFilesQueue
+        .then(walkRoutes, walkRoutes)
+        .then((built) => {
+          commitVirtualFiles(built);
+          return built;
+        });
+      buildVirtualFilesQueue = build;
+      buildVirtualFilesResult = build.catch((err) => {
+        // Point coding agents at the cheat sheet on route-build errors,
+        // whichever plugin hook triggered the build.
+        throw appendAgentFixGuide(err);
+      });
+    }
+    return buildVirtualFilesResult;
+  }
 
-        if (
-          !isBuild &&
-          !routes.list.length &&
-          !Object.keys(routes.special).length
-        ) {
-          console.warn(`No routes found in ${resolvedRoutesDir}`);
-        }
-      } else {
-        routes = {
-          list: [],
-          special: {},
-          middleware: [],
-        };
+  async function walkRoutes(): Promise<BuiltRoutes> {
+    if (fs.existsSync(resolvedRoutesDir)) {
+      const built = await buildRoutes(
+        {
+          walker: createFSWalker(resolvedRoutesDir),
+        },
+        entryFilesDir,
+      );
 
-        if (!isBuild) {
-          console.warn(`Routes directory ${resolvedRoutesDir} does not exist`);
-        }
+      if (
+        !isBuild &&
+        !built.list.length &&
+        !Object.keys(built.special).length
+      ) {
+        console.warn(`No routes found in ${resolvedRoutesDir}`);
       }
 
-      entryTemplates = new Set();
-      entryTemplateImporters = new Set();
+      return built;
+    }
 
-      for (const route of routes.list) {
-        if (route.templateFilePath) {
-          entryTemplates.add(normalizePath(route.templateFilePath));
-        }
-        for (const middleware of route.middleware) {
-          entryTemplateImporters.add(normalizePath(middleware.filePath));
-        }
-        if (route.handler) {
-          entryTemplateImporters.add(normalizePath(route.handler.filePath));
-        }
+    if (!isBuild) {
+      console.warn(`Routes directory ${resolvedRoutesDir} does not exist`);
+    }
 
-        virtualFiles.set(
-          path.posix.join(root, getRouteVirtualFileName(route)),
-          "",
-        );
+    return {
+      list: [],
+      special: {},
+      middleware: [],
+    };
+  }
+
+  // Synchronous, so the shared state swaps atomically: no awaits between the
+  // clear and the repopulation for a resolve to observe a half-built map.
+  function commitVirtualFiles(built: BuiltRoutes) {
+    routes = built;
+    virtualFiles.clear();
+    entryTemplates = new Set();
+    entryTemplateImporters = new Set();
+
+    for (const route of routes.list) {
+      if (route.templateFilePath) {
+        entryTemplates.add(normalizePath(route.templateFilePath));
       }
-      for (const route of Object.values(routes.special) as Route[]) {
-        if (route.templateFilePath) {
-          entryTemplates.add(normalizePath(route.templateFilePath));
-        }
+      for (const middleware of route.middleware) {
+        entryTemplateImporters.add(normalizePath(middleware.filePath));
       }
-
-      if (routes.middleware.length) {
-        virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
-      }
-      virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
-
-      for (const externalRoute of externalRoutes) {
-        for (const { entryFile } of externalRoute.routes) {
-          if (/\.marko(\?.*)?$/i.test(entryFile)) {
-            entryTemplates.add(normalizePath(entryFile));
-          } else {
-            entryTemplateImporters.add(normalizePath(entryFile));
-          }
-        }
+      if (route.handler) {
+        entryTemplateImporters.add(normalizePath(route.handler.filePath));
       }
 
-      return routes;
-    })().catch((err) => {
-      // Point coding agents at the cheat sheet on route-build errors,
-      // whichever plugin hook triggered the build.
-      throw appendAgentFixGuide(err);
-    }));
+      virtualFiles.set(
+        path.posix.join(root, getRouteVirtualFileName(route)),
+        "",
+      );
+    }
+    for (const route of Object.values(routes.special) as Route[]) {
+      if (route.templateFilePath) {
+        entryTemplates.add(normalizePath(route.templateFilePath));
+      }
+    }
+
+    if (routes.middleware.length) {
+      virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
+    }
+    virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+
+    for (const externalRoute of externalRoutes) {
+      for (const { entryFile } of externalRoute.routes) {
+        if (/\.marko(\?.*)?$/i.test(entryFile)) {
+          entryTemplates.add(normalizePath(entryFile));
+        } else {
+          entryTemplateImporters.add(normalizePath(entryFile));
+        }
+      }
+    }
   }
 
   async function writeEntryTemplate(context: PluginContext, route: Route) {
