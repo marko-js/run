@@ -207,21 +207,21 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     return (buildVirtualFilesResult ??= (async () => {
       buildingVirtualFiles = true;
       try {
-        let version: number;
         let built: BuiltRoutes | undefined;
-        // The walk has no shared side effects, so a build superseded mid-walk
-        // just walks again; everything after the loop commits exactly once.
-        do {
-          version = buildVirtualFilesVersion;
-          built = fs.existsSync(resolvedRoutesDir)
-            ? await buildRoutes(
-                {
-                  walker: createFSWalker(resolvedRoutesDir),
-                },
-                entryFilesDir,
-              )
-            : undefined;
-        } while (version !== buildVirtualFilesVersion);
+        if (fs.existsSync(resolvedRoutesDir)) {
+          // The walk has no shared side effects, so a build superseded
+          // mid-walk just walks again; after the loop commits exactly once.
+          let version: number;
+          do {
+            version = buildVirtualFilesVersion;
+            built = await buildRoutes(
+              {
+                walker: createFSWalker(resolvedRoutesDir),
+              },
+              entryFilesDir,
+            );
+          } while (version !== buildVirtualFilesVersion);
+        }
 
         if (built) {
           if (
