@@ -818,6 +818,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       enforce: "post",
 
       async transform(code) {
+        // Only direct `Run.href(...)` calls are supported in client code:
+        // aliasing or destructuring `Run` breaks in production (won't fix).
         if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
           return;
         }

@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Fall back to the client runtime when a `Run` reference survives the production href rewrite
-
-`packages/run/src/vite/plugin.ts` › `transform` | 2026-08-03 | impact:med | effort:low
-
-`window.Run` is assigned only by `packages/run/src/runtime/client.ts`, and `virtual:marko-run/runtime/client` reaches the client graph only when `renderRouteTemplate` (`packages/run/src/vite/codegen/index.ts`) is called with `dev` — both call sites pass `!isBuild` — so a production client bundle has no `Run` global at all. The `:post` plugin's `transform` erases `Run.href(...)` via `findHrefReplacements` (`packages/run/src/vite/utils/href-replace.ts`) but returns `null` with no runtime import for everything it cannot rewrite: it early-returns unless `code.includes("Run.href")`, and `findHrefReplacements` bails when `hasRunBinding` is true or the call is not a plain one- or two-argument `Run.href(...)`. A client component with `static const { href } = Run;` (or `const link = Run.href`) therefore SSRs correctly and hydrates fine in dev, while `marko-run build` emits a chunk containing `{href:ve}=Run` at top level that throws `ReferenceError: Run is not defined` the moment it evaluates — the page never hydrates in preview or production, with a green build and no diagnostic. Fix it in `transform`: after applying the edits, check whether the module still has a free `Run` reference (the `hasRunBinding` walk already has most of the machinery) and either prepend `import "virtual:marko-run/runtime/client";`, the fallback its own `catch` branch already uses, or fail the build naming the file; the substring guard also has to widen from `"Run.href"` to `"Run"` for the destructured and computed-access forms to be seen at all.
-
 ## Guard the client-build `href` helpers against nullish options so `Run.href(path, maybeOptions)` doesn't throw in production
 
 `packages/run/src/runtime/url-builder.ts` › `href_values` | 2026-08-03 | impact:med | effort:low
