@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Skip `Run.href` calls nested inside an already-replaced range — today they emit invalid JS and fail the client build
-
-`packages/run/src/vite/utils/href-replace.ts` › `findHrefReplacements` | 2026-08-03 | impact:med | effort:low
-
-`findHrefReplacements` walks the whole AST without pruning, so a `Run.href` call nested inside another call's `params` value records its own edit inside a range the outer call already replaced, and the post-transform in `packages/run/src/vite/plugin.ts` applies every edit to one `RolldownMagicString` with no overlap check. In the tier-1b shape the inner overwrite lands inside the removed `params` property and re-inserts text: `Run.href("/thing/$id", { params: { id: Run.href("/thing/$id", { params: { id: 9 } }) }, search: { q } })` emits ``href_values`${{ "/thing/9"search: { q } }}...` `` and the client build dies with a rolldown `PARSE_ERROR` ("Expected `:` but found `Identifier`") pointed at the author's valid `.marko` file. In the tier-1a shape (params only) the inner overwrite instead throws `Cannot split a chunk that has already been edited`, and the bare `catch {}` in plugin.ts swallows it, so the entire module silently loses the optimization and ships raw `Run.href` calls plus `import "virtual:marko-run/runtime/client"`. Prune the walk below any node whose full range was replaced (or drop replacements overlapping an already-recorded range), and narrow the `catch` in plugin.ts so a genuine regression in this pass is not invisible. `packages/run/src/vite/__tests__/href-replace.test.ts` and the `packages/run/src/__tests__/fixtures/href-replacement` fixture only exercise flat calls; nesting under `search` alone is unaffected because that tier leaves the options range intact.
-
 ## Escape emitted string literals in the generated router instead of raw-interpolating segment and param names
 
 `packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-08-03 | impact:med | effort:low
