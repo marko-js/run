@@ -122,4 +122,15 @@ describe("Context Render init", () => {
     });
     assert.equal(response.headers.get("content-type"), "text/plain");
   });
+
+  it("should keep the default content-type when a Headers instance omits it", () => {
+    const response = renderWith({
+      headers: new Headers({ "cache-control": "no-store" }),
+    });
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(
+      response.headers.get("content-type"),
+      "text/html;charset=UTF-8",
+    );
+  });
 });
