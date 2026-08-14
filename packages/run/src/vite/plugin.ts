@@ -208,15 +208,88 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       buildingVirtualFiles = true;
       try {
         let version: number;
-        let built: BuiltRoutes;
+        let built: BuiltRoutes | undefined;
         // The walk has no shared side effects, so a build superseded mid-walk
-        // just walks again; only a current walk commits, exactly once.
+        // just walks again; everything after the loop commits exactly once.
         do {
           version = buildVirtualFilesVersion;
-          built = await walkRoutes();
+          built = fs.existsSync(resolvedRoutesDir)
+            ? await buildRoutes(
+                {
+                  walker: createFSWalker(resolvedRoutesDir),
+                },
+                entryFilesDir,
+              )
+            : undefined;
         } while (version !== buildVirtualFilesVersion);
-        commitVirtualFiles(built);
-        return built;
+
+        if (built) {
+          if (
+            !isBuild &&
+            !built.list.length &&
+            !Object.keys(built.special).length
+          ) {
+            console.warn(`No routes found in ${resolvedRoutesDir}`);
+          }
+        } else {
+          built = {
+            list: [],
+            special: {},
+            middleware: [],
+          };
+
+          if (!isBuild) {
+            console.warn(
+              `Routes directory ${resolvedRoutesDir} does not exist`,
+            );
+          }
+        }
+
+        // From here down is synchronous, so the shared state swaps atomically:
+        // no awaits for a resolve to observe a half-built map.
+        routes = built;
+        virtualFiles.clear();
+        entryTemplates = new Set();
+        entryTemplateImporters = new Set();
+
+        for (const route of routes.list) {
+          if (route.templateFilePath) {
+            entryTemplates.add(normalizePath(route.templateFilePath));
+          }
+          for (const middleware of route.middleware) {
+            entryTemplateImporters.add(normalizePath(middleware.filePath));
+          }
+          if (route.handler) {
+            entryTemplateImporters.add(normalizePath(route.handler.filePath));
+          }
+
+          virtualFiles.set(
+            path.posix.join(root, getRouteVirtualFileName(route)),
+            "",
+          );
+        }
+        for (const route of Object.values(routes.special) as Route[]) {
+          if (route.templateFilePath) {
+            entryTemplates.add(normalizePath(route.templateFilePath));
+          }
+        }
+
+        if (routes.middleware.length) {
+          virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
+        }
+        virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+
+        for (const externalRoute of externalRoutes) {
+          for (const { entryFile } of externalRoute.routes) {
+            if (/\.marko(\?.*)?$/i.test(entryFile)) {
+              entryTemplates.add(normalizePath(entryFile));
+            } else {
+              entryTemplateImporters.add(normalizePath(entryFile));
+            }
+          }
+        }
+
+        return routes;
       } finally {
         buildingVirtualFiles = false;
       }
@@ -225,83 +298,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       // whichever plugin hook triggered the build.
       throw appendAgentFixGuide(err);
     }));
-  }
-
-  async function walkRoutes(): Promise<BuiltRoutes> {
-    if (fs.existsSync(resolvedRoutesDir)) {
-      const built = await buildRoutes(
-        {
-          walker: createFSWalker(resolvedRoutesDir),
-        },
-        entryFilesDir,
-      );
-
-      if (
-        !isBuild &&
-        !built.list.length &&
-        !Object.keys(built.special).length
-      ) {
-        console.warn(`No routes found in ${resolvedRoutesDir}`);
-      }
-
-      return built;
-    }
-
-    if (!isBuild) {
-      console.warn(`Routes directory ${resolvedRoutesDir} does not exist`);
-    }
-
-    return {
-      list: [],
-      special: {},
-      middleware: [],
-    };
-  }
-
-  // Synchronous, so the shared state swaps atomically: no awaits between the
-  // clear and the repopulation for a resolve to observe a half-built map.
-  function commitVirtualFiles(built: BuiltRoutes) {
-    routes = built;
-    virtualFiles.clear();
-    entryTemplates = new Set();
-    entryTemplateImporters = new Set();
-
-    for (const route of routes.list) {
-      if (route.templateFilePath) {
-        entryTemplates.add(normalizePath(route.templateFilePath));
-      }
-      for (const middleware of route.middleware) {
-        entryTemplateImporters.add(normalizePath(middleware.filePath));
-      }
-      if (route.handler) {
-        entryTemplateImporters.add(normalizePath(route.handler.filePath));
-      }
-
-      virtualFiles.set(
-        path.posix.join(root, getRouteVirtualFileName(route)),
-        "",
-      );
-    }
-    for (const route of Object.values(routes.special) as Route[]) {
-      if (route.templateFilePath) {
-        entryTemplates.add(normalizePath(route.templateFilePath));
-      }
-    }
-
-    if (routes.middleware.length) {
-      virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
-    }
-    virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
-
-    for (const externalRoute of externalRoutes) {
-      for (const { entryFile } of externalRoute.routes) {
-        if (/\.marko(\?.*)?$/i.test(entryFile)) {
-          entryTemplates.add(normalizePath(entryFile));
-        } else {
-          entryTemplateImporters.add(normalizePath(entryFile));
-        }
-      }
-    }
   }
 
   async function writeEntryTemplate(context: PluginContext, route: Route) {
