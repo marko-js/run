@@ -24,7 +24,7 @@ function match_internal(method, pathname) {
 			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === "+routes") return { handler: get2, path: "/+routes", params: {}, options: get2_options, meta: {} };
+				if (tryDecode(pathname.slice(1, i1 ? -1 : len)) === "+routes") return { handler: get2, path: "/+routes", params: {}, options: get2_options, meta: {} };
 			}
 			return null;
 		}
@@ -33,7 +33,7 @@ function match_internal(method, pathname) {
 			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === "+routes") return { handler: head2, path: "/+routes", params: {}, options: head2_options, meta: {} };
+				if (tryDecode(pathname.slice(1, i1 ? -1 : len)) === "+routes") return { handler: head2, path: "/+routes", params: {}, options: head2_options, meta: {} };
 			}
 			return null;
 		}

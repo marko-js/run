@@ -32,10 +32,10 @@ function match_internal(method, pathname) {
 							if (s2 === "it's-here") return { handler: get1, path: "/faq/it's-here", params: {}, options: get1_options, meta: {} };
 							if (s2) return { handler: get3, path: "/faq/$it's", params: { "it's": s2 }, options: get3_options, meta: {} };
 						} else {
-							if (pathname.slice(5, i2 - 1) === "it's-here") {
-								const i3 = pathname.indexOf('/', 15) + 1;
+							if (tryDecode(pathname.slice(5, i2 - 1)) === "it's-here") {
+								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: get2, path: "/faq/it's-here/deeper's", params: {}, options: get2_options, meta: {} };
+									if (tryDecode(pathname.slice(i2, i3 ? -1 : len)) === "deeper's") return { handler: get2, path: "/faq/it's-here/deeper's", params: {}, options: get2_options, meta: {} };
 								}
 							}
 						}
@@ -56,10 +56,10 @@ function match_internal(method, pathname) {
 							if (s2 === "it's-here") return { handler: head1, path: "/faq/it's-here", params: {}, options: head1_options, meta: {} };
 							if (s2) return { handler: head3, path: "/faq/$it's", params: { "it's": s2 }, options: head3_options, meta: {} };
 						} else {
-							if (pathname.slice(5, i2 - 1) === "it's-here") {
-								const i3 = pathname.indexOf('/', 15) + 1;
+							if (tryDecode(pathname.slice(5, i2 - 1)) === "it's-here") {
+								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: head2, path: "/faq/it's-here/deeper's", params: {}, options: head2_options, meta: {} };
+									if (tryDecode(pathname.slice(i2, i3 ? -1 : len)) === "deeper's") return { handler: head2, path: "/faq/it's-here/deeper's", params: {}, options: head2_options, meta: {} };
 								}
 							}
 						}

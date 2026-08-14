@@ -817,10 +817,9 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
   writer.writeBlockEnd("}");
 }
 
-// Chars every URL parser keeps literal in a pathname; a segment containing
-// anything else (or stored %-escapes) can arrive encoded and must be
-// compared decoded.
-const encodedOnWire = /[^!$&'()*+,\-.0-9:;=@A-Z_a-z~]/;
+// Anything outside RFC 3986's unreserved set (or stored %-escapes) may
+// legitimately arrive percent-encoded, so it must be compared decoded.
+const encodedOnWire = /[^\w.~-]/;
 function needsDecode({ key }: RouteTrie) {
   const decoded = decodeURIComponent(key);
   return decoded !== key || encodedOnWire.test(decoded);
