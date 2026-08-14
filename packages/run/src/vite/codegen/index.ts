@@ -237,16 +237,9 @@ globalThis.__marko_run__ = { match, fetch, invoke };
       `return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
 
-function tryDecode(str) {
-  try {
-    return decodeURIComponent(str);
-  } catch {
-    return str;
-  }
-}
-
 function match_internal(method, pathname) {
-  const len = pathname.length;`,
+  const len = pathname.length;
+  try {`,
     )
     .writeBlockStart(`switch (method) {`);
 
@@ -261,7 +254,17 @@ function match_internal(method, pathname) {
     }
   }
 
-  writer.writeBlockEnd("}").writeLines("return null;").writeBlockEnd("}");
+  writer
+    .writeBlockEnd("}")
+    .writeLines(
+      `} catch (error) {
+    // A malformed percent-escape is an invalid URI: no route can match it.
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+  return null;`,
+    )
+    .writeBlockEnd("}");
 
   writer
     .writeLines("")
@@ -872,10 +875,10 @@ function writeRouterVerb(
       let value = `pathname.slice(${offset}, ${index} ? -1 : len)`;
       if (dynamic?.route) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = tryDecode(${value});`);
+        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
       } else if (terminal?.some(needsDecode)) {
-        value = `tryDecode(${value})`;
+        value = `decodeURIComponent(${value})`;
       }
 
       if (terminal) {
@@ -926,10 +929,10 @@ function writeRouterVerb(
       const decodeChildren = !!children?.some(needsDecode);
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = tryDecode(${value});`);
+        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
       } else if (decodeChildren) {
-        value = `tryDecode(${value})`;
+        value = `decodeURIComponent(${value})`;
       }
 
       if (children) {
@@ -1022,7 +1025,7 @@ function renderParams(
     // kinds agree and `Run.href`'s encode round-trips.
     result += `${sep} ${wrapPropertyName(
       catchAll,
-    )}: tryDecode(pathname.slice(${pathIndex}))`;
+    )}: decodeURIComponent(pathname.slice(${pathIndex}))`;
   }
 
   return result ? result + " }" : "{}";

@@ -7,16 +7,9 @@ export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
 
-function tryDecode(str) {
-  try {
-    return decodeURIComponent(str);
-  } catch {
-    return str;
-  }
-}
-
 function match_internal(method, pathname) {
   const len = pathname.length;
+  try {
 	switch (method) {
 		case 'GET':
 		case 'get': {
@@ -34,7 +27,12 @@ function match_internal(method, pathname) {
 			return null;
 		}
 	}
-	return null;
+	} catch (error) {
+    // A malformed percent-escape is an invalid URI: no route can match it.
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+  return null;
 }
 
 export async function invoke(route, request, platform, url) {

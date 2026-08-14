@@ -10,29 +10,22 @@ export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
 
-function tryDecode(str) {
-  try {
-    return decodeURIComponent(str);
-  } catch {
-    return str;
-  }
-}
-
 function match_internal(method, pathname) {
   const len = pathname.length;
+  try {
 	switch (method) {
 		case 'GET':
 		case 'get': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					switch (tryDecode(pathname.slice(1, i1 ? -1 : len))) {
+					switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
 						case "café": return { handler: get1, path: "/café", params: {}, options: get1_options, meta: {} };
 						case "menu": return { handler: get3, path: "/menu", params: {}, options: get3_options, meta: {} };
 						case "x^y": return { handler: get4, path: "/x^y", params: {}, options: get4_options, meta: {} };
 					}
 				} else {
-					if (tryDecode(pathname.slice(1, i1 - 1)) === "café") {
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "café") {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							if (pathname.slice(i1, i2 ? -1 : len) === "sub") return { handler: get2, path: "/café/sub", params: {}, options: get2_options, meta: {} };
@@ -47,13 +40,13 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					switch (tryDecode(pathname.slice(1, i1 ? -1 : len))) {
+					switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
 						case "café": return { handler: head1, path: "/café", params: {}, options: head1_options, meta: {} };
 						case "menu": return { handler: head3, path: "/menu", params: {}, options: head3_options, meta: {} };
 						case "x^y": return { handler: head4, path: "/x^y", params: {}, options: head4_options, meta: {} };
 					}
 				} else {
-					if (tryDecode(pathname.slice(1, i1 - 1)) === "café") {
+					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "café") {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							if (pathname.slice(i1, i2 ? -1 : len) === "sub") return { handler: head2, path: "/café/sub", params: {}, options: head2_options, meta: {} };
@@ -64,7 +57,12 @@ function match_internal(method, pathname) {
 			return null;
 		}
 	}
-	return null;
+	} catch (error) {
+    // A malformed percent-escape is an invalid URI: no route can match it.
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+  return null;
 }
 
 export async function invoke(route, request, platform, url) {
