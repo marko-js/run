@@ -197,8 +197,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   // Invalidation keeps an in-flight build as the memo: its loop observes the
   // version bump and re-walks, so every awaiter settles on current routes.
   function invalidateVirtualFiles() {
-    buildVirtualFilesVersion++;
-    if (!buildingVirtualFiles) buildVirtualFilesResult = undefined;
+    if (buildingVirtualFiles) {
+      buildVirtualFilesVersion++;
+    } else {
+      buildVirtualFilesVersion = 0;
+      buildVirtualFilesResult = undefined;
+    }
     renderVirtualFilesResult = undefined;
     routeMarkoApiCache = undefined;
   }
