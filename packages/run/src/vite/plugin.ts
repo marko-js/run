@@ -190,26 +190,41 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }
   }
 
+  let buildVirtualFilesVersion = 0;
+  let buildingVirtualFiles = false;
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
-  let buildVirtualFilesQueue: Promise<unknown> = Promise.resolve();
+
+  // Invalidation keeps an in-flight build as the memo: its loop observes the
+  // version bump and re-walks, so every awaiter settles on current routes.
+  function invalidateVirtualFiles() {
+    buildVirtualFilesVersion++;
+    if (!buildingVirtualFiles) buildVirtualFilesResult = undefined;
+    renderVirtualFilesResult = undefined;
+    routeMarkoApiCache = undefined;
+  }
+
   function buildVirtualFiles() {
-    if (!buildVirtualFilesResult) {
-      // Serialized: a rebuild requested while one is in flight waits for it,
-      // so two walks never interleave their commits into the shared state.
-      const build = buildVirtualFilesQueue
-        .then(walkRoutes, walkRoutes)
-        .then((built) => {
-          commitVirtualFiles(built);
-          return built;
-        });
-      buildVirtualFilesQueue = build;
-      buildVirtualFilesResult = build.catch((err) => {
-        // Point coding agents at the cheat sheet on route-build errors,
-        // whichever plugin hook triggered the build.
-        throw appendAgentFixGuide(err);
-      });
-    }
-    return buildVirtualFilesResult;
+    return (buildVirtualFilesResult ??= (async () => {
+      buildingVirtualFiles = true;
+      try {
+        let version: number;
+        let built: BuiltRoutes;
+        // The walk has no shared side effects, so a build superseded mid-walk
+        // just walks again; only a current walk commits, exactly once.
+        do {
+          version = buildVirtualFilesVersion;
+          built = await walkRoutes();
+        } while (version !== buildVirtualFilesVersion);
+        commitVirtualFiles(built);
+        return built;
+      } finally {
+        buildingVirtualFiles = false;
+      }
+    })().catch((err) => {
+      // Point coding agents at the cheat sheet on route-build errors,
+      // whichever plugin hook triggered the build.
+      throw appendAgentFixGuide(err);
+    }));
   }
 
   async function walkRoutes(): Promise<BuiltRoutes> {
@@ -664,9 +679,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     filename === runtimeInclude))
               ) {
                 const staleFiles = new Set(virtualFiles.keys());
-                buildVirtualFilesResult = undefined;
-                renderVirtualFilesResult = undefined;
-                routeMarkoApiCache = undefined;
+                invalidateVirtualFiles();
 
                 // Only a change leaves a live module chain to poke. A delete
                 // takes its chain, and an add can leave a stale one behind.
