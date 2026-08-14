@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Match static route segments in their canonical URL-encoded form so non-ASCII paths resolve
-
-`packages/run/src/vite/codegen/index.ts` › `writeRouterVerb` | 2026-08-03 | impact:med | effort:med
-
-`normalizeSegment` (`packages/run/src/vite/routes/parse.ts`) stores a static segment as `decodeURIComponent(name)` with only `/`, `?` and `#` re-escaped, so `src/routes/café/+page.marko` is keyed `café` — as is `routes/caf%C3%A9`, which decodes back — while the generated `fetch` matches against `new URL(request.url).pathname`, which is always percent-encoded (`/caf%C3%A9`). `writeRouterVerb` compares the raw pathname slice against that key, wraps it in `decodeURIComponent` only when some sibling key contains a `%`, and advances to the next segment with `offset + child.key.length + 1`. For `routes/café/+page.marko` plus `routes/café/sub/+page.marko` it emits `case 'café'` and `pathname.indexOf('/', 6)`, so `/caf%C3%A9` returns `null` — a silent 404; adding a percent-escaped sibling flips the decode branch on so `/café` matches, but `/caf%C3%A9/sub` still misses because the child offset came from the 4-character key. Fix by keying static segments in canonical encoded form (escaping everything `encodeURIComponent` does, not just `/?#`) and comparing/offsetting against that, or by always emitting `decodeURIComponent` for static keys and taking the child offset from the runtime index variable, as `writeRouterVerb` already does for segments under a dynamic parent. The `uri-encoded` and `escape-path` codegen fixtures only use keys `normalizeSegment` happens to store already-encoded, so their length arithmetic passes.
-
 ## Resolve `config.root` in the Vite plugin's `config` hook — a relative root yields an empty `@marko/run/router`
 
 `packages/run/src/vite/plugin.ts` › `config` | 2026-08-03 | impact:med | effort:low

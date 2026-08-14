@@ -809,6 +809,14 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
   writer.writeBlockEnd("}");
 }
 
+// Chars a URL pathname always keeps literal; a segment containing anything
+// else (or stored %-escapes) can arrive encoded and must be compared decoded.
+const encodedOnWire = /[^!$&'()*+,\-.0-9:;=@A-Z[\]^_a-z|~]/;
+function needsDecode({ key }: RouteTrie) {
+  const decoded = decodeURIComponent(key);
+  return decoded !== key || encodedOnWire.test(decoded);
+}
+
 function writeRouterVerb(
   writer: Writer,
   trie: RouteTrie,
@@ -858,11 +866,7 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        terminal?.some(
-          (terminal) => decodeURIComponent(terminal.key) !== terminal.key,
-        )
-      ) {
+      } else if (terminal?.some(needsDecode)) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -911,13 +915,12 @@ function writeRouterVerb(
       }
 
       let value = `pathname.slice(${offset}, ${index} - 1)`;
+      const decodeChildren = !!children?.some(needsDecode);
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        children?.some((child) => decodeURIComponent(child.key) !== child.key)
-      ) {
+      } else if (decodeChildren) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -938,8 +941,12 @@ function writeRouterVerb(
             );
           }
 
+          // A decoded comparison means the wire length can differ from the
+          // key length, so the next segment starts at the runtime index.
           const nextOffset =
-            typeof offset === "string" ? index : offset + child.key.length + 1;
+            typeof offset === "string" || decodeChildren
+              ? index
+              : offset + child.key.length + 1;
           writeRouterVerb(writer, child, verb, next, nextOffset);
 
           if (useSwitch) {
