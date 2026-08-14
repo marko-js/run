@@ -211,8 +211,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       try {
         let built: BuiltRoutes | undefined;
         if (fs.existsSync(resolvedRoutesDir)) {
-          // The walk has no shared side effects, so a build superseded
-          // mid-walk just walks again; after the loop commits exactly once.
+          // A superseded walk reruns, so it must not touch shared state.
           let version: number;
           do {
             version = buildVirtualFilesVersion;
@@ -691,8 +690,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     devServer.watcher.emit("change", file);
                   }
                 } else {
-                  // Rebuild before invalidating: a restored route's entry must
-                  // be evicted too, and only the fresh map knows its key.
+                  // Rebuild before emitting: a restored route's entry must be
+                  // evicted too, and only the fresh map knows its key.
                   try {
                     await buildVirtualFiles();
                   } catch {
