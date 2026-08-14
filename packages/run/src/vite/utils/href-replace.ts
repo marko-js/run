@@ -85,14 +85,7 @@ export function findHrefReplacements(
     }
 
     const callee = node.callee;
-    if (
-      callee.type !== "MemberExpression" ||
-      callee.computed ||
-      callee.object.type !== "Identifier" ||
-      callee.object.name !== "Run" ||
-      callee.property.type !== "Identifier" ||
-      callee.property.name !== "href"
-    ) {
+    if (!isRunHrefCallee(callee)) {
       return;
     }
 
@@ -135,7 +128,7 @@ export function findHrefReplacements(
 
     // A nested call would be copied into (or erased by) the outer rewrite;
     // replacing only the callee keeps it live for its own optimization pass.
-    if (code.slice(optionsNode.start, optionsNode.end).includes("Run.href")) {
+    if (containsRunHrefCall(optionsNode)) {
       add({
         helper: "href",
         edits: [{ start: callee.start, end: callee.end, code: "href" }],
@@ -253,6 +246,27 @@ export function findHrefReplacements(
   });
 
   return replacements;
+}
+
+function isRunHrefCallee(callee: Node): boolean {
+  return (
+    callee.type === "MemberExpression" &&
+    !callee.computed &&
+    callee.object.type === "Identifier" &&
+    callee.object.name === "Run" &&
+    callee.property.type === "Identifier" &&
+    callee.property.name === "href"
+  );
+}
+
+function containsRunHrefCall(node: Node): boolean {
+  let found = false;
+  walk(node, (n: Node) => {
+    if (!found && n.type === "CallExpression" && isRunHrefCallee(n.callee)) {
+      found = true;
+    }
+  });
+  return found;
 }
 
 /**

@@ -82,8 +82,8 @@ export function href_keys(
 
 function joinHref(path: string, { search, hash }: HrefOptions<any>) {
   let sep = "?";
-  for (const key in search) {
-    const value = search[key as keyof typeof search];
+  for (const key of search ? Object.keys(search) : []) {
+    const value = search![key as keyof typeof search];
     if (value !== void 0) {
       path += `${sep}${encode(key)}=${encode(value)}`;
       sep = "&";

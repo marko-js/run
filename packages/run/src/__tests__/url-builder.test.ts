@@ -300,16 +300,13 @@ describe("nullish search values", () => {
     assert.equal(
       href("/about", {
         search: { q: "hi", page: undefined, tag: null },
-      } as any),
+      }),
       "/about?q=hi&tag=null",
     );
   });
 
   it("drops the query entirely when every entry is undefined", () => {
-    assert.equal(
-      href("/about", { search: { page: undefined } } as any),
-      "/about",
-    );
+    assert.equal(href("/about", { search: { page: undefined } }), "/about");
   });
 
   it("keeps falsy but defined values", () => {
