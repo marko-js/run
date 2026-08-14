@@ -9,16 +9,6 @@ import { get9, get9_options, head9, head9_options } from "virtual:marko-run/__ma
 import page404 from "./dist/.marko-run/404.marko";
 import page500 from "./dist/.marko-run/500.marko";
 
-const page404ResponseInit = {
-  status: 404,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};
-
-const page500ResponseInit = {
-  status: 500,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};
-
 globalThis.__marko_run__ = { match, fetch, invoke };
     
 export function match(method, pathname) {
@@ -182,16 +172,16 @@ export async function invoke(route, request, platform, url) {
 				if (error !== NotMatched) throw error;
 			}
 		}
-    
+
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, page404ResponseInit);
+      return context.render(page404, {}, { status: 404 });
     }	
     return new Response(null, {
       status: 404,
     });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return context.render(page500, { error }, page500ResponseInit);
+			return context.render(page500, { error }, { status: 500 });
 		}
 		throw error;
 	}

@@ -78,3 +78,59 @@ describe("Context Render", () => {
     assert.equal(await response.text(), "legacy");
   });
 });
+
+describe("Context Render init", () => {
+  function renderWith(init?: ResponseInit) {
+    const context = createContext(null, new Request("http://test/"), {});
+    return context.render(
+      {
+        render: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield "hi";
+          },
+        }),
+      } as any,
+      {},
+      init,
+    );
+  }
+
+  it("should keep the HTML defaults when an init only sets a status", () => {
+    const response = renderWith({ status: 400 });
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.headers.get("content-type"),
+      "text/html;charset=UTF-8",
+    );
+  });
+
+  it("should keep the content-type when an init sets other headers", () => {
+    const response = renderWith({
+      headers: { "cache-control": "no-store" },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(
+      response.headers.get("content-type"),
+      "text/html;charset=UTF-8",
+    );
+  });
+
+  it("should let an init override the content-type, including via Headers", () => {
+    const response = renderWith({
+      headers: new Headers({ "content-type": "text/plain" }),
+    });
+    assert.equal(response.headers.get("content-type"), "text/plain");
+  });
+
+  it("should keep the default content-type when a Headers instance omits it", () => {
+    const response = renderWith({
+      headers: new Headers({ "cache-control": "no-store" }),
+    });
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(
+      response.headers.get("content-type"),
+      "text/html;charset=UTF-8",
+    );
+  });
+});

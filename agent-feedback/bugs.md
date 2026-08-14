@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Merge the HTML defaults into a caller-supplied init in `context.render`
-
-`packages/run/src/runtime/internal.ts` › `createContext` | 2026-08-03 | impact:med | effort:low
-
-`createContext`'s `render(template, input, init = pageResponseInit)` treats the HTML defaults as a fallback for the whole argument, so any caller-supplied init replaces them: `ctx.render(page, input, { status: 400 })` — the natural way to re-render a form page with validation errors — produces a response with no `content-type` header at all, and `ctx.render(page, input, { headers: { "cache-control": "no-store" } })` loses it too. Nothing downstream restores it: `copyResponseHeaders` in `packages/run/src/adapter/middleware.ts` only copies the response's own headers, so the client MIME-sniffs bare HTML with no declared charset, and `packages/adapters/static/src/crawler.ts` silently aborts a 200 whose content-type does not include `text/html` unless the path already ends in a file extension — which ordinary extensionless page routes do not. This contradicts the README's Context section ("sets the `Content-Type` header to `text/html`"), and it is why the generated `page404ResponseInit`/`page500ResponseInit` in `packages/run/src/vite/codegen/index.ts` have to re-declare `content-type` by hand. Merge the defaults inside `render` instead: put `status: 200` under `...init` and build headers with `new Headers(init?.headers)`, setting `content-type: text/html;charset=UTF-8` only when the caller did not supply one (spreading `init.headers` would silently drop a `Headers` instance, so normalize rather than spread).
-
 ## Fall back to the client runtime when a `Run` reference survives the production href rewrite
 
 `packages/run/src/vite/plugin.ts` › `transform` | 2026-08-03 | impact:med | effort:low
@@ -158,14 +152,14 @@ With a `+404` route the adapter passes `notFoundPath`, and `visit`'s `case 404:`
 
 `startPreview`'s sirv fall-through answers any path that matched no file with `res.writeHead(302, undefined, { location: "/404" })`, so preview reports a not-found URL as a redirect to a page that answers 404, while every static host the adapter targets answers 404 at the requested URL itself. A test or crawler asserting that an unknown URL 404s sees the 302 first, and preview is the one place that shape can be caught before deploy. Serve `404.html`'s body from the fall-through with an explicit `res.writeHead(404)` rather than redirecting to a path that exists in the build output. The `/404` page's own status is no longer part of this -- `forceStatus` pins it around sirv, which is what sirv's `setHeaders` could not do.
 
-## Dev server drops WebSocket upgrades: `server.proxy` ws entries never connect, unmatched upgrades answer 404
-
-`packages/run/src/adapter/dev-server.ts` › `createViteDevServer` | 2026-08-10 | impact:high | effort:med
-
-Dev runs Vite in middleware mode behind marko-run's own listener (`devServer.middlewares.listen` in `startDev`, `packages/run/src/adapter/index.ts`), so `server.httpServer` is `null` inside every Vite plugin and no upgrade path exists. Three verified consequences for an app that serves its own WebSocket: (1) a user config `server.proxy: { "/term": { target: "ws://localhost:7172", ws: true } }` completes the client handshake but never establishes the upstream — the socket opens, receives zero frames, and dies with 1006, silently; (2) without the proxy entry, an upgrade request for an app path is processed as a plain request and the router writes an HTTP 404 to the wire (a `ws` client reports "Unexpected server response: 404"); (3) a plugin cannot work around it, since `configureServer` never sees the real http server. Direction: hand the listener to Vite (`server.hmr.server`) and honor `server.proxy` ws entries against it — the same listener the existing HMR-port entry needs. Until then the only workaround is fronting the dev server with an external path-routing proxy. Re-verify: `marko-run dev` app with that proxy config, `new WebSocket("ws://localhost:<port>/term/x")` — open then 1006 with no upstream traffic; remove the proxy entry and the handshake gets 404.
-
 ## Routes 404 after Vite's in-place restart when the config graph changes
 
 `packages/run/src/vite/plugin.ts` › `virtualFiles` | 2026-08-10 | impact:med | effort:med
 
 If `vite.config.ts` imports project source (e.g. to start a sidecar server from `configureServer`), editing any file in that import graph makes Vite restart in place — and after that restart every route answers 404 until the whole `marko-run dev` process is killed and restarted. Observed repeatedly in a real app; the workaround was spawning the sidecar as a child process (`spawn(process.execPath, [entry])`) so the config graph never touches server code, plus explicit `.ts` extensions to keep imports out of the graph. Suspect the `virtualFiles` map / route-walker state is not rebuilt on Vite's in-place restart path the way it is on first boot. Re-verify: a `marko-run dev` app whose `vite.config.ts` imports any file under `src/`; touch that file, wait for Vite's restart log, then curl any route — 404 until process restart.
+
+## Dev server drops WebSocket upgrades: `server.proxy` ws entries never connect, unmatched upgrades answer 404
+
+`packages/run/src/adapter/dev-server.ts` › `createViteDevServer` | 2026-08-10 | impact:high | effort:med
+
+Dev runs Vite in middleware mode behind marko-run's own listener (`devServer.middlewares.listen` in `startDev`, `packages/run/src/adapter/index.ts`), so `server.httpServer` is `null` inside every Vite plugin and no upgrade path exists. Three verified consequences for an app that serves its own WebSocket: (1) a user config `server.proxy: { "/term": { target: "ws://localhost:7172", ws: true } }` completes the client handshake but never establishes the upstream — the socket opens, receives zero frames, and dies with 1006, silently; (2) without the proxy entry, an upgrade request for an app path is processed as a plain request and the router writes an HTTP 404 to the wire (a `ws` client reports "Unexpected server response: 404"); (3) a plugin cannot work around it, since `configureServer` never sees the real http server. Direction: hand the listener to Vite (`server.hmr.server`) and honor `server.proxy` ws entries against it — the same listener the existing HMR-port entry needs. Until then the only workaround is fronting the dev server with an external path-routing proxy. Re-verify: `marko-run dev` app with that proxy config, `new WebSocket("ws://localhost:<port>/term/x")` — open then 1006 with no upstream traffic; remove the proxy entry and the handshake gets 404.

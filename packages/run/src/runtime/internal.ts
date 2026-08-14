@@ -168,7 +168,19 @@ export function createContext(
         new Response(null, { status: 404 })
       );
     },
-    render(template, input, init = pageResponseInit) {
+    render(template, input, init) {
+      if (init) {
+        // Merged rather than replaced: a caller-supplied init keeps the HTML
+        // content-type and 200 status unless it names its own.
+        const headers = new Headers(init.headers);
+        if (!headers.has("content-type")) {
+          headers.set("content-type", "text/html;charset=UTF-8");
+        }
+        init = { status: 200, ...init, headers };
+      } else {
+        init = pageResponseInit;
+      }
+
       if (context.method === "HEAD") {
         return new Response(null, init);
       }
