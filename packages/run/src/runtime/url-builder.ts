@@ -80,12 +80,16 @@ export function href_keys(
   return href_values(strings, options, ...keys.map((k) => options.params[k]));
 }
 
-function joinHref(path: string, options: HrefOptions<any>) {
+// Nullish-tolerant: the client-build rewrite routes `Run.href(path, opts)`
+// here without `href`'s own `options` guard, and `opts` may be undefined.
+function joinHref(path: string, options?: HrefOptions<any>) {
   let result = path;
-  if (options.search) {
+  if (options?.search) {
     const query = "" + new URLSearchParams(options.search);
     if (query) result += "?" + query;
   }
-  if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
+  if (options?.hash || options?.hash === 0) {
+    result += "#" + encode(options.hash);
+  }
   return result;
 }

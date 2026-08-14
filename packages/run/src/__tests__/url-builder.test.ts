@@ -276,3 +276,21 @@ describe("url-builder", () => {
     });
   });
 });
+
+// The client-build rewrite hands `Run.href(path, opts)` to these helpers
+// without `href`'s own nullish guard, so they must tolerate it themselves.
+describe("nullish options", () => {
+  it("href returns the path for a nullish options argument", () => {
+    assert.equal(href("/about", undefined as any), "/about");
+  });
+
+  it("href_keys tolerates nullish options for a param-less path", () => {
+    const opts = undefined as any;
+    assert.equal(href_keys`${opts}/about`, "/about");
+  });
+
+  it("href_values tolerates nullish spread options", () => {
+    const defaults = undefined as any;
+    assert.equal(href_values`${defaults}/users/${1}`, "/users/1");
+  });
+});

@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Guard the client-build `href` helpers against nullish options so `Run.href(path, maybeOptions)` doesn't throw in production
-
-`packages/run/src/runtime/url-builder.ts` › `href_values` | 2026-08-03 | impact:med | effort:low
-
-`href` deliberately tolerates a nullish options argument (`return options ? … : path`), but the client-build rewrite in `packages/run/src/vite/utils/href-replace.ts` drops that guard: `Run.href("/about", opts)` becomes ``href_keys`${opts}/about` `` and `Run.href("/users/$id", { ...defaults, params: { id } })` becomes ``href_values`${defaults}/users/${id}` ``, both handing the value straight to the module-private `joinHref`, which reads `options.search` unconditionally. Both call shapes type-check under `strict` — `Href` in `packages/run/src/runtime/types.ts` declares `[options?: HrefOptions<Path>]` for param-less paths, and spreading a possibly-undefined object into an object literal is legal — so `href("/about", undefined)` returns `"/about"` while the rewritten form throws `TypeError: Cannot read properties of undefined (reading 'search')`, and `{ ...undefined, params: { id } }` yields `/users/1` before the rewrite and a throw after it. Since `packages/run/src/vite/plugin.ts` gates the transform on `!isBuild || isSSRBuild`, dev and SSR keep the guarded `href` and only the production client bundle throws, killing that component's hydration with no earlier signal. Make `joinHref` nullish-tolerant (`options?.search`, `options?.hash`) so the rewritten helpers match `href`, and add nullish-options cases to `packages/run/src/__tests__/url-builder.test.ts`, which only ever passes defined objects — `packages/run/src/vite/__tests__/href-replace.test.ts` already pins the rewrites that drop the guard.
-
 ## Skip nullish `search` values in `joinHref` instead of serializing them as `"undefined"`/`"null"`
 
 `packages/run/src/runtime/url-builder.ts` › `joinHref` | 2026-08-03 | impact:med | effort:low
