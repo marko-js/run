@@ -25,6 +25,31 @@ export function head1(context) {
 }
 ```
 ---
+## Route ``faq.it's-here.deeper's``
+### Path: ``/faq/it's-here/deeper's``
+### Template
+```marko
+import Page from "../../src/routes/faq/it's-here/deeper's/+page.marko";
+
+<Page/>
+```
+### Handler
+```js
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/faq.it's-here.deeper's.marko";
+
+export const get2_options = {};
+export const head2_options = {};
+
+export function get2(context) {
+	return render(context, page, {});
+}
+
+export function head2(context) {
+	return stripResponseBody(get2(context));
+}
+```
+---
 ## Route ``faq.$``
 ### Path: ``/faq/$it's``
 ### Template
@@ -38,14 +63,39 @@ import Page from "../../src/routes/faq/$it's/+page.marko";
 import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import page from "./dist/.marko-run/faq.$.marko";
 
-export const get2_options = {};
-export const head2_options = {};
+export const get3_options = {};
+export const head3_options = {};
 
-export function get2(context) {
+export function get3(context) {
 	return render(context, page, {});
 }
 
-export function head2(context) {
-	return stripResponseBody(get2(context));
+export function head3(context) {
+	return stripResponseBody(get3(context));
+}
+```
+---
+## Route ``back-slash``
+### Path: ``/back\slash``
+### Template
+```marko
+import Page from "../../src/routes/back\slash/+page.marko";
+
+<Page/>
+```
+### Handler
+```js
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/back-slash.marko";
+
+export const get4_options = {};
+export const head4_options = {};
+
+export function get4(context) {
+	return render(context, page, {});
+}
+
+export function head4(context) {
+	return stripResponseBody(get4(context));
 }
 ```

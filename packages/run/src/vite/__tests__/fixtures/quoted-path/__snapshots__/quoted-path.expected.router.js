@@ -1,6 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
 import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__faq.it's-here.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__faq.$.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__faq.it's-here.deeper's.js";
+import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__faq.$.js";
+import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__back-slash.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -15,13 +17,22 @@ function match_internal(method, pathname) {
 		case 'get': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
+				if (!i1 || i1 === len) {
+					if (pathname.slice(1, i1 ? -1 : len) === "back\\slash") return { handler: get4, path: "/back\\slash", params: {}, options: get4_options, meta: {} };
+				} else {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
 							if (s2 === "it's-here") return { handler: get1, path: "/faq/it's-here", params: {}, options: get1_options, meta: {} };
-							if (s2) return { handler: get2, path: "/faq/$it's", params: { "it's": s2 }, options: get2_options, meta: {} };
+							if (s2) return { handler: get3, path: "/faq/$it's", params: { "it's": s2 }, options: get3_options, meta: {} };
+						} else {
+							if (pathname.slice(5, i2 - 1) === "it's-here") {
+								const i3 = pathname.indexOf('/', 15) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: get2, path: "/faq/it's-here/deeper's", params: {}, options: get2_options, meta: {} };
+								}
+							}
 						}
 					}
 				}
@@ -32,13 +43,22 @@ function match_internal(method, pathname) {
 		case 'head': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
+				if (!i1 || i1 === len) {
+					if (pathname.slice(1, i1 ? -1 : len) === "back\\slash") return { handler: head4, path: "/back\\slash", params: {}, options: head4_options, meta: {} };
+				} else {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
 							if (s2 === "it's-here") return { handler: head1, path: "/faq/it's-here", params: {}, options: head1_options, meta: {} };
-							if (s2) return { handler: head2, path: "/faq/$it's", params: { "it's": s2 }, options: head2_options, meta: {} };
+							if (s2) return { handler: head3, path: "/faq/$it's", params: { "it's": s2 }, options: head3_options, meta: {} };
+						} else {
+							if (pathname.slice(5, i2 - 1) === "it's-here") {
+								const i3 = pathname.indexOf('/', 15) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: head2, path: "/faq/it's-here/deeper's", params: {}, options: head2_options, meta: {} };
+								}
+							}
 						}
 					}
 				}
