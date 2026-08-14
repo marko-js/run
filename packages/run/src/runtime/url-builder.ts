@@ -80,8 +80,6 @@ export function href_keys(
   return href_values(strings, options, ...keys.map((k) => options.params[k]));
 }
 
-// Nullish-tolerant: the client-build rewrite routes `Run.href(path, opts)`
-// here without `href`'s own `options` guard, and `opts` may be undefined.
 function joinHref(path: string, options?: HrefOptions<any>) {
   let result = path;
   if (options?.search) {
