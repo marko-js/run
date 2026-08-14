@@ -66,30 +66,26 @@ export function href_path(
 
 export function href_values(
   strings: TemplateStringsArray,
-  options: HrefOptions<any>,
+  options: HrefOptions<any> | null | undefined,
   ...params: (string | number | (string | number)[])[]
 ) {
-  return joinHref(href_path(strings, ...params), options);
+  return joinHref(href_path(strings, ...params), options || {});
 }
 
 export function href_keys(
   strings: TemplateStringsArray,
-  options: HrefOptions,
+  options: HrefOptions | null | undefined,
   ...keys: string[]
 ) {
-  return href_values(strings, options, ...keys.map((k) => options.params[k]));
+  return href_values(strings, options, ...keys.map((k) => options!.params[k]));
 }
 
-function joinHref(path: string, options?: HrefOptions<any>) {
+function joinHref(path: string, options: HrefOptions<any>) {
   let result = path;
-  if (options) {
-    if (options.search) {
-      const query = "" + new URLSearchParams(options.search);
-      if (query) result += "?" + query;
-    }
-    if (options.hash || options.hash === 0) {
-      result += "#" + encode(options.hash);
-    }
+  if (options.search) {
+    const query = "" + new URLSearchParams(options.search);
+    if (query) result += "?" + query;
   }
+  if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
   return result;
 }
