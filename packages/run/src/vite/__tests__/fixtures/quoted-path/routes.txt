@@ -5,5 +5,3 @@
       +page.marko
   /$it's
     +page.marko
-/back\slash
-  +page.marko

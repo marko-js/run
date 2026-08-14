@@ -74,28 +74,3 @@ export function head3(context) {
 	return stripResponseBody(get3(context));
 }
 ```
----
-## Route ``back-slash``
-### Path: ``/back\slash``
-### Template
-```marko
-import Page from "../../src/routes/back\slash/+page.marko";
-
-<Page/>
-```
-### Handler
-```js
-import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
-import page from "./dist/.marko-run/back-slash.marko";
-
-export const get4_options = {};
-export const head4_options = {};
-
-export function get4(context) {
-	return render(context, page, {});
-}
-
-export function head4(context) {
-	return stripResponseBody(get4(context));
-}
-```

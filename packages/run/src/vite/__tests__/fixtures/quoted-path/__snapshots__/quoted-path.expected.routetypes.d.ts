@@ -12,7 +12,6 @@ declare module "@marko/run" {
 		"/faq/it's-here": [P1];
 		"/faq/it's-here/deeper's": [P2];
 		"/faq/$it's": [P3];
-		"/back\\slash": [P4];
 	}> {}
 }
 
@@ -73,29 +72,6 @@ declare module "../src/routes/faq/$it's/+page.marko" {
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
     export type Route = $.Routes["/faq/$it's"];
-    export type Context = Run.Context;
-    export type Handler = $.HandlerLike<Route>;
-    export type GET = $.HandlerLike<Route, "GET">;
-    export type HEAD = $.HandlerLike<Route, "HEAD">;
-    export type POST = $.HandlerLike<Route, "POST">;
-    export type PUT = $.HandlerLike<Route, "PUT">;
-    export type DELETE = $.HandlerLike<Route, "DELETE">;
-    export type PATCH = $.HandlerLike<Route, "PATCH">;
-    export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
-  }
-}
-
-type P4 = $.Template<"P4", typeof import("../src/routes/back\slash/+page.marko")>;
-declare module "../src/routes/back\slash/+page.marko" {
-  const Run: $.Namespace<P4>;
-  namespace Run {
-    type Context = $.ContextForFile<P4> & Marko.Global;
-  }
-
-  /** @deprecated use `Run` namespace instead */
-  namespace MarkoRun {
-    export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
-    export type Route = $.Routes["/back\\slash"];
     export type Context = Run.Context;
     export type Handler = $.HandlerLike<Route>;
     export type GET = $.HandlerLike<Route, "GET">;

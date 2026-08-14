@@ -2,7 +2,6 @@ import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime
 import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__faq.it's-here.js";
 import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__faq.it's-here.deeper's.js";
 import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__faq.$.js";
-import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__back-slash.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -17,9 +16,7 @@ function match_internal(method, pathname) {
 		case 'get': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
-				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len) === "back\\slash") return { handler: get4, path: "/back\\slash", params: {}, options: get4_options, meta: {} };
-				} else {
+				if (i1 && i1 !== len) {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
@@ -43,9 +40,7 @@ function match_internal(method, pathname) {
 		case 'head': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
-				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len) === "back\\slash") return { handler: head4, path: "/back\\slash", params: {}, options: head4_options, meta: {} };
-				} else {
+				if (i1 && i1 !== len) {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
