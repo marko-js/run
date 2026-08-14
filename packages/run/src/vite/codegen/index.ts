@@ -236,7 +236,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     .writeLines(
       `return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;`,
     )
@@ -809,9 +817,10 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
   writer.writeBlockEnd("}");
 }
 
-// Chars a URL pathname always keeps literal; a segment containing anything
-// else (or stored %-escapes) can arrive encoded and must be compared decoded.
-const encodedOnWire = /[^!$&'()*+,\-.0-9:;=@A-Z[\]^_a-z|~]/;
+// Chars every URL parser keeps literal in a pathname; a segment containing
+// anything else (or stored %-escapes) can arrive encoded and must be
+// compared decoded.
+const encodedOnWire = /[^!$&'()*+,\-.0-9:;=@A-Z_a-z~]/;
 function needsDecode({ key }: RouteTrie) {
   const decoded = decodeURIComponent(key);
   return decoded !== key || encodedOnWire.test(decoded);
@@ -864,10 +873,10 @@ function writeRouterVerb(
       let value = `pathname.slice(${offset}, ${index} ? -1 : len)`;
       if (dynamic?.route) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
+        writer.writeLines(`const ${segment} = tryDecode(${value});`);
         value = segment;
       } else if (terminal?.some(needsDecode)) {
-        value = `decodeURIComponent(${value})`;
+        value = `tryDecode(${value})`;
       }
 
       if (terminal) {
@@ -918,10 +927,10 @@ function writeRouterVerb(
       const decodeChildren = !!children?.some(needsDecode);
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         const segment = `s${next}`;
-        writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
+        writer.writeLines(`const ${segment} = tryDecode(${value});`);
         value = segment;
       } else if (decodeChildren) {
-        value = `decodeURIComponent(${value})`;
+        value = `tryDecode(${value})`;
       }
 
       if (children) {
@@ -1014,7 +1023,7 @@ function renderParams(
     // kinds agree and `Run.href`'s encode round-trips.
     result += `${sep} ${wrapPropertyName(
       catchAll,
-    )}: decodeURIComponent(pathname.slice(${pathIndex}))`;
+    )}: tryDecode(pathname.slice(${pathIndex}))`;
   }
 
   return result ? result + " }" : "{}";

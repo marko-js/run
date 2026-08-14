@@ -8,7 +8,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;
 	switch (method) {
@@ -20,7 +28,7 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(5, i2 ? -1 : len));
 							if (s2 === "it's-here") return { handler: get1, path: "/faq/it's-here", params: {}, options: get1_options, meta: {} };
 							if (s2) return { handler: get3, path: "/faq/$it's", params: { "it's": s2 }, options: get3_options, meta: {} };
 						} else {
@@ -44,7 +52,7 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === "faq") {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(5, i2 ? -1 : len));
 							if (s2 === "it's-here") return { handler: head1, path: "/faq/it's-here", params: {}, options: head1_options, meta: {} };
 							if (s2) return { handler: head3, path: "/faq/$it's", params: { "it's": s2 }, options: head3_options, meta: {} };
 						} else {

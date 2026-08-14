@@ -7,7 +7,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;
 	switch (method) {
@@ -16,16 +24,16 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+					if (tryDecode(pathname.slice(1, i1 - 1)) === "a?b") {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: get2, path: "/a%3fb/baz", params: {}, options: get2_options, meta: {} };
 						} else {
-							const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
+							const s2 = tryDecode(pathname.slice(i1, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
+									const s3 = tryDecode(pathname.slice(i2, i3 ? -1 : len));
 									if (s3) return { handler: get1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: get1_options, meta: {} };
 								}
 							}
@@ -40,16 +48,16 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+					if (tryDecode(pathname.slice(1, i1 - 1)) === "a?b") {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: head2, path: "/a%3fb/baz", params: {}, options: head2_options, meta: {} };
 						} else {
-							const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
+							const s2 = tryDecode(pathname.slice(i1, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
+									const s3 = tryDecode(pathname.slice(i2, i3 ? -1 : len));
 									if (s3) return { handler: head1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: head1_options, meta: {} };
 								}
 							}

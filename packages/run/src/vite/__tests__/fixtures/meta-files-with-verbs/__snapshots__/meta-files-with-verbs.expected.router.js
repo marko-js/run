@@ -7,7 +7,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;
 	switch (method) {

@@ -14,7 +14,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;
 	switch (method) {
@@ -32,7 +40,7 @@ function match_internal(method, pathname) {
 					case "notes": {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: get5, path: "/notes/$id", params: { id: s2 }, options: get5_options, meta: {} };
 						}
 					} break;
@@ -44,7 +52,7 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: get9, path: "/$$match", params: { match: decodeURIComponent(pathname.slice(1)) }, options: get9_options, meta: {} };
+			return { handler: get9, path: "/$$match", params: { match: tryDecode(pathname.slice(1)) }, options: get9_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
@@ -60,7 +68,7 @@ function match_internal(method, pathname) {
 					case "notes": {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: head5, path: "/notes/$id", params: { id: s2 }, options: head5_options, meta: {} };
 						}
 					} break;
@@ -72,7 +80,7 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: head9, path: "/$$match", params: { match: decodeURIComponent(pathname.slice(1)) }, options: head9_options, meta: {} };
+			return { handler: head9, path: "/$$match", params: { match: tryDecode(pathname.slice(1)) }, options: head9_options, meta: {} };
 		}
 		case 'POST':
 		case 'post': {
@@ -84,10 +92,10 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: post5, path: "/notes/$id", params: { id: s2 }, options: post5_options, meta: {} };
 						} else {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
+							const s2 = tryDecode(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
@@ -108,10 +116,10 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: put5, path: "/notes/$id", params: { id: s2 }, options: put5_options, meta: {} };
 						} else {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
+							const s2 = tryDecode(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
@@ -132,10 +140,10 @@ function match_internal(method, pathname) {
 					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+							const s2 = tryDecode(pathname.slice(7, i2 ? -1 : len));
 							if (s2) return { handler: delete5, path: "/notes/$id", params: { id: s2 }, options: delete5_options, meta: {} };
 						} else {
-							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
+							const s2 = tryDecode(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {

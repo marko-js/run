@@ -13,7 +13,15 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
+function tryDecode(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function match_internal(method, pathname) {
   const len = pathname.length;
 	switch (method) {
@@ -22,7 +30,7 @@ function match_internal(method, pathname) {
 			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+				const s1 = tryDecode(pathname.slice(1, i1 ? -1 : len));
 				if (s1 === "foo") return { handler: get2, path: "/foo", params: {}, options: get2_options, meta: {} };
 				if (s1) return { handler: get3, path: "/$id", params: { id: s1 }, options: get3_options, meta: {} };
 			} else {
@@ -47,14 +55,14 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: get4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
+			return { handler: get4, path: "/$$rest", params: { rest: tryDecode(pathname.slice(1)) }, options: get4_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
 			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
-				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+				const s1 = tryDecode(pathname.slice(1, i1 ? -1 : len));
 				if (s1 === "foo") return { handler: head2, path: "/foo", params: {}, options: head2_options, meta: {} };
 				if (s1) return { handler: head3, path: "/$id", params: { id: s1 }, options: head3_options, meta: {} };
 			} else {
@@ -79,7 +87,7 @@ function match_internal(method, pathname) {
 					} break;
 				}
 			}
-			return { handler: head4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
+			return { handler: head4, path: "/$$rest", params: { rest: tryDecode(pathname.slice(1)) }, options: head4_options, meta: {} };
 		}
 		case 'POST':
 		case 'post': {

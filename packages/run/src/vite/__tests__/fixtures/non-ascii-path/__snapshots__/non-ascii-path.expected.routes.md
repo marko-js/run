@@ -74,3 +74,28 @@ export function head3(context) {
 	return stripResponseBody(get3(context));
 }
 ```
+---
+## Route ``x^y``
+### Path: ``/x^y``
+### Template
+```marko
+import Page from "../../src/routes/x^y/+page.marko";
+
+<Page/>
+```
+### Handler
+```js
+import { render, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import page from "./dist/.marko-run/x^y.marko";
+
+export const get4_options = {};
+export const head4_options = {};
+
+export function get4(context) {
+	return render(context, page, {});
+}
+
+export function head4(context) {
+	return stripResponseBody(get4(context));
+}
+```
