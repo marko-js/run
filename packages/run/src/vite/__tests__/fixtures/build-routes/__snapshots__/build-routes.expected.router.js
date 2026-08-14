@@ -20,78 +20,78 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get3, path: '/', params: {}, options: get3_options, meta: {} };
+			if (len === 1) return { handler: get3, path: "/", params: {}, options: get3_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'new': return { handler: get4, path: '/new', params: {}, options: get4_options, meta: get4_meta };
-					case 'my': return { handler: get8, path: '/my', params: {}, options: get8_options, meta: {} };
+					case "new": return { handler: get4, path: "/new", params: {}, options: get4_options, meta: get4_meta };
+					case "my": return { handler: get8, path: "/my", params: {}, options: get8_options, meta: {} };
 				}
 			} else {
 				switch (pathname.slice(1, i1 - 1)) {
-					case 'notes': {
+					case "notes": {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
-							if (s2) return { handler: get5, path: '/notes/$id', params: { id: s2 }, options: get5_options, meta: {} };
+							if (s2) return { handler: get5, path: "/notes/$id", params: { id: s2 }, options: get5_options, meta: {} };
 						}
 					} break;
-					case 'callback': {
+					case "callback": {
 						const i2 = pathname.indexOf('/', 10) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(10, i2 ? -1 : len) === 'oauth2') return { handler: get7, path: '/callback/oauth2', params: {}, options: get7_options, meta: {} };
+							if (pathname.slice(10, i2 ? -1 : len) === "oauth2") return { handler: get7, path: "/callback/oauth2", params: {}, options: get7_options, meta: {} };
 						}
 					} break;
 				}
 			}
-			return { handler: get9, path: '/$$match', params: { match: decodeURIComponent(pathname.slice(1)) }, options: get9_options, meta: {} };
+			return { handler: get9, path: "/$$match", params: { match: decodeURIComponent(pathname.slice(1)) }, options: get9_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head3, path: '/', params: {}, options: head3_options, meta: {} };
+			if (len === 1) return { handler: head3, path: "/", params: {}, options: head3_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'new': return { handler: head4, path: '/new', params: {}, options: head4_options, meta: head4_meta };
-					case 'my': return { handler: head8, path: '/my', params: {}, options: head8_options, meta: {} };
+					case "new": return { handler: head4, path: "/new", params: {}, options: head4_options, meta: head4_meta };
+					case "my": return { handler: head8, path: "/my", params: {}, options: head8_options, meta: {} };
 				}
 			} else {
 				switch (pathname.slice(1, i1 - 1)) {
-					case 'notes': {
+					case "notes": {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
-							if (s2) return { handler: head5, path: '/notes/$id', params: { id: s2 }, options: head5_options, meta: {} };
+							if (s2) return { handler: head5, path: "/notes/$id", params: { id: s2 }, options: head5_options, meta: {} };
 						}
 					} break;
-					case 'callback': {
+					case "callback": {
 						const i2 = pathname.indexOf('/', 10) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(10, i2 ? -1 : len) === 'oauth2') return { handler: head7, path: '/callback/oauth2', params: {}, options: head7_options, meta: {} };
+							if (pathname.slice(10, i2 ? -1 : len) === "oauth2") return { handler: head7, path: "/callback/oauth2", params: {}, options: head7_options, meta: {} };
 						}
 					} break;
 				}
 			}
-			return { handler: head9, path: '/$$match', params: { match: decodeURIComponent(pathname.slice(1)) }, options: head9_options, meta: {} };
+			return { handler: head9, path: "/$$match", params: { match: decodeURIComponent(pathname.slice(1)) }, options: head9_options, meta: {} };
 		}
 		case 'POST':
 		case 'post': {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len) === 'new') return { handler: post4, path: '/new', params: {}, options: post4_options, meta: post4_meta };
+					if (pathname.slice(1, i1 ? -1 : len) === "new") return { handler: post4, path: "/new", params: {}, options: post4_options, meta: post4_meta };
 				} else {
-					if (pathname.slice(1, i1 - 1) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
-							if (s2) return { handler: post5, path: '/notes/$id', params: { id: s2 }, options: post5_options, meta: {} };
+							if (s2) return { handler: post5, path: "/notes/$id", params: { id: s2 }, options: post5_options, meta: {} };
 						} else {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: post6, path: '/notes/$id/comments', params: { id: s2 }, options: post6_options, meta: post6_meta };
+									if (pathname.slice(i2, i3 ? -1 : len) === "comments") return { handler: post6, path: "/notes/$id/comments", params: { id: s2 }, options: post6_options, meta: post6_meta };
 								}
 							}
 						}
@@ -105,17 +105,17 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
-							if (s2) return { handler: put5, path: '/notes/$id', params: { id: s2 }, options: put5_options, meta: {} };
+							if (s2) return { handler: put5, path: "/notes/$id", params: { id: s2 }, options: put5_options, meta: {} };
 						} else {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: put6, path: '/notes/$id/comments', params: { id: s2 }, options: put6_options, meta: put6_meta };
+									if (pathname.slice(i2, i3 ? -1 : len) === "comments") return { handler: put6, path: "/notes/$id/comments", params: { id: s2 }, options: put6_options, meta: put6_meta };
 								}
 							}
 						}
@@ -129,17 +129,17 @@ function match_internal(method, pathname) {
 			if (len > 1) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === 'notes') {
+					if (pathname.slice(1, i1 - 1) === "notes") {
 						const i2 = pathname.indexOf('/', 7) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
-							if (s2) return { handler: delete5, path: '/notes/$id', params: { id: s2 }, options: delete5_options, meta: {} };
+							if (s2) return { handler: delete5, path: "/notes/$id", params: { id: s2 }, options: delete5_options, meta: {} };
 						} else {
 							const s2 = decodeURIComponent(pathname.slice(7, i2 - 1));
 							if (s2) {
 								const i3 = pathname.indexOf('/', i2) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(i2, i3 ? -1 : len) === 'comments') return { handler: delete6, path: '/notes/$id/comments', params: { id: s2 }, options: delete6_options, meta: delete6_meta };
+									if (pathname.slice(i2, i3 ? -1 : len) === "comments") return { handler: delete6, path: "/notes/$id/comments", params: { id: s2 }, options: delete6_options, meta: delete6_meta };
 								}
 							}
 						}

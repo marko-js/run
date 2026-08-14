@@ -17,11 +17,11 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: get1, path: '/$campaignId', params: { campaignId: s1 }, options: get1_options, meta: {} };
+					if (s1) return { handler: get1, path: "/$campaignId", params: { campaignId: s1 }, options: get1_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
-						return { handler: get2, path: '/$campaignId/$$rest', params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: get2_options, meta: {} };
+						return { handler: get2, path: "/$campaignId/$$rest", params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: get2_options, meta: {} };
 					}
 				}
 			}
@@ -33,11 +33,11 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: head1, path: '/$campaignId', params: { campaignId: s1 }, options: head1_options, meta: {} };
+					if (s1) return { handler: head1, path: "/$campaignId", params: { campaignId: s1 }, options: head1_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
-						return { handler: head2, path: '/$campaignId/$$rest', params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
+						return { handler: head2, path: "/$campaignId/$$rest", params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
 					}
 				}
 			}

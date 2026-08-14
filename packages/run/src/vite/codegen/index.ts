@@ -867,9 +867,12 @@ function writeRouterVerb(
         for (const { key, path, route } of terminal) {
           const decodedKey = decodeURIComponent(key);
           if (useSwitch) {
-            writer.write(`case '${decodedKey}': `, true);
+            writer.write(`case ${JSON.stringify(decodedKey)}: `, true);
           } else {
-            writer.write(`if (${value} === '${decodedKey}') `, true);
+            writer.write(
+              `if (${value} === ${JSON.stringify(decodedKey)}) `,
+              true,
+            );
           }
           writer.write(`return ${renderMatch(verb, route!, path!)};\n`);
         }
@@ -919,9 +922,11 @@ function writeRouterVerb(
         for (const child of children) {
           const decodedKey = decodeURIComponent(child.key);
           if (useSwitch) {
-            writer.writeBlockStart(`case '${decodedKey}': {`);
+            writer.writeBlockStart(`case ${JSON.stringify(decodedKey)}: {`);
           } else {
-            writer.writeBlockStart(`if (${value} === '${decodedKey}') {`);
+            writer.writeBlockStart(
+              `if (${value} === ${JSON.stringify(decodedKey)}) {`,
+            );
           }
 
           const nextOffset =
@@ -968,7 +973,7 @@ function writeRouterVerb(
 
 function wrapPropertyName(name: string) {
   name = decodeURIComponent(name);
-  return /^[^A-Za-z_$]|[^A-Za-z0-9$_]/.test(name) ? `'${name}'` : name;
+  return /^[^A-Za-z_$]|[^A-Za-z0-9$_]/.test(name) ? JSON.stringify(name) : name;
 }
 
 function renderParams(
@@ -1008,7 +1013,7 @@ function renderMatch(
   const name = `${verb}${route.index}`;
   const params = path.params ? renderParams(path.params, pathIndex) : "{}";
   const meta = route.meta ? `${name}_meta` : "{}";
-  return `{ handler: ${name}, path: '${path.path}', params: ${params}, options: ${name}_options, meta: ${meta} }`;
+  return `{ handler: ${name}, path: ${JSON.stringify(path.path)}, params: ${params}, options: ${name}_options, meta: ${meta} }`;
 }
 
 function stripTsExtension(path: string) {
