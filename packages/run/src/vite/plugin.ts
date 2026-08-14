@@ -190,17 +190,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }
   }
 
+  // Nonzero while a build is in flight; each invalidation bumps it so the
+  // build's loop re-walks, and every awaiter settles on current routes.
   let buildVirtualFilesVersion = 0;
-  let buildingVirtualFiles = false;
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
 
-  // Invalidation keeps an in-flight build as the memo: its loop observes the
-  // version bump and re-walks, so every awaiter settles on current routes.
   function invalidateVirtualFiles() {
-    if (buildingVirtualFiles) {
+    if (buildVirtualFilesVersion > 0) {
       buildVirtualFilesVersion++;
     } else {
-      buildVirtualFilesVersion = 0;
       buildVirtualFilesResult = undefined;
     }
     renderVirtualFilesResult = undefined;
@@ -209,7 +207,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
   function buildVirtualFiles() {
     return (buildVirtualFilesResult ??= (async () => {
-      buildingVirtualFiles = true;
+      buildVirtualFilesVersion = 1;
       try {
         let built: BuiltRoutes | undefined;
         if (fs.existsSync(resolvedRoutesDir)) {
@@ -295,7 +293,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         return routes;
       } finally {
-        buildingVirtualFiles = false;
+        buildVirtualFilesVersion = 0;
       }
     })().catch((err) => {
       // Point coding agents at the cheat sheet on route-build errors,
