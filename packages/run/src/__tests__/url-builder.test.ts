@@ -328,3 +328,12 @@ describe("nullish search values", () => {
     );
   });
 });
+
+describe("search value encoding", () => {
+  it("percent-encodes keys and values", () => {
+    assert.equal(
+      href("/about", { search: { "a b": "x&y=z#w" } } as any),
+      "/about?a%20b=x%26y%3Dz%23w",
+    );
+  });
+});
