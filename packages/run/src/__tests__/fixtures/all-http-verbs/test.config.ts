@@ -9,6 +9,7 @@ export const steps: Step[] = [
   (ctx) => assertBody("DELETE")(ctx),
   (ctx) => assertBody("PATCH")(ctx),
   (ctx) => assertBody("OPTIONS")(ctx),
+  (ctx) => assertBody("QUERY")(ctx),
 ];
 
 function assertBody(method: string): Step {

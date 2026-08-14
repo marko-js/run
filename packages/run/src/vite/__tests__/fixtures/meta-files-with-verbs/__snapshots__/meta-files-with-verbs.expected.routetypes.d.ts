@@ -34,6 +34,7 @@ declare module "../src/routes/foo/bar/+handler" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -57,6 +58,7 @@ declare module "../src/routes/foo/baz/+handler" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -80,6 +82,7 @@ declare module "../src/routes/foo/baz/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 

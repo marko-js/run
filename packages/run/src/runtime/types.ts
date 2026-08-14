@@ -37,7 +37,7 @@ type Valid<V, Default = unknown> =
       ? R
       : Default;
 type HttpVerbWithoutBody = "GET" | "HEAD" | "DELETE" | "OPTIONS";
-type HttpVerbWithBody = "POST" | "PUT" | "PATCH";
+type HttpVerbWithBody = "POST" | "PUT" | "PATCH" | "QUERY";
 export type HttpVerb = HttpVerbWithoutBody | HttpVerbWithBody;
 export type HttpVerbOrAll = HttpVerb | "ALL";
 type RouteFileType =

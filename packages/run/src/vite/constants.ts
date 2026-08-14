@@ -13,6 +13,7 @@ export const httpVerbs = [
   "delete",
   "patch",
   "options",
+  "query",
 ] as const;
 
 export const RoutableFileTypes = {

@@ -36,6 +36,7 @@ declare module "../src/routes/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -59,5 +60,6 @@ declare module "../src/routes/sub/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }

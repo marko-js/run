@@ -33,5 +33,6 @@ declare module "../src/routes/a%2Fb?c#d+e:f%26g/$%24id/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }

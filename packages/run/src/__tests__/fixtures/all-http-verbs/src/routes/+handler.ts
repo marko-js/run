@@ -11,4 +11,5 @@ export { handler as DELETE }
 export { handler as PATCH }
 export { handler as HEAD }
 export { handler as OPTIONS }
+export { handler as QUERY }
 

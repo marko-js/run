@@ -127,6 +127,7 @@ export function createMiddleware(
         case "POST":
         case "PUT":
         case "PATCH":
+        case "QUERY":
           if (Readable.isDisturbed(req)) {
             body = bodyConsumedErrorStream;
           } else {
