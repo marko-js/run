@@ -82,6 +82,7 @@ export function href_keys(
 
 function joinHref(path: string, { search, hash }: HrefOptions<any>) {
   let sep = "?";
+  // `for...in` is intentional: including enumerable inherited keys is fine.
   for (const key in search) {
     const value = search[key as keyof typeof search];
     if (value !== void 0) {
