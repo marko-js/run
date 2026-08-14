@@ -85,7 +85,7 @@ function joinHref(path: string, options: HrefOptions<any>) {
   let sep = "?";
   for (const key in options.search) {
     const value = options.search[key as keyof typeof options.search];
-    if (value != null) {
+    if (value !== void 0) {
       result += `${sep}${encode(key)}=${encode(value)}`;
       sep = "&";
     }

@@ -296,16 +296,16 @@ describe("nullish options", () => {
 });
 
 describe("nullish search values", () => {
-  it("omits undefined and null search entries", () => {
+  it("omits undefined search entries and keeps null as a value", () => {
     assert.equal(
       href("/about", {
         search: { q: "hi", page: undefined, tag: null },
       } as any),
-      "/about?q=hi",
+      "/about?q=hi&tag=null",
     );
   });
 
-  it("drops the query entirely when every entry is nullish", () => {
+  it("drops the query entirely when every entry is undefined", () => {
     assert.equal(
       href("/about", { search: { page: undefined } } as any),
       "/about",
@@ -324,7 +324,7 @@ describe("nullish search values", () => {
     assert.equal(href_keys`${opts}/users/${"id"}`, "/users/1?q=x");
     assert.equal(
       href_values`${{ search: { tag: null } }}/users/${2}`,
-      "/users/2",
+      "/users/2?tag=null",
     );
   });
 });
