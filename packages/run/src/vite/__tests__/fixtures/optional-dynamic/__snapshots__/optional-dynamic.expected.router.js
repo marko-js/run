@@ -19,20 +19,20 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: get3, path: '/$bar', params: { bar: s1 }, options: get3_options, meta: {} };
+					if (s1) return { handler: get3, path: "/$bar", params: { bar: s1 }, options: get3_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: get1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: get1_options, meta: {} };
+							if (s2) return { handler: get1, path: "/$foo/$bar", params: { foo: s1, bar: s2 }, options: get1_options, meta: {} };
 						}
-						return { handler: get2, path: '/$foo/$$rest', params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: get2_options, meta: {} };
+						return { handler: get2, path: "/$foo/$$rest", params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: get2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: get4, path: '/$$rest', params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
+			return { handler: get4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
 		}
 		case 'HEAD':
 		case 'head': {
@@ -40,20 +40,20 @@ function match_internal(method, pathname) {
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-					if (s1) return { handler: head3, path: '/$bar', params: { bar: s1 }, options: head3_options, meta: {} };
+					if (s1) return { handler: head3, path: "/$bar", params: { bar: s1 }, options: head3_options, meta: {} };
 				} else {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						const i2 = pathname.indexOf('/', i1) + 1;
 						if (!i2 || i2 === len) {
 							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
-							if (s2) return { handler: head1, path: '/$foo/$bar', params: { foo: s1, bar: s2 }, options: head1_options, meta: {} };
+							if (s2) return { handler: head1, path: "/$foo/$bar", params: { foo: s1, bar: s2 }, options: head1_options, meta: {} };
 						}
-						return { handler: head2, path: '/$foo/$$rest', params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
+						return { handler: head2, path: "/$foo/$$rest", params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
 					}
 				}
 			}
-			return { handler: head4, path: '/$$rest', params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
+			return { handler: head4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
 		}
 	}
 	return null;

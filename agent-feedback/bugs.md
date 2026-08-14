@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Escape emitted string literals in the generated router instead of raw-interpolating segment and param names
-
-`packages/run/src/vite/codegen/index.ts` › `renderRouter` | 2026-08-03 | impact:med | effort:low
-
-The router codegen hand-quotes every string it emits — `renderMatch` writes `path: '${path.path}'`, `writeRouterVerb` writes `case '${decodedKey}':` and `if (${value} === '${decodedKey}')`, and `wrapPropertyName` writes `'${name}'` — while segment and param names arrive verbatim from directory names, since `normalizeSegment` in `packages/run/src/vite/routes/parse.ts` percent-encodes only `/`, `?` and `#` and nothing else sanitizes them. A perfectly legal `src/routes/faq/it's-here/+page.marko` therefore emits `if (pathname.slice(5, i2 ? -1 : len) === 'it's-here') return { … path: '/faq/it's-here' … }` and `marko-run build` dies with `[PARSE_ERROR] Expected ')' but found 'Identifier'` pointing into `__marko-run__router.js`, a virtual module the author cannot open; a `$it's` param fails identically via `params: { 'it's': s1 }`. A backslash is quieter but worse: a directory `a\nb` emits `=== 'a\nb'` and `path: '/a\nb'`, which parse fine but compare against a real newline, so that route can never match. Run every emitted literal through `JSON.stringify`, exactly as `renderRouteTypeInfo` already does for the same data — which is why the generated `.marko-run/routes.d.ts` is unaffected.
-
 ## Match static route segments in their canonical URL-encoded form so non-ASCII paths resolve
 
 `packages/run/src/vite/codegen/index.ts` › `writeRouterVerb` | 2026-08-03 | impact:med | effort:med

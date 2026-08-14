@@ -12,12 +12,12 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get1, path: '/', params: {}, options: get1_options, meta: {} };
+			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
 			return null;
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head1, path: '/', params: {}, options: head1_options, meta: {} };
+			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
 			return null;
 		}
 	}

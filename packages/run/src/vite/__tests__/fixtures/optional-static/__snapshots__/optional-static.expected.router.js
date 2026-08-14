@@ -19,36 +19,36 @@ function match_internal(method, pathname) {
 	switch (method) {
 		case 'GET':
 		case 'get': {
-			if (len === 1) return { handler: get1, path: '/', params: {}, options: get1_options, meta: {} };
+			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'foo': return { handler: get2, path: '/foo', params: {}, options: get2_options, meta: {} };
-					case 'bar': return { handler: get6, path: '/bar', params: {}, options: get6_options, meta: {} };
-					case 'baz': return { handler: get8, path: '/baz', params: {}, options: get8_options, meta: {} };
+					case "foo": return { handler: get2, path: "/foo", params: {}, options: get2_options, meta: {} };
+					case "bar": return { handler: get6, path: "/bar", params: {}, options: get6_options, meta: {} };
+					case "baz": return { handler: get8, path: "/baz", params: {}, options: get8_options, meta: {} };
 				}
 			} else {
 				switch (pathname.slice(1, i1 - 1)) {
-					case 'foo': {
+					case "foo": {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case 'bar': return { handler: get3, path: '/foo/bar', params: {}, options: get3_options, meta: {} };
-								case 'baz': return { handler: get5, path: '/foo/baz', params: {}, options: get5_options, meta: {} };
+								case "bar": return { handler: get3, path: "/foo/bar", params: {}, options: get3_options, meta: {} };
+								case "baz": return { handler: get5, path: "/foo/baz", params: {}, options: get5_options, meta: {} };
 							}
 						} else {
-							if (pathname.slice(5, i2 - 1) === 'bar') {
+							if (pathname.slice(5, i2 - 1) === "bar") {
 								const i3 = pathname.indexOf('/', 9) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(9, i3 ? -1 : len) === 'baz') return { handler: get4, path: '/foo/bar/baz', params: {}, options: get4_options, meta: {} };
+									if (pathname.slice(9, i3 ? -1 : len) === "baz") return { handler: get4, path: "/foo/bar/baz", params: {}, options: get4_options, meta: {} };
 								}
 							}
 						}
 					} break;
-					case 'bar': {
+					case "bar": {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: get7, path: '/bar/baz', params: {}, options: get7_options, meta: {} };
+							if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: get7, path: "/bar/baz", params: {}, options: get7_options, meta: {} };
 						}
 					} break;
 				}
@@ -57,36 +57,36 @@ function match_internal(method, pathname) {
 		}
 		case 'HEAD':
 		case 'head': {
-			if (len === 1) return { handler: head1, path: '/', params: {}, options: head1_options, meta: {} };
+			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				switch (pathname.slice(1, i1 ? -1 : len)) {
-					case 'foo': return { handler: head2, path: '/foo', params: {}, options: head2_options, meta: {} };
-					case 'bar': return { handler: head6, path: '/bar', params: {}, options: head6_options, meta: {} };
-					case 'baz': return { handler: head8, path: '/baz', params: {}, options: head8_options, meta: {} };
+					case "foo": return { handler: head2, path: "/foo", params: {}, options: head2_options, meta: {} };
+					case "bar": return { handler: head6, path: "/bar", params: {}, options: head6_options, meta: {} };
+					case "baz": return { handler: head8, path: "/baz", params: {}, options: head8_options, meta: {} };
 				}
 			} else {
 				switch (pathname.slice(1, i1 - 1)) {
-					case 'foo': {
+					case "foo": {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
 							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case 'bar': return { handler: head3, path: '/foo/bar', params: {}, options: head3_options, meta: {} };
-								case 'baz': return { handler: head5, path: '/foo/baz', params: {}, options: head5_options, meta: {} };
+								case "bar": return { handler: head3, path: "/foo/bar", params: {}, options: head3_options, meta: {} };
+								case "baz": return { handler: head5, path: "/foo/baz", params: {}, options: head5_options, meta: {} };
 							}
 						} else {
-							if (pathname.slice(5, i2 - 1) === 'bar') {
+							if (pathname.slice(5, i2 - 1) === "bar") {
 								const i3 = pathname.indexOf('/', 9) + 1;
 								if (!i3 || i3 === len) {
-									if (pathname.slice(9, i3 ? -1 : len) === 'baz') return { handler: head4, path: '/foo/bar/baz', params: {}, options: head4_options, meta: {} };
+									if (pathname.slice(9, i3 ? -1 : len) === "baz") return { handler: head4, path: "/foo/bar/baz", params: {}, options: head4_options, meta: {} };
 								}
 							}
 						}
 					} break;
-					case 'bar': {
+					case "bar": {
 						const i2 = pathname.indexOf('/', 5) + 1;
 						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === 'baz') return { handler: head7, path: '/bar/baz', params: {}, options: head7_options, meta: {} };
+							if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: head7, path: "/bar/baz", params: {}, options: head7_options, meta: {} };
 						}
 					} break;
 				}

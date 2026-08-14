@@ -1,0 +1,7 @@
+/faq
+  /it's-here
+    +page.marko
+    /deeper's
+      +page.marko
+  /$it's
+    +page.marko
