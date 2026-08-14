@@ -246,8 +246,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
         }
 
-        // From here down is synchronous, so the shared state swaps atomically:
-        // no awaits for a resolve to observe a half-built map.
         routes = built;
         virtualFiles.clear();
         entryTemplates = new Set();
