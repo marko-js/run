@@ -82,12 +82,14 @@ export function href_keys(
 
 function joinHref(path: string, options?: HrefOptions<any>) {
   let result = path;
-  if (options?.search) {
-    const query = "" + new URLSearchParams(options.search);
-    if (query) result += "?" + query;
-  }
-  if (options?.hash || options?.hash === 0) {
-    result += "#" + encode(options.hash);
+  if (options) {
+    if (options.search) {
+      const query = "" + new URLSearchParams(options.search);
+      if (query) result += "?" + query;
+    }
+    if (options.hash || options.hash === 0) {
+      result += "#" + encode(options.hash);
+    }
   }
   return result;
 }
