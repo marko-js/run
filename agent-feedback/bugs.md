@@ -2,12 +2,6 @@
 
 Out-of-scope defects noticed while working on something else. Format and rules: [README.md](README.md).
 
-## Skip nullish `search` values in `joinHref` instead of serializing them as `"undefined"`/`"null"`
-
-`packages/run/src/runtime/url-builder.ts` › `joinHref` | 2026-08-03 | impact:med | effort:low
-
-`joinHref` builds the query with `"" + new URLSearchParams(options.search)`, and `URLSearchParams` stringifies nullish values, so `Run.href("/search", { search: { q, page } })` with `page === undefined` yields `/search?q=hi&page=undefined`, and a `null` yields `?tag=null`. This is type-legal rather than user error: `HrefOptions`' `search` (`packages/run/src/runtime/types.ts`) maps over the validator's input type and preserves optional modifiers, so a Standard Schema declaring `page?: string` types as `{ q: string | number; page?: string | number | undefined }` and accepts an explicit `undefined`; a route with no generated types widens `search` to `{}` and accepts anything. Every href tier funnels here — `href`, `href_values` and `href_keys` all call `joinHref` — and the fully-static tier in `packages/run/src/vite/utils/href-replace.ts` bakes `Run.href("/users", { search: { tag: null } })` into the literal `"/users?tag=null"` at build time. The receiving route then sees the literal string, because `createContext`'s `get search()` derives the record from `url.searchParams` before handing it to the `search` validator, so a filter silently matches `"undefined"` or validation fails on a key the caller meant to omit. Skip `undefined`/`null` entries before appending — mirroring the adjacent `hash` guard (`options.hash || options.hash === 0`) — and add coverage to `packages/run/src/__tests__/url-builder.test.ts`, which currently only exercises defined search values.
-
 ## Skip `Run.href` calls nested inside an already-replaced range — today they emit invalid JS and fail the client build
 
 `packages/run/src/vite/utils/href-replace.ts` › `findHrefReplacements` | 2026-08-03 | impact:med | effort:low

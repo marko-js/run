@@ -83,7 +83,14 @@ export function href_keys(
 function joinHref(path: string, options: HrefOptions<any>) {
   let result = path;
   if (options.search) {
-    const query = "" + new URLSearchParams(options.search);
+    // Built entry by entry: URLSearchParams would serialize a nullish value
+    // as "undefined"/"null", and a caller's optional key means "omit".
+    const searchParams = new URLSearchParams();
+    for (const key in options.search) {
+      const value = (options.search as Record<string, unknown>)[key];
+      if (value != null) searchParams.append(key, value as string);
+    }
+    const query = "" + searchParams;
     if (query) result += "?" + query;
   }
   if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
