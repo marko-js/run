@@ -80,16 +80,14 @@ export function href_keys(
   return href_values(strings, options, ...keys.map((k) => options!.params[k]));
 }
 
-function joinHref(path: string, options: HrefOptions<any>) {
-  let result = path;
+function joinHref(path: string, { search, hash }: HrefOptions<any>) {
   let sep = "?";
-  for (const key in options.search) {
-    const value = options.search[key as keyof typeof options.search];
+  for (const key in search) {
+    const value = search[key as keyof typeof search];
     if (value !== void 0) {
-      result += `${sep}${encode(key)}=${encode(value)}`;
+      path += `${sep}${encode(key)}=${encode(value)}`;
       sep = "&";
     }
   }
-  if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
-  return result;
+  return hash || hash === 0 ? `${path}#${encode(hash)}` : path;
 }
