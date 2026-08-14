@@ -857,7 +857,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
 
           return null;
-        } catch {
+        } catch (error) {
+          // The module ships unoptimized with the client runtime for `Run`,
+          // but a regression in this pass must not be invisible.
+          this.warn(`Run.href optimization failed: ${error}`);
           return {
             code: new RolldownMagicString(code).prepend(
               'import "virtual:marko-run/runtime/client";',

@@ -80,12 +80,15 @@ export function href_keys(
   return href_values(strings, options, ...keys.map((k) => options!.params[k]));
 }
 
-function joinHref(path: string, options: HrefOptions<any>) {
-  let result = path;
-  if (options.search) {
-    const query = "" + new URLSearchParams(options.search);
-    if (query) result += "?" + query;
+function joinHref(path: string, { search, hash }: HrefOptions<any>) {
+  let sep = "?";
+  // `for...in` is intentional: including enumerable inherited keys is fine.
+  for (const key in search) {
+    const value = search[key as keyof typeof search];
+    if (value !== void 0) {
+      path += `${sep}${encode(key)}=${encode(value)}`;
+      sep = "&";
+    }
   }
-  if (options.hash || options.hash === 0) result += "#" + encode(options.hash);
-  return result;
+  return hash || hash === 0 ? `${path}#${encode(hash)}` : path;
 }

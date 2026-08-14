@@ -294,3 +294,43 @@ describe("nullish options", () => {
     assert.equal(href_values`${defaults}/users/${1}`, "/users/1");
   });
 });
+
+describe("nullish search values", () => {
+  it("omits undefined search entries and keeps null as a value", () => {
+    assert.equal(
+      href("/about", {
+        search: { q: "hi", page: undefined, tag: null },
+      }),
+      "/about?q=hi&tag=null",
+    );
+  });
+
+  it("drops the query entirely when every entry is undefined", () => {
+    assert.equal(href("/about", { search: { page: undefined } }), "/about");
+  });
+
+  it("keeps falsy but defined values", () => {
+    assert.equal(
+      href("/about", { search: { q: "", n: 0 } } as any),
+      "/about?q=&n=0",
+    );
+  });
+
+  it("applies through the rewritten helper tiers", () => {
+    const opts = { params: { id: 1 }, search: { q: "x", page: undefined } };
+    assert.equal(href_keys`${opts}/users/${"id"}`, "/users/1?q=x");
+    assert.equal(
+      href_values`${{ search: { tag: null } }}/users/${2}`,
+      "/users/2?tag=null",
+    );
+  });
+});
+
+describe("search value encoding", () => {
+  it("percent-encodes keys and values", () => {
+    assert.equal(
+      href("/about", { search: { "a b": "x&y=z#w" } } as any),
+      "/about?a%20b=x%26y%3Dz%23w",
+    );
+  });
+});

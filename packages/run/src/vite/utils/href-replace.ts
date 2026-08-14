@@ -63,6 +63,11 @@ export function findHrefReplacements(
   ast: Program,
 ): HrefReplacement[] {
   const replacements: HrefReplacement[] = [];
+  const consumed: HrefEdit[] = [];
+  const add = (replacement: HrefReplacement) => {
+    replacements.push(replacement);
+    consumed.push(...replacement.edits);
+  };
 
   if (hasRunBinding(ast)) {
     return replacements;
@@ -71,15 +76,16 @@ export function findHrefReplacements(
   walk(ast, (node: Node) => {
     if (node.type !== "CallExpression") return;
 
-    const callee = node.callee;
+    // A call inside a range an outer call already rewrote is dead source;
+    // recording its edits would corrupt the outer replacement.
     if (
-      callee.type !== "MemberExpression" ||
-      callee.computed ||
-      callee.object.type !== "Identifier" ||
-      callee.object.name !== "Run" ||
-      callee.property.type !== "Identifier" ||
-      callee.property.name !== "href"
+      consumed.some((edit) => node.start < edit.end && node.end > edit.start)
     ) {
+      return;
+    }
+
+    const callee = node.callee;
+    if (!isRunHrefCallee(callee)) {
       return;
     }
 
@@ -96,7 +102,7 @@ export function findHrefReplacements(
 
     if (typeof pathString !== "string") {
       // Dynamic path — just replace callee with runtime href
-      replacements.push({
+      add({
         helper: "href",
         edits: [{ start: callee.start, end: callee.end, code: "href" }],
       });
@@ -105,7 +111,7 @@ export function findHrefReplacements(
 
     // No options — tier 0 (just the path string)
     if (args.length === 1) {
-      replacements.push({
+      add({
         helper: false,
         edits: [
           {
@@ -119,6 +125,17 @@ export function findHrefReplacements(
     }
 
     const optionsNode = args[1];
+
+    // A nested call would be copied into (or erased by) the outer rewrite;
+    // replacing only the callee keeps it live for its own optimization pass.
+    if (containsRunHrefCall(optionsNode)) {
+      add({
+        helper: "href",
+        edits: [{ start: callee.start, end: callee.end, code: "href" }],
+      });
+      return;
+    }
+
     const optionsObject = tryStaticEval(optionsNode)?.value;
 
     if (
@@ -126,7 +143,7 @@ export function findHrefReplacements(
       typeof optionsObject === "object" &&
       !Array.isArray(optionsObject)
     ) {
-      replacements.push({
+      add({
         helper: false,
         edits: [
           {
@@ -149,7 +166,7 @@ export function findHrefReplacements(
 
         if (params.only) {
           // Tier 1a: href_path — replace entire call
-          replacements.push({
+          add({
             helper: "href_path",
             edits: [
               {
@@ -166,7 +183,7 @@ export function findHrefReplacements(
 
           // `{ ...x }` with params gone is just `x`.
           if (remaining.length === 1 && remaining[0].type === "SpreadElement") {
-            replacements.push({
+            add({
               helper: "href_values",
               edits: [
                 {
@@ -182,7 +199,7 @@ export function findHrefReplacements(
               ],
             });
           } else {
-            replacements.push({
+            add({
               helper: "href_values",
               edits: [
                 {
@@ -215,7 +232,7 @@ export function findHrefReplacements(
     }
 
     // Tier 2: static path, opaque options — wrap options in tagged template
-    replacements.push({
+    add({
       helper: "href_keys",
       edits: [
         { start: node.start, end: optionsNode.start, code: "href_keys`${" },
@@ -229,6 +246,27 @@ export function findHrefReplacements(
   });
 
   return replacements;
+}
+
+function isRunHrefCallee(callee: Node): boolean {
+  return (
+    callee.type === "MemberExpression" &&
+    !callee.computed &&
+    callee.object.type === "Identifier" &&
+    callee.object.name === "Run" &&
+    callee.property.type === "Identifier" &&
+    callee.property.name === "href"
+  );
+}
+
+function containsRunHrefCall(node: Node): boolean {
+  let found = false;
+  walk(node, (n: Node) => {
+    if (!found && n.type === "CallExpression" && isRunHrefCallee(n.callee)) {
+      found = true;
+    }
+  });
+  return found;
 }
 
 /**

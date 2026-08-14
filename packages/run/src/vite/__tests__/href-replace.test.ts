@@ -302,3 +302,30 @@ describe("href-replace", () => {
     });
   });
 });
+
+describe("nested Run.href calls", () => {
+  it("falls back on the outer call and optimizes the inner one (params only)", () => {
+    assert.equal(
+      apply(
+        `Run.href("/thing/$id", { params: { id: Run.href("/thing/$id", { params: { id: 9 } }) } })`,
+      ),
+      `href("/thing/$id", { params: { id: "/thing/9" } })`,
+    );
+  });
+
+  it("falls back on the outer call when other options are present", () => {
+    assert.equal(
+      apply(
+        `Run.href("/thing/$id", { params: { id: Run.href("/a") }, search: { q } })`,
+      ),
+      `href("/thing/$id", { params: { id: "/a" }, search: { q } })`,
+    );
+  });
+
+  it("still optimizes a nested call inside search", () => {
+    assert.equal(
+      apply(`Run.href("/a", { search: { to: Run.href("/b") } })`),
+      `href("/a", { search: { to: "/b" } })`,
+    );
+  });
+});
