@@ -190,78 +190,108 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }
   }
 
+  // Nonzero while a build is in flight; each invalidation bumps it so the
+  // build's loop re-walks, and every awaiter settles on current routes.
+  let buildVirtualFilesVersion = 0;
   let buildVirtualFilesResult: Promise<BuiltRoutes> | undefined;
+
+  function invalidateVirtualFiles() {
+    if (buildVirtualFilesVersion > 0) {
+      buildVirtualFilesVersion++;
+    } else {
+      buildVirtualFilesResult = undefined;
+    }
+    renderVirtualFilesResult = undefined;
+    routeMarkoApiCache = undefined;
+  }
+
   function buildVirtualFiles() {
     return (buildVirtualFilesResult ??= (async () => {
-      virtualFiles.clear();
-      if (fs.existsSync(resolvedRoutesDir)) {
-        routes = await buildRoutes(
-          {
-            walker: createFSWalker(resolvedRoutesDir),
-          },
-          entryFilesDir,
-        );
-
-        if (
-          !isBuild &&
-          !routes.list.length &&
-          !Object.keys(routes.special).length
-        ) {
-          console.warn(`No routes found in ${resolvedRoutesDir}`);
-        }
-      } else {
-        routes = {
-          list: [],
-          special: {},
-          middleware: [],
-        };
-
-        if (!isBuild) {
-          console.warn(`Routes directory ${resolvedRoutesDir} does not exist`);
-        }
-      }
-
-      entryTemplates = new Set();
-      entryTemplateImporters = new Set();
-
-      for (const route of routes.list) {
-        if (route.templateFilePath) {
-          entryTemplates.add(normalizePath(route.templateFilePath));
-        }
-        for (const middleware of route.middleware) {
-          entryTemplateImporters.add(normalizePath(middleware.filePath));
-        }
-        if (route.handler) {
-          entryTemplateImporters.add(normalizePath(route.handler.filePath));
+      buildVirtualFilesVersion = 1;
+      try {
+        let built: BuiltRoutes | undefined;
+        if (fs.existsSync(resolvedRoutesDir)) {
+          // A superseded walk reruns, so it must not touch shared state.
+          let version: number;
+          do {
+            version = buildVirtualFilesVersion;
+            built = await buildRoutes(
+              {
+                walker: createFSWalker(resolvedRoutesDir),
+              },
+              entryFilesDir,
+            );
+          } while (version !== buildVirtualFilesVersion);
         }
 
-        virtualFiles.set(
-          path.posix.join(root, getRouteVirtualFileName(route)),
-          "",
-        );
-      }
-      for (const route of Object.values(routes.special) as Route[]) {
-        if (route.templateFilePath) {
-          entryTemplates.add(normalizePath(route.templateFilePath));
-        }
-      }
+        if (built) {
+          if (
+            !isBuild &&
+            !built.list.length &&
+            !Object.keys(built.special).length
+          ) {
+            console.warn(`No routes found in ${resolvedRoutesDir}`);
+          }
+        } else {
+          built = {
+            list: [],
+            special: {},
+            middleware: [],
+          };
 
-      if (routes.middleware.length) {
-        virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
-      }
-      virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
-
-      for (const externalRoute of externalRoutes) {
-        for (const { entryFile } of externalRoute.routes) {
-          if (/\.marko(\?.*)?$/i.test(entryFile)) {
-            entryTemplates.add(normalizePath(entryFile));
-          } else {
-            entryTemplateImporters.add(normalizePath(entryFile));
+          if (!isBuild) {
+            console.warn(
+              `Routes directory ${resolvedRoutesDir} does not exist`,
+            );
           }
         }
-      }
 
-      return routes;
+        routes = built;
+        virtualFiles.clear();
+        entryTemplates = new Set();
+        entryTemplateImporters = new Set();
+
+        for (const route of routes.list) {
+          if (route.templateFilePath) {
+            entryTemplates.add(normalizePath(route.templateFilePath));
+          }
+          for (const middleware of route.middleware) {
+            entryTemplateImporters.add(normalizePath(middleware.filePath));
+          }
+          if (route.handler) {
+            entryTemplateImporters.add(normalizePath(route.handler.filePath));
+          }
+
+          virtualFiles.set(
+            path.posix.join(root, getRouteVirtualFileName(route)),
+            "",
+          );
+        }
+        for (const route of Object.values(routes.special) as Route[]) {
+          if (route.templateFilePath) {
+            entryTemplates.add(normalizePath(route.templateFilePath));
+          }
+        }
+
+        if (routes.middleware.length) {
+          virtualFiles.set(path.posix.join(root, MIDDLEWARE_FILENAME), "");
+        }
+        virtualFiles.set(path.posix.join(root, ROUTER_FILENAME), "");
+
+        for (const externalRoute of externalRoutes) {
+          for (const { entryFile } of externalRoute.routes) {
+            if (/\.marko(\?.*)?$/i.test(entryFile)) {
+              entryTemplates.add(normalizePath(entryFile));
+            } else {
+              entryTemplateImporters.add(normalizePath(entryFile));
+            }
+          }
+        }
+
+        return routes;
+      } finally {
+        buildVirtualFilesVersion = 0;
+      }
     })().catch((err) => {
       // Point coding agents at the cheat sheet on route-build errors,
       // whichever plugin hook triggered the build.
@@ -643,9 +673,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     routableFileType === RoutableFileTypes.Middleware ||
                     filename === runtimeInclude))
               ) {
-                buildVirtualFilesResult = undefined;
-                renderVirtualFilesResult = undefined;
-                routeMarkoApiCache = undefined;
+                const staleFiles = new Set(virtualFiles.keys());
+                invalidateVirtualFiles();
 
                 // Only a change leaves a live module chain to poke. A delete
                 // takes its chain, and an add can leave a stale one behind.
@@ -659,7 +688,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                     devServer.watcher.emit("change", file);
                   }
                 } else {
+                  // Rebuild before emitting: a restored route's entry must be
+                  // evicted too, and only the fresh map knows its key.
+                  try {
+                    await buildVirtualFiles();
+                  } catch {
+                    // Nothing awaits this listener; the next request's
+                    // renderVirtualFiles surfaces the build error instead.
+                  }
                   for (const file of virtualFiles.keys()) {
+                    staleFiles.add(file);
+                  }
+                  for (const file of staleFiles) {
                     if (!file.endsWith(".marko")) {
                       devServer.watcher.emit("change", file);
                     }

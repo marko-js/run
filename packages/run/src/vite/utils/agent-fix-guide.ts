@@ -49,18 +49,20 @@ export function agentRouteFixGuide(): string {
 }
 
 // Env markers terminal coding agents set.
+export const AGENT_ENV_VARS = [
+  "CLAUDECODE",
+  "CLAUDE_CODE",
+  "CURSOR_AGENT",
+  "GEMINI_CLI",
+  "CODEX_SANDBOX",
+  "CODEX_THREAD_ID",
+  "AI_AGENT",
+];
+
 function isCodingAgent() {
   return (
     typeof process === "object" &&
-    !!(
-      process.env.CLAUDECODE ||
-      process.env.CLAUDE_CODE ||
-      process.env.CURSOR_AGENT ||
-      process.env.GEMINI_CLI ||
-      process.env.CODEX_SANDBOX ||
-      process.env.CODEX_THREAD_ID ||
-      process.env.AI_AGENT
-    )
+    AGENT_ENV_VARS.some((key) => process.env[key])
   );
 }
 

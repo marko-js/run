@@ -1,18 +1,9 @@
 import assert from "assert";
 
 import appendAgentFixGuide, {
+  AGENT_ENV_VARS,
   agentRouteFixGuide,
 } from "../utils/agent-fix-guide";
-
-const AGENT_ENV_VARS = [
-  "CLAUDECODE",
-  "CLAUDE_CODE",
-  "CURSOR_AGENT",
-  "GEMINI_CLI",
-  "CODEX_SANDBOX",
-  "CODEX_THREAD_ID",
-  "AI_AGENT",
-];
 
 describe("agent-fix-guide", () => {
   let saved: Record<string, string | undefined>;
