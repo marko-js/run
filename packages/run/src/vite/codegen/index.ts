@@ -282,17 +282,9 @@ function match_internal(method, pathname) {
     .writeBlockEnd("}");
 
   if (hasNotFoundPage) {
-    imports.writeLines(
-      `
-const page404ResponseInit = {
-  status: 404,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};`,
-    );
-
-    writer.write(`    
+    writer.write(`
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, page404ResponseInit);
+      return context.render(page404, {}, { status: 404 });
     }`);
   }
 
@@ -306,20 +298,12 @@ const page404ResponseInit = {
   }
 
   if (hasErrorPage) {
-    imports.writeLines(`
-const page500ResponseInit = {
-  status: 500,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};`);
-
     writer
       .writeBlockStart(`} catch (error) {`)
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
-      .writeLines(
-        `return context.render(page500, { error }, page500ResponseInit);`,
-      )
+      .writeLines(`return context.render(page500, { error }, { status: 500 });`)
       .writeBlockEnd("}")
       .writeLines("throw error;")
       .writeBlockEnd("}");

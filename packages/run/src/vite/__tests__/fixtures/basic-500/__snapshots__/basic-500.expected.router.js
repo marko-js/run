@@ -2,11 +2,6 @@ import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime
 import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__index.js";
 import page500 from "./dist/.marko-run/500.marko";
 
-const page500ResponseInit = {
-  status: 500,
-  headers: { "content-type": "text/html;charset=UTF-8" },
-};
-
 globalThis.__marko_run__ = { match, fetch, invoke };
     
 export function match(method, pathname) {
@@ -56,7 +51,7 @@ export async function invoke(route, request, platform, url) {
     });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return context.render(page500, { error }, page500ResponseInit);
+			return context.render(page500, { error }, { status: 500 });
 		}
 		throw error;
 	}
