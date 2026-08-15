@@ -10,63 +10,63 @@ export function match(method, pathname) {
 
 function match_internal(method, pathname) {
   const len = pathname.length;
-  try {
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
-						const i2 = pathname.indexOf('/', i1) + 1;
-						if (!i2 || i2 === len) {
-							if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: get2, path: "/a%3fb/baz", params: {}, options: get2_options, meta: {} };
-						} else {
-							const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
-							if (s2) {
-								const i3 = pathname.indexOf('/', i2) + 1;
-								if (!i3 || i3 === len) {
-									const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
-									if (s3) return { handler: get1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: get1_options, meta: {} };
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+							const i2 = pathname.indexOf('/', i1) + 1;
+							if (!i2 || i2 === len) {
+								if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: get2, path: "/a%3fb/baz", params: {}, options: get2_options, meta: {} };
+							} else {
+								const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
+								if (s2) {
+									const i3 = pathname.indexOf('/', i2) + 1;
+									if (!i3 || i3 === len) {
+										const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
+										if (s3) return { handler: get1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: get1_options, meta: {} };
+									}
 								}
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
-		}
-		case 'HEAD':
-		case 'head': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
-						const i2 = pathname.indexOf('/', i1) + 1;
-						if (!i2 || i2 === len) {
-							if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: head2, path: "/a%3fb/baz", params: {}, options: head2_options, meta: {} };
-						} else {
-							const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
-							if (s2) {
-								const i3 = pathname.indexOf('/', i2) + 1;
-								if (!i3 || i3 === len) {
-									const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
-									if (s3) return { handler: head1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: head1_options, meta: {} };
+			case 'HEAD':
+			case 'head': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+							const i2 = pathname.indexOf('/', i1) + 1;
+							if (!i2 || i2 === len) {
+								if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: head2, path: "/a%3fb/baz", params: {}, options: head2_options, meta: {} };
+							} else {
+								const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
+								if (s2) {
+									const i3 = pathname.indexOf('/', i2) + 1;
+									if (!i3 || i3 === len) {
+										const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
+										if (s3) return { handler: head1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: head1_options, meta: {} };
+									}
 								}
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
 		}
-	}
 	} catch (error) {
-    // A malformed percent-escape is an invalid URI: no route can match it.
-    if (error instanceof URIError) return null;
-    throw error;
-  }
-  return null;
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
+	}
+	return null;
 }
 
 export async function invoke(route, request, platform, url) {

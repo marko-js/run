@@ -238,9 +238,9 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 };
 
 function match_internal(method, pathname) {
-  const len = pathname.length;
-  try {`,
+  const len = pathname.length;`,
     )
+    .writeBlockStart(`try {`)
     .writeBlockStart(`switch (method) {`);
 
   for (const verb of httpVerbs) {
@@ -254,16 +254,15 @@ function match_internal(method, pathname) {
     }
   }
 
+  writer.writeBlockEnd("}").writeBlockEnd("} catch (error) {").indent++;
   writer
-    .writeBlockEnd("}")
     .writeLines(
-      `} catch (error) {
-    // A malformed percent-escape is an invalid URI: no route can match it.
-    if (error instanceof URIError) return null;
-    throw error;
-  }
-  return null;`,
+      "// A malformed percent-escape is an invalid URI: no route can match it.",
+      "if (error instanceof URIError) return null;",
+      "throw error;",
     )
+    .writeBlockEnd("}")
+    .writeLines("return null;")
     .writeBlockEnd("}");
 
   writer

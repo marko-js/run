@@ -10,99 +10,99 @@ export function match(method, pathname) {
 
 function match_internal(method, pathname) {
   const len = pathname.length;
-  try {
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: get2, path: "/foo/baz", params: {}, options: get2_options, meta: get2_meta };
-						}
-					}
-				}
-			}
-			return null;
-		}
-		case 'HEAD':
-		case 'head': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: head2, path: "/foo/baz", params: {}, options: head2_options, meta: head2_meta };
-						}
-					}
-				}
-			}
-			return null;
-		}
-		case 'POST':
-		case 'post': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case "bar": return { handler: post1, path: "/foo/bar", params: {}, options: post1_options, meta: post1_meta };
-								case "baz": return { handler: post2, path: "/foo/baz", params: {}, options: post2_options, meta: post2_meta };
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "foo") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: get2, path: "/foo/baz", params: {}, options: get2_options, meta: get2_meta };
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
-		}
-		case 'PUT':
-		case 'put': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case "bar": return { handler: put1, path: "/foo/bar", params: {}, options: put1_options, meta: put1_meta };
-								case "baz": return { handler: put2, path: "/foo/baz", params: {}, options: put2_options, meta: put2_meta };
+			case 'HEAD':
+			case 'head': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "foo") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: head2, path: "/foo/baz", params: {}, options: head2_options, meta: head2_meta };
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
-		}
-		case 'DELETE':
-		case 'delete': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(5, i2 ? -1 : len)) {
-								case "bar": return { handler: delete1, path: "/foo/bar", params: {}, options: delete1_options, meta: delete1_meta };
-								case "baz": return { handler: delete2, path: "/foo/baz", params: {}, options: delete2_options, meta: delete2_meta };
+			case 'POST':
+			case 'post': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "foo") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(5, i2 ? -1 : len)) {
+									case "bar": return { handler: post1, path: "/foo/bar", params: {}, options: post1_options, meta: post1_meta };
+									case "baz": return { handler: post2, path: "/foo/baz", params: {}, options: post2_options, meta: post2_meta };
+								}
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
+			case 'PUT':
+			case 'put': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "foo") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(5, i2 ? -1 : len)) {
+									case "bar": return { handler: put1, path: "/foo/bar", params: {}, options: put1_options, meta: put1_meta };
+									case "baz": return { handler: put2, path: "/foo/baz", params: {}, options: put2_options, meta: put2_meta };
+								}
+							}
+						}
+					}
+				}
+				return null;
+			}
+			case 'DELETE':
+			case 'delete': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "foo") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(5, i2 ? -1 : len)) {
+									case "bar": return { handler: delete1, path: "/foo/bar", params: {}, options: delete1_options, meta: delete1_meta };
+									case "baz": return { handler: delete2, path: "/foo/baz", params: {}, options: delete2_options, meta: delete2_meta };
+								}
+							}
+						}
+					}
+				}
+				return null;
+			}
 		}
-	}
 	} catch (error) {
-    // A malformed percent-escape is an invalid URI: no route can match it.
-    if (error instanceof URIError) return null;
-    throw error;
-  }
-  return null;
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
+	}
+	return null;
 }
 
 export async function invoke(route, request, platform, url) {

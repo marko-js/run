@@ -9,30 +9,30 @@ export function match(method, pathname) {
 
 function match_internal(method, pathname) {
   const len = pathname.length;
-  try {
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
-			return null;
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
+				return null;
+			}
+			case 'HEAD':
+			case 'head': {
+				if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
+				return null;
+			}
+			case 'POST':
+			case 'post': {
+				if (len === 1) return { handler: post1, path: "/", params: {}, options: post1_options, meta: {} };
+				return null;
+			}
 		}
-		case 'HEAD':
-		case 'head': {
-			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
-			return null;
-		}
-		case 'POST':
-		case 'post': {
-			if (len === 1) return { handler: post1, path: "/", params: {}, options: post1_options, meta: {} };
-			return null;
-		}
-	}
 	} catch (error) {
-    // A malformed percent-escape is an invalid URI: no route can match it.
-    if (error instanceof URIError) return null;
-    throw error;
-  }
-  return null;
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
+	}
+	return null;
 }
 
 export async function invoke(route, request, platform, url) {

@@ -12,121 +12,121 @@ export function match(method, pathname) {
 
 function match_internal(method, pathname) {
   const len = pathname.length;
-  try {
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "aaa") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
-							if (s2) return { handler: get1, path: "/aaa/$aId", params: { aId: s2 }, options: get1_options, meta: {} };
-						} else {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
-							if (s2) {
-								const i3 = pathname.indexOf('/', i2) + 1;
-								if (i3 && i3 !== len) {
-									switch (pathname.slice(i2, i3 - 1)) {
-										case "bbb": {
-											const i4 = pathname.indexOf('/', i3) + 1;
-											if (!i4 || i4 === len) {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: get2, path: "/aaa/$aId/bbb/$bId", params: { aId: s2, bId: s4 }, options: get2_options, meta: {} };
-											} else {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
-												if (s4) {
-													const i5 = pathname.indexOf('/', i4) + 1;
-													if (i5 && i5 !== len) {
-														if (pathname.slice(i4, i5 - 1) === "ccc") {
-															const i6 = pathname.indexOf('/', i5) + 1;
-															if (!i6 || i6 === len) {
-																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
-																if (s6) return { handler: get3, path: "/aaa/$aId/bbb/$bId/ccc/$cId", params: { aId: s2, bId: s4, cId: s6 }, options: get3_options, meta: {} };
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "aaa") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+								if (s2) return { handler: get1, path: "/aaa/$aId", params: { aId: s2 }, options: get1_options, meta: {} };
+							} else {
+								const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
+								if (s2) {
+									const i3 = pathname.indexOf('/', i2) + 1;
+									if (i3 && i3 !== len) {
+										switch (pathname.slice(i2, i3 - 1)) {
+											case "bbb": {
+												const i4 = pathname.indexOf('/', i3) + 1;
+												if (!i4 || i4 === len) {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+													if (s4) return { handler: get2, path: "/aaa/$aId/bbb/$bId", params: { aId: s2, bId: s4 }, options: get2_options, meta: {} };
+												} else {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
+													if (s4) {
+														const i5 = pathname.indexOf('/', i4) + 1;
+														if (i5 && i5 !== len) {
+															if (pathname.slice(i4, i5 - 1) === "ccc") {
+																const i6 = pathname.indexOf('/', i5) + 1;
+																if (!i6 || i6 === len) {
+																	const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
+																	if (s6) return { handler: get3, path: "/aaa/$aId/bbb/$bId/ccc/$cId", params: { aId: s2, bId: s4, cId: s6 }, options: get3_options, meta: {} };
+																}
 															}
 														}
 													}
 												}
-											}
-										} break;
-										case "ccc": {
-											const i4 = pathname.indexOf('/', i3) + 1;
-											if (!i4 || i4 === len) {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: get4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: get4_options, meta: {} };
-											}
-										} break;
+											} break;
+											case "ccc": {
+												const i4 = pathname.indexOf('/', i3) + 1;
+												if (!i4 || i4 === len) {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+													if (s4) return { handler: get4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: get4_options, meta: {} };
+												}
+											} break;
+										}
 									}
 								}
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
-		}
-		case 'HEAD':
-		case 'head': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "aaa") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
-							if (s2) return { handler: head1, path: "/aaa/$aId", params: { aId: s2 }, options: head1_options, meta: {} };
-						} else {
-							const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
-							if (s2) {
-								const i3 = pathname.indexOf('/', i2) + 1;
-								if (i3 && i3 !== len) {
-									switch (pathname.slice(i2, i3 - 1)) {
-										case "bbb": {
-											const i4 = pathname.indexOf('/', i3) + 1;
-											if (!i4 || i4 === len) {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: head2, path: "/aaa/$aId/bbb/$bId", params: { aId: s2, bId: s4 }, options: head2_options, meta: {} };
-											} else {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
-												if (s4) {
-													const i5 = pathname.indexOf('/', i4) + 1;
-													if (i5 && i5 !== len) {
-														if (pathname.slice(i4, i5 - 1) === "ccc") {
-															const i6 = pathname.indexOf('/', i5) + 1;
-															if (!i6 || i6 === len) {
-																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
-																if (s6) return { handler: head3, path: "/aaa/$aId/bbb/$bId/ccc/$cId", params: { aId: s2, bId: s4, cId: s6 }, options: head3_options, meta: {} };
+			case 'HEAD':
+			case 'head': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (i1 && i1 !== len) {
+						if (pathname.slice(1, i1 - 1) === "aaa") {
+							const i2 = pathname.indexOf('/', 5) + 1;
+							if (!i2 || i2 === len) {
+								const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+								if (s2) return { handler: head1, path: "/aaa/$aId", params: { aId: s2 }, options: head1_options, meta: {} };
+							} else {
+								const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
+								if (s2) {
+									const i3 = pathname.indexOf('/', i2) + 1;
+									if (i3 && i3 !== len) {
+										switch (pathname.slice(i2, i3 - 1)) {
+											case "bbb": {
+												const i4 = pathname.indexOf('/', i3) + 1;
+												if (!i4 || i4 === len) {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+													if (s4) return { handler: head2, path: "/aaa/$aId/bbb/$bId", params: { aId: s2, bId: s4 }, options: head2_options, meta: {} };
+												} else {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
+													if (s4) {
+														const i5 = pathname.indexOf('/', i4) + 1;
+														if (i5 && i5 !== len) {
+															if (pathname.slice(i4, i5 - 1) === "ccc") {
+																const i6 = pathname.indexOf('/', i5) + 1;
+																if (!i6 || i6 === len) {
+																	const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
+																	if (s6) return { handler: head3, path: "/aaa/$aId/bbb/$bId/ccc/$cId", params: { aId: s2, bId: s4, cId: s6 }, options: head3_options, meta: {} };
+																}
 															}
 														}
 													}
 												}
-											}
-										} break;
-										case "ccc": {
-											const i4 = pathname.indexOf('/', i3) + 1;
-											if (!i4 || i4 === len) {
-												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
-												if (s4) return { handler: head4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: head4_options, meta: {} };
-											}
-										} break;
+											} break;
+											case "ccc": {
+												const i4 = pathname.indexOf('/', i3) + 1;
+												if (!i4 || i4 === len) {
+													const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+													if (s4) return { handler: head4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: head4_options, meta: {} };
+												}
+											} break;
+										}
 									}
 								}
 							}
 						}
 					}
 				}
+				return null;
 			}
-			return null;
 		}
-	}
 	} catch (error) {
-    // A malformed percent-escape is an invalid URI: no route can match it.
-    if (error instanceof URIError) return null;
-    throw error;
-  }
-  return null;
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
+	}
+	return null;
 }
 
 export async function invoke(route, request, platform, url) {
