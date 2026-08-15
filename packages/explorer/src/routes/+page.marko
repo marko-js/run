@@ -83,12 +83,12 @@ import { getRoutes } from '../data';
     <td class="col-entry">
       <if(route.handler)>
         Handler
-        <if(verb === 'get' && route.page)>
+        <if((verb === 'get' || verb === 'query') && route.page)>
           <span class="dim"> &rarr; </span>
           Page
         </if>
       </if>
-      <else-if((!verb || verb === 'get') && route.page)>
+      <else-if((!verb || verb === 'get' || verb === 'query') && route.page)>
         Page
       </else-if>
     </td>
