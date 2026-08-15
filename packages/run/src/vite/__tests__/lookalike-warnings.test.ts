@@ -63,6 +63,8 @@ describe("non-routable lookalike warnings", () => {
       +layout.style.less
       +layout.component.ts
       +404.component-browser.js
+      account+page.marko
+      account+page.style.css
     `);
     assert.deepEqual(warnings, []);
   });

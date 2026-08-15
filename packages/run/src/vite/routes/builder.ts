@@ -276,7 +276,7 @@ const bracketFlagReg = /\[[^\]]*\]/g;
 // Marko pulls colocated companions in through their template, so
 // `+page.style.css` beside `+page.marko` is expected rather than a broken route.
 const markoCompanionReg = new RegExp(
-  `^[+](?:${markoFileTypes})\\.(?:style|component|component-browser|marko\\.d)\\.[^.]+$`,
+  `[+](?:${markoFileTypes})\\.(?:style|component|component-browser|marko\\.d)\\.[^.]+$`,
   "i",
 );
 
