@@ -1,6 +1,6 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__$.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__$.$$.js";
+import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__$.js";
+import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__$.$$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -38,6 +38,22 @@ function match_internal(method, pathname) {
 					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
 					if (s1) {
 						return { handler: head2, path: "/$campaignId/$$rest", params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: head2_options, meta: {} };
+					}
+				}
+			}
+			return null;
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (!i1 || i1 === len) {
+					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+					if (s1) return { handler: query1, path: "/$campaignId", params: { campaignId: s1 }, options: query1_options, meta: {} };
+				} else {
+					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
+					if (s1) {
+						return { handler: query2, path: "/$campaignId/$$rest", params: { campaignId: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: query2_options, meta: {} };
 					}
 				}
 			}

@@ -13,6 +13,7 @@ export function getVerbs(route: Route, noAutoHead?: boolean): HttpVerb[] {
   const verbs = new Set(route.handler?.verbs);
   if (route.page) {
     verbs.add("get");
+    verbs.add("query");
   }
   if (!noAutoHead && verbs.has("get")) {
     verbs.add("head");
@@ -28,7 +29,7 @@ export function getUniqueSortedVerbs(verbs: HttpVerb[]): HttpVerb[] {
 
 export function hasVerb(route: Route, verb: HttpVerb): boolean {
   return (
-    (verb === "get" && !!route.page) ||
+    ((verb === "get" || verb === "query") && !!route.page) ||
     route.handler?.verbs?.includes(verb) ||
     (verb === "head" && hasVerb(route, "get"))
   );

@@ -24,6 +24,7 @@ import page from "./dist/.marko-run/index.marko";
 
 export const get1_options = {};
 export const head1_options = {};
+export const query1_options = {};
 
 export function get1(context) {
 	return render(context, page, {});
@@ -31,6 +32,10 @@ export function get1(context) {
 
 export function head1(context) {
 	return stripResponseBody(get1(context));
+}
+
+export function query1(context) {
+	return render(context, page, {});
 }
 ```
 ---
@@ -54,6 +59,7 @@ const postHandler = normalizeHandler(POST, 'POST');
 export const get2_options = normalizeOptions('GET', getHandler);
 export const head2_options = {};
 export const post2_options = normalizeOptions('POST', postHandler);
+export const query2_options = {};
 
 export function get2(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -67,6 +73,10 @@ export function head2(context) {
 export function post2(context) {
 	const __page = (data) => render(context, page, {}, data);
 	return call(postHandler, __page, context);
+}
+
+export function query2(context) {
+	return render(context, page, {});
 }
 ```
 ---
@@ -86,6 +96,7 @@ import page from "./dist/.marko-run/$.marko";
 
 export const get3_options = normalizeOptions('GET', mware3);
 export const head3_options = normalizeOptions('HEAD', mware3);
+export const query3_options = normalizeOptions('QUERY', mware3);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -94,6 +105,11 @@ export function get3(context) {
 
 export function head3(context) {
 	return stripResponseBody(get3(context));
+}
+
+export function query3(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware3, __page, context);
 }
 ```
 ---
@@ -112,6 +128,7 @@ import page from "./dist/.marko-run/$$.marko";
 
 export const get4_options = {};
 export const head4_options = {};
+export const query4_options = {};
 
 export function get4(context) {
 	return render(context, page, {});
@@ -119,6 +136,10 @@ export function get4(context) {
 
 export function head4(context) {
 	return stripResponseBody(get4(context));
+}
+
+export function query4(context) {
+	return render(context, page, {});
 }
 ```
 ---

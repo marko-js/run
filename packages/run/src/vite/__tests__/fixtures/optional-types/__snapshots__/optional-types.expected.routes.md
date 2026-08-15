@@ -31,6 +31,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 
 export const get1_options = normalizeOptions('GET', mware2, getHandler);
 export const head1_options = normalizeOptions('HEAD', mware2);
+export const query1_options = normalizeOptions('QUERY', mware2);
 
 export function get1(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -40,6 +41,11 @@ export function get1(context) {
 
 export function head1(context) {
 	return stripResponseBody(get1(context));
+}
+
+export function query1(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware2, __page, context);
 }
 ```
 ---
@@ -65,6 +71,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 
 export const get2_options = normalizeOptions('GET', mware2, getHandler);
 export const head2_options = normalizeOptions('HEAD', mware2);
+export const query2_options = normalizeOptions('QUERY', mware2);
 
 export function get2(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -74,6 +81,11 @@ export function get2(context) {
 
 export function head2(context) {
 	return stripResponseBody(get2(context));
+}
+
+export function query2(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware2, __page, context);
 }
 ```
 ---
@@ -99,6 +111,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 
 export const get3_options = normalizeOptions('GET', mware2, getHandler);
 export const head3_options = normalizeOptions('HEAD', mware2);
+export const query3_options = normalizeOptions('QUERY', mware2);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -108,6 +121,11 @@ export function get3(context) {
 
 export function head3(context) {
 	return stripResponseBody(get3(context));
+}
+
+export function query3(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware2, __page, context);
 }
 ```
 ---
@@ -133,6 +151,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 
 export const get4_options = normalizeOptions('GET', mware2, getHandler);
 export const head4_options = normalizeOptions('HEAD', mware2);
+export const query4_options = normalizeOptions('QUERY', mware2);
 
 export function get4(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -142,5 +161,10 @@ export function get4(context) {
 
 export function head4(context) {
 	return stripResponseBody(get4(context));
+}
+
+export function query4(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware2, __page, context);
 }
 ```

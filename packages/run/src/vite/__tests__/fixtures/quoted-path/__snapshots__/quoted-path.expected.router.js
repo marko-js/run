@@ -1,7 +1,7 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__faq.it's-here.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__faq.it's-here.deeper's.js";
-import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__faq.$.js";
+import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__faq.it's-here.js";
+import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__faq.it's-here.deeper's.js";
+import { get3, get3_options, head3, head3_options, query3, query3_options } from "virtual:marko-run/__marko-run__faq.$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -52,6 +52,30 @@ function match_internal(method, pathname) {
 								const i3 = pathname.indexOf('/', 15) + 1;
 								if (!i3 || i3 === len) {
 									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: head2, path: "/faq/it's-here/deeper's", params: {}, options: head2_options, meta: {} };
+								}
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (i1 && i1 !== len) {
+					if (pathname.slice(1, i1 - 1) === "faq") {
+						const i2 = pathname.indexOf('/', 5) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+							if (s2 === "it's-here") return { handler: query1, path: "/faq/it's-here", params: {}, options: query1_options, meta: {} };
+							if (s2) return { handler: query3, path: "/faq/$it's", params: { "it's": s2 }, options: query3_options, meta: {} };
+						} else {
+							if (pathname.slice(5, i2 - 1) === "it's-here") {
+								const i3 = pathname.indexOf('/', 15) + 1;
+								if (!i3 || i3 === len) {
+									if (pathname.slice(15, i3 ? -1 : len) === "deeper's") return { handler: query2, path: "/faq/it's-here/deeper's", params: {}, options: query2_options, meta: {} };
 								}
 							}
 						}

@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__$.$.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__$.$$.js";
-import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__$.js";
-import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__$$.js";
+import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__$.$.js";
+import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__$.$$.js";
+import { get3, get3_options, head3, head3_options, query3, query3_options } from "virtual:marko-run/__marko-run__$.js";
+import { get4, get4_options, head4, head4_options, query4, query4_options } from "virtual:marko-run/__marko-run__$$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -54,6 +54,27 @@ function match_internal(method, pathname) {
 				}
 			}
 			return { handler: head4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (!i1 || i1 === len) {
+					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+					if (s1) return { handler: query3, path: "/$bar", params: { bar: s1 }, options: query3_options, meta: {} };
+				} else {
+					const s1 = decodeURIComponent(pathname.slice(1, i1 - 1));
+					if (s1) {
+						const i2 = pathname.indexOf('/', i1) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = decodeURIComponent(pathname.slice(i1, i2 ? -1 : len));
+							if (s2) return { handler: query1, path: "/$foo/$bar", params: { foo: s1, bar: s2 }, options: query1_options, meta: {} };
+						}
+						return { handler: query2, path: "/$foo/$$rest", params: { foo: s1, rest: decodeURIComponent(pathname.slice(i1)) }, options: query2_options, meta: {} };
+					}
+				}
+			}
+			return { handler: query4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: query4_options, meta: {} };
 		}
 	}
 	return null;

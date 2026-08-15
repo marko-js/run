@@ -37,6 +37,7 @@ import page from "./dist/.marko-run/index.marko";
 
 export const get3_options = normalizeOptions('GET', mware4, mware5, mware7);
 export const head3_options = normalizeOptions('HEAD', mware4, mware5, mware7);
+export const query3_options = normalizeOptions('QUERY', mware4, mware5, mware7);
 
 export function get3(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -47,6 +48,13 @@ export function get3(context) {
 
 export function head3(context) {
 	return stripResponseBody(get3(context));
+}
+
+export function query3(context) {
+	const __page = (data) => render(context, page, {}, data);
+	const __mware7 = (data) => call(mware7, __page, context, data);
+	const __mware5 = (data) => call(mware5, __mware7, context, data);
+	return call(mware4, __mware5, context);
 }
 ```
 ---
@@ -74,11 +82,12 @@ import meta4 from "./src/routes/_protected/_home/new/+meta.json";
 
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const { GET: get4_meta, GET: head4_meta, POST: post4_meta } = normalizeMeta(meta4);
+export const { GET: get4_meta, GET: head4_meta, POST: post4_meta, QUERY: query4_meta } = normalizeMeta(meta4);
 
 export const get4_options = normalizeOptions('GET', mware4, mware5, mware7);
 export const head4_options = normalizeOptions('HEAD', mware4, mware5, mware7);
 export const post4_options = normalizeOptions('POST', mware4, mware5, mware7, postHandler);
+export const query4_options = normalizeOptions('QUERY', mware4, mware5, mware7);
 
 export function get4(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -95,6 +104,13 @@ export function post4(context) {
 	const __page = (data) => render(context, page, {}, data);
 	const __postHandler = (data) => call(postHandler, __page, context, data);
 	const __mware7 = (data) => call(mware7, __postHandler, context, data);
+	const __mware5 = (data) => call(mware5, __mware7, context, data);
+	return call(mware4, __mware5, context);
+}
+
+export function query4(context) {
+	const __page = (data) => render(context, page, {}, data);
+	const __mware7 = (data) => call(mware7, __page, context, data);
 	const __mware5 = (data) => call(mware5, __mware7, context, data);
 	return call(mware4, __mware5, context);
 }
@@ -130,6 +146,7 @@ export const head5_options = normalizeOptions('HEAD', mware4, mware5, mware7, mw
 export const post5_options = normalizeOptions('POST', mware4, mware5, mware7, mware13, postHandler);
 export const put5_options = normalizeOptions('PUT', mware4, mware5, mware7, mware13, putHandler);
 export const delete5_options = normalizeOptions('DELETE', mware4, mware5, mware7, mware13, deleteHandler);
+export const query5_options = normalizeOptions('QUERY', mware4, mware5, mware7, mware13);
 
 export function get5(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -163,6 +180,14 @@ export function put5(context) {
 export function delete5(context) {
 	const __deleteHandler = (data) => call(deleteHandler, noContent, context, data);
 	const __mware13 = (data) => call(mware13, __deleteHandler, context, data);
+	const __mware7 = (data) => call(mware7, __mware13, context, data);
+	const __mware5 = (data) => call(mware5, __mware7, context, data);
+	return call(mware4, __mware5, context);
+}
+
+export function query5(context) {
+	const __page = (data) => render(context, page, {}, data);
+	const __mware13 = (data) => call(mware13, __page, context, data);
 	const __mware7 = (data) => call(mware7, __mware13, context, data);
 	const __mware5 = (data) => call(mware5, __mware7, context, data);
 	return call(mware4, __mware5, context);
@@ -259,6 +284,7 @@ const headHandler = normalizeHandler(HEAD, 'HEAD');
 
 export const get8_options = normalizeOptions('GET', mware4, getHandler);
 export const head8_options = normalizeOptions('HEAD', mware4, headHandler);
+export const query8_options = normalizeOptions('QUERY', mware4);
 
 export function get8(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -270,6 +296,11 @@ export function head8(context) {
 	const __page = (data) => render(context, page, {}, data);
 	const __headHandler = (data) => call(headHandler, __page, context, data);
 	return stripResponseBody(call(mware4, __headHandler, context));
+}
+
+export function query8(context) {
+	const __page = (data) => render(context, page, {}, data);
+	return call(mware4, __page, context);
 }
 ```
 ---

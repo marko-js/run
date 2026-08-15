@@ -10,7 +10,7 @@ import Page from "../../src/routes/+page.marko";
 ```
 ### Handler
 ```js
-import { normalizeHandler, call, normalizeOptions, render, noContent, stripResponseBody } from "virtual:marko-run/runtime/internal";
+import { normalizeHandler, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { QUERY, POST } from "./src/routes/+handler.ts";
 import page from "./dist/.marko-run/index.marko";
 
@@ -36,6 +36,7 @@ export function post1(context) {
 }
 
 export function query1(context) {
-	return call(queryHandler, noContent, context);
+	const __page = (data) => render(context, page, {}, data);
+	return call(queryHandler, __page, context);
 }
 ```

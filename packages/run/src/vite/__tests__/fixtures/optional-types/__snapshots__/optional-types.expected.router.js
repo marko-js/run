@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__aaa.$.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.js";
-import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.ccc.$.js";
-import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__aaa.$.ccc.$.js";
+import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__aaa.$.js";
+import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.js";
+import { get3, get3_options, head3, head3_options, query3, query3_options } from "virtual:marko-run/__marko-run__aaa.$.bbb.$.ccc.$.js";
+import { get4, get4_options, head4, head4_options, query4, query4_options } from "virtual:marko-run/__marko-run__aaa.$.ccc.$.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -108,6 +108,59 @@ function match_internal(method, pathname) {
 											if (!i4 || i4 === len) {
 												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
 												if (s4) return { handler: head4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: head4_options, meta: {} };
+											}
+										} break;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len > 1) {
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (i1 && i1 !== len) {
+					if (pathname.slice(1, i1 - 1) === "aaa") {
+						const i2 = pathname.indexOf('/', 5) + 1;
+						if (!i2 || i2 === len) {
+							const s2 = decodeURIComponent(pathname.slice(5, i2 ? -1 : len));
+							if (s2) return { handler: query1, path: "/aaa/$aId", params: { aId: s2 }, options: query1_options, meta: {} };
+						} else {
+							const s2 = decodeURIComponent(pathname.slice(5, i2 - 1));
+							if (s2) {
+								const i3 = pathname.indexOf('/', i2) + 1;
+								if (i3 && i3 !== len) {
+									switch (pathname.slice(i2, i3 - 1)) {
+										case "bbb": {
+											const i4 = pathname.indexOf('/', i3) + 1;
+											if (!i4 || i4 === len) {
+												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+												if (s4) return { handler: query2, path: "/aaa/$aId/bbb/$bId", params: { aId: s2, bId: s4 }, options: query2_options, meta: {} };
+											} else {
+												const s4 = decodeURIComponent(pathname.slice(i3, i4 - 1));
+												if (s4) {
+													const i5 = pathname.indexOf('/', i4) + 1;
+													if (i5 && i5 !== len) {
+														if (pathname.slice(i4, i5 - 1) === "ccc") {
+															const i6 = pathname.indexOf('/', i5) + 1;
+															if (!i6 || i6 === len) {
+																const s6 = decodeURIComponent(pathname.slice(i5, i6 ? -1 : len));
+																if (s6) return { handler: query3, path: "/aaa/$aId/bbb/$bId/ccc/$cId", params: { aId: s2, bId: s4, cId: s6 }, options: query3_options, meta: {} };
+															}
+														}
+													}
+												}
+											}
+										} break;
+										case "ccc": {
+											const i4 = pathname.indexOf('/', i3) + 1;
+											if (!i4 || i4 === len) {
+												const s4 = decodeURIComponent(pathname.slice(i3, i4 ? -1 : len));
+												if (s4) return { handler: query4, path: "/aaa/$aId/ccc/$cId", params: { aId: s2, cId: s4 }, options: query4_options, meta: {} };
 											}
 										} break;
 									}

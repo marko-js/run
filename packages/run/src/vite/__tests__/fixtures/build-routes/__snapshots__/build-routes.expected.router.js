@@ -1,10 +1,10 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__index.js";
-import { get4, get4_options, get4_meta, head4, head4_options, head4_meta, post4, post4_options, post4_meta } from "virtual:marko-run/__marko-run__new.js";
-import { get5, get5_options, head5, head5_options, post5, post5_options, put5, put5_options, delete5, delete5_options } from "virtual:marko-run/__marko-run__notes.$.js";
+import { get3, get3_options, head3, head3_options, query3, query3_options } from "virtual:marko-run/__marko-run__index.js";
+import { get4, get4_options, get4_meta, head4, head4_options, head4_meta, post4, post4_options, post4_meta, query4, query4_options, query4_meta } from "virtual:marko-run/__marko-run__new.js";
+import { get5, get5_options, head5, head5_options, post5, post5_options, put5, put5_options, delete5, delete5_options, query5, query5_options } from "virtual:marko-run/__marko-run__notes.$.js";
 import { post6, post6_options, post6_meta, put6, put6_options, put6_meta, delete6, delete6_options, delete6_meta } from "virtual:marko-run/__marko-run__notes.$.comments.js";
 import { get7, get7_options, head7, head7_options } from "virtual:marko-run/__marko-run__callback.oauth2.js";
-import { get8, get8_options, head8, head8_options } from "virtual:marko-run/__marko-run__my.js";
+import { get8, get8_options, head8, head8_options, query8, query8_options } from "virtual:marko-run/__marko-run__my.js";
 import { get9, get9_options, head9, head9_options } from "virtual:marko-run/__marko-run__$$.js";
 import page404 from "./dist/.marko-run/404.marko";
 import page500 from "./dist/.marko-run/500.marko";
@@ -143,6 +143,26 @@ function match_internal(method, pathname) {
 								}
 							}
 						}
+					}
+				}
+			}
+			return null;
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len === 1) return { handler: query3, path: "/", params: {}, options: query3_options, meta: {} };
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				switch (pathname.slice(1, i1 ? -1 : len)) {
+					case "new": return { handler: query4, path: "/new", params: {}, options: query4_options, meta: query4_meta };
+					case "my": return { handler: query8, path: "/my", params: {}, options: query8_options, meta: {} };
+				}
+			} else {
+				if (pathname.slice(1, i1 - 1) === "notes") {
+					const i2 = pathname.indexOf('/', 7) + 1;
+					if (!i2 || i2 === len) {
+						const s2 = decodeURIComponent(pathname.slice(7, i2 ? -1 : len));
+						if (s2) return { handler: query5, path: "/notes/$id", params: { id: s2 }, options: query5_options, meta: {} };
 					}
 				}
 			}

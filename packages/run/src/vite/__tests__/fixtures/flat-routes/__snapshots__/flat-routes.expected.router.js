@@ -1,8 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__index.js";
-import { get2, get2_options, head2, head2_options, post2, post2_options } from "virtual:marko-run/__marko-run__foo.js";
-import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__$.js";
-import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__$$.js";
+import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__index.js";
+import { get2, get2_options, head2, head2_options, post2, post2_options, query2, query2_options } from "virtual:marko-run/__marko-run__foo.js";
+import { get3, get3_options, head3, head3_options, query3, query3_options } from "virtual:marko-run/__marko-run__$.js";
+import { get4, get4_options, head4, head4_options, query4, query4_options } from "virtual:marko-run/__marko-run__$$.js";
 import { get5, get5_options, head5, head5_options, post5, post5_options } from "virtual:marko-run/__marko-run__a.c.js";
 import { get6, get6_options, head6, head6_options, post6, post6_options } from "virtual:marko-run/__marko-run__a.d.js";
 import { get7, get7_options, head7, head7_options, post7, post7_options } from "virtual:marko-run/__marko-run__b.c.js";
@@ -111,6 +111,17 @@ function match_internal(method, pathname) {
 				}
 			}
 			return null;
+		}
+		case 'QUERY':
+		case 'query': {
+			if (len === 1) return { handler: query1, path: "/", params: {}, options: query1_options, meta: {} };
+			const i1 = pathname.indexOf('/', 1) + 1;
+			if (!i1 || i1 === len) {
+				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+				if (s1 === "foo") return { handler: query2, path: "/foo", params: {}, options: query2_options, meta: {} };
+				if (s1) return { handler: query3, path: "/$id", params: { id: s1 }, options: query3_options, meta: {} };
+			}
+			return { handler: query4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: query4_options, meta: {} };
 		}
 	}
 	return null;
