@@ -57,3 +57,40 @@ describe("test sources type-check", () => {
     );
   });
 });
+
+describe("route type generation type-checks", () => {
+  // A parent-segment middleware that derives `next(data)` from its context
+  // plus a downstream handler with a `params` validator once made the two
+  // module types circular (TS7022); this fixture compiles both against the
+  // workspace source types.
+  it("should type-check the params-validator-types fixture", function () {
+    this.timeout(120000);
+    const result = spawnSync(
+      process.execPath,
+      [
+        require.resolve("typescript/lib/tsc.js"),
+        "-p",
+        path.join(
+          __dirname,
+          "fixtures",
+          "params-validator-types",
+          "tsconfig.check.json",
+        ),
+        "--pretty",
+        "false",
+      ],
+      { encoding: "utf-8", timeout: 90000 },
+    );
+
+    const localErrors = (result.stdout || "")
+      .split("\n")
+      // The compile pulls in the whole workspace graph, which carries known
+      // declaration-level noise; only errors in the fixture's sources or its
+      // generated route types indicate a regression here.
+      .filter((line) =>
+        /params-validator-types[/\\](src|\.marko-run)[/\\]/.test(line),
+      );
+
+    assert.deepEqual(localErrors, []);
+  });
+});

@@ -477,18 +477,9 @@ type DefineHandlerOptions<Verb extends HttpVerbOrAll, Ctx> = [Verb] extends [
 ]
   ? HandlerOptionsWithoutBody
   : HandlerOptionsWithBody<Ctx>;
-type TypesFromHandlerFilesWithLocal<
-  Files extends File[],
-  Verb extends HttpVerb,
-  Id extends ID,
-  Options,
-> = {
-  [I in keyof Files]: Files[I] extends {
-    id: Id;
-  }
-    ? HandlerTypes<Context, Verb, Options>
-    : TypesFromHandlerFile<Files[I], Verb>;
-};
+// Only files that run before the local one contribute options: a later
+// file's type may itself depend on this file's (via upstream data), and
+// including it makes the two inferences circular.
 type RouteFileGroupOptionsWithLocal<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
@@ -496,12 +487,13 @@ type RouteFileGroupOptionsWithLocal<
   Options,
 > = MergeHandlerOptionsTuple<
   MapTuple<
-    TypesFromHandlerFilesWithLocal<
-      [...Group["middleware"], Group["handler"]],
-      Verb,
-      Id,
-      Options
-    >,
+    [
+      ...TypesFromHandlerFiles<
+        TakeUntil<[...Group["middleware"], Group["handler"]], Id>,
+        Verb
+      >,
+      HandlerTypes<Context, Verb, Options>,
+    ],
     "options",
     Empty
   >
