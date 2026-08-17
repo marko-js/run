@@ -1,6 +1,8 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__a%3fb.$.$.js";
-import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__a%3fb.baz.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__café.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__café.sub.js";
+import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__menu.js";
+import { get4, get4_options, head4, head4_options } from "virtual:marko-run/__marko-run__x^y.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -16,20 +18,17 @@ function match_internal(method, pathname) {
 			case 'get': {
 				if (len > 1) {
 					const i1 = pathname.indexOf('/', 1) + 1;
-					if (i1 && i1 !== len) {
-						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+					if (!i1 || i1 === len) {
+						switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
+							case "café": return { handler: get1, path: "/café", params: {}, options: get1_options, meta: {} };
+							case "menu": return { handler: get3, path: "/menu", params: {}, options: get3_options, meta: {} };
+							case "x^y": return { handler: get4, path: "/x^y", params: {}, options: get4_options, meta: {} };
+						}
+					} else {
+						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "café") {
 							const i2 = pathname.indexOf('/', i1) + 1;
 							if (!i2 || i2 === len) {
-								if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: get2, path: "/a%3fb/baz", params: {}, options: get2_options, meta: {} };
-							} else {
-								const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
-								if (s2) {
-									const i3 = pathname.indexOf('/', i2) + 1;
-									if (!i3 || i3 === len) {
-										const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
-										if (s3) return { handler: get1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: get1_options, meta: {} };
-									}
-								}
+								if (pathname.slice(i1, i2 ? -1 : len) === "sub") return { handler: get2, path: "/café/sub", params: {}, options: get2_options, meta: {} };
 							}
 						}
 					}
@@ -40,20 +39,17 @@ function match_internal(method, pathname) {
 			case 'head': {
 				if (len > 1) {
 					const i1 = pathname.indexOf('/', 1) + 1;
-					if (i1 && i1 !== len) {
-						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "a?b") {
+					if (!i1 || i1 === len) {
+						switch (decodeURIComponent(pathname.slice(1, i1 ? -1 : len))) {
+							case "café": return { handler: head1, path: "/café", params: {}, options: head1_options, meta: {} };
+							case "menu": return { handler: head3, path: "/menu", params: {}, options: head3_options, meta: {} };
+							case "x^y": return { handler: head4, path: "/x^y", params: {}, options: head4_options, meta: {} };
+						}
+					} else {
+						if (decodeURIComponent(pathname.slice(1, i1 - 1)) === "café") {
 							const i2 = pathname.indexOf('/', i1) + 1;
 							if (!i2 || i2 === len) {
-								if (pathname.slice(i1, i2 ? -1 : len) === "baz") return { handler: head2, path: "/a%3fb/baz", params: {}, options: head2_options, meta: {} };
-							} else {
-								const s2 = decodeURIComponent(pathname.slice(i1, i2 - 1));
-								if (s2) {
-									const i3 = pathname.indexOf('/', i2) + 1;
-									if (!i3 || i3 === len) {
-										const s3 = decodeURIComponent(pathname.slice(i2, i3 ? -1 : len));
-										if (s3) return { handler: head1, path: "/a%3fb/$`$id`/$foo", params: { $id: s2, foo: s3 }, options: head1_options, meta: {} };
-									}
-								}
+								if (pathname.slice(i1, i2 ? -1 : len) === "sub") return { handler: head2, path: "/café/sub", params: {}, options: head2_options, meta: {} };
 							}
 						}
 					}

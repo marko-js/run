@@ -13,88 +13,27 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
 function match_internal(method, pathname) {
   const len = pathname.length;
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
-			const i1 = pathname.indexOf('/', 1) + 1;
-			if (!i1 || i1 === len) {
-				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-				if (s1 === "foo") return { handler: get2, path: "/foo", params: {}, options: get2_options, meta: {} };
-				if (s1) return { handler: get3, path: "/$id", params: { id: s1 }, options: get3_options, meta: {} };
-			} else {
-				switch (pathname.slice(1, i1 - 1)) {
-					case "a": {
-						const i2 = pathname.indexOf('/', 3) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(3, i2 ? -1 : len)) {
-								case "c": return { handler: get5, path: "/a/c", params: {}, options: get5_options, meta: {} };
-								case "d": return { handler: get6, path: "/a/d", params: {}, options: get6_options, meta: {} };
-							}
-						}
-					} break;
-					case "b": {
-						const i2 = pathname.indexOf('/', 3) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(3, i2 ? -1 : len)) {
-								case "c": return { handler: get7, path: "/b/c", params: {}, options: get7_options, meta: {} };
-								case "d": return { handler: get8, path: "/b/d", params: {}, options: get8_options, meta: {} };
-							}
-						}
-					} break;
-				}
-			}
-			return { handler: get4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
-		}
-		case 'HEAD':
-		case 'head': {
-			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
-			const i1 = pathname.indexOf('/', 1) + 1;
-			if (!i1 || i1 === len) {
-				const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
-				if (s1 === "foo") return { handler: head2, path: "/foo", params: {}, options: head2_options, meta: {} };
-				if (s1) return { handler: head3, path: "/$id", params: { id: s1 }, options: head3_options, meta: {} };
-			} else {
-				switch (pathname.slice(1, i1 - 1)) {
-					case "a": {
-						const i2 = pathname.indexOf('/', 3) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(3, i2 ? -1 : len)) {
-								case "c": return { handler: head5, path: "/a/c", params: {}, options: head5_options, meta: {} };
-								case "d": return { handler: head6, path: "/a/d", params: {}, options: head6_options, meta: {} };
-							}
-						}
-					} break;
-					case "b": {
-						const i2 = pathname.indexOf('/', 3) + 1;
-						if (!i2 || i2 === len) {
-							switch (pathname.slice(3, i2 ? -1 : len)) {
-								case "c": return { handler: head7, path: "/b/c", params: {}, options: head7_options, meta: {} };
-								case "d": return { handler: head8, path: "/b/d", params: {}, options: head8_options, meta: {} };
-							}
-						}
-					} break;
-				}
-			}
-			return { handler: head4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
-		}
-		case 'POST':
-		case 'post': {
-			if (len > 1) {
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
 				const i1 = pathname.indexOf('/', 1) + 1;
 				if (!i1 || i1 === len) {
-					if (pathname.slice(1, i1 ? -1 : len) === "foo") return { handler: post2, path: "/foo", params: {}, options: post2_options, meta: {} };
+					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+					if (s1 === "foo") return { handler: get2, path: "/foo", params: {}, options: get2_options, meta: {} };
+					if (s1) return { handler: get3, path: "/$id", params: { id: s1 }, options: get3_options, meta: {} };
 				} else {
 					switch (pathname.slice(1, i1 - 1)) {
 						case "a": {
 							const i2 = pathname.indexOf('/', 3) + 1;
 							if (!i2 || i2 === len) {
 								switch (pathname.slice(3, i2 ? -1 : len)) {
-									case "c": return { handler: post5, path: "/a/c", params: {}, options: post5_options, meta: {} };
-									case "d": return { handler: post6, path: "/a/d", params: {}, options: post6_options, meta: {} };
+									case "c": return { handler: get5, path: "/a/c", params: {}, options: get5_options, meta: {} };
+									case "d": return { handler: get6, path: "/a/d", params: {}, options: get6_options, meta: {} };
 								}
 							}
 						} break;
@@ -102,16 +41,83 @@ function match_internal(method, pathname) {
 							const i2 = pathname.indexOf('/', 3) + 1;
 							if (!i2 || i2 === len) {
 								switch (pathname.slice(3, i2 ? -1 : len)) {
-									case "c": return { handler: post7, path: "/b/c", params: {}, options: post7_options, meta: {} };
-									case "d": return { handler: post8, path: "/b/d", params: {}, options: post8_options, meta: {} };
+									case "c": return { handler: get7, path: "/b/c", params: {}, options: get7_options, meta: {} };
+									case "d": return { handler: get8, path: "/b/d", params: {}, options: get8_options, meta: {} };
 								}
 							}
 						} break;
 					}
 				}
+				return { handler: get4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: get4_options, meta: {} };
 			}
-			return null;
+			case 'HEAD':
+			case 'head': {
+				if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
+				const i1 = pathname.indexOf('/', 1) + 1;
+				if (!i1 || i1 === len) {
+					const s1 = decodeURIComponent(pathname.slice(1, i1 ? -1 : len));
+					if (s1 === "foo") return { handler: head2, path: "/foo", params: {}, options: head2_options, meta: {} };
+					if (s1) return { handler: head3, path: "/$id", params: { id: s1 }, options: head3_options, meta: {} };
+				} else {
+					switch (pathname.slice(1, i1 - 1)) {
+						case "a": {
+							const i2 = pathname.indexOf('/', 3) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(3, i2 ? -1 : len)) {
+									case "c": return { handler: head5, path: "/a/c", params: {}, options: head5_options, meta: {} };
+									case "d": return { handler: head6, path: "/a/d", params: {}, options: head6_options, meta: {} };
+								}
+							}
+						} break;
+						case "b": {
+							const i2 = pathname.indexOf('/', 3) + 1;
+							if (!i2 || i2 === len) {
+								switch (pathname.slice(3, i2 ? -1 : len)) {
+									case "c": return { handler: head7, path: "/b/c", params: {}, options: head7_options, meta: {} };
+									case "d": return { handler: head8, path: "/b/d", params: {}, options: head8_options, meta: {} };
+								}
+							}
+						} break;
+					}
+				}
+				return { handler: head4, path: "/$$rest", params: { rest: decodeURIComponent(pathname.slice(1)) }, options: head4_options, meta: {} };
+			}
+			case 'POST':
+			case 'post': {
+				if (len > 1) {
+					const i1 = pathname.indexOf('/', 1) + 1;
+					if (!i1 || i1 === len) {
+						if (pathname.slice(1, i1 ? -1 : len) === "foo") return { handler: post2, path: "/foo", params: {}, options: post2_options, meta: {} };
+					} else {
+						switch (pathname.slice(1, i1 - 1)) {
+							case "a": {
+								const i2 = pathname.indexOf('/', 3) + 1;
+								if (!i2 || i2 === len) {
+									switch (pathname.slice(3, i2 ? -1 : len)) {
+										case "c": return { handler: post5, path: "/a/c", params: {}, options: post5_options, meta: {} };
+										case "d": return { handler: post6, path: "/a/d", params: {}, options: post6_options, meta: {} };
+									}
+								}
+							} break;
+							case "b": {
+								const i2 = pathname.indexOf('/', 3) + 1;
+								if (!i2 || i2 === len) {
+									switch (pathname.slice(3, i2 ? -1 : len)) {
+										case "c": return { handler: post7, path: "/b/c", params: {}, options: post7_options, meta: {} };
+										case "d": return { handler: post8, path: "/b/d", params: {}, options: post8_options, meta: {} };
+									}
+								}
+							} break;
+						}
+					}
+				}
+				return null;
+			}
 		}
+	} catch (error) {
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
 	}
 	return null;
 }

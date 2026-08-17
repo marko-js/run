@@ -1,0 +1,8 @@
+/café
+  +page.marko
+  /sub
+    +page.marko
+/menu
+  +page.marko
+/x^y
+  +page.marko

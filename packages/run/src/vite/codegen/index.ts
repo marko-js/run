@@ -236,10 +236,11 @@ globalThis.__marko_run__ = { match, fetch, invoke };
     .writeLines(
       `return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
 function match_internal(method, pathname) {
   const len = pathname.length;`,
     )
+    .writeBlockStart(`try {`)
     .writeBlockStart(`switch (method) {`);
 
   for (const verb of httpVerbs) {
@@ -253,7 +254,16 @@ function match_internal(method, pathname) {
     }
   }
 
-  writer.writeBlockEnd("}").writeLines("return null;").writeBlockEnd("}");
+  writer.writeBlockEnd("}").writeBlockEnd("} catch (error) {").indent++;
+  writer
+    .writeLines(
+      "// A malformed percent-escape is an invalid URI: no route can match it.",
+      "if (error instanceof URIError) return null;",
+      "throw error;",
+    )
+    .writeBlockEnd("}")
+    .writeLines("return null;")
+    .writeBlockEnd("}");
 
   writer
     .writeLines("")
@@ -809,6 +819,14 @@ function renderTrailingSlashPolicy(writer: Writer, options: RouterOptions) {
   writer.writeBlockEnd("}");
 }
 
+// Anything outside RFC 3986's unreserved set (or stored %-escapes) may
+// legitimately arrive percent-encoded, so it must be compared decoded.
+const encodedOnWire = /[^\w.~-]/;
+function needsDecode({ key }: RouteTrie) {
+  const decoded = decodeURIComponent(key);
+  return decoded !== key || encodedOnWire.test(decoded);
+}
+
 function writeRouterVerb(
   writer: Writer,
   trie: RouteTrie,
@@ -858,11 +876,7 @@ function writeRouterVerb(
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        terminal?.some(
-          (terminal) => decodeURIComponent(terminal.key) !== terminal.key,
-        )
-      ) {
+      } else if (terminal?.some(needsDecode)) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -911,13 +925,12 @@ function writeRouterVerb(
       }
 
       let value = `pathname.slice(${offset}, ${index} - 1)`;
+      const decodeChildren = !!children?.some(needsDecode);
       if (dynamic?.static || dynamic?.dynamic || dynamic?.catchAll) {
         const segment = `s${next}`;
         writer.writeLines(`const ${segment} = decodeURIComponent(${value});`);
         value = segment;
-      } else if (
-        children?.some((child) => decodeURIComponent(child.key) !== child.key)
-      ) {
+      } else if (decodeChildren) {
         value = `decodeURIComponent(${value})`;
       }
 
@@ -938,8 +951,12 @@ function writeRouterVerb(
             );
           }
 
+          // A decoded comparison means the wire length can differ from the
+          // key length, so the next segment starts at the runtime index.
           const nextOffset =
-            typeof offset === "string" ? index : offset + child.key.length + 1;
+            typeof offset === "string" || decodeChildren
+              ? index
+              : offset + child.key.length + 1;
           writeRouterVerb(writer, child, verb, next, nextOffset);
 
           if (useSwitch) {

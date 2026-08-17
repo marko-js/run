@@ -6,20 +6,26 @@ globalThis.__marko_run__ = { match, fetch, invoke };
 export function match(method, pathname) {
 	return match_internal(method, pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname)
 };
-  
+
 function match_internal(method, pathname) {
   const len = pathname.length;
-	switch (method) {
-		case 'GET':
-		case 'get': {
-			if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
-			return null;
+	try {
+		switch (method) {
+			case 'GET':
+			case 'get': {
+				if (len === 1) return { handler: get1, path: "/", params: {}, options: get1_options, meta: {} };
+				return null;
+			}
+			case 'HEAD':
+			case 'head': {
+				if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
+				return null;
+			}
 		}
-		case 'HEAD':
-		case 'head': {
-			if (len === 1) return { handler: head1, path: "/", params: {}, options: head1_options, meta: {} };
-			return null;
-		}
+	} catch (error) {
+		// A malformed percent-escape is an invalid URI: no route can match it.
+		if (error instanceof URIError) return null;
+		throw error;
 	}
 	return null;
 }
