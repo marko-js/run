@@ -139,3 +139,9 @@ Dev runs Vite in middleware mode behind marko-run's own listener (`devServer.mid
 `packages/explorer/src/routes/+page.marko` › route table `col-entry` | 2026-08-14 | impact:low | effort:low
 
 The entry cell prints "Handler" whenever `route.handler` exists, without checking that the handler actually exports the row's verb. A route with a page plus a POST-only handler renders its GET (and now QUERY) rows as "Handler → Page", but those requests go straight to the page render — the handler never runs. Gate the "Handler" label on `route.handler.verbs.includes(verb)` (treating the no-verb/"all" row as handler-backed) so the per-verb entry matches what the generated router does.
+
+## Any middle segment makes a file a route, so `+handler.test.ts` registers as a second handler
+
+`packages/run/src/vite/routes/builder.ts` › `RoutableFileRegex` | 2026-08-14 | impact:med | effort:low
+
+`nonMarkoFiles` (and `markoFiles`) allow an arbitrary middle segment — `(+middleware|+handler|+meta)\.(?:.*\.)?(.+)` — and nothing ever reads that group (`matchRoutableFile` and `onFile` only use the type and the trailing extension). A colocated `+handler.test.ts` next to `+handler.ts` therefore builds a second `RoutableFile` of type `handler` for the same directory, and `VDir.addFile` takes both. The same holds for `+page.test.marko`. Either drop the optional middle segment, or ignore known test/spec segments there. Re-verify: add `+handler.test.ts` beside `+handler.ts` in a route directory and inspect `buildRoutes` output.

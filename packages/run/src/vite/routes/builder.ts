@@ -13,7 +13,8 @@ import { parseFlatRoute } from "./parse";
 import VDir from "./vdir";
 import type { Walker, WalkOptions } from "./walk";
 
-const markoFiles = `(${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error})\\.(?:.*\\.)?(marko)`;
+const markoFileTypes = `${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error}`;
+const markoFiles = `(${markoFileTypes})\\.(?:.*\\.)?(marko)`;
 const nonMarkoFiles = `(${RoutableFileTypes.Middleware}|${RoutableFileTypes.Handler}|${RoutableFileTypes.Meta})\\.(?:.*\\.)?(.+)`;
 const RoutableFileRegex = new RegExp(
   `[+](?:${markoFiles}|${nonMarkoFiles})$`,
@@ -272,6 +273,13 @@ function replaceInvalidFilenameChars(str: string) {
 // too; stripped before classifying so `[` and `+` never read as route syntax.
 const bracketFlagReg = /\[[^\]]*\]/g;
 
+// Marko pulls colocated companions in through their template, so
+// `+page.style.css` beside `+page.marko` is expected rather than a broken route.
+const markoCompanionReg = new RegExp(
+  `[+](?:${markoFileTypes})\\.(?:style|component|component-browser|marko\\.d)\\.[^.]+$`,
+  "i",
+);
+
 function warnLookalike(message: string): void {
   // The cheat-sheet pointer is agent-gated; humans just see the convention.
   console.warn(`[marko-run] ${message}${agentRouteFixGuide()}`);
@@ -282,7 +290,7 @@ function warnLookalike(message: string): void {
 function warnNonRoutableLookalike(name: string, filePath: string): void {
   // `+page[mobile].marko` is arc's variant of a real `+page.marko`, not a break.
   const base = name.replace(bracketFlagReg, "");
-  if (RoutableFileRegex.test(base)) return;
+  if (RoutableFileRegex.test(base) || markoCompanionReg.test(base)) return;
 
   const relativeFilePath = path.relative(process.cwd(), filePath);
   if (base.includes("+")) {

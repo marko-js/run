@@ -54,6 +54,21 @@ describe("non-routable lookalike warnings", () => {
     assert.deepEqual(warnings, []);
   });
 
+  it("does not flag files marko colocates with a template", async () => {
+    const warnings = await collectWarnings(`
+      +page.marko
+      +page.style.css
+      +page.marko.d.ts
+      +layout.marko
+      +layout.style.less
+      +layout.component.ts
+      +404.component-browser.js
+      account+page.marko
+      account+page.style.css
+    `);
+    assert.deepEqual(warnings, []);
+  });
+
   it("does not flag valid routes", async () => {
     const warnings = await collectWarnings(`
       +page.marko
