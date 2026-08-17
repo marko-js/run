@@ -59,13 +59,13 @@ describe("test sources type-check", () => {
 });
 
 describe("route type generation type-checks", () => {
-  // Known limitation, reproduced by the params-validator-types fixture: a
-  // parent-segment middleware deriving `next(data)` from its context plus a
-  // downstream handler with a `params` validator makes the two module types
-  // mutually dependent, and TypeScript collapses both to `any` (TS7022).
-  // This pins the failure; when it starts failing, the cycle got fixed and
-  // the assertion should flip to expect no fixture-local errors.
-  it("still reproduces the middleware/validator type cycle", function () {
+  // The params-validator-types fixture pairs a parent-segment middleware
+  // deriving `next(data)` from its context with a downstream handler whose
+  // `params` validator the middleware's context must reflect — the shape
+  // that used to collapse both modules to `any` (TS7022). Its sources carry
+  // `@ts-expect-error` probes, so this compile fails on a missing error too
+  // (types silently widening back to `any` would surface as TS2578).
+  it("keeps middleware and validator types across the module cycle", function () {
     this.timeout(120000);
     const result = spawnSync(
       process.execPath,
@@ -91,9 +91,6 @@ describe("route type generation type-checks", () => {
       // the reproduction.
       .filter((line) => /params-validator-types[/\\]src[/\\]/.test(line));
 
-    assert.ok(
-      localErrors.some((line) => line.includes("error TS7022")),
-      `expected the TS7022 cycle, got:\n${localErrors.join("\n") || "(no fixture-local errors — the cycle may be fixed!)"}`,
-    );
+    assert.deepEqual(localErrors, []);
   });
 });

@@ -661,6 +661,157 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   >;
 };
 
+// The file's own options are the only contributor consulted, so resolving
+// this context never forces another file's inferred export type. A standalone
+// interface (not Context<Route<...>>) keeps every member lazy: a constrained
+// type argument would be structurally compared against Route, forcing `data`
+// (and with it the upstream middleware's inferred export) while that export
+// is still resolving.
+interface LeafContext<
+  F extends File,
+  Path extends string,
+  Verb extends HttpVerb,
+  Options,
+> {
+  readonly route: Path;
+  readonly method: Verb;
+  readonly meta: Path extends keyof AppPaths
+    ? Verb extends keyof AppPaths[Path]["verbs"]
+      ? AppPaths[Path]["verbs"][Verb]["def"]["meta"]
+      : Empty
+    : Empty;
+  readonly params: Validation<Options> extends {
+    params: infer T;
+  }
+    ? T
+    : PathParams<Path>;
+  readonly search: Validation<Options> extends {
+    search: infer T;
+  }
+    ? T
+    : undefined;
+  readonly body: Verb extends HttpVerbWithBody
+    ? Validation<Options> extends {
+        json: infer T;
+      }
+      ? Promise<T>
+      : Validation<Options> extends {
+            form: infer T;
+          }
+        ? Promise<T>
+        : undefined
+    : undefined;
+  readonly data: GetUpstreamData<F, Path & PathsForFile<F>, Verb> extends [
+    infer T extends Record<string, unknown>,
+  ]
+    ? T
+    : Record<string, unknown>;
+  readonly url: URL;
+  readonly request: Request;
+  readonly platform: Platform;
+  readonly parent: Context | undefined;
+  serializedGlobals: Record<string, boolean>;
+  fetch(
+    resource: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response>;
+  render<T>(
+    template: Marko.Template<T>,
+    input: T,
+    init?: ResponseInit,
+  ): Response;
+  redirect(to: string | URL, status?: number): Response;
+  back(fallback?: string | URL, status?: number): Response;
+}
+type LeafContextForFile<
+  F extends File,
+  Verb extends HttpVerbOrAll,
+  Options,
+> = Union<{
+  [Path in PathsForFile<F>]: Union<{
+    [V in VerbsForPath<Path, Verb>]: V extends HttpVerb
+      ? LeafContext<F, Path & string, V, Options>
+      : never;
+  }>;
+}>;
+// Only a template consumes a handler's inferred data, so template-less routes
+// can use the leaf form; routes with a template keep full body inference.
+type FileHasTemplate<F extends File> =
+  true extends Union<{
+    [P in PathsForFile<F>]: AppPaths[P]["files"]["template"] extends []
+      ? false
+      : true;
+  }>
+    ? true
+    : false;
+// The `=> any` return is what lets an upstream middleware resolve this
+// export without typing the handler body (TypeScript skips computing a
+// source function's return type against an `any`-returning target); a
+// checked return type here would re-create the cycle.
+type LeafHandlerFunction<Ctx> = (ctx: Ctx, next: NextFunction) => any;
+type LeafHandlerArray<Ctx> = readonly (
+  | {
+      [__run__.TYPES]: {
+        options: any;
+        data: any;
+      };
+    }
+  | LeafHandlerFunction<Ctx>
+)[];
+export type DefineLeafHandler<F extends File, Verb extends HttpVerbOrAll> = {
+  <const Handlers extends readonly unknown[]>(
+    handlers: LeafHandlerArray<
+      LeafContextForFile<F, Verb, ComposedHandlerOptions<Handlers>>
+    > &
+      Handlers,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, ComposedHandlerOptions<Handlers>>,
+    HandlerTypes<
+      LeafContextForFile<F, Verb, ComposedHandlerOptions<Handlers>>,
+      Verb,
+      ComposedHandlerOptions<Handlers>,
+      Empty
+    >
+  >;
+  <
+    const Options extends DefineHandlerOptions<Verb, Context>,
+    const Handlers extends readonly unknown[],
+  >(
+    options: Exact<Options, DefineHandlerOptions<Verb, Context>>,
+    handlers: LeafHandlerArray<LeafContextForFile<F, Verb, Options>> & Handlers,
+  ): Typed<
+    NormalizedHandlerFunction<
+      Verb,
+      MergeHandlerOptions<ComposedHandlerOptions<Handlers>, Options>
+    >,
+    HandlerTypes<
+      LeafContextForFile<F, Verb, Options>,
+      Verb,
+      MergeHandlerOptions<ComposedHandlerOptions<Handlers>, Options>,
+      Empty
+    >
+  >;
+  (
+    handler: LeafHandlerFunction<LeafContextForFile<F, Verb, Empty>>,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Empty>,
+    HandlerTypes<LeafContextForFile<F, Verb, Empty>, Verb, {}, Empty>
+  >;
+  <const Options extends DefineHandlerOptions<Verb, Context>>(
+    options: Exact<Options, DefineHandlerOptions<Verb, Context>>,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Options>,
+    HandlerTypes<LeafContextForFile<F, Verb, Options>, Verb, Options, Empty>
+  >;
+  <const Options extends DefineHandlerOptions<Verb, Context>>(
+    options: Exact<Options, DefineHandlerOptions<Verb, Context>>,
+    handler: LeafHandlerFunction<NoInfer<LeafContextForFile<F, Verb, Options>>>,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Options>,
+    HandlerTypes<LeafContextForFile<F, Verb, Options>, Verb, Options, Empty>
+  >;
+};
+
 export type GlobalDefineHandler<Verb extends HttpVerbOrAll> = {
   <const Handlers extends readonly unknown[], Return extends unknown[]>(
     handlers: HandlerArray<Context, Return> & Handlers,
@@ -943,7 +1094,9 @@ export type Namespace<F extends File> = Typed<
       }
     : F["type"] extends "handler"
       ? {
-          [Verb in HttpVerb]: DefineHandler<F, Verb>;
+          [Verb in HttpVerb]: FileHasTemplate<F> extends true
+            ? DefineHandler<F, Verb>
+            : DefineLeafHandler<F, Verb>;
         }
       : Empty) &
     NamespaceVerb,
