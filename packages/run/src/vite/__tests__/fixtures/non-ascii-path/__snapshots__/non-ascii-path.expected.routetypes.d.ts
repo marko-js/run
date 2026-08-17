@@ -36,6 +36,7 @@ declare module "../src/routes/café/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -59,6 +60,7 @@ declare module "../src/routes/café/sub/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -82,6 +84,7 @@ declare module "../src/routes/menu/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
 
@@ -105,5 +108,6 @@ declare module "../src/routes/x^y/+page.marko" {
     export type DELETE = $.HandlerLike<Route, "DELETE">;
     export type PATCH = $.HandlerLike<Route, "PATCH">;
     export type OPTIONS = $.HandlerLike<Route, "OPTIONS">;
+    export type QUERY = $.HandlerLike<Route, "QUERY">;
   }
 }
