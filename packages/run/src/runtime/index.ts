@@ -60,6 +60,7 @@ declare global {
     export type DELETE = HandlerLike<AnyRoute, "DELETE">;
     export type PATCH = HandlerLike<AnyRoute, "PATCH">;
     export type OPTIONS = HandlerLike<AnyRoute, "OPTIONS">;
+    export type QUERY = HandlerLike<AnyRoute, "QUERY">;
   }
 }
 

@@ -22,3 +22,6 @@ ctx=>assertBody("PATCH")(ctx)
 # Step 5
 ctx=>assertBody("OPTIONS")(ctx)
 
+# Step 6
+ctx=>assertBody("QUERY")(ctx)
+

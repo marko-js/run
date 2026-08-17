@@ -16,6 +16,7 @@ const HttpVerbColors = {
   delete: kleur.red,
   patch: kleur.yellow,
   options: kleur.grey,
+  query: kleur.blue,
 };
 
 export function logRoutesTable(

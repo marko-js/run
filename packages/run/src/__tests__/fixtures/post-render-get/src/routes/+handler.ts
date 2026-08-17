@@ -9,3 +9,9 @@ export const POST = Run.POST((_ctx, next) => {
     value: "POST"
   })
 })
+
+export const QUERY = Run.QUERY((_ctx, next) => {
+  return next({
+    value: "QUERY"
+  })
+})
