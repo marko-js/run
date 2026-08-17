@@ -209,3 +209,9 @@ CodeRabbit's pre-merge checks (configured in the organization UI; the repo has n
 `cspell.json` › `words` | 2026-08-11 | impact:med | effort:low
 
 `pnpm run lint` fails on a clean `main` with a single cspell error: `agent-feedback/cleanup.md` uses "macrotask", which is not in `cspell.json`'s `words` list. The word arrived with 445114c (#256) and the check covers `**/*.{md,ts,marko}`, so every branch cut from main inherits a red lint until the word is added. Re-verify: `npx cspell "**/*.{md,ts,marko}" --no-progress` on main reports one issue.
+
+## A `params` validator on a route with two `$` segments loses its typing
+
+`packages/run/src/runtime/types.ts` › `RouteForFileDef` | 2026-08-17 | impact:low | effort:med
+
+In an app with `api/workspaces/$id/+middleware.ts` (a `Run.ALL` middleware calling `next({ workspace })`) and a leaf `api/workspaces/$id/review/$commentId/+handler.ts` exporting `Run.DELETE({ params({ id, commentId }) { … } }, (ctx) => …)`, `tsc` reports TS7031 (`id` / `commentId` implicitly any) on the validator's destructured argument and TS2554 ("Expected 1 arguments, but got 2") on the `Run.DELETE` call, so the two-argument form is unusable there. The identical shape on a one-segment route with no parent middleware (`api/procs/$pid/+handler.ts`, `Run.DELETE({ params({ pid }) … }, handler)`) type-checks. Something in the merge of the parent middleware's options with the leaf's `params` (`MergedRouteOptionsForFile` → `RouteForFileDef.params`) collapses when the path has two params, since the workaround is simply parsing `ctx.params.commentId` inside the handler. Repro: the two files above in a fixture under `packages/run/src/__tests__/fixtures/`, then `tsc` on it; a passing fixture with the validator form is the fix's test.
