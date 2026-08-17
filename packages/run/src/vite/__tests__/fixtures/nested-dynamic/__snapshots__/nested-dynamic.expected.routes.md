@@ -15,7 +15,6 @@ import page from "./dist/.marko-run/foo.$.bar.$.baz.$.$.marko";
 
 export const get1_options = {};
 export const head1_options = {};
-export const query1_options = {};
 
 export function get1(context) {
 	return render(context, page, {});
@@ -23,9 +22,5 @@ export function get1(context) {
 
 export function head1(context) {
 	return stripResponseBody(get1(context));
-}
-
-export function query1(context) {
-	return render(context, page, {});
 }
 ```

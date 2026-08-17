@@ -298,7 +298,7 @@ export interface Route<Def extends RouteDef = RouteDef, Data = unknown> {
 }
 type RouteFileGroupVerb<Group extends RouteFileGroup> =
   | (Keys<Group["handler"]["exports"]> & HttpVerb)
-  | (Group["template"] extends [] ? never : "GET" | "QUERY");
+  | (Group["template"] extends [] ? never : "GET");
 type RouteFileGroupMeta<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
@@ -354,7 +354,7 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
         Path,
         Verb,
         RouteFileGroupMeta<Group, Verb>,
-        Verb extends "GET" | "QUERY"
+        Verb extends "GET"
           ? {
               [File in Group["partial"][number] as File["name"] &
                 string]: File["exports"];

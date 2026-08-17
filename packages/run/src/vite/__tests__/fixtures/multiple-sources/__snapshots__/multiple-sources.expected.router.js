@@ -1,6 +1,6 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get1, get1_options, head1, head1_options, query1, query1_options } from "virtual:marko-run/__marko-run__index.js";
-import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__+routes.js";
+import { get1, get1_options, head1, head1_options } from "virtual:marko-run/__marko-run__index.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__+routes.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -26,15 +26,6 @@ function match_internal(method, pathname) {
 			const i1 = pathname.indexOf('/', 1) + 1;
 			if (!i1 || i1 === len) {
 				if (pathname.slice(1, i1 ? -1 : len) === "+routes") return { handler: head2, path: "/+routes", params: {}, options: head2_options, meta: {} };
-			}
-			return null;
-		}
-		case 'QUERY':
-		case 'query': {
-			if (len === 1) return { handler: query1, path: "/", params: {}, options: query1_options, meta: {} };
-			const i1 = pathname.indexOf('/', 1) + 1;
-			if (!i1 || i1 === len) {
-				if (pathname.slice(1, i1 ? -1 : len) === "+routes") return { handler: query2, path: "/+routes", params: {}, options: query2_options, meta: {} };
 			}
 			return null;
 		}

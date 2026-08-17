@@ -50,14 +50,13 @@ const putHandler = normalizeHandler(PUT, 'PUT');
 const postHandler = normalizeHandler(POST, 'POST');
 const deleteHandler = normalizeHandler(DELETE, 'DELETE');
 
-export const { GET: get2_meta, GET: head2_meta, POST: post2_meta, PUT: put2_meta, DELETE: delete2_meta, QUERY: query2_meta } = normalizeMeta(meta2);
+export const { GET: get2_meta, GET: head2_meta, POST: post2_meta, PUT: put2_meta, DELETE: delete2_meta } = normalizeMeta(meta2);
 
 export const get2_options = {};
 export const head2_options = {};
 export const post2_options = normalizeOptions('POST', postHandler);
 export const put2_options = normalizeOptions('PUT', putHandler);
 export const delete2_options = normalizeOptions('DELETE', deleteHandler);
-export const query2_options = {};
 
 export function get2(context) {
 	return render(context, page, {});
@@ -78,9 +77,5 @@ export function put2(context) {
 
 export function delete2(context) {
 	return call(deleteHandler, noContent, context);
-}
-
-export function query2(context) {
-	return render(context, page, {});
 }
 ```

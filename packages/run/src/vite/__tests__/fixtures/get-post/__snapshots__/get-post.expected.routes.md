@@ -30,7 +30,6 @@ const postHandler = normalizeHandler(POST, 'POST');
 export const get1_options = normalizeOptions('GET', mware3, getHandler);
 export const head1_options = normalizeOptions('HEAD', mware3);
 export const post1_options = normalizeOptions('POST', mware3, postHandler);
-export const query1_options = normalizeOptions('QUERY', mware3);
 
 export function get1(context) {
 	const __page = (data) => render(context, page, {}, data);
@@ -46,10 +45,5 @@ export function post1(context) {
 	const __page = (data) => render(context, page, {}, data);
 	const __postHandler = (data) => call(postHandler, __page, context, data);
 	return call(mware3, __postHandler, context);
-}
-
-export function query1(context) {
-	const __page = (data) => render(context, page, {}, data);
-	return call(mware3, __page, context);
 }
 ```

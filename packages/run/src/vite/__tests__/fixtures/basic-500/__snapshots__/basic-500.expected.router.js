@@ -1,5 +1,5 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
-import { get2, get2_options, head2, head2_options, query2, query2_options } from "virtual:marko-run/__marko-run__index.js";
+import { get2, get2_options, head2, head2_options } from "virtual:marko-run/__marko-run__index.js";
 import page500 from "./dist/.marko-run/500.marko";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
@@ -19,11 +19,6 @@ function match_internal(method, pathname) {
 		case 'HEAD':
 		case 'head': {
 			if (len === 1) return { handler: head2, path: "/", params: {}, options: head2_options, meta: {} };
-			return null;
-		}
-		case 'QUERY':
-		case 'query': {
-			if (len === 1) return { handler: query2, path: "/", params: {}, options: query2_options, meta: {} };
 			return null;
 		}
 	}

@@ -172,9 +172,6 @@ function getVerbs(route: Route) {
   if (route.page && !verbs.includes("get")) {
     verbs.unshift("get");
   }
-  if (route.page && !verbs.includes("query")) {
-    verbs.push("query");
-  }
   return verbs.sort((a, b) => HttpVerbOrder[a] - HttpVerbOrder[b]);
 }
 

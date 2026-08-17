@@ -15,7 +15,6 @@ import page from "./dist/.marko-run/$.$.marko";
 
 export const get1_options = {};
 export const head1_options = {};
-export const query1_options = {};
 
 export function get1(context) {
 	return render(context, page, {});
@@ -23,10 +22,6 @@ export function get1(context) {
 
 export function head1(context) {
 	return stripResponseBody(get1(context));
-}
-
-export function query1(context) {
-	return render(context, page, {});
 }
 ```
 ---
@@ -45,7 +40,6 @@ import page from "./dist/.marko-run/$.$$.marko";
 
 export const get2_options = {};
 export const head2_options = {};
-export const query2_options = {};
 
 export function get2(context) {
 	return render(context, page, {});
@@ -53,10 +47,6 @@ export function get2(context) {
 
 export function head2(context) {
 	return stripResponseBody(get2(context));
-}
-
-export function query2(context) {
-	return render(context, page, {});
 }
 ```
 ---
@@ -75,7 +65,6 @@ import page from "./dist/.marko-run/$.marko";
 
 export const get3_options = {};
 export const head3_options = {};
-export const query3_options = {};
 
 export function get3(context) {
 	return render(context, page, {});
@@ -83,10 +72,6 @@ export function get3(context) {
 
 export function head3(context) {
 	return stripResponseBody(get3(context));
-}
-
-export function query3(context) {
-	return render(context, page, {});
 }
 ```
 ---
@@ -105,7 +90,6 @@ import page from "./dist/.marko-run/$$.marko";
 
 export const get4_options = {};
 export const head4_options = {};
-export const query4_options = {};
 
 export function get4(context) {
 	return render(context, page, {});
@@ -113,9 +97,5 @@ export function get4(context) {
 
 export function head4(context) {
 	return stripResponseBody(get4(context));
-}
-
-export function query4(context) {
-	return render(context, page, {});
 }
 ```

@@ -1,6 +1,6 @@
 import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
 import { post1, post1_options, post1_meta, put1, put1_options, put1_meta, delete1, delete1_options, delete1_meta } from "virtual:marko-run/__marko-run__foo.bar.js";
-import { get2, get2_options, get2_meta, head2, head2_options, head2_meta, post2, post2_options, post2_meta, put2, put2_options, put2_meta, delete2, delete2_options, delete2_meta, query2, query2_options, query2_meta } from "virtual:marko-run/__marko-run__foo.baz.js";
+import { get2, get2_options, get2_meta, head2, head2_options, head2_meta, post2, post2_options, post2_meta, put2, put2_options, put2_meta, delete2, delete2_options, delete2_meta } from "virtual:marko-run/__marko-run__foo.baz.js";
 
 globalThis.__marko_run__ = { match, fetch, invoke };
     
@@ -89,21 +89,6 @@ function match_internal(method, pathname) {
 								case "bar": return { handler: delete1, path: "/foo/bar", params: {}, options: delete1_options, meta: delete1_meta };
 								case "baz": return { handler: delete2, path: "/foo/baz", params: {}, options: delete2_options, meta: delete2_meta };
 							}
-						}
-					}
-				}
-			}
-			return null;
-		}
-		case 'QUERY':
-		case 'query': {
-			if (len > 1) {
-				const i1 = pathname.indexOf('/', 1) + 1;
-				if (i1 && i1 !== len) {
-					if (pathname.slice(1, i1 - 1) === "foo") {
-						const i2 = pathname.indexOf('/', 5) + 1;
-						if (!i2 || i2 === len) {
-							if (pathname.slice(5, i2 ? -1 : len) === "baz") return { handler: query2, path: "/foo/baz", params: {}, options: query2_options, meta: query2_meta };
 						}
 					}
 				}
