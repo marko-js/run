@@ -1,5 +1,5 @@
 ---
-"@marko/run": minor
+"@marko/run": patch
 "@marko/run-explorer": patch
 ---
 
