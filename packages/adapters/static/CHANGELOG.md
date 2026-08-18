@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.10
+
+### Patch Changes
+
+- 314ed7e: Preview server redirects to the 404 page again; the `Location` header was being dropped by the compression middleware, leaving browsers on a blank page.
+
 ## 2.0.9
 
 ### Patch Changes
