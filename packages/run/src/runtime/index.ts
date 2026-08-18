@@ -50,16 +50,27 @@ declare global {
       PostablePath,
       PostPaths,
     };
+    /** @deprecated use the \`Run\` namespace instead */
     export type Route = AnyRoute;
+    /** @deprecated use \`Run.Context\` instead */
     export type Context = MultiRouteContext<AnyRoute>;
+    /** @deprecated define handlers with \`Run.GET(...)\`, \`Run.POST(...)\`, etc. instead */
     export type Handler = HandlerLike<AnyRoute>;
+    /** @deprecated define handlers with \`Run.GET(...)\` instead */
     export type GET = HandlerLike<AnyRoute, "GET">;
+    /** @deprecated define handlers with \`Run.HEAD(...)\` instead */
     export type HEAD = HandlerLike<AnyRoute, "HEAD">;
+    /** @deprecated define handlers with \`Run.POST(...)\` instead */
     export type POST = HandlerLike<AnyRoute, "POST">;
+    /** @deprecated define handlers with \`Run.PUT(...)\` instead */
     export type PUT = HandlerLike<AnyRoute, "PUT">;
+    /** @deprecated define handlers with \`Run.DELETE(...)\` instead */
     export type DELETE = HandlerLike<AnyRoute, "DELETE">;
+    /** @deprecated define handlers with \`Run.PATCH(...)\` instead */
     export type PATCH = HandlerLike<AnyRoute, "PATCH">;
+    /** @deprecated define handlers with \`Run.OPTIONS(...)\` instead */
     export type OPTIONS = HandlerLike<AnyRoute, "OPTIONS">;
+    /** @deprecated define handlers with \`Run.QUERY(...)\` instead */
     export type QUERY = HandlerLike<AnyRoute, "QUERY">;
   }
 }
