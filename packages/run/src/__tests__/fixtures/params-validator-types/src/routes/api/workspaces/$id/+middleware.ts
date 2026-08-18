@@ -1,3 +1,9 @@
+export const options = Run.options({
+  search({ limit }) {
+    return { limit: limit ? Number(limit) : 0 };
+  },
+});
+
 export default Run.ALL((ctx, next) => {
   if ("commentId" in ctx.params) {
     const merged: number = ctx.params.commentId;

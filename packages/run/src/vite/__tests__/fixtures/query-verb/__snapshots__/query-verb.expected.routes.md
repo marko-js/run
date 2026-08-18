@@ -12,6 +12,7 @@ import Page from "../../src/routes/+page.marko";
 ```js
 import { normalizeHandler, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
 import { QUERY, POST } from "./src/routes/+handler.ts";
+import * as handlerModule from "./src/routes/+handler.ts";
 import page from "./dist/.marko-run/index.marko";
 
 const queryHandler = normalizeHandler(QUERY, 'QUERY');
@@ -19,8 +20,8 @@ const postHandler = normalizeHandler(POST, 'POST');
 
 export const get1_options = {};
 export const head1_options = {};
-export const post1_options = normalizeOptions('POST', postHandler);
-export const query1_options = normalizeOptions('QUERY', queryHandler);
+export const post1_options = normalizeOptions('POST', handlerModule.options, postHandler);
+export const query1_options = normalizeOptions('QUERY', handlerModule.options, queryHandler);
 
 export function get1(context) {
 	return render(context, page, {});

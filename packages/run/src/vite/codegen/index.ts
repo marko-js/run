@@ -120,7 +120,10 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
   }
 
   if (middleware.length) {
-    const names = middleware.map((m) => `mware${m.id}`);
+    const names = middleware.flatMap((m) => [
+      `mware${m.id}`,
+      `mwareOptions${m.id}`,
+    ]);
     imports.writeLines(
       `import { ${names.join(
         ", ",
@@ -141,6 +144,7 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
     }
     imports.writeLines(
       `import { ${names.join(", ")} } from "${normalizedRelativePath(rootDir, handler.filePath)}";`,
+      `import * as handlerModule from "${normalizedRelativePath(rootDir, handler.filePath)}";`,
     );
   }
 
@@ -347,10 +351,11 @@ export function renderMiddleware(
   for (const { id, filePath } of middleware) {
     const importName = `middleware${id}`;
     imports.writeLines(
-      `import ${importName} from "${normalizedRelativePath(rootDir, filePath)}";`,
+      `import ${importName}, * as middlewareModule${id} from "${normalizedRelativePath(rootDir, filePath)}";`,
     );
     writer.writeLines(
       `export const mware${id} = normalizeHandler(${importName});`,
+      `export const mwareOptions${id} = middlewareModule${id}.options;`,
     );
   }
 
@@ -635,10 +640,10 @@ function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
     writer.write(`normalizeOptions('${verb.toUpperCase()}'`);
 
     for (const { id } of route.middleware) {
-      writer.write(`, mware${id}`);
+      writer.write(`, mwareOptions${id}, mware${id}`);
     }
     if (hasHandler) {
-      writer.write(`, ${verb}Handler`);
+      writer.write(`, handlerModule.options, ${verb}Handler`);
     }
     writer.write(");");
   } else {
