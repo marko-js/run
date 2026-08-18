@@ -57,3 +57,37 @@ describe("test sources type-check", () => {
     );
   });
 });
+
+describe("route type generation type-checks", () => {
+  // The fixture's middleware and handler each need the other's inferred
+  // module type — the shape that collapses both to `any` (TS7022). Its
+  // `@ts-expect-error` probes make silent widening fail this compile too.
+  it("keeps middleware and validator types across the module cycle", function () {
+    this.timeout(120000);
+    const result = spawnSync(
+      process.execPath,
+      [
+        require.resolve("typescript/lib/tsc.js"),
+        "-p",
+        path.join(
+          __dirname,
+          "fixtures",
+          "params-validator-types",
+          "tsconfig.check.json",
+        ),
+        "--pretty",
+        "false",
+      ],
+      { encoding: "utf-8", timeout: 90000 },
+    );
+
+    const localErrors = (result.stdout || "")
+      .split("\n")
+      // The compile pulls in the whole workspace graph, which carries known
+      // declaration-level noise; only errors in the fixture's sources are
+      // the reproduction.
+      .filter((line) => /params-validator-types[/\\]src[/\\]/.test(line));
+
+    assert.deepEqual(localErrors, []);
+  });
+});
