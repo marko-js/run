@@ -1,5 +1,5 @@
 ---
-"@marko/run": minor
+"@marko/run": patch
 ---
 
-Add a file-wide `export const options = Run.options({...})` for route validators, merged across the whole route and visible in every file's context — including through the middleware/handler shapes whose inline options previously collapsed the route's types to `any`.
+Fix route middleware and handler types collapsing to `any` when a middleware derives `next()` data from its context while a downstream handler declares validators.

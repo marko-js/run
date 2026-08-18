@@ -303,26 +303,16 @@ type RouteFileGroupMeta<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
 > = Fallback<MergeTuple<NormalizedMetaFiles<Group["meta"], Verb>>, Empty>;
-// A file's `options` export is read off the module directly, so consuming it
-// never resolves the file's inferred handler consts — the property that lets
-// every other file's context include it without a type cycle.
-type FileExportOptions<F extends File> = F["module"] extends {
-  options: infer O;
-}
-  ? O
-  : never;
 type RouteFileGroupOptions<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
 > = MergeHandlerOptionsTuple<
-  FileOptionsTuple<[...Group["middleware"], Group["handler"]], Verb>
+  MapTuple<
+    TypesFromHandlerFiles<[...Group["middleware"], Group["handler"]], Verb>,
+    "options",
+    Empty
+  >
 >;
-type FileOptionsTuple<Files extends File[], Verb extends HttpVerb> = {
-  [I in keyof Files]: MergeHandlerOptions<
-    FileExportOptions<Files[I]>,
-    Fallback<TypesFromHandlerFile<Files[I], Verb>["options"], never>
-  >;
-};
 type RouteFileGroupData<
   Group extends RouteFileGroup,
   Verb extends HttpVerb,
@@ -487,37 +477,43 @@ type DefineHandlerOptions<Verb extends HttpVerbOrAll, Ctx> = [Verb] extends [
 ]
   ? HandlerOptionsWithoutBody
   : HandlerOptionsWithBody<Ctx>;
-// Merged options as seen from one file's own context. Other files contribute
-// only their `options` export: reaching into their inline options would
-// resolve their inferred handler consts, whose bodies may in turn read this
-// file's context — the mutual inference TypeScript collapses to `any`
-// (TS7022). The local file's inline options are already in hand as `Options`,
-// so they merge without touching any export.
-type RouteFileGroupOptionsWithLocal<
-  Group extends RouteFileGroup,
+type TypesFromHandlerFilesWithLocal<
+  Files extends File[],
+  Verb extends HttpVerb,
   Id extends ID,
   Options,
-> = MergeHandlerOptionsTuple<
-  FileOptionsTupleWithLocal<
-    [...Group["middleware"], Group["handler"]],
-    Id,
-    Options
-  >
->;
-type FileOptionsTupleWithLocal<Files extends File[], Id extends ID, Options> = {
+> = {
   [I in keyof Files]: Files[I] extends {
     id: Id;
   }
-    ? MergeHandlerOptions<FileExportOptions<Files[I]>, Options>
-    : FileExportOptions<Files[I]>;
+    ? HandlerTypes<Context, Verb, Options>
+    : TypesFromHandlerFile<Files[I], Verb>;
 };
+type RouteFileGroupOptionsWithLocal<
+  Group extends RouteFileGroup,
+  Verb extends HttpVerb,
+  Id extends ID,
+  Options,
+> = MergeHandlerOptionsTuple<
+  MapTuple<
+    TypesFromHandlerFilesWithLocal<
+      [...Group["middleware"], Group["handler"]],
+      Verb,
+      Id,
+      Options
+    >,
+    "options",
+    Empty
+  >
+>;
 type MergedRouteOptionsForFile<
   Path extends keyof AppPaths,
+  Verb extends HttpVerb,
   Id extends ID,
   Options,
 > = Fallback<
   Validation<
-    RouteFileGroupOptionsWithLocal<AppPaths[Path]["files"], Id, Options>
+    RouteFileGroupOptionsWithLocal<AppPaths[Path]["files"], Verb, Id, Options>
   >,
   Empty
 >;
@@ -532,22 +528,22 @@ export interface RouteForFileDef<
   meta: Verb extends keyof AppPaths[Path]["verbs"]
     ? AppPaths[Path]["verbs"][Verb]["def"]["meta"]
     : Empty;
-  params: MergedRouteOptionsForFile<Path, F["id"], Options> extends {
+  params: MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
     params: infer T;
   }
     ? T
     : PathParams<Path & string>;
-  search: MergedRouteOptionsForFile<Path, F["id"], Options> extends {
+  search: MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
     search: infer T;
   }
     ? T
     : undefined;
   body: Verb extends HttpVerbWithBody
-    ? MergedRouteOptionsForFile<Path, F["id"], Options> extends {
+    ? MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
         json: infer T;
       }
       ? Promise<T>
-      : MergedRouteOptionsForFile<Path, F["id"], Options> extends {
+      : MergedRouteOptionsForFile<Path, Verb, F["id"], Options> extends {
             form: infer T;
           }
         ? Promise<T>
@@ -559,6 +555,42 @@ export interface RouteForFileDef<
     ? T
     : Record<string, unknown>;
 }
+// Context<RouteForFileDef<...>> would work structurally, but Context's
+// `T extends Route` constraint check compares every member eagerly — forcing
+// `data`, and with it another file's export, while that export may still be
+// resolving. A standalone interface keeps each member lazy: nothing resolves
+// until user code reads it, by which point the exports it needs resolve
+// body-free.
+interface FileContext<
+  F extends File,
+  Path extends keyof AppPaths,
+  Verb extends HttpVerb,
+  Options,
+> {
+  readonly route: Path;
+  readonly method: Verb;
+  readonly meta: RouteForFileDef<F, Path, Verb, Options>["meta"];
+  readonly params: RouteForFileDef<F, Path, Verb, Options>["params"];
+  readonly search: RouteForFileDef<F, Path, Verb, Options>["search"];
+  readonly body: RouteForFileDef<F, Path, Verb, Options>["body"];
+  readonly data: RouteForFileDef<F, Path, Verb, Options>["data"];
+  readonly url: URL;
+  readonly request: Request;
+  readonly platform: Platform;
+  readonly parent: Context | undefined;
+  serializedGlobals: Record<string, boolean>;
+  fetch(
+    resource: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response>;
+  render<T>(
+    template: Marko.Template<T>,
+    input: T,
+    init?: ResponseInit,
+  ): Response;
+  redirect(to: string | URL, status?: number): Response;
+  back(fallback?: string | URL, status?: number): Response;
+}
 type ContextForFileWithOptions<
   F extends File,
   Verb extends HttpVerbOrAll,
@@ -566,24 +598,80 @@ type ContextForFileWithOptions<
 > = Union<{
   [Path in PathsForFile<F>]: Union<{
     [V in VerbsForPath<Path, Verb>]: V extends HttpVerb
-      ? Context<RouteForFileDef<F, Path & keyof AppPaths, V, Options>>
+      ? FileContext<F, Path & keyof AppPaths, V, Options>
       : never;
   }>;
 }>;
+// Inference captures the whole function type `H` rather than its return: a
+// function type's return resolves lazily, and the `any`-returning constraint
+// target never asks for it, so another file can resolve this export — and
+// read its options — without this handler's body ever being typed. The
+// return type still reaches the export through `InferredReturn<H>`, a
+// conditional that only types the body once something reads the data it
+// carries.
+type InferredHandlerFunction<Ctx> = (ctx: Ctx, next: NextFunction) => any;
+type InferredHandlerArray<Ctx> = readonly (
+  | {
+      [__run__.TYPES]: {
+        options: any;
+        data: any;
+      };
+    }
+  | InferredHandlerFunction<Ctx>
+)[];
+type InferredReturn<H> = H extends (...args: any[]) => infer R ? R : never;
+// The data a captured function type carries, deferred: nothing types the
+// function's body until something actually reads the route's data.
+type InferredHandlerData<H> = HandlerFuncData<InferredReturn<H>>;
+// The Typed payload is spelled as an object literal on purpose: a deferred
+// conditional (data derived from an uninstantiated function's return) stays
+// lazy inside a structural member, but is forced when passed as a direct
+// type argument to a named generic like HandlerTypes — which would type the
+// handler body while another file's export is still resolving.
+type InferredHandlerTypes<Ctx, Verb extends HttpVerbOrAll, Options, H> = {
+  context: Ctx;
+  verb: Verb;
+  options: Options;
+  data: InferredHandlerData<H> extends infer Data
+    ? [Data] extends [never]
+      ? Empty
+      : Data extends Record<string, unknown>
+        ? Data
+        : Empty
+    : never;
+  passthrough: [InferredHandlerData<H>] extends [never] ? false : true;
+};
+type ComposedHandlerTypes<
+  Ctx,
+  Verb extends HttpVerbOrAll,
+  Options,
+  Handlers extends readonly unknown[],
+> = {
+  context: Ctx;
+  verb: Verb;
+  options: Options;
+  data: ComposedHandlerData<Handlers> extends infer Data
+    ? [Data] extends [never]
+      ? Empty
+      : Data extends Record<string, unknown>
+        ? Data
+        : Empty
+    : never;
+  passthrough: [ComposedHandlerData<Handlers>] extends [never] ? false : true;
+};
 export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
-  <const Handlers extends readonly unknown[], Return extends unknown[]>(
-    handlers: HandlerArray<
-      ContextForFileWithOptions<F, Verb, Empty> & {},
-      Return
+  <const Handlers extends readonly unknown[]>(
+    handlers: InferredHandlerArray<
+      ContextForFileWithOptions<F, Verb, Empty> & {}
     > &
       Handlers,
   ): Typed<
     NormalizedHandlerFunction<Verb, ComposedHandlerOptions<Handlers>>,
-    HandlerTypes<
+    ComposedHandlerTypes<
       ContextForFileWithOptions<F, Verb, Empty> & {},
       Verb,
       ComposedHandlerOptions<Handlers>,
-      ComposedHandlerData<Handlers>
+      Handlers
     >
   >;
   <
@@ -592,15 +680,13 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
       ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
     const Handlers extends readonly unknown[],
-    Return extends unknown[],
   >(
     options: Exact<
       Options,
       DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
-    handlers: HandlerArray<
-      ContextForFileWithOptions<F, Verb, Options> & {},
-      Return
+    handlers: InferredHandlerArray<
+      ContextForFileWithOptions<F, Verb, Options> & {}
     > &
       Handlers,
   ): Typed<
@@ -608,23 +694,27 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
       Verb,
       MergeHandlerOptions<ComposedHandlerOptions<Handlers>, Options>
     >,
-    HandlerTypes<
+    ComposedHandlerTypes<
       ContextForFileWithOptions<F, Verb, Options> & {},
       Verb,
       MergeHandlerOptions<ComposedHandlerOptions<Handlers>, Options>,
-      ComposedHandlerData<Handlers>
+      Handlers
     >
   >;
-  <Return>(
-    handler: HandlerFunction<
-      ContextForFileWithOptions<F, Verb, Empty> & {},
-      Return
+  <
+    H extends InferredHandlerFunction<
+      ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
-  ): NormalizedHandler<
-    ContextForFileWithOptions<F, Verb, Empty> & {},
-    Verb,
-    Return,
-    {}
+  >(
+    handler: H,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Empty>,
+    InferredHandlerTypes<
+      ContextForFileWithOptions<F, Verb, Empty> & {},
+      Verb,
+      {},
+      H
+    >
   >;
   <
     const Options extends DefineHandlerOptions<
@@ -647,21 +737,23 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
       Verb,
       ContextForFileWithOptions<F, Verb, Empty> & {}
     >,
-    Return,
+    H extends InferredHandlerFunction<
+      NoInfer<ContextForFileWithOptions<F, Verb, Options>> & {}
+    >,
   >(
     options: Exact<
       Options,
       DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
     >,
-    handler: HandlerFunction<
-      NoInfer<ContextForFileWithOptions<F, Verb, Options>> & {},
-      Return
-    >,
-  ): NormalizedHandler<
-    ContextForFileWithOptions<F, Verb, Options> & {},
-    Verb,
-    Return,
-    Options
+    handler: H,
+  ): Typed<
+    NormalizedHandlerFunction<Verb, Options>,
+    InferredHandlerTypes<
+      ContextForFileWithOptions<F, Verb, Options> & {},
+      Verb,
+      Options,
+      H
+    >
   >;
 };
 
@@ -939,30 +1031,15 @@ export type NamespaceVerb<Verb extends HttpVerbOrAll = "ALL"> = {
 };
 export type GlobalNamespace = {
   [Verb in HttpVerbOrAll]: GlobalDefineHandler<Verb>;
-} & NamespaceVerb & {
-    options: DefineFileOptions;
-  };
-// File-wide options declared as `export const options = Run.options({...})`.
-// The context-free constraint keeps the export's type independent of every
-// route context, which is what lets other files' contexts consume it while
-// their own types are still resolving.
-export type DefineFileOptions = <
-  const O extends HandlerOptionsWithBody<Context>,
->(
-  options: Exact<O, HandlerOptionsWithBody<Context>>,
-) => O;
+} & NamespaceVerb;
 export type Namespace<F extends File> = Typed<
   (F["type"] extends "middleware"
     ? {
         [Verb in HttpVerbOrAll]: DefineHandler<F, Verb>;
-      } & {
-        options: DefineFileOptions;
       }
     : F["type"] extends "handler"
       ? {
           [Verb in HttpVerb]: DefineHandler<F, Verb>;
-        } & {
-          options: DefineFileOptions;
         }
       : Empty) &
     NamespaceVerb,

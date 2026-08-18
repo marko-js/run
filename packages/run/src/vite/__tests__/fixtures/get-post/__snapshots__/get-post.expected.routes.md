@@ -3,10 +3,9 @@
 ## Middleware
 ```js
 import { normalizeHandler } from "virtual:marko-run/runtime/internal";
-import middleware3, * as middlewareModule3 from "./src/routes/+middleware.ts";
+import middleware3 from "./src/routes/+middleware.ts";
 
 export const mware3 = normalizeHandler(middleware3);
-export const mwareOptions3 = middlewareModule3.options;
 ```
 ---
 
@@ -21,17 +20,16 @@ import Page from "../../src/routes/+page.marko";
 ### Handler
 ```js
 import { normalizeHandler, call, normalizeOptions, render, stripResponseBody } from "virtual:marko-run/runtime/internal";
-import { mware3, mwareOptions3 } from "virtual:marko-run/__marko-run__middleware.js";
+import { mware3 } from "virtual:marko-run/__marko-run__middleware.js";
 import { GET, POST } from "./src/routes/+handler.marko";
-import * as handlerModule from "./src/routes/+handler.marko";
 import page from "./dist/.marko-run/index.marko";
 
 const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
-export const get1_options = normalizeOptions('GET', mwareOptions3, mware3, handlerModule.options, getHandler);
-export const head1_options = normalizeOptions('HEAD', mwareOptions3, mware3);
-export const post1_options = normalizeOptions('POST', mwareOptions3, mware3, handlerModule.options, postHandler);
+export const get1_options = normalizeOptions('GET', mware3, getHandler);
+export const head1_options = normalizeOptions('HEAD', mware3);
+export const post1_options = normalizeOptions('POST', mware3, postHandler);
 
 export function get1(context) {
 	const __page = (data) => render(context, page, {}, data);

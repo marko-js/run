@@ -59,7 +59,6 @@ globalThis.MarkoRun ??= {
 
 globalThis.Run ??= {
   href,
-  options: (options: HandlerOptions) => options,
   ALL: createDefineHandler("ALL"),
   ...Object.fromEntries(
     httpVerbs.map((v) => {
@@ -463,17 +462,11 @@ type MergeOptionsInput =
 // first source is often a `+middleware` options object shared across routes.
 // With a `verb`, inputs stamped with a verb that would not run for it are
 // skipped; GET-stamped inputs still apply to HEAD, mirroring `call()`.
-export function mergeOptions(
-  items: (MergeOptionsInput | undefined)[],
-  verb?: HttpVerb,
-) {
+export function mergeOptions(items: MergeOptionsInput[], verb?: HttpVerb) {
   const merged: HandlerOptions = {};
   for (const item of items) {
     let options: HandlerOptions;
-    // A missing `options` export reaches the per-route merge as undefined.
-    if (!item) {
-      continue;
-    } else if (typeof item === "object") {
+    if (typeof item === "object") {
       options = item;
     } else if ("options" in item) {
       if (verb && item.verb) {
@@ -515,7 +508,7 @@ export function mergeOptions(
 
 export function normalizeOptions(
   verb: HttpVerb,
-  ...items: (MergeOptionsInput | undefined)[]
+  ...items: MergeOptionsInput[]
 ) {
   const merged = mergeOptions(items, verb);
 
