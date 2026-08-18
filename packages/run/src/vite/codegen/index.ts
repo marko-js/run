@@ -531,6 +531,7 @@ export async function renderRouteTypeInfo(
   /** @deprecated use \`Run\` namespace instead */
   namespace MarkoRun {
     export { NotHandled, NotMatched, GetPaths, PostPaths, GetablePath, GetableHref, PostablePath, PostableHref, Platform };
+    /** @deprecated use the \`Run\` namespace instead */
     export type Route = ${
       info.routes.size
         ? `$.Routes[${[...info.routes]
@@ -538,14 +539,17 @@ export async function renderRouteTypeInfo(
             .join(" | ")}]`
         : "globalThis.MarkoRun.Route"
     };
+    /** @deprecated use \`Run.Context\` instead */
     export type Context = ${
       info.modulePath.endsWith(".marko")
         ? "Run.Context"
         : "$.MultiRouteContext<Route>"
     };
+    /** @deprecated define handlers with \`Run.GET(...)\`, \`Run.POST(...)\`, etc. instead */
     export type Handler = $.HandlerLike<Route>;`);
       for (const verb of httpVerbs) {
         writer.write(`
+    /** @deprecated define handlers with \`Run.${verb.toUpperCase()}(...)\` instead */
     export type ${verb.toUpperCase()} = $.HandlerLike<Route, "${verb.toUpperCase()}">;`);
       }
       writer.write(`
