@@ -566,6 +566,24 @@ type ContextForFileWithOptions<
       : never;
   }>;
 }>;
+/**
+ * A verb helper on the global `Run` namespace (`Run.GET`, `Run.POST`, ...,
+ * and `Run.ALL` in middleware). Accepts a handler function or array of
+ * handlers, optionally preceded by validation options:
+ *
+ *     export const POST = Run.POST({ json: NoteSchema }, async (ctx, next) => {
+ *       const [note, issues] = await ctx.body; // parsed and validated
+ *       if (issues) return Response.json({ issues }, { status: 422 });
+ *       return next({ note }); // renders the page; data becomes $global.data
+ *     });
+ *
+ * Declare request bodies with the `json`/`form` options and read `ctx.body` —
+ * never `ctx.request.json()`/`.formData()`, which bypass validation and size
+ * limits. Return `null` to fall through to the 404 page.
+ *
+ * @see `@marko/run/cheatsheet.md` (in `node_modules`) for the full routing,
+ * handler, and validation conventions.
+ */
 export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   <const Handlers extends readonly unknown[], Return extends unknown[]>(
     handlers: HandlerArray<
@@ -661,6 +679,13 @@ export type DefineHandler<F extends File, Verb extends HttpVerbOrAll> = {
   >;
 };
 
+/**
+ * The untyped fallback for a `Run` verb helper, used before the generated
+ * `.marko-run/routes.d.ts` narrows `Run` per route file.
+ *
+ * @see `@marko/run/cheatsheet.md` (in `node_modules`) for the full routing,
+ * handler, and validation conventions.
+ */
 export type GlobalDefineHandler<Verb extends HttpVerbOrAll> = {
   <const Handlers extends readonly unknown[], Return extends unknown[]>(
     handlers: HandlerArray<Context, Return> & Handlers,
@@ -731,11 +756,21 @@ export type HandlerFunction<Ctx = Context, Return = HandlerReturn> = (
   next: NextFunction,
 ) => Return extends HandlerReturn ? Return : HandlerReturn;
 export interface HandlerOptionsWithoutBody {
+  /** Validates and can transform path parameters; the result is `ctx.params`. */
   params?: Validator<Record<string, any>>;
+  /** Validates and can transform the query string; the result is `ctx.search`. */
   search?: Validator<Record<string, any>>;
 }
 export interface HandlerOptionsWithBody<Ctx> extends HandlerOptionsWithoutBody {
+  /**
+   * Parses and validates `application/json` request bodies; read the result
+   * with `await ctx.body` instead of `ctx.request.json()`.
+   */
   json?: JsonBodyValidator;
+  /**
+   * Parses and validates url-encoded and multipart form bodies; read the
+   * result with `await ctx.body` instead of `ctx.request.formData()`.
+   */
   form?: FormBodyValidator<Ctx>;
 }
 export type HandlerOptions<Ctx = Context> = [Ctx] extends [
@@ -977,9 +1012,17 @@ export interface Context<T extends Route = Route> {
   readonly route: T["path"];
   readonly method: T["method"];
   readonly meta: T["meta"];
+  /** Path parameters, transformed by any `params` validator. */
   readonly params: T["params"];
+  /** Query string values, transformed by any `search` validator. */
   readonly search: T["search"];
+  /**
+   * Promise for the parsed request body when the route declares a `json` or
+   * `form` option, otherwise `undefined`. Read it with `await ctx.body` —
+   * a Standard Schema validator resolves it to a `[value, issues]` tuple.
+   */
   readonly body: T["body"];
+  /** Data passed to `next({ ... })` by upstream middleware and handlers. */
   readonly data: T["data"];
   readonly url: URL;
   readonly request: Request;
