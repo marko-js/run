@@ -1,5 +1,32 @@
 # @marko/run
 
+## 0.11.10
+
+### Patch Changes
+
+- 57a5ffd: Options declared inside an array `+handler`/`+middleware` export (e.g. `export const POST = [Run.POST({ json: schema }, fn), other]`) now apply; previously the validator never ran and `context.body` stayed undefined. Reusing a handler in single-element arrays no longer mutates it.
+- 339e971: Requests whose `Content-Type` matches no configured body option now respond 415 instead of being parsed by the form fallback and skipping validation.
+- 6f1f8ac: Malformed request bodies (invalid JSON, bad encoding, unparsable multipart) now respond 400 and bodies exceeding the configured size limits respond 413, instead of surfacing as server 500s.
+- b39dfce: Dev no longer serves endless `504 Outdated Optimize Dep` for client dependencies when a multi-environment plugin (e.g. `@cloudflare/vite-plugin`) shares the dev server, on Vite 8.1.4+.
+- 3bbdcda: `marko-run --version` and the startup banner report the installed package version instead of `0.0.1` / an inlined build-time value.
+- f0ad866: Deduplicated dev-server errors print their message line again instead of a bare stack trace.
+- 5afc8a4: Fix restored route files intermittently returning HTTP 500 responses in dev until the server restarts.
+- d0f735c: Fix intermittent dev-server 500s when app code reachable from middleware imports `@marko/run/router`.
+- 501b0c5: `Run.href(path, options)` with a nullish options value no longer throws in production client builds.
+- f2fa582: `Run.href` now omits undefined `search` values instead of serializing them as `?key=undefined`. Nested `Run.href` calls no longer corrupt the build-time rewrite.
+- c8a31d4: Options declared in `+middleware` no longer leak between routes, and a handler declaring only a size limit keeps the middleware's validator. A key explicitly set to `undefined` now overrides the inherited option; an absent key leaves it in place.
+- e0f5860: The servers spawned by `marko-run preview` and `marko-run dev` now shut down when the CLI receives SIGINT or SIGTERM; previously they survived the CLI and kept their port.
+- 79f56d9: Support the QUERY HTTP method (RFC 10008): handlers can export `QUERY`, and it participates in routing, typed options/body validation, and the route explorer. Like POST, a QUERY handler's `next` renders the page when the route has one.
+- 820c17c: `context.render` now merges a caller-supplied init with the HTML defaults, so passing a status or extra headers no longer drops the `content-type`.
+- 62b2255: Stop warning that Marko's colocated companion files, such as `+page.style.css`, are not routable.
+- dc33588: Routes with non-ASCII or otherwise URL-encoded static segments now match their percent-encoded request paths instead of silently 404ing.
+- 3525489: Escape string literals in the generated router, so route directories containing quotes or other special characters build and match correctly.
+- ef9a8db: `throw null` in a handler no longer crashes the dev server; it now skips handling the request in dev the same way it does in production.
+- 1f3b553: Apply the configured `trailingSlashes` policy through the public `match`/`invoke` pair, not just the generated `fetch`, so the same app no longer serves duplicate-content URLs depending on how it is mounted. Also simplifies the trailing-slash checks in generated routers.
+- 57a5ffd: Validation options from a verb-specific middleware (e.g. `Run.POST({ search, form })`) no longer apply to verbs the middleware doesn't run on; GET-stamped options still serve HEAD.
+- Updated dependencies [79f56d9]
+  - @marko/run-explorer@2.0.5
+
 ## 0.11.9
 
 ### Patch Changes
