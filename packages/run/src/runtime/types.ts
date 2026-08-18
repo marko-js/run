@@ -605,6 +605,15 @@ type ContextForFileWithOptions<
 // entangle this one; `HandlerReturn` checks the return position like an
 // ordinary generic call, safe only when nothing else can be mid-resolution.
 // Namespace picks per file.
+type FileHandlerOptions<
+  F extends File,
+  Verb extends HttpVerbOrAll,
+> = DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty>>;
+type OptionsArg<Options, F extends File, Verb extends HttpVerbOrAll> = Exact<
+  Options,
+  FileHandlerOptions<F, Verb>
+> &
+  NotAFunction;
 type DefinedHandlerFunction<Ctx, Return> = (
   ctx: Ctx,
   next: NextFunction,
@@ -629,7 +638,7 @@ export type DefinedHandlerTypes<
   Options,
   Handlers extends readonly unknown[],
 > = {
-  context: ContextForFileWithOptions<F, Verb, Options> & {};
+  context: ContextForFileWithOptions<F, Verb, Options>;
   verb: Verb;
   options: Options;
   data: ComposedHandlerData<Handlers> extends infer Data
@@ -668,25 +677,18 @@ export type DefineHandler<
 > = {
   <const Handlers extends readonly unknown[]>(
     handlers: DefinedHandlerArray<
-      ContextForFileWithOptions<F, Verb, Empty> & {},
+      ContextForFileWithOptions<F, Verb, Empty>,
       Return
     > &
       Handlers,
   ): DefinedHandler<F, Verb, ComposedHandlerOptions<Handlers>, Handlers>;
   <
-    const Options extends DefineHandlerOptions<
-      Verb,
-      ContextForFileWithOptions<F, Verb, Empty> & {}
-    >,
+    const Options extends FileHandlerOptions<F, Verb>,
     const Handlers extends readonly unknown[],
   >(
-    options: Exact<
-      Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
-    > &
-      NotAFunction,
+    options: OptionsArg<Options, F, Verb>,
     handlers: DefinedHandlerArray<
-      ContextForFileWithOptions<F, Verb, Options> & {},
+      ContextForFileWithOptions<F, Verb, Options>,
       Return
     > &
       Handlers,
@@ -698,39 +700,23 @@ export type DefineHandler<
   >;
   <
     H extends DefinedHandlerFunction<
-      ContextForFileWithOptions<F, Verb, Empty> & {},
+      ContextForFileWithOptions<F, Verb, Empty>,
       Return
     >,
   >(
     handler: H,
   ): DefinedHandler<F, Verb, {}, [H]>;
-  <
-    const Options extends DefineHandlerOptions<
-      Verb,
-      ContextForFileWithOptions<F, Verb, Empty> & {}
-    >,
-  >(
-    options: Exact<
-      Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
-    > &
-      NotAFunction,
+  <const Options extends FileHandlerOptions<F, Verb>>(
+    options: OptionsArg<Options, F, Verb>,
   ): DefinedHandler<F, Verb, Options, []>;
   <
-    const Options extends DefineHandlerOptions<
-      Verb,
-      ContextForFileWithOptions<F, Verb, Empty> & {}
-    >,
+    const Options extends FileHandlerOptions<F, Verb>,
     H extends DefinedHandlerFunction<
-      NoInfer<ContextForFileWithOptions<F, Verb, Options>> & {},
+      NoInfer<ContextForFileWithOptions<F, Verb, Options>>,
       Return
     >,
   >(
-    options: Exact<
-      Options,
-      DefineHandlerOptions<Verb, ContextForFileWithOptions<F, Verb, Empty> & {}>
-    > &
-      NotAFunction,
+    options: OptionsArg<Options, F, Verb>,
     handler: H,
   ): DefinedHandler<F, Verb, Options, [H]>;
 };
