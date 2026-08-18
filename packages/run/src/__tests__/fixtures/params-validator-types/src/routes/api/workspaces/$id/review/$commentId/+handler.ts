@@ -1,3 +1,5 @@
+import type { Context, GetContext } from "@marko/run";
+
 export const DELETE = Run.DELETE(
   {
     params({ id, commentId }) {
@@ -5,6 +7,13 @@ export const DELETE = Run.DELETE(
     },
   },
   (ctx) => {
+    const asPlainContext: Context = ctx;
+    const asScopedContext: GetContext<"/api/workspaces/$id/review/$commentId"> =
+      ctx;
+    // @ts-expect-error the deprecated MarkoRun.Context types params as raw
+    // strings, so a context whose validator produced a number never fit it
+    const asLegacyContext: MarkoRun.Context = ctx;
+    void asPlainContext, void asScopedContext, void asLegacyContext;
     const validated: number = ctx.params.commentId;
     const upstream: string = ctx.data.workspace;
     const fromMiddleware: number = ctx.search.limit;
@@ -22,3 +31,7 @@ export const DELETE = Run.DELETE(
     });
   },
 );
+
+export const routeLevel: number = null as unknown as Run.Context["params"]["commentId"];
+// @ts-expect-error route-level params keep the validated number type
+export const routeLevelBad: boolean = null as unknown as Run.Context["params"]["commentId"];
