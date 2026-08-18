@@ -472,10 +472,11 @@ type ComposedHandlerData<Handlers extends readonly unknown[]> = MergeTuple<{
   [K in keyof Handlers]: HandlerValueData<Handlers[K]>;
 }>;
 type Exact<T, Shape> = T & Record<Exclude<keyof T, keyof Shape>, never>;
-// A function is assignable to the all-optional options shape (and Exact has
-// no keys to poison on it), which let a mistyped `Run.GET(() => ...)` match
-// the options-only overload and skip return checking. Every function has
-// `apply`, so this bars callables while leaving plain option objects alone.
+/**
+ * Bars a function from matching the all-optional options parameter — every
+ * function has `apply` — so a mistyped handler argument fails the overload
+ * instead of being accepted as an options object.
+ */
 type NotAFunction = { apply?: never };
 type DefineHandlerOptions<Verb extends HttpVerbOrAll, Ctx> = [Verb] extends [
   HttpVerbWithoutBody,
@@ -560,12 +561,13 @@ export interface RouteForFileDef<
     ? T
     : Record<string, unknown>;
 }
-// Context<RouteForFileDef<...>> would work structurally, but Context's
-// `T extends Route` constraint check compares every member eagerly — forcing
-// `data`, and with it another file's export, while that export may still be
-// resolving. A standalone interface keeps each member lazy: nothing resolves
-// until user code reads it, by which point the exports it needs resolve
-// body-free.
+/**
+ * A file's view of one route context. Deliberately not `Context<...>`: its
+ * constraint check forces every member — including `data`, and with it
+ * another file's possibly mid-resolution export. A standalone interface
+ * resolves each member only when read, after the exports it needs can
+ * resolve body-free.
+ */
 export interface FileContext<
   F extends File,
   Path extends keyof AppPaths,
@@ -591,20 +593,6 @@ type ContextForFileWithOptions<
       : never;
   }>;
 }>;
-// ── Deferred handler definition ─────────────────────────────────────────
-// Inference captures whole function types rather than their returns: a
-// function type's return resolves lazily, and an `any`-returning constraint
-// target never asks for it, so another file can resolve this export — and
-// read its merged options — without this file's body ever being typed. The
-// body's contribution (data passed through `next()`) reaches the export as
-// conditionals over the captured types, typed only once something reads the
-// data they carry.
-//
-// `Return` selects the constraint's return target: `any` keeps the export
-// resolvable body-free, required wherever another route file's inference can
-// entangle this one; `HandlerReturn` checks the return position like an
-// ordinary generic call, safe only when nothing else can be mid-resolution.
-// Namespace picks per file.
 type FileHandlerOptions<
   F extends File,
   Verb extends HttpVerbOrAll,
@@ -627,11 +615,12 @@ type DefinedHandlerArray<Ctx, Return> = readonly (
     }
   | DefinedHandlerFunction<Ctx, Return>
 )[];
-// Spelled as an object literal on purpose: a deferred conditional (data
-// derived from an uncaptured function's return) stays lazy as a structural
-// member, but is forced when passed as a direct type argument to a named
-// generic like HandlerTypes — which would type the body while another file's
-// export is still resolving.
+/**
+ * Spelled as an object literal: a deferred conditional stays lazy as a
+ * structural member but is forced as a direct type argument to a named
+ * generic like HandlerTypes, which would type the handler body while another
+ * file's export is still resolving.
+ */
 export type DefinedHandlerTypes<
   F extends File,
   Verb extends HttpVerbOrAll,
@@ -659,9 +648,12 @@ export type DefinedHandler<
   NormalizedHandlerFunction<Verb, Options>,
   DefinedHandlerTypes<F, Verb, Options, Handlers>
 >;
-// A handler file with no middleware on any of its routes can never be
-// resolved while another export is in flight, so it gets the return-checked
-// form.
+/**
+ * True when middleware shares any of the file's routes, so resolving its
+ * export while another is mid-flight is possible. Namespace resolves this —
+ * not a `Return` default — because the deferred form needs the literal `any`
+ * type for the checker to skip return comparison.
+ */
 type FileHasUpstream<F extends File> =
   true extends Union<{
     [P in PathsForFile<F>]: AppPaths[P]["files"]["middleware"] extends []
@@ -670,6 +662,18 @@ type FileHasUpstream<F extends File> =
   }>
     ? true
     : false;
+/**
+ * Captures whole function types rather than their returns: a function type's
+ * return resolves lazily and an `any` return target never asks for it, so
+ * other files can read this export's merged options without its body ever
+ * being typed. Body-derived data reaches the export as conditionals typed
+ * only when something reads them.
+ *
+ * `Return` is the callbacks' return target: `any` keeps the export
+ * resolvable body-free, required wherever another route file's inference can
+ * entangle this one; `HandlerReturn` checks the return position, safe only
+ * when nothing else can be mid-resolution.
+ */
 export type DefineHandler<
   F extends File,
   Verb extends HttpVerbOrAll,
@@ -1034,8 +1038,7 @@ export type DefineRoutes<Paths = void> = {
       >;
 };
 export interface Platform {}
-// The route-independent half of a context, shared so FileContext cannot
-// drift from Context.
+/** The route-independent half of a context, shared with FileContext. */
 export interface ContextBase {
   readonly url: URL;
   readonly request: Request;

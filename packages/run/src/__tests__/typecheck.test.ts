@@ -59,12 +59,9 @@ describe("test sources type-check", () => {
 });
 
 describe("route type generation type-checks", () => {
-  // The params-validator-types fixture pairs a parent-segment middleware —
-  // deriving `next(data)` from its context, with its own inline validator —
-  // with a downstream handler whose validator the middleware's context must
-  // reflect: the mutual inference that used to collapse both modules to
-  // `any` (TS7022). Its sources carry `@ts-expect-error` probes, so this
-  // compile also fails if the types silently widen back to `any` (TS2578).
+  // The fixture's middleware and handler each need the other's inferred
+  // module type — the shape that collapses both to `any` (TS7022). Its
+  // `@ts-expect-error` probes make silent widening fail this compile too.
   it("keeps middleware and validator types across the module cycle", function () {
     this.timeout(120000);
     const result = spawnSync(

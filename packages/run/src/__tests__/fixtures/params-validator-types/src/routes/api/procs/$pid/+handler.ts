@@ -9,8 +9,7 @@ export const DELETE = Run.DELETE(
   },
 );
 
-// This route has no middleware upstream, so its namespace resolves to the
-// return-checking CheckedDefineHandler.
+// No middleware runs upstream, so this file's handlers get return checking.
 export const validReturns = [
   Run.GET(() => new Response("ok")),
   Run.GET(async () => Response.json({ ok: true })),
