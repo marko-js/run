@@ -568,9 +568,9 @@ export const POST = Run.POST(
 
 - `json` handles `application/json` requests. It can be a validator, or an options object `{ validator?, maxBytes? }`.
 - `form` handles `application/x-www-form-urlencoded` and `multipart/form-data` requests. It can be a validator, or an options object `{ validator?, maxBytes?, maxParts?, maxFiles?, maxFileBytes?, onFile? }`. Repeated fields become arrays, and `onFile(context, file)` is called for each uploaded file in multipart requests.
-- Function validators resolve `context.body` to their return value; Standard Schema validators resolve it to a `[value, issues]` tuple; with no validator it resolves to the raw parsed body.
+- Function validators resolve `context.body` to their return value and reject by throwing (throw a `Response` to control the reply); Standard Schema validators resolve it to a `[value, issues]` tuple. `context.body` is only defined once the route's merged options include a validator — an options object with just limits (e.g. `{ maxBytes }` in middleware) does not read the body on its own. Pass `(value) => value` to accept the raw parsed body.
 - Requests exceeding the configured size limits are rejected with a `413` response; malformed bodies (invalid JSON, invalid encoding, unparsable multipart) are rejected with a `400`.
-- Requests whose `Content-Type` matches no configured body option are rejected with a `415`.
+- Requests whose `Content-Type` matches no configured body option are rejected with a `415`. An option without a validator counts as unconfigured — it only contributes limits.
 
 ### Loading Data
 

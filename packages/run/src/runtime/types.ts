@@ -1,26 +1,37 @@
 /// <reference types="marko" />
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+/** Function validator. Its return value becomes the validated result; throw a `Response` to reject. */
 export type ValidatorFn<T = unknown> = (input: T) => any;
+/** A Standard Schema (e.g. valibot) or a function validator. */
 export type Validator<T = unknown> = StandardSchemaV1<T> | ValidatorFn<T>;
 export type JsonBodyValidator = Validator<unknown> | JsonBodyValidatorOptions;
 export type JsonBodyValidatorOptions = {
+  /** Validates the parsed JSON body; its result is `ctx.body`. Without one the option only sets limits and `ctx.body` stays `undefined`. */
   validator?: Validator<unknown>;
+  /** Maximum body size in bytes. Larger requests are rejected with a 413. */
   maxBytes?: number;
 };
 export type FormBodyValidator<Ctx> =
   | Validator<Record<string, any>>
   | FormBodyValidatorOptions<Ctx>;
 export type FormBodyValidatorOptions<Ctx> = {
+  /** Validates the parsed form fields; its result is `ctx.body`. Without one the option only sets limits and `ctx.body` stays `undefined`. */
   validator?: Validator<Record<string, any>>;
+  /** Maximum total body size in bytes; defaults to `maxFiles * maxFileBytes`. Larger requests are rejected with a 413. */
   maxBytes?: number;
+  /** Maximum number of uploaded files in a multipart body. */
   maxFiles?: number;
+  /** Maximum number of parts in a multipart body. */
   maxParts?: number;
+  /** Maximum size of each uploaded file in bytes. */
   maxFileBytes?: number;
+  /** Called for each uploaded file in a multipart body. */
   onFile?(ctx: Ctx, file: Multipart): any;
 };
 export interface Empty {}
 
+/** Result of a Standard Schema validator: `[value, undefined]` on success, `[input, issues]` on failure. */
 export type Schema<I, O> =
   | [O, undefined]
   | [I, StandardSchemaV1.FailureResult["issues"]];
@@ -577,9 +588,12 @@ type ContextForFileWithOptions<
  *       return next({ note }); // renders the page; data becomes $global.data
  *     });
  *
- * Declare request bodies with the `json`/`form` options and read `ctx.body` —
- * never `ctx.request.json()`/`.formData()`, which bypass validation and size
- * limits. Return `null` to fall through to the 404 page.
+ * Declare request bodies with the `json`/`form` options and read them from
+ * `ctx.body`; the validator both checks and types it, while
+ * `ctx.request.json()`/`.formData()` bypass validation and size limits. A
+ * validator is a Standard Schema (e.g. valibot) or a function that returns
+ * the typed body and throws a `Response` to reject. Return `null` from a
+ * handler to fall through to the 404 page.
  *
  * @see `@marko/run/cheatsheet.md` (in `node_modules`) for the full routing,
  * handler, and validation conventions.
@@ -751,26 +765,24 @@ type HandlerReturnValue =
   | typeof MarkoRun.NotHandled
   | typeof MarkoRun.NotMatched;
 type HandlerReturn = HandlerReturnValue | Promise<HandlerReturnValue>;
+/**
+ * A middleware or handler function. Return a `Response` to send it, nothing
+ * to have `next()` called for you, or `null` to fall through to the 404 page.
+ */
 export type HandlerFunction<Ctx = Context, Return = HandlerReturn> = (
   ctx: Ctx,
   next: NextFunction,
 ) => Return extends HandlerReturn ? Return : HandlerReturn;
 export interface HandlerOptionsWithoutBody {
-  /** Validates and can transform path parameters; the result is `ctx.params`. */
+  /** Validates and can transform path parameters. The validator's result becomes `ctx.params` and types it. */
   params?: Validator<Record<string, any>>;
-  /** Validates and can transform the query string; the result is `ctx.search`. */
+  /** Validates and can transform the query string. The validator's result becomes `ctx.search` and types it. */
   search?: Validator<Record<string, any>>;
 }
 export interface HandlerOptionsWithBody<Ctx> extends HandlerOptionsWithoutBody {
-  /**
-   * Parses and validates `application/json` request bodies; read the result
-   * with `await ctx.body` instead of `ctx.request.json()`.
-   */
+  /** Parses and validates `application/json` request bodies. The validator's result becomes `await ctx.body`, fully typed. */
   json?: JsonBodyValidator;
-  /**
-   * Parses and validates url-encoded and multipart form bodies; read the
-   * result with `await ctx.body` instead of `ctx.request.formData()`.
-   */
+  /** Parses and validates url-encoded and multipart form bodies. The validator's result becomes `await ctx.body`, fully typed. */
   form?: FormBodyValidator<Ctx>;
 }
 export type HandlerOptions<Ctx = Context> = [Ctx] extends [
@@ -800,12 +812,29 @@ export type NormalizedHandlerOptions<Ctx extends Context = Context> = {
         validator: ValidatorFn<Record<string, any>> | undefined;
       };
 };
+/** An uploaded file from a multipart form body. */
 export interface Multipart extends globalThis.File {
+  /** Name of the form field the file was uploaded under. */
   fieldName: string;
 }
+// A body option without a validator (e.g. `{ maxBytes }` in middleware) only
+// sets limits, so its key is dropped here and `body` stays `undefined` until
+// some option in the chain provides the validator.
+type HasBodyValidator<V> = V extends
+  | StandardSchemaV1
+  | ((...args: any[]) => any)
+  | { validator: StandardSchemaV1 | ((...args: any[]) => any) }
+  ? true
+  : false;
 type Validation<T> = Simplify<{
   [K in "params" | "search" | "form" | "json" as K extends keyof T
-    ? K
+    ? K extends "form" | "json"
+      ? T extends Record<K, infer Value>
+        ? HasBodyValidator<Value> extends true
+          ? K
+          : never
+        : never
+      : K
     : never]: T extends Record<K, infer Value>
     ? Value extends { validator: infer U }
       ? Validated<U>
@@ -1007,40 +1036,64 @@ export type DefineRoutes<Paths = void> = {
         }
       >;
 };
+/** Adapter-provided data on `ctx.platform`. Extend it by declaring a `Platform` interface on the `@marko/run` module. */
 export interface Platform {}
+/** The request context, `ctx` in middleware and handlers and `$global` in templates. */
 export interface Context<T extends Route = Route> {
+  /** Path pattern of the matched route, e.g. `/products/$id`. */
   readonly route: T["path"];
+  /** HTTP method of the request. */
   readonly method: T["method"];
+  /** Metadata from the route's `+meta` file. */
   readonly meta: T["meta"];
-  /** Path parameters, transformed by any `params` validator. */
+  /**
+   * The validated value from the route's `params` validator: a function
+   * validator's return value, or a `[value, issues]` tuple from a Standard
+   * Schema. Without a validator, an object of the raw path segment strings.
+   */
   readonly params: T["params"];
-  /** Query string values, transformed by any `search` validator. */
+  /**
+   * The validated value from the route's `search` validator: a function
+   * validator's return value, or a `[value, issues]` tuple from a Standard
+   * Schema. Without a validator, an object of the parsed query string
+   * values, repeated keys becoming arrays.
+   */
   readonly search: T["search"];
   /**
-   * Promise for the parsed request body when the route declares a `json` or
-   * `form` option, otherwise `undefined`. Read it with `await ctx.body` —
-   * a Standard Schema validator resolves it to a `[value, issues]` tuple.
+   * Promise for the validated request body from the route's `json` or `form`
+   * validator: a function validator's return value, or a `[value, issues]`
+   * tuple from a Standard Schema. Without a validator, `undefined`.
    */
   readonly body: T["body"];
   /** Data passed to `next({ ... })` by upstream middleware and handlers. */
   readonly data: T["data"];
+  /** Parsed URL of the request. */
   readonly url: URL;
+  /** The incoming WHATWG request. */
   readonly request: Request;
+  /** Data provided by the adapter, e.g. Node's `req`/`res`. */
   readonly platform: Platform;
+  /** Context of the route that called `ctx.fetch`, if any. */
   readonly parent: Context | undefined;
+  /** Which context properties serialize to the browser on `$global`. */
   serializedGlobals: Record<string, boolean>;
+  /** Makes a request through the app's router, with the native `fetch` signature. */
   fetch(
     resource: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response>;
+  /** Renders a Marko template to a streaming HTML response. */
   render<T>(
     template: Marko.Template<T>,
     input: T,
     init?: ResponseInit,
   ): Response;
+  /** Creates a redirect response, resolving relative paths against the current URL. */
   redirect(to: string | URL, status?: number): Response;
+  /** Redirects to the request referrer, or to `fallback` when there is none. */
   back(fallback?: string | URL, status?: number): Response;
 }
+/** Resolves the `Run.Context` type for a path pattern (e.g. `GetContext<"/products/*">`) or an imported route module. */
 export type GetContext<
   Scope extends keyof AppPaths | `*` | `/${string}*` | object = "*",
   Verb extends
@@ -1075,13 +1128,19 @@ export type GetContext<
       ? FilterContextByVerb<Ctx, Verb>
       : never;
 
+/**
+ * Runs the rest of the chain and renders the page where applicable. Pass an
+ * object to expose it downstream as `ctx.data` and `$global.data`.
+ */
 export type NextFunction = {
   (): Promise<NextResponse>;
   <Data extends Record<string, unknown>>(
     data: Data,
   ): Promise<NextResponse<Data>>;
 };
+/** Augmented by the generated `.marko-run/routes.d.ts` with the app's routes. */
 export interface App {}
+/** A matched route, as returned by `match`. */
 export interface RouteMatch<Ctx extends Context = Context> {
   handler: HandlerFunction<Ctx, Promise<Response>>;
   path: Ctx["route"];
@@ -1089,17 +1148,21 @@ export interface RouteMatch<Ctx extends Context = Context> {
   options: NormalizedHandlerOptions<Ctx>;
   meta: Ctx["meta"];
 }
+/** Handles a request through the app's router. Resolves `undefined` when no route handled it. */
 export type Fetch<TPlatform extends Platform = Platform> = (
   request: Request,
   platform: TPlatform,
 ) => Promise<Response | void>;
+/** Synchronously matches a method and path to a route. */
 export type Match = (method: string, pathname: string) => RouteMatch | null;
+/** Creates a response for a route previously returned by `match`. */
 export type Invoke<TPlatform extends Platform = Platform> = (
   route: RouteMatch | null,
   request: Request,
   platform: TPlatform,
   url?: URL,
 ) => Promise<Response | void>;
+/** Shape of the `@marko/run/router` module, for embedding in an existing server. */
 export interface RuntimeModule {
   fetch<TPlatform extends Platform = Platform>(
     ...args: Parameters<Fetch<TPlatform>>
@@ -1119,6 +1182,7 @@ type TemplateAPI<T> = T extends {
       > extends "content"
     ? "tags"
     : "class";
+/** Input of a `+layout` template: `content` (tags API) or `renderBody` (class API). */
 export type LayoutInput<F extends File> =
   TemplateAPI<F["module"]> extends "tags"
     ? {
@@ -1137,6 +1201,7 @@ type GetRawSearchValidator<
       : never
     : never
   : never;
+/** Values for a path's dynamic segments; catch-all (`$$`) params also accept arrays. */
 export type HrefParams<Path extends `${string}/$${string}`> = {
   [Param in PathParamKeys<Path>[number]]: Path extends `${string}/$$${Param}`
     ? string | number | (string | number)[]
@@ -1163,6 +1228,7 @@ interface HrefParamsOptions<
 > extends HrefBaseOptions<Path> {
   params: HrefParams<Path>;
 }
+/** Builds a URL for an app route with typed path, params, search, and hash. */
 export type Href<Verb extends HttpVerbOrAll = "ALL"> = {
   <Path extends PathsForVerb<Verb>>(
     path: Path,
