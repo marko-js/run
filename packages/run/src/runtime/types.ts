@@ -589,11 +589,11 @@ type ContextForFileWithOptions<
  *     });
  *
  * Declare request bodies with the `json`/`form` options and read them from
- * `ctx.body`. The validator both checks and types `ctx.body`, so never cast
- * it or reach for `ctx.request.json()`/`.formData()`. A validator is a
- * Standard Schema (e.g. valibot) or a function that returns the typed body
- * and throws a `Response` to reject. Return `null` from a handler to fall
- * through to the 404 page.
+ * `ctx.body`; the validator both checks and types it, while
+ * `ctx.request.json()`/`.formData()` bypass validation and size limits. A
+ * validator is a Standard Schema (e.g. valibot) or a function that returns
+ * the typed body and throws a `Response` to reject. Return `null` from a
+ * handler to fall through to the 404 page.
  *
  * @see `@marko/run/cheatsheet.md` (in `node_modules`) for the full routing,
  * handler, and validation conventions.
@@ -780,9 +780,9 @@ export interface HandlerOptionsWithoutBody {
   search?: Validator<Record<string, any>>;
 }
 export interface HandlerOptionsWithBody<Ctx> extends HandlerOptionsWithoutBody {
-  /** Parses and validates `application/json` request bodies. The validator's result becomes `await ctx.body` and types it, so never cast it. */
+  /** Parses and validates `application/json` request bodies. The validator's result becomes `await ctx.body`, fully typed. */
   json?: JsonBodyValidator;
-  /** Parses and validates url-encoded and multipart form bodies. The validator's result becomes `await ctx.body` and types it, so never cast it. */
+  /** Parses and validates url-encoded and multipart form bodies. The validator's result becomes `await ctx.body`, fully typed. */
   form?: FormBodyValidator<Ctx>;
 }
 export type HandlerOptions<Ctx = Context> = [Ctx] extends [
@@ -1047,17 +1047,16 @@ export interface Context<T extends Route = Route> {
   /** Metadata from the route's `+meta` file. */
   readonly meta: T["meta"];
   /**
-   * Path parameters, raw string segments unless the route declares a
-   * `params` validator. With one, this is the validator's result: a function
+   * The validated value from the route's `params` validator: a function
    * validator's return value, or a `[value, issues]` tuple from a Standard
-   * Schema.
+   * Schema. Without a validator, an object of the raw path segment strings.
    */
   readonly params: T["params"];
   /**
-   * Query string values parsed into an object, repeated keys becoming
-   * arrays. With a `search` validator declared, this is the validator's
-   * result: a function validator's return value, or a `[value, issues]`
-   * tuple from a Standard Schema.
+   * The validated value from the route's `search` validator: a function
+   * validator's return value, or a `[value, issues]` tuple from a Standard
+   * Schema. Without a validator, an object of the parsed query string
+   * values, repeated keys becoming arrays.
    */
   readonly search: T["search"];
   /**
