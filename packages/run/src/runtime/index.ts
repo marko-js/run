@@ -94,6 +94,7 @@ export type {
   Fetch,
   GetContext,
   Handler,
+  HandlerFunction,
   HandlerTypes,
   Invoke,
   LayoutInput,
