@@ -39,7 +39,7 @@ Context/`$global` properties: `request` (WHATWG Request), `url` (URL), `params`,
 
 ```js
 /* src/routes/guestbook/+handler.js */
-import { z } from "zod";
+import * as v from "valibot";
 
 import { addEntry, loadEntries } from "../../store.js";
 
@@ -48,7 +48,7 @@ export const GET = Run.GET((ctx, next) => {
 });
 
 export const POST = Run.POST(
-  { form: z.object({ message: z.string().trim().min(1) }) },
+  { form: v.object({ message: v.pipe(v.string(), v.trim(), v.minLength(1)) }) },
   async (ctx, next) => {
     const [body, issues] = await ctx.body;
     if (issues) {
@@ -62,9 +62,9 @@ export const POST = Run.POST(
 ```
 
 - `Run.GET`/`Run.POST`/… wrap the handler (and skip it for other methods); `Run.ALL` runs for every method. Legacy plain exports (`export function GET(ctx, next) {}`) still work but new code uses `Run.*`.
-- Validate inputs by declaring validators in an options object: `params` and `search` on any verb, the body via `json` or `form` (there is no `body` option key). Use any Standard Schema validator (zod, valibot, ...) or a plain coercion function.
+- Validate inputs by declaring validators in an options object: `params` and `search` on any verb, the body via `json` or `form` (there is no `body` option key). Prefer a Standard Schema library (e.g. valibot) — it is easier and better than validating by hand; a plain function also works when a dependency is not an option.
 - Schema-validated values are `[value, issues]` pairs: `const [search, searchIssues] = ctx.search`, `const [params, paramIssues] = ctx.params`, `const [body, issues] = await ctx.body`. When validation fails `issues` is set (and `value` is the raw input) — handle it before use (reject, or re-render the page as in the POST above). Where validators are declared, read these accessors instead of re-parsing `ctx.url.searchParams` or `ctx.request.formData()`.
-- No schema library? A plain function IS a validator: it receives the parsed body, returns the value `ctx.body` resolves to (typed by its return), and rejects by throwing a `Response`. The validator is the ONLY place to validate and type the body — never declare a body option without one and cast/re-check `await ctx.body` in the handler.
+- Can't add a schema library? A plain function IS a validator: it receives the parsed body, returns the value `ctx.body` resolves to (typed by its return), and rejects by throwing a `Response`. Either way the validator is the ONLY place to validate and type the body — never declare a body option without one and cast/re-check `await ctx.body` in the handler.
 
   ```ts
   export const POST = Run.POST(

@@ -582,7 +582,7 @@ type ContextForFileWithOptions<
  * Declare request bodies with the `json`/`form` options and read them from
  * `ctx.body`, which the validator both checks and types — so there is no
  * reason to cast it, or to reach for `ctx.request.json()`/`.formData()`.
- * A validator can be a Standard Schema (zod, valibot, ...) or a plain
+ * A validator can be a Standard Schema (e.g. valibot) or a plain
  * function that returns the typed body and throws a `Response` to reject.
  * Return `null` from a handler to fall through to the 404 page.
  *
