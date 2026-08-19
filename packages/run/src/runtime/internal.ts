@@ -700,10 +700,12 @@ function clientError(message: string, status: number, thrown?: unknown) {
   return error;
 }
 
+// An option without a validator only contributes limits, so it does not
+// accept its media type here — the same as if it were never declared.
 async function readBody(route: RouteMatch, context: Context) {
   const { request } = context;
   const mediaType = getMediaType(request);
-  if (route.options.json && mediaType === "application/json") {
+  if (route.options.json?.validator && mediaType === "application/json") {
     const { maxBytes = defaultMaxBytes, validator } = route.options.json;
     let json;
     try {
@@ -713,11 +715,11 @@ async function readBody(route: RouteMatch, context: Context) {
         throw error;
       throw clientError("Invalid JSON body", 400, error);
     }
-    return validator ? validator(json) : json;
+    return validator(json);
   }
   const isMultipart = mediaType === "multipart/form-data";
   if (
-    !route.options.form ||
+    !route.options.form?.validator ||
     !(isMultipart || mediaType === "application/x-www-form-urlencoded")
   ) {
     throw clientError("Unsupported content type", 415);
@@ -765,7 +767,7 @@ async function readBody(route: RouteMatch, context: Context) {
     // not a malformed-body case and keeps its meaning.
     throw error;
   }
-  return validator ? validator(data) : data;
+  return validator!(data);
 }
 
 // A handler whose verb disagrees with its export never runs — the runtime gates

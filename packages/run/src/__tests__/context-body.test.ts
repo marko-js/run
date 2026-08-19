@@ -55,4 +55,26 @@ describe("context.body", () => {
     });
     assert.notEqual(createContext(route, request, {}).body, undefined);
   });
+
+  it("should reject a media type whose option has no validator with a 415", async () => {
+    const route: RouteMatch = {
+      handler: async () => new Response(),
+      path: "/notes",
+      params: {},
+      options: normalizeOptions("POST", {
+        json: (value: unknown) => value,
+        form: { maxFiles: 1 },
+      } as any),
+      meta: {},
+    };
+    const request = new Request("http://test/notes", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: "title=hi",
+    });
+    await assert.rejects(
+      () => createContext(route, request, {}).body!,
+      /Unsupported content type/,
+    );
+  });
 });
