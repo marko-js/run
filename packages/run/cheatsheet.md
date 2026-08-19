@@ -64,6 +64,25 @@ export const POST = Run.POST(
 - `Run.GET`/`Run.POST`/… wrap the handler (and skip it for other methods); `Run.ALL` runs for every method. Legacy plain exports (`export function GET(ctx, next) {}`) still work but new code uses `Run.*`.
 - Validate inputs by declaring validators in an options object: `params` and `search` on any verb, the body via `json` or `form` (there is no `body` option key). Use any Standard Schema validator (zod, valibot, ...) or a plain coercion function.
 - Schema-validated values are `[value, issues]` pairs: `const [search, searchIssues] = ctx.search`, `const [params, paramIssues] = ctx.params`, `const [body, issues] = await ctx.body`. When validation fails `issues` is set (and `value` is the raw input) — handle it before use (reject, or re-render the page as in the POST above). Where validators are declared, read these accessors instead of re-parsing `ctx.url.searchParams` or `ctx.request.formData()`.
+- No schema library? A plain function IS a validator: it receives the parsed body, returns the value `ctx.body` resolves to (typed by its return), and rejects by throwing a `Response`. The validator is the ONLY place to validate and type the body — never declare a body option without one and cast/re-check `await ctx.body` in the handler.
+
+  ```ts
+  export const POST = Run.POST(
+    {
+      json(value: any) {
+        if (typeof value?.title !== "string" || !value.title.trim()) {
+          throw Response.json({ error: "title is required" }, { status: 400 });
+        }
+        return { title: value.title.trim() };
+      },
+    },
+    async (ctx) => {
+      const { title } = await ctx.body; // already validated and typed
+      return Response.json(createNote(title), { status: 201 });
+    },
+  );
+  ```
+
 - Return a `Response` → sent as-is (page does not render).
 - Return nothing → framework calls `next()` for you (page renders).
 - If you call `next()` yourself, RETURN its result.

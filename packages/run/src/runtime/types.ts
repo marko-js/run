@@ -5,14 +5,16 @@ export type ValidatorFn<T = unknown> = (input: T) => any;
 export type Validator<T = unknown> = StandardSchemaV1<T> | ValidatorFn<T>;
 export type JsonBodyValidator = Validator<unknown> | JsonBodyValidatorOptions;
 export type JsonBodyValidatorOptions = {
-  validator?: Validator<unknown>;
+  /** Required — pass `(value) => value` to accept the raw parsed body. */
+  validator: Validator<unknown>;
   maxBytes?: number;
 };
 export type FormBodyValidator<Ctx> =
   | Validator<Record<string, any>>
   | FormBodyValidatorOptions<Ctx>;
 export type FormBodyValidatorOptions<Ctx> = {
-  validator?: Validator<Record<string, any>>;
+  /** Required — pass `(value) => value` to accept the raw parsed body. */
+  validator: Validator<Record<string, any>>;
   maxBytes?: number;
   maxFiles?: number;
   maxParts?: number;
@@ -579,7 +581,10 @@ type ContextForFileWithOptions<
  *
  * Declare request bodies with the `json`/`form` options and read `ctx.body` —
  * never `ctx.request.json()`/`.formData()`, which bypass validation and size
- * limits. Return `null` to fall through to the 404 page.
+ * limits, and never a cast: the validator's result IS the type of `ctx.body`.
+ * Without a schema library, pass a plain function that returns the typed body
+ * and throws a `Response` (e.g. a 400) to reject. Return `null` to fall
+ * through to the 404 page.
  *
  * @see `@marko/run/cheatsheet.md` (in `node_modules`) for the full routing,
  * handler, and validation conventions.
@@ -764,12 +769,17 @@ export interface HandlerOptionsWithoutBody {
 export interface HandlerOptionsWithBody<Ctx> extends HandlerOptionsWithoutBody {
   /**
    * Parses and validates `application/json` request bodies; read the result
-   * with `await ctx.body` instead of `ctx.request.json()`.
+   * with `await ctx.body` instead of `ctx.request.json()`. Takes a Standard
+   * Schema or a function returning the typed body (throw a `Response` to
+   * reject) — the validator is the type of `ctx.body`, so never cast it.
    */
   json?: JsonBodyValidator;
   /**
    * Parses and validates url-encoded and multipart form bodies; read the
-   * result with `await ctx.body` instead of `ctx.request.formData()`.
+   * result with `await ctx.body` instead of `ctx.request.formData()`. Takes a
+   * Standard Schema or a function returning the typed body (throw a
+   * `Response` to reject) — the validator is the type of `ctx.body`, so never
+   * cast it.
    */
   form?: FormBodyValidator<Ctx>;
 }
