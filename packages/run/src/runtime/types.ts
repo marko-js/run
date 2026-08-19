@@ -5,16 +5,24 @@ export type ValidatorFn<T = unknown> = (input: T) => any;
 export type Validator<T = unknown> = StandardSchemaV1<T> | ValidatorFn<T>;
 export type JsonBodyValidator = Validator<unknown> | JsonBodyValidatorOptions;
 export type JsonBodyValidatorOptions = {
-  /** Required — pass `(value) => value` to accept the raw parsed body. */
-  validator: Validator<unknown>;
+  /**
+   * Omit to only set limits (e.g. in middleware) — `ctx.body` stays
+   * `undefined` until a validator is merged in. Pass `(value) => value` to
+   * accept the raw parsed body.
+   */
+  validator?: Validator<unknown>;
   maxBytes?: number;
 };
 export type FormBodyValidator<Ctx> =
   | Validator<Record<string, any>>
   | FormBodyValidatorOptions<Ctx>;
 export type FormBodyValidatorOptions<Ctx> = {
-  /** Required — pass `(value) => value` to accept the raw parsed body. */
-  validator: Validator<Record<string, any>>;
+  /**
+   * Omit to only set limits (e.g. in middleware) — `ctx.body` stays
+   * `undefined` until a validator is merged in. Pass `(value) => value` to
+   * accept the raw parsed body.
+   */
+  validator?: Validator<Record<string, any>>;
   maxBytes?: number;
   maxFiles?: number;
   maxParts?: number;
@@ -812,9 +820,24 @@ export type NormalizedHandlerOptions<Ctx extends Context = Context> = {
 export interface Multipart extends globalThis.File {
   fieldName: string;
 }
+// A body option without a validator (e.g. `{ maxBytes }` in middleware) only
+// sets limits, so its key is dropped here and `body` stays `undefined` until
+// some option in the chain provides the validator.
+type HasBodyValidator<V> = V extends
+  | StandardSchemaV1
+  | ((...args: any[]) => any)
+  | { validator: StandardSchemaV1 | ((...args: any[]) => any) }
+  ? true
+  : false;
 type Validation<T> = Simplify<{
   [K in "params" | "search" | "form" | "json" as K extends keyof T
-    ? K
+    ? K extends "form" | "json"
+      ? T extends Record<K, infer Value>
+        ? HasBodyValidator<Value> extends true
+          ? K
+          : never
+        : never
+      : K
     : never]: T extends Record<K, infer Value>
     ? Value extends { validator: infer U }
       ? Validated<U>

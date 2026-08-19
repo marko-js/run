@@ -119,7 +119,9 @@ export function createContext(
     method: request.method as HttpVerb,
     meta: route?.meta || {},
     body:
-      route && request.body && (route.options.json || route.options.form)
+      route &&
+      request.body &&
+      (route.options.json?.validator || route.options.form?.validator)
         ? thenable(() => readBody(route, context))
         : undefined,
     data: {},
@@ -523,7 +525,8 @@ export function normalizeOptions(
       : typeof merged.json === "object"
         ? merged.json
         : // Any other truthy value — `json: true` in an untyped project —
-          // enables parsing with the defaults.
+          // keeps the default limits; the body is only read once a
+          // validator is merged in.
           ({} as JsonBodyValidatorOptions);
     result.json = {
       maxBytes,

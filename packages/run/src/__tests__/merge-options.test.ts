@@ -94,7 +94,7 @@ describe("mergeOptions", () => {
     // into every route below it.
     const middleware = { json: { maxBytes: 100 } };
     const validator = (input: unknown) => [input, undefined];
-    mergeOptions([middleware as any, { json: { validator } }]);
+    mergeOptions([middleware, { json: { validator } }]);
 
     assert.deepEqual(middleware, { json: { maxBytes: 100 } });
   });
