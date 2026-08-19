@@ -1060,10 +1060,9 @@ export interface Context<T extends Route = Route> {
    */
   readonly search: T["search"];
   /**
-   * Promise for the parsed and validated request body when the route's
-   * merged options include a `json` or `form` validator, otherwise
-   * `undefined`. A Standard Schema validator resolves it to a
-   * `[value, issues]` tuple.
+   * Promise for the validated request body from the route's `json` or `form`
+   * validator: a function validator's return value, or a `[value, issues]`
+   * tuple from a Standard Schema. Without a validator, `undefined`.
    */
   readonly body: T["body"];
   /** Data passed to `next({ ... })` by upstream middleware and handlers. */
