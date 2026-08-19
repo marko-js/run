@@ -62,28 +62,25 @@ export const POST = Run.POST(
 ```
 
 - `Run.GET`/`Run.POST`/… wrap the handler (and skip it for other methods); `Run.ALL` runs for every method. Legacy plain exports (`export function GET(ctx, next) {}`) still work but new code uses `Run.*`.
-- Validate inputs by declaring validators in an options object: `params` and `search` on any verb, the body via `json` or `form` (there is no `body` option key). Prefer a Standard Schema library (e.g. valibot) — it is easier and better than validating by hand; a plain function also works when a dependency is not an option.
+- Validate inputs by declaring validators in an options object: `params` and `search` on any verb, the body via `json` or `form` (there is no `body` option key). Prefer a Standard Schema library (e.g. valibot); a plain function also works.
 - Schema-validated values are `[value, issues]` pairs: `const [search, searchIssues] = ctx.search`, `const [params, paramIssues] = ctx.params`, `const [body, issues] = await ctx.body`. When validation fails `issues` is set (and `value` is the raw input) — handle it before use (reject, or re-render the page as in the POST above). Where validators are declared, read these accessors instead of re-parsing `ctx.url.searchParams` or `ctx.request.formData()`.
-- Can't add a schema library? A plain function IS a validator: it receives the parsed body, returns the value `ctx.body` resolves to (typed by its return), and rejects by throwing a `Response`. Either way the validator is the ONLY place to validate and type the body — `ctx.body` stays `undefined` until some option in the chain provides one (a `{ maxBytes }`-only option, e.g. in middleware, just sets limits), so never cast/re-check `await ctx.body` in the handler.
+- A plain function IS a validator: it returns the value `ctx.body` resolves to (typed by its return) and rejects by throwing a `Response`. The validator is the ONLY place to validate and type the body — never cast/re-check `await ctx.body`. Without one anywhere in the chain (`{ maxBytes }` alone just sets limits), `ctx.body` is `undefined`.
 
   ```ts
   export const POST = Run.POST(
     {
       json(value: any) {
-        if (typeof value?.title !== "string" || !value.title.trim()) {
-          throw Response.json({ error: "title is required" }, { status: 400 });
-        }
+        if (typeof value?.title !== "string")
+          throw Response.json({ error: "title required" }, { status: 400 });
         return { title: value.title.trim() };
       },
     },
-    async (ctx) => {
-      const { title } = await ctx.body; // already validated and typed
-      return Response.json(createNote(title), { status: 201 });
-    },
+    async (ctx) =>
+      Response.json(createNote((await ctx.body).title), { status: 201 }),
   );
   ```
 
-- Deliberately want the raw parsed value (proxying, dynamic shapes)? Use an identity function as the validator: `json: (value) => value` gives `ctx.body` the raw parsed JSON, and the same works for `form`, `params`, and `search`.
+- Raw parsed value: identity validator — `json: (value) => value`; same for `form`/`params`/`search`.
 - Return a `Response` → sent as-is (page does not render).
 - Return nothing → framework calls `next()` for you (page renders).
 - If you call `next()` yourself, RETURN its result.
