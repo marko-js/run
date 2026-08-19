@@ -5,11 +5,6 @@ export type ValidatorFn<T = unknown> = (input: T) => any;
 export type Validator<T = unknown> = StandardSchemaV1<T> | ValidatorFn<T>;
 export type JsonBodyValidator = Validator<unknown> | JsonBodyValidatorOptions;
 export type JsonBodyValidatorOptions = {
-  /**
-   * Omit to only set limits (e.g. in middleware) — `ctx.body` stays
-   * `undefined` until a validator is merged in. Pass `(value) => value` to
-   * accept the raw parsed body.
-   */
   validator?: Validator<unknown>;
   maxBytes?: number;
 };
@@ -17,11 +12,6 @@ export type FormBodyValidator<Ctx> =
   | Validator<Record<string, any>>
   | FormBodyValidatorOptions<Ctx>;
 export type FormBodyValidatorOptions<Ctx> = {
-  /**
-   * Omit to only set limits (e.g. in middleware) — `ctx.body` stays
-   * `undefined` until a validator is merged in. Pass `(value) => value` to
-   * accept the raw parsed body.
-   */
   validator?: Validator<Record<string, any>>;
   maxBytes?: number;
   maxFiles?: number;
