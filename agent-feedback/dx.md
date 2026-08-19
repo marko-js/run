@@ -215,3 +215,9 @@ CodeRabbit's pre-merge checks (configured in the organization UI; the repo has n
 `packages/run/src/runtime/types.ts` › `RouteForFileDef` | 2026-08-17 | impact:low | effort:med
 
 In an app with `api/workspaces/$id/+middleware.ts` (a `Run.ALL` middleware calling `next({ workspace })`) and a leaf `api/workspaces/$id/review/$commentId/+handler.ts` exporting `Run.DELETE({ params({ id, commentId }) { … } }, (ctx) => …)`, `tsc` reports TS7031 (`id` / `commentId` implicitly any) on the validator's destructured argument and TS2554 ("Expected 1 arguments, but got 2") on the `Run.DELETE` call, so the two-argument form is unusable there. The identical shape on a one-segment route with no parent middleware (`api/procs/$pid/+handler.ts`, `Run.DELETE({ params({ pid }) … }, handler)`) type-checks. Something in the merge of the parent middleware's options with the leaf's `params` (`MergedRouteOptionsForFile` → `RouteForFileDef.params`) collapses when the path has two params, since the workaround is simply parsing `ctx.params.commentId` inside the handler. Repro: the two files above in a fixture under `packages/run/src/__tests__/fixtures/`, then `tsc` on it; a passing fixture with the validator form is the fix's test.
+
+## cspell's Node engine requirement breaks `pnpm run lint` on the pinned toolchain
+
+`package.json` › `scripts.lint` | 2026-08-18 | impact:med | effort:low
+
+The cspell version in the lockfile refuses to run on Node < 22.18 ("Unsupported NodeJS version (22.14.0); >=22.18.0 is required"), but a machine whose toolchain pins an older Node 22 (here 22.14 via mise) can build and pass the full test suite while `pnpm run lint` exits red at the cspell step — eslint and prettier having already passed. Either declare `engines.node >= 22.18` at the repo root so the mismatch fails loudly at install, or pin cspell below the version that raised its floor.
