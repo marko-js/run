@@ -774,9 +774,9 @@ export type HandlerFunction<Ctx = Context, Return = HandlerReturn> = (
   next: NextFunction,
 ) => Return extends HandlerReturn ? Return : HandlerReturn;
 export interface HandlerOptionsWithoutBody {
-  /** Validates and can transform path parameters; the result is `ctx.params`. */
+  /** Validates and can transform path parameters. The validator's result becomes `ctx.params` and types it. */
   params?: Validator<Record<string, any>>;
-  /** Validates and can transform the query string; the result is `ctx.search`. */
+  /** Validates and can transform the query string. The validator's result becomes `ctx.search` and types it. */
   search?: Validator<Record<string, any>>;
 }
 export interface HandlerOptionsWithBody<Ctx> extends HandlerOptionsWithoutBody {
@@ -1046,9 +1046,19 @@ export interface Context<T extends Route = Route> {
   readonly method: T["method"];
   /** Metadata from the route's `+meta` file. */
   readonly meta: T["meta"];
-  /** Path parameters, transformed by any `params` validator. */
+  /**
+   * Path parameters, raw string segments unless the route declares a
+   * `params` validator. With one, this is the validator's result: a function
+   * validator's return value, or a `[value, issues]` tuple from a Standard
+   * Schema.
+   */
   readonly params: T["params"];
-  /** Query string values, transformed by any `search` validator. */
+  /**
+   * Query string values parsed into an object, repeated keys becoming
+   * arrays. With a `search` validator declared, this is the validator's
+   * result: a function validator's return value, or a `[value, issues]`
+   * tuple from a Standard Schema.
+   */
   readonly search: T["search"];
   /**
    * Promise for the parsed and validated request body when the route's
