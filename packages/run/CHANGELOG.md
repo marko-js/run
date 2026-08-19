@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.11.12
+
+### Patch Changes
+
+- 0aa684a: `context.body` is now only defined when the route's merged options include a `json`/`form` validator — a limits-only option (e.g. `maxBytes` in middleware) no longer exposes an unvalidated body — and the cheatsheet documents the plain-function validator pattern.
+
 ## 0.11.11
 
 ### Patch Changes
