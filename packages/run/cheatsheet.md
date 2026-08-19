@@ -83,6 +83,7 @@ export const POST = Run.POST(
   );
   ```
 
+- Deliberately want the raw parsed value (proxying, dynamic shapes)? Use an identity function as the validator: `json: (value) => value` gives `ctx.body` the raw parsed JSON, and the same works for `form`, `params`, and `search`.
 - Return a `Response` → sent as-is (page does not render).
 - Return nothing → framework calls `next()` for you (page renders).
 - If you call `next()` yourself, RETURN its result.
