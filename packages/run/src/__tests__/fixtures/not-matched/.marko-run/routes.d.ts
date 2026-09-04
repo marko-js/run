@@ -52,7 +52,9 @@ declare module "../src/routes/+handler" {
   }
 }
 
+type S1 = $.Template<"S1", typeof import("../src/routes/+404.marko")>;
 declare module "../src/routes/+404.marko" {
+  export interface Input extends $.PageInput<S1, []> {}
   const Run: $.Namespace<any>;
   namespace Run {
     type Context = $.ContextForFile<any> & Marko.Global;

@@ -249,4 +249,106 @@ describe("route-builder", () => {
       },
     ]);
   });
+
+  it("should collect partials per route, deeper ones overriding", async () => {
+    const routes = await buildTestRoutes(`
+      +page.marko
+      @header.marko
+      /docs
+        +page.marko
+        @header.marko
+        @aside.marko
+        /$id
+          +page.marko
+          @header.marko
+      /blog
+        +handler.ts
+      (x,y)@nav.marko
+      x+page.marko
+    `);
+    const actual = routes.list.map((route) => ({
+      path: route.path.path,
+      partials: Object.fromEntries(
+        Object.entries(route.partials ?? {}).map(([name, chain]) => [
+          name,
+          chain.map((file) => file.filePath.replace(/\\/g, "/")),
+        ]),
+      ),
+    }));
+
+    assert.deepEqual(actual, [
+      { path: "/", partials: { header: ["src/routes/@header.marko"] } },
+      {
+        path: "/x",
+        partials: {
+          header: ["src/routes/@header.marko"],
+          nav: ["src/routes/(x,y)@nav.marko"],
+        },
+      },
+      {
+        path: "/docs",
+        partials: {
+          header: ["src/routes/@header.marko", "src/routes/docs/@header.marko"],
+          aside: ["src/routes/docs/@aside.marko"],
+        },
+      },
+      {
+        path: "/docs/$id",
+        partials: {
+          header: [
+            "src/routes/@header.marko",
+            "src/routes/docs/@header.marko",
+            "src/routes/docs/$id/@header.marko",
+          ],
+          aside: ["src/routes/docs/@aside.marko"],
+        },
+      },
+      { path: "/blog", partials: {} },
+    ]);
+  });
+
+  it("should throw on duplicate partials at one level", async () => {
+    await assert.rejects(
+      buildTestRoutes(`
+        /a
+          @nav.marko
+        a@nav.marko
+        a+page.marko
+      `),
+      /Duplicate partial @nav/,
+    );
+  });
+
+  it("should throw on partials at one level that differ only by case", async () => {
+    await assert.rejects(
+      buildTestRoutes(`
+        @nav.marko
+        @Nav.marko
+        +page.marko
+      `),
+      /Partial @Nav at path \/ differs only by case from @nav/,
+    );
+  });
+
+  it("should throw on a reserved partial name", async () => {
+    await assert.rejects(
+      buildTestRoutes(`
+        @content.marko
+        +page.marko
+      `),
+      /Partial name @content is reserved/,
+    );
+  });
+
+  it("should throw when an override does not match the casing of the partial it overrides", async () => {
+    await assert.rejects(
+      buildTestRoutes(`
+        @header.marko
+        /docs
+          @Header.marko
+          +page.marko
+      `),
+      /Partial @Header at path \/docs does not match the casing of @header/,
+    );
+  });
 });

@@ -105,6 +105,8 @@ export type {
   NextResponse,
   NormalizedHandler,
   NormalizedHandlerFunction,
+  PageInput,
+  PartialInput,
   PartialTemplate,
   Platform,
   RouteForFileDef,

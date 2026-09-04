@@ -1,0 +1,7 @@
++layout.marko
+/docs
+  @header.marko
+/(docs,blog)
+  /$id
+    +page.marko
+    @header.marko

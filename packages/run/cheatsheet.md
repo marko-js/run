@@ -1,16 +1,17 @@
 # @marko/run cheat sheet
 
-Routes live under `src/routes/`. Only `+`-prefixed files are routable. Dev server: `marko-run dev`.
+Routes live under `src/routes/`. Only `+`-prefixed files and `@`-prefixed partials are routable. Dev server: `marko-run dev`.
 
 ## Files
 
-| File                        | Role                                                                                                                                               |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `+page.marko`               | the page at this directory's path; `next()` renders it for GET, POST and QUERY                                                                     |
-| `+layout.marko`             | wraps everything below it. Layouts nest: every `+layout.marko` up the tree wraps the next, root→leaf. Render the child with `<${input.content}/>`  |
-| `+handler.js`               | HTTP handlers: `export const GET = Run.GET((ctx, next) => ...)`. Verb names are uppercase; `Run` is a global, no import                            |
-| `+middleware.js`            | `export default Run.ALL((ctx, next) => ...)` runs before handlers, root→leaf. `Run.ALL` covers every method; `Run.POST(...)` is skipped for others |
-| `+404.marko` / `+500.marko` | root of `src/routes/` only, wrapped by the root layout; `+500` gets `input.error`. A `$$` dir 404s deeper                                          |
+| File                        | Role                                                                                                                                                                                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `+page.marko`               | the page at this directory's path; `next()` renders it for GET, POST and QUERY                                                                                                                                                                                                                          |
+| `+layout.marko`             | wraps everything below it. Layouts nest: every `+layout.marko` up the tree wraps the next, root→leaf. Render the child with `<${input.content}/>`                                                                                                                                                       |
+| `+handler.js`               | HTTP handlers: `export const GET = Run.GET((ctx, next) => ...)`. Verb names are uppercase; `Run` is a global, no import                                                                                                                                                                                 |
+| `+middleware.js`            | `export default Run.ALL((ctx, next) => ...)` runs before handlers, root→leaf. `Run.ALL` covers every method; `Run.POST(...)` is skipped for others                                                                                                                                                      |
+| `+404.marko` / `+500.marko` | root of `src/routes/` only, wrapped by the root layout; `+500` gets `input.error`. A `$$` dir 404s deeper                                                                                                                                                                                               |
+| `@<name>.marko`             | a partial: the pages and layouts of every route at or below it get `input.<name>` (an attribute tag; render with `<${input.<name>.content}/>`). A deeper `@<name>.marko` overrides it and receives the overridden one as its own `input.<name>`. `content`, `renderBody` and `error` are reserved names |
 
 ## Paths
 
@@ -111,6 +112,23 @@ In `src/routes/+layout.marko`:
 ```
 
 Layouts nest: `src/routes/+layout.marko` and `src/routes/admin/+layout.marko` both wrap `/admin/...` pages (outermost first). Middleware nests the same way, root→leaf.
+
+## Partials
+
+```marko
+/* src/routes/@sidebar.marko */
+<ul><li><a href="/">Home</a></li></ul>
+
+/* src/routes/docs/@sidebar.marko — overrides the root one for /docs/... and composes it */
+<${input.sidebar.content}/>
+<ul><li><a href="/docs/api">API</a></li></ul>
+
+/* src/routes/docs/+layout.marko */
+<aside><${input.sidebar.content}/></aside>
+<main><${input.content}/></main>
+```
+
+Partials follow the flat form too: `docs@sidebar.marko` ≡ `docs/@sidebar.marko`. Root partials also reach `+404.marko` / `+500.marko`.
 
 Typed links: `<a href=Run.href("/products/$id", { params: { id } })>` (checked against the app's routes); also takes `search` and `hash`, encodes values, catch-all params accept arrays.
 

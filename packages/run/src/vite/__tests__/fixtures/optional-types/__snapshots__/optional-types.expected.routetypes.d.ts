@@ -128,6 +128,7 @@ declare module "../src/routes/+layout.marko" {
 
 type P1 = $.Template<"P1", typeof import("../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko")>;
 declare module "../src/routes/aaa.$aId.(,bbb.$bId).(,ccc.$cId)/+page.marko" {
+  interface Input extends $.PageInput<P1> {}
   const Run: $.Namespace<P1>;
   namespace Run {
     type Context = $.ContextForFile<P1> & Marko.Global;
