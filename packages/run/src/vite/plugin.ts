@@ -660,7 +660,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             seenErrors.clear();
             const routableFileType = matchRoutableFile(
               path.parse(filename).base,
-            );
+            )?.type;
             if (
               (filename.startsWith(resolvedRoutesDir) && routableFileType) ||
               filename === runtimeInclude

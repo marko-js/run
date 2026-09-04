@@ -200,6 +200,22 @@ type NormalizedMetaFiles<
 > = {
   [I in keyof Files]: NormalizedMeta<Files[I]["exports"], Verb>;
 };
+// Route tuples carry whole override chains winner-last, so a later file's
+// exports replace an earlier one of the same name.
+type PartialsFromFiles<
+  Files extends readonly File[],
+  Acc = Empty,
+> = Files extends readonly [
+  infer F extends File,
+  ...infer Rest extends readonly File[],
+]
+  ? PartialsFromFiles<
+      Rest,
+      Omit<Acc, F["name"] & string> & {
+        [K in F["name"] & string]: F["exports"];
+      }
+    >
+  : Simplify<Acc>;
 type RouteFiles<Files extends readonly File[]> = {
   [Type in RouteFileType | "all" as Type extends `@${string}`
     ? "partial"
@@ -365,11 +381,8 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
         Path,
         Verb,
         RouteFileGroupMeta<Group, Verb>,
-        Verb extends "GET"
-          ? {
-              [File in Group["partial"][number] as File["name"] &
-                string]: File["exports"];
-            }
+        Verb extends "GET" | "POST" | "QUERY"
+          ? PartialsFromFiles<Group["partial"]>
           : Record<string, unknown>,
         RouteOptionsContainer<Path, Verb>
       >;
@@ -734,7 +747,7 @@ type GetUpstreamData<
           ? MergeTuple<
               MapTuple<
                 TypesFromHandlerFiles<
-                  F["type"] extends "template"
+                  IsRenderedFile<F> extends true
                     ? [
                         ...AppPaths[Path]["files"]["middleware"],
                         AppPaths[Path]["files"]["handler"],
@@ -841,6 +854,11 @@ type Validation<T> = Simplify<{
       : Validated<Value>
     : keyof T;
 }>;
+type IsRenderedFile<F extends File> = F["type"] extends
+  | "template"
+  | `@${string}`
+  ? true
+  : false;
 type RoutesForFile<F extends File> = {
   [K in keyof AppPaths as F["id"] extends AppPaths[K]["files"]["all"][number]["id"]
     ? K
@@ -938,13 +956,13 @@ export type PathsForVerb<Verb extends HttpVerbOrAll = "ALL"> =
     : keyof AppPaths;
 export type ContextForFile<
   F extends File,
-  Verb extends HttpVerbOrAll = F["type"] extends "template"
+  Verb extends HttpVerbOrAll = IsRenderedFile<F> extends true
     ? "GET" | "POST" | "QUERY"
     : "ALL",
 > = Union<{
   [Path in PathsForFile<F>]: Fallback<
     Union<{
-      [V in VerbsForPath<Path, Verb> as F["type"] extends "template"
+      [V in VerbsForPath<Path, Verb> as IsRenderedFile<F> extends true
         ? HandlerPassthrough<
             AppPaths[Path]["files"]["handler"]["exports"][V]
           > extends true
@@ -1182,15 +1200,70 @@ type TemplateAPI<T> = T extends {
       > extends "content"
     ? "tags"
     : "class";
-/** Input of a `+layout` template: `content` (tags API) or `renderBody` (class API). */
-export type LayoutInput<F extends File> =
-  TemplateAPI<F["module"]> extends "tags"
+type PartialTagFor<Mod> =
+  TemplateAPI<Mod> extends "tags"
     ? {
         content: Marko.Body;
       }
     : {
         renderBody: Marko.Body;
       };
+type PartialTag<F extends File> = PartialTagFor<F["module"]>;
+type PartialNamesForPath<
+  F extends File,
+  Path extends PathsForFile<F>,
+> = RoutesForFile<F>[Path]["files"]["partial"][number]["name"] & string;
+type PartialNamesForFile<F extends File> = Union<{
+  [Path in PathsForFile<F>]: PartialNamesForPath<F, Path>;
+}>;
+type IsPartialOnEveryPath<F extends File, Name extends string> =
+  Union<{
+    [Path in PathsForFile<F>]: Name extends PartialNamesForPath<F, Path>
+      ? true
+      : false;
+  }> extends true
+    ? true
+    : false;
+/**
+ * Input of a `+page` template: the route's `@partial` templates by name.
+ * A partial some of the file's routes lack is optional. `+404` / `+500`
+ * pages sit outside the route map, so they pass their partials explicitly.
+ */
+export type PageInput<
+  F extends File,
+  Partials extends readonly File[] | undefined = undefined,
+> = Simplify<
+  Partials extends readonly File[]
+    ? {
+        [P in Partials[number] as P["name"] & string]: PartialTag<F>;
+      }
+    : {
+        [Name in PartialNamesForFile<F> as IsPartialOnEveryPath<
+          F,
+          Name
+        > extends true
+          ? Name
+          : never]: PartialTag<F>;
+      } & {
+        [Name in PartialNamesForFile<F> as IsPartialOnEveryPath<
+          F,
+          Name
+        > extends true
+          ? never
+          : Name]?: PartialTag<F>;
+      }
+>;
+/** Input of an overriding `@partial`: the partial it replaced, under its own name. */
+export type PartialInput<F extends File> = {
+  [K in F["name"] & string]: PartialTag<F>;
+};
+/**
+ * Input of a `+layout` template: `content` (tags API) or `renderBody`
+ * (class API), plus the route's `@partial` templates by name.
+ */
+export type LayoutInput<F extends File> = Simplify<
+  PartialTagFor<F["module"]> & PageInput<F>
+>;
 type GetRawSearchValidator<
   Path extends string,
   Verb extends HttpVerb = "GET",
