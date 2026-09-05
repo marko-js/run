@@ -114,3 +114,6 @@ export type {
   Typed,
   HttpVerb as Verb,
 } from "./types";
+
+/** Re-exported so route types that surface validation issues stay nameable without depending on `@standard-schema/spec` directly. */
+export type { StandardSchemaV1 } from "@standard-schema/spec";
