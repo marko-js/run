@@ -110,6 +110,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devEntryFilePosix: string;
+  let adapterEntryFilePosix: string | undefined;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let entryTemplates: Set<string>;
@@ -494,6 +495,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         typesDir = path.join(root, ".marko-run");
         devEntryFile = path.join(root, "index.html");
         devEntryFilePosix = normalizePath(devEntryFile);
+        // An adapter's server entry tops the dev graph like index.html does,
+        // and may run in its own global scope (e.g. workerd).
+        const adapterEntryFile = isBuild
+          ? undefined
+          : await adapter?.getEntryFile?.();
+        adapterEntryFilePosix = adapterEntryFile
+          ? normalizePath(path.resolve(root, adapterEntryFile))
+          : undefined;
         let outDir = config.build?.outDir || "dist";
         const assetsDir = config.build?.assetsDir || "assets";
         let rolldownOutputOptions = config.build?.rolldownOptions?.output;
@@ -743,7 +752,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           !isBuild &&
           !!importer &&
           (importer === devEntryFile ||
-            normalizePath(importer) === devEntryFilePosix);
+            normalizePath(importer) === devEntryFilePosix ||
+            (!!adapterEntryFilePosix &&
+              normalizePath(importer) === adapterEntryFilePosix));
 
         if (importee === "@marko/run/router") {
           // In dev, module imports get the runtime facade, which defers to
