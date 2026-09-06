@@ -187,7 +187,20 @@ export function createContext(
         return new Response(null, init);
       }
 
-      const rendered = template.render({
+      // A persisted page asks for a patch: frames that update the live
+      // document instead of a new one.
+      const patch =
+        request.headers.get("accept") === PATCH_CONTENT_TYPE &&
+        (template as PersistedTemplate<typeof template>).patch;
+      if (patch) {
+        const headers = new Headers(init.headers);
+        headers.set("content-type", "text/javascript;charset=UTF-8");
+        headers.set("cache-control", "no-store");
+        headers.append("vary", "accept");
+        init = { ...init, headers };
+      }
+
+      const rendered = (patch || template.render).call(template, {
         ...input,
         $global: context as unknown as Marko.Global,
       });
@@ -248,6 +261,12 @@ export function render<T>(
   }
   return context.render(template, input);
 }
+
+const PATCH_CONTENT_TYPE = "text/marko-patch";
+// Typed here until the published Marko types declare `patch`.
+type PersistedTemplate<T extends Marko.Template<any>> = T & {
+  patch?: T["render"];
+};
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
 
