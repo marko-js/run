@@ -8,7 +8,7 @@
 pnpm test                 # mocha suite (tsx loader)
 pnpm run test:update      # regenerate test expectations (review the diff!)
 pnpm run build            # all packages -> dist/
-pnpm run lint             # eslint + prettier + cspell
+pnpm run lint             # eslint + prettier
 pnpm run format           # eslint --fix + prettier --write
 pnpm run change           # add a changeset (required for user-facing changes)
 ```
