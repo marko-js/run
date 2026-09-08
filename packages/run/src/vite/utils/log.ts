@@ -23,6 +23,7 @@ export function logRoutesTable(
   routes: BuiltRoutes,
   externalRoutes: ExternalRoutes[],
   bundle: OutputBundle,
+  persistedApp?: string,
 ) {
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
@@ -64,10 +65,9 @@ export function logRoutesTable(
       if (route.page && (verb === "get" || verb === "head")) {
         entryType.push(kleur.yellow("page"));
         if (verb === "get") {
-          const routeSize = computeRouteSize(
-            route.templateFilePath,
-            bundle,
-          ) || [0, 0];
+          const routeSize = (persistedApp
+            ? computePersistedRouteSize(persistedApp, route, bundle)
+            : computeRouteSize(route.templateFilePath, bundle)) || [0, 0];
           size = prettySize(routeSize);
         }
       }
@@ -99,9 +99,9 @@ export function logRoutesTable(
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    const routeSize = computeRouteSize(route.templateFilePath, bundle) || [
-      0, 0,
-    ];
+    const routeSize = (persistedApp
+      ? computePersistedRouteSize(persistedApp, route, bundle)
+      : computeRouteSize(route.templateFilePath, bundle)) || [0, 0];
     row.push(prettySize(routeSize));
 
     table.push(row);
@@ -157,15 +157,48 @@ function computeRouteSize(
   filePath: string | undefined,
   bundle: OutputBundle,
 ): [number, number] | undefined {
-  if (filePath) {
+  const chunk = filePath && findEntryChunk(filePath, bundle);
+  if (chunk) return computeChunkSize(chunk, bundle);
+}
+
+// A persisted page's first load: the app entry plus the lazy chunks of its
+// layouts and page (a layout every page shares is already in the entry).
+function computePersistedRouteSize(
+  appFilePath: string,
+  route: Route,
+  bundle: OutputBundle,
+): [number, number] | undefined {
+  const entry = findEntryChunk(appFilePath, bundle);
+  if (!entry) return;
+  const seen = new Set([entry.fileName]);
+  const size = computeChunkSize(entry, bundle, seen);
+  for (const file of [...route.layouts, route.page!]) {
     for (const chunk of Object.values(bundle)) {
       if (
         chunk.type === "chunk" &&
-        chunk.isEntry &&
-        chunk.facadeModuleId === `${filePath}.html`
+        !seen.has(chunk.fileName) &&
+        chunk.moduleIds.some(
+          (id) => id === file.filePath || id.startsWith(`${file.filePath}?`),
+        )
       ) {
-        return computeChunkSize(chunk, bundle);
+        seen.add(chunk.fileName);
+        const [bytes, compBytes] = computeChunkSize(chunk, bundle, seen);
+        size[0] += bytes;
+        size[1] += compBytes;
       }
+    }
+  }
+  return size;
+}
+
+function findEntryChunk(filePath: string, bundle: OutputBundle) {
+  for (const chunk of Object.values(bundle)) {
+    if (
+      chunk.type === "chunk" &&
+      chunk.isEntry &&
+      chunk.facadeModuleId === `${filePath}.html`
+    ) {
+      return chunk;
     }
   }
 }

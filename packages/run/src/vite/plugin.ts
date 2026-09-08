@@ -23,10 +23,10 @@ import {
 
 import { prepareError } from "../adapter/utils";
 import {
-  getPersistedEntryFileName,
+  type PersistedApp,
+  persistedPages,
   renderMiddleware,
-  renderPersisted,
-  renderPersistedEntry,
+  renderPersistedApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -35,7 +35,7 @@ import {
 import {
   httpVerbs,
   markoRunFilePrefix,
-  persistedFilename,
+  persistedAppFilename,
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
@@ -100,6 +100,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   const { ...markoVitePluginOptions } = opts;
   // Typed loosely until the published @marko/vite declares the option.
   const persisted = !!(opts as { persisted?: boolean }).persisted;
+  let persistedApp: PersistedApp | undefined;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -256,9 +257,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         entryTemplates = new Set();
         entryTemplateImporters = new Set();
+        if (persisted) {
+          persistedApp = {
+            filePath: path.join(entryFilesDir, persistedAppFilename),
+            pages: persistedPages(routes),
+          };
+          entryTemplates.add(normalizePath(persistedApp.filePath));
+        }
 
         for (const route of routes.list) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !persisted) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
           for (const middleware of route.middleware) {
@@ -274,7 +282,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !persisted) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
         }
@@ -311,8 +319,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       route,
       await getMarkoApiForRoute(context, route),
       !isBuild,
-      persisted,
     );
+    writeTemplate(filePath, source);
+  }
+
+  function writeTemplate(filePath: string, source: string) {
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, source);
@@ -363,17 +374,31 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !persistedApp) {
             await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root),
+            renderRouteEntry(route, root, persistedApp),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          await writeEntryTemplate(context, route);
+          if (!persistedApp) await writeEntryTemplate(context, route);
+        }
+        if (persistedApp) {
+          // The same runtime build the templates compile against
+          // (@marko/vite exports its choice through MARKO_DEBUG).
+          writeTemplate(
+            persistedApp.filePath,
+            renderPersistedApp(
+              routes,
+              persistedApp,
+              !isBuild,
+              process.env.MARKO_DEBUG !== "false" &&
+                process.env.MARKO_DEBUG !== "0",
+            ),
+          );
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
@@ -394,35 +419,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
 
-        if (persisted) {
-          for (const route of routes.list) {
-            if (route.page) {
-              virtualFiles.set(
-                path.posix.join(root, getPersistedEntryFileName(route)),
-                renderPersistedEntry(route, root),
-              );
-            }
-          }
-          // The same runtime build the templates compile against
-          // (@marko/vite exports its choice through MARKO_DEBUG).
-          virtualFiles.set(
-            path.posix.join(root, persistedFilename),
-            renderPersisted(
-              routes,
-              opts.runtimeId,
-              process.env.MARKO_DEBUG !== "false" &&
-                process.env.MARKO_DEBUG !== "0",
-            ),
-          );
-        }
-
         runtimeInclude = await adapter?.runtimeInclude?.();
 
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
-          renderRouter(routes, root, runtimeInclude, {
-            trailingSlashes,
-          }),
+          renderRouter(
+            routes,
+            root,
+            runtimeInclude,
+            { trailingSlashes },
+            persistedApp,
+          ),
         );
 
         await writeTypesFile(routes);
@@ -761,6 +768,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
           }
+          if (persisted) {
+            persistedApp = {
+              filePath: path.join(entryFilesDir, persistedAppFilename),
+              pages: persistedPages(routes),
+            };
+          }
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
@@ -935,7 +948,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else {
-          logRoutesTable(routes, [...externalRoutes], bundle);
+          logRoutesTable(
+            routes,
+            [...externalRoutes],
+            bundle,
+            persistedApp?.filePath,
+          );
         }
       },
       async closeBundle() {

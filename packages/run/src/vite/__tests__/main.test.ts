@@ -5,13 +5,15 @@ import url from "url";
 
 import { prepareError } from "../../adapter/utils";
 import {
+  persistedPages,
   renderMiddleware,
+  renderPersistedApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
   renderRouteTypeInfo,
 } from "../codegen";
-import { httpVerbs } from "../constants";
+import { httpVerbs, persistedAppFilename } from "../constants";
 import { buildRoutes, type RouteSource } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
 import type { RoutableFile } from "../types";
@@ -92,6 +94,19 @@ describe("router codegen", () => {
           stack: preparedError.stack,
         })}`;
       } else {
+        // A `persisted-*` fixture renders as a persisted build.
+        const persisted = fixture.startsWith("persisted-")
+          ? {
+              filePath: path.join(entryFilesDir, persistedAppFilename),
+              pages: persistedPages(routes),
+            }
+          : undefined;
+        if (persisted) {
+          routesSnap += "## App\n";
+          routesSnap += "```marko\n";
+          routesSnap += renderPersistedApp(routes, persisted);
+          routesSnap += "```\n---\n\n";
+        }
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
           routesSnap += "```js\n";
@@ -117,7 +132,7 @@ describe("router codegen", () => {
           routesSnap += `## Route \`\`${route.key}\`\`\n`;
           routesSnap += `### Path: \`\`${route.path.path}\`\`\n`;
 
-          if (route.page) {
+          if (route.page && !persisted) {
             const layoutData = route.layouts.length
               ? getFileData<{ api: string }>(route.layouts[0])
               : undefined;
@@ -128,13 +143,13 @@ describe("router codegen", () => {
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route, dir);
+          routesSnap += renderRouteEntry(route, dir, persisted);
           routesSnap += "```\n";
           i++;
         }
 
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.page && route.layouts.length) {
+          if (route.page && route.layouts.length && !persisted) {
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
@@ -143,7 +158,7 @@ describe("router codegen", () => {
           }
         }
 
-        routerSnap = renderRouter(routes, dir);
+        routerSnap = renderRouter(routes, dir, undefined, undefined, persisted);
         typesSnap = await renderRouteTypeInfo(routes, typesDir);
       }
 

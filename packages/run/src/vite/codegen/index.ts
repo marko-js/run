@@ -3,7 +3,6 @@ import path from "path";
 import {
   httpVerbs,
   markoRunFilePrefix,
-  persistedFilename,
   type RoutableFileType,
   RoutableFileTypes,
   virtualFilePrefix,
@@ -35,7 +34,6 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
-  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -51,11 +49,6 @@ export function renderRouteTemplate(
   if (dev) {
     importWriter.writeLines(
       `client import "virtual:marko-run/runtime/client";`,
-    );
-  }
-  if (persisted) {
-    importWriter.writeLines(
-      `client import "${virtualFilePrefix}/${persistedFilename}";`,
     );
   }
 
@@ -75,77 +68,167 @@ export function renderRouteTemplate(
 }
 
 /**
- * The client router of a persisted build: a route table (most specific
- * first) so a matched link starts its route's client code loading alongside
- * the patch fetch, and unmatched links stay the browser's.
+ * The one template of a persisted build: every page is a branch of a chain
+ * that follows the layout tree, picked by `input.page` (`persistedPages`), so
+ * a navigation is a branch change on a root every page shares. A page (and a
+ * layout only some pages use) loads lazily, so a page ships what its own
+ * route would have; the router installs from the template's own scope.
  */
-export function renderPersisted(
+export function renderPersistedApp(
   routes: BuiltRoutes,
-  runtimeId?: string,
-  debug?: boolean,
+  app: PersistedApp,
+  dev = false,
+  debug = false,
 ): string {
   const writer = createStringWriter();
+  writer.writeLines("<!-- use tags -->\n");
+  const imports = writer.branch("imports");
+  if (dev) {
+    imports.writeLines(`client import "virtual:marko-run/runtime/client";`);
+  }
+  imports.writeLines(
+    `client import { patch } from "marko/${debug ? "debug/" : ""}dom";`,
+    `client import { router } from "${virtualFilePrefix}/runtime/persisted";`,
+  );
+
+  const { pages } = app;
+  const shared = new Map<RoutableFile, number>();
+  for (const route of pages.keys()) {
+    for (const layout of route.layouts) {
+      shared.set(layout, (shared.get(layout) || 0) + 1);
+    }
+  }
+  const names = new Map<RoutableFile, string>();
+  const importName = (file: RoutableFile, name: string) => {
+    let id = names.get(file);
+    if (!id) {
+      names.set(file, (id = `${name}${names.size}`));
+      const lazy = shared.get(file) !== pages.size;
+      imports.writeLines(
+        `import ${id} from "${normalizedRelativePath(
+          path.dirname(app.filePath),
+          file.filePath,
+        )}"${lazy ? ` with { load: "render" }` : ""};`,
+      );
+    }
+    return id;
+  };
+
   writer.writeLines(
-    `import { patch } from "marko/${debug ? "debug/" : ""}dom";`,
-    `import { router } from "${virtualFilePrefix}/runtime/persisted";`,
     "",
-    "router(patch, [",
+    `<script>router(() => patch($global), ${pagesRegExp(routes)})</script>`,
   );
-  writer.indent++;
-  const pages = routes.list
-    .filter((route) => route.page)
-    .sort((a, b) => compareSpecificity(a.path.segments, b.path.segments));
-  for (const route of pages) {
-    writer.writeLines(
-      `[${routeRegExp(route.path.segments)}, () => import(${JSON.stringify(
-        `${virtualFilePrefix}/${getPersistedEntryFileName(route)}`,
-      )})],`,
-    );
-  }
-  writer.indent--;
-  writer.writeLines(
-    `]${runtimeId ? `, ${JSON.stringify({ runtimeId })}` : ""});`,
-  );
+  writeBranches(pageTree(pages));
   return writer.end();
-}
 
-// `$` is a dynamic segment, `$$` the rest of the path.
-function routeRegExp(segments: string[]) {
-  let source = "";
-  for (const segment of segments) {
-    source +=
-      segment === "$$"
-        ? "(?:\\/.*)?"
-        : segment === "$"
-          ? "\\/[^/]+"
-          : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  function writeBranches(node: PageNode) {
+    const branches = [...node.pages, ...node.children];
+    const last = branches.length - 1;
+    for (let i = 0; i <= last; i++) {
+      const branch = branches[i];
+      const tag = !last ? "" : !i ? "if" : i < last ? "else-if" : "else";
+      if (tag) {
+        writer.writeBlockStart(
+          `<${tag}${tag === "else" ? "" : `=input.page<=${lastPage(branch)}`}>`,
+        );
+      }
+      if ("pages" in branch) {
+        writer.writeBlockStart(`<${importName(branch.layout!, "Layout")}>`);
+        writeBranches(branch);
+        writer.writeBlockEnd("</>");
+      } else {
+        writer.writeLines(
+          `<${importName(branch.page!, "Page")}${
+            branch.key === RoutableFileTypes.Error ? " error=input.error" : ""
+          }/>`,
+        );
+      }
+      if (tag) writer.writeBlockEnd("</>");
+    }
   }
-  return `/^${source || "\\/"}$/`;
-}
 
-function compareSpecificity(a: string[], b: string[]) {
-  const rank = (segment: string | undefined) =>
-    segment === undefined ? 3 : segment === "$$" ? 2 : segment === "$" ? 1 : 0;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const diff = rank(a[i]) - rank(b[i]);
-    if (diff) return diff;
+  function lastPage(branch: Route | PageNode): number {
+    return "pages" in branch
+      ? lastPage(branch.children.at(-1) || branch.pages.at(-1)!)
+      : pages.get(branch)!;
   }
-  return 0;
 }
 
-// A route's client code loads for its registrations alone: an exported
-// template would keep its whole render chain in the bundle.
-export function renderPersistedEntry(route: Route, rootDir: string): string {
-  return `import ${JSON.stringify(
-    normalizedRelativePath(rootDir, route.templateFilePath!),
-  )};\n`;
+/** The persisted app template: where it is written and each page's branch. */
+export interface PersistedApp {
+  filePath: string;
+  pages: Map<Route, number>;
 }
 
-export function getPersistedEntryFileName(route: Route) {
-  return `${markoRunFilePrefix}persisted-entry${route.key.replace(/\//g, ".")}.js`;
+/**
+ * Each page's branch index in the persisted app template: depth-first over
+ * the layout tree so every subtree is a contiguous range, and the chain
+ * decides a branch with one comparison.
+ */
+export function persistedPages(routes: BuiltRoutes) {
+  const pages = new Map<Route, number>();
+  const visit = (node: PageNode) => {
+    for (const route of node.pages) pages.set(route, pages.size);
+    for (const child of node.children) visit(child);
+  };
+  visit(
+    pageTree(
+      new Map(
+        [...routes.list, ...(Object.values(routes.special) as Route[])]
+          .filter((route) => route.page)
+          .map((route) => [route, 0]),
+      ),
+    ),
+  );
+  return pages;
 }
 
-export function renderRouteEntry(route: Route, rootDir: string): string {
+interface PageNode {
+  layout?: RoutableFile;
+  pages: Route[];
+  children: PageNode[];
+}
+
+function pageTree(pages: Map<Route, number>) {
+  const root: PageNode = { pages: [], children: [] };
+  for (const route of pages.keys()) {
+    let node = root;
+    for (const layout of route.layouts) {
+      let child = node.children.find((child) => child.layout === layout);
+      if (!child)
+        node.children.push((child = { layout, pages: [], children: [] }));
+      node = child;
+    }
+    node.pages.push(route);
+  }
+  return root;
+}
+
+// One expression tells the client router whether a URL is a page; `$` is a
+// dynamic segment, `$$` the rest of the path.
+function pagesRegExp(routes: BuiltRoutes) {
+  const patterns = routes.list
+    .filter((route) => route.page)
+    .map(
+      ({ path: { segments } }) =>
+        segments
+          .map((segment) =>
+            segment === "$$"
+              ? "(?:\\/.*)?"
+              : segment === "$"
+                ? "\\/[^/]+"
+                : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"),
+          )
+          .join("") || "\\/",
+    );
+  return `/^(?:${patterns.join("|")})$/`;
+}
+
+export function renderRouteEntry(
+  route: Route,
+  rootDir: string,
+  persisted?: PersistedApp,
+): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
@@ -224,7 +307,10 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   if (page) {
     imports.writeLines(
-      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      `import page from "${normalizedRelativePath(
+        rootDir,
+        persisted ? persisted.filePath : route.templateFilePath!,
+      )}";`,
     );
   }
   if (meta) {
@@ -252,7 +338,12 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   for (const verb of verbs) {
     writeRouteOptions(optionsWriter, route, verb);
-    writeRouteEntryHandler(writer, route, verb);
+    writeRouteEntryHandler(
+      writer,
+      route,
+      verb,
+      persisted ? `{ page: ${persisted.pages.get(route)} }` : "{}",
+    );
   }
 
   optionsWriter.join();
@@ -267,6 +358,7 @@ export function renderRouter(
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
+  persisted?: PersistedApp,
 ): string {
   const writer = createStringWriter();
 
@@ -300,9 +392,22 @@ export function renderRouter(
   }
   for (const route of Object.values(routes.special) as Route[]) {
     imports.writeLines(
-      `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      `import page${route.key} from "${normalizedRelativePath(
+        rootDir,
+        persisted ? persisted.filePath : route.templateFilePath!,
+      )}";`,
     );
   }
+  const pageInput = (route: Route, rest = "") =>
+    persisted
+      ? `{ page: ${persisted.pages.get(route)}${rest && ","}${rest} }`
+      : rest
+        ? `{${rest} }`
+        : "{}";
+  // A page of the persisted app answers a patch request as well.
+  const acceptsPage = persisted
+    ? `/text\\/(html|marko-patch)/.test(context.request.headers.get('Accept'))`
+    : `context.request.headers.get('Accept')?.includes('text/html')`;
 
   writer
     .writeLines(
@@ -377,8 +482,8 @@ function match_internal(method, pathname) {
 
   if (hasNotFoundPage) {
     writer.write(`
-    if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, { status: 404 });
+    if (${acceptsPage}) {
+      return context.render(page404, ${pageInput(routes.special[RoutableFileTypes.NotFound]!)}, { status: 404 });
     }`);
   }
 
@@ -394,10 +499,10 @@ function match_internal(method, pathname) {
   if (hasErrorPage) {
     writer
       .writeBlockStart(`} catch (error) {`)
-      .writeBlockStart(
-        `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
+      .writeBlockStart(`if (${acceptsPage}) {`)
+      .writeLines(
+        `return context.render(page500, ${pageInput(routes.special[RoutableFileTypes.Error]!, " error")}, { status: 500 });`,
       )
-      .writeLines(`return context.render(page500, { error }, { status: 500 });`)
       .writeBlockEnd("}")
       .writeLines("throw error;")
       .writeBlockEnd("}");
@@ -737,6 +842,7 @@ function writeRouteEntryHandler(
   writer: Writer,
   route: Route,
   verb: HttpVerb,
+  pageInput: string,
 ): void {
   const { key, index, page, handler, middleware } = route;
   const len = middleware.length;
@@ -760,7 +866,7 @@ function writeRouteEntryHandler(
       const name = `${verb}Handler`;
 
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
 
       if (len) {
@@ -784,10 +890,10 @@ function writeRouteEntryHandler(
       hasBody = true;
     } else if (len) {
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
     } else {
-      writer.writeLines(`return render(context, page, {});`);
+      writer.writeLines(`return render(context, page, ${pageInput});`);
       hasBody = true;
     }
   } else if (handler?.verbs?.includes(verb)) {

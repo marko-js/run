@@ -188,14 +188,12 @@ export function createContext(
       }
 
       // A persisted page asks for a patch: frames that update the live
-      // document instead of a new one. An error status renders a document
-      // (the special pages have no client entry), and either representation
-      // of the URL varies by `accept`.
+      // document instead of a new one. Either representation of the URL
+      // varies by `accept`.
       const persisted = (template as PersistedTemplate<typeof template>).patch;
       const patch =
         persisted &&
         request.headers.get("accept") === PATCH_CONTENT_TYPE &&
-        (init.status ?? 200) < 400 &&
         persisted;
       if (persisted) {
         const headers = new Headers(init.headers);

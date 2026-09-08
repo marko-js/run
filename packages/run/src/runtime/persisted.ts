@@ -1,45 +1,36 @@
-/** Marko's `patch($global)`: the request headers to send and the frame apply. */
-type Patch = ($global?: {
-  runtimeId?: string;
-}) => readonly [
+/**
+ * The live page's side of a patch, as marko's `patch($global)` gives it: the
+ * request headers to send and the frame apply.
+ */
+type Patch = () => readonly [
   headers: Record<string, string>,
   apply: (frame: string) => boolean | Promise<boolean>,
 ];
-/** Page routes, most specific first: a matcher and the route's client code. */
-type Routes = [RegExp, () => Promise<unknown>][];
-type Entry = Routes[number][1];
 
 const PATCH_CONTENT_TYPE = "text/marko-patch";
 
 let patch: Patch | undefined;
-let routes: Routes;
-let $global: { runtimeId?: string } | undefined;
+let pages: RegExp;
 let current: string;
 let epoch = 0;
 let inflight: AbortController | undefined;
 
 /**
- * Turns links and forms to page routes into patch requests that update the
- * live document; anything that is not a patch becomes a document load.
- * Installs once: a route's entry loaded for a patch must not re-install.
+ * Turns links and forms to pages into patch requests that update the live
+ * document; anything that is not a patch becomes a document load. The app
+ * template installs it from its own scope, once.
  */
-export function router(
-  page: Patch,
-  pageRoutes: Routes,
-  global?: { runtimeId?: string },
-) {
+export function router(page: Patch, pagePaths: RegExp) {
   if (patch) return;
   patch = page;
-  routes = pageRoutes;
-  $global = global;
+  pages = pagePaths;
   document.addEventListener("click", onClick);
   document.addEventListener("submit", onSubmit);
   current = location.pathname + location.search;
   addEventListener("popstate", () => {
-    // A hash-only move stays; a URL no route serves reloads.
+    // A hash-only move stays; a URL no page serves reloads.
     if (current === location.pathname + location.search) return;
-    const entry = matchEntry(location);
-    if (entry) navigate(new Request(location.href), entry, 1);
+    if (isPage(location)) navigate(new Request(location.href), 1);
     else location.reload();
   });
 }
@@ -60,10 +51,11 @@ function onClick(ev: MouseEvent) {
     return;
   }
   const url = new URL(anchor.getAttribute("href")!, location.href);
-  const entry = isLocal(url) && matchEntry(url);
-  if (!entry || (url.hash && isCurrentDocument(url))) return;
+  if (!isLocal(url) || !isPage(url) || (url.hash && isCurrentDocument(url))) {
+    return;
+  }
   ev.preventDefault();
-  navigate(new Request(url), entry);
+  navigate(new Request(url));
 }
 
 function onSubmit(ev: SubmitEvent) {
@@ -74,9 +66,9 @@ function onSubmit(ev: SubmitEvent) {
     submitter?.getAttribute("form" + name) ?? form.getAttribute(name);
   const method = (attr("method") || "GET").toUpperCase();
   const url = new URL(attr("action") || "", location.href);
-  const entry = isLocal(url) && matchEntry(url);
   if (
-    !entry ||
+    !isLocal(url) ||
+    !isPage(url) ||
     !isSelfTarget(form, submitter) ||
     (method !== "GET" && method !== "POST")
   ) {
@@ -86,7 +78,7 @@ function onSubmit(ev: SubmitEvent) {
   ev.preventDefault();
   if (method === "GET") {
     url.search = "" + new URLSearchParams(data as unknown as string[][]);
-    navigate(new Request(url), entry);
+    navigate(new Request(url));
   } else {
     const multipart = attr("enctype") === "multipart/form-data";
     navigate(
@@ -96,19 +88,16 @@ function onSubmit(ev: SubmitEvent) {
           ? data
           : new URLSearchParams(data as unknown as string[][]),
       }),
-      entry,
     );
   }
 }
 
-async function navigate(request: Request, entry: Entry, pop?: 1) {
+async function navigate(request: Request, pop?: 1) {
   const run = ++epoch;
   inflight?.abort();
   const { signal } = (inflight = new AbortController());
-  // The route's client code loads alongside the fetch, not after it.
-  let ready = entry();
   // Marko's own account of what the live page holds rides its headers.
-  const [headers, apply] = patch!($global);
+  const [headers, apply] = patch!();
   request.headers.set("accept", PATCH_CONTENT_TYPE);
   for (const name in headers) request.headers.set(name, headers[name]);
   let response: Response;
@@ -128,14 +117,10 @@ async function navigate(request: Request, entry: Entry, pop?: 1) {
   ) {
     return location.assign(response.url);
   }
-  // A redirect may land on another page route.
-  const landed = matchEntry(new URL(response.url));
-  if (landed && landed !== entry) ready = landed();
   await applyFrames(
     readFrames(response.body),
     apply,
     run,
-    ready,
     // The document changes only once the first frame applies, so a
     // superseded navigation never records an entry (as a native one).
     () => {
@@ -152,13 +137,12 @@ async function navigate(request: Request, entry: Entry, pop?: 1) {
   );
 }
 
-// Frames apply as they arrive once the route's client code is loaded; a
-// frame that does not apply faithfully ends the navigation as a document.
+// Frames apply as they arrive; a frame that does not apply faithfully (or
+// whose page code fails to load) ends the navigation as a document.
 async function applyFrames(
   frames: AsyncIterable<string>,
   apply: (frame: string) => boolean | Promise<boolean>,
   run: number,
-  ready: Promise<unknown> | undefined,
   commit: () => void,
   fail: () => void,
 ) {
@@ -166,7 +150,6 @@ async function applyFrames(
     if (!applied && run === epoch) fail();
   };
   try {
-    await ready;
     for await (const frame of frames) {
       if (run !== epoch) return;
       commit();
@@ -200,10 +183,12 @@ async function* readFrames(body: ReadableStream<Uint8Array>) {
   }
 }
 
-function matchEntry(url: { pathname: string }) {
-  const path = url.pathname.replace(/(.)\/$/, "$1");
-  for (const [pattern, entry] of routes) {
-    if (pattern.test(path)) return entry;
+// Pages match as the server does: a decoded path with no trailing slash.
+function isPage(url: { pathname: string }) {
+  try {
+    return pages.test(decodeURIComponent(url.pathname).replace(/(.)\/$/, "$1"));
+  } catch {
+    return false;
   }
 }
 
