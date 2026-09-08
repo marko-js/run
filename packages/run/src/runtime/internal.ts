@@ -209,13 +209,8 @@ export function createContext(
         ...input,
         $global: context as unknown as Marko.Global,
       };
-      // The live page's token rides the patch request; marko reads it.
       const rendered = patch
-        ? patch.call(
-            template,
-            renderInput,
-            request.headers.get("x-marko-persisted") ?? undefined,
-          )
+        ? patch.call(template, renderInput)
         : template.render.call(template, renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
@@ -278,10 +273,7 @@ export function render<T>(
 const PATCH_CONTENT_TYPE = "text/marko-patch";
 // Typed here until the published Marko types declare `patch`.
 type PersistedTemplate<T extends Marko.Template<any>> = T & {
-  patch?: (
-    input: Parameters<T["render"]>[0],
-    from?: string,
-  ) => ReturnType<T["render"]>;
+  patch?: (input: Parameters<T["render"]>[0]) => ReturnType<T["render"]>;
 };
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
