@@ -2,4 +2,4 @@
 "@marko/run": patch
 ---
 
-Render a patch instead of a document when a persisted page requests one (`accept: text/marko-patch`).
+Persisted builds get a client router: links and forms fetch a patch and update the live document, falling back to a document load.

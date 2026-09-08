@@ -3,6 +3,7 @@ import path from "path";
 import {
   httpVerbs,
   markoRunFilePrefix,
+  persistedFilename,
   type RoutableFileType,
   RoutableFileTypes,
   virtualFilePrefix,
@@ -34,6 +35,7 @@ export function renderRouteTemplate(
   route: Route,
   markoApi?: string,
   dev = false,
+  persisted = false,
 ): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
@@ -51,6 +53,11 @@ export function renderRouteTemplate(
       `client import "virtual:marko-run/runtime/client";`,
     );
   }
+  if (persisted) {
+    importWriter.writeLines(
+      `client import "${virtualFilePrefix}/${persistedFilename}";`,
+    );
+  }
 
   writer.writeLines("");
   writeEntryTemplateTag(
@@ -65,6 +72,77 @@ export function renderRouteTemplate(
   );
 
   return writer.end();
+}
+
+/**
+ * The client router of a persisted build: a route table (most specific
+ * first) so a matched link starts its route's client code loading alongside
+ * the patch fetch, and unmatched links stay the browser's.
+ */
+export function renderPersisted(
+  routes: BuiltRoutes,
+  runtimeId?: string,
+  debug?: boolean,
+): string {
+  const writer = createStringWriter();
+  writer.writeLines(
+    `import { patch } from "marko/${debug ? "debug/" : ""}dom";`,
+    `import { router } from "${virtualFilePrefix}/runtime/persisted";`,
+    "",
+    "router(patch, [",
+  );
+  writer.indent++;
+  const pages = routes.list
+    .filter((route) => route.page)
+    .sort((a, b) => compareSpecificity(a.path.segments, b.path.segments));
+  for (const route of pages) {
+    writer.writeLines(
+      `[${routeRegExp(route.path.segments)}, () => import(${JSON.stringify(
+        `${virtualFilePrefix}/${getPersistedEntryFileName(route)}`,
+      )})],`,
+    );
+  }
+  writer.indent--;
+  writer.writeLines(
+    `]${runtimeId ? `, ${JSON.stringify({ runtimeId })}` : ""});`,
+  );
+  return writer.end();
+}
+
+// `$` is a dynamic segment, `$$` the rest of the path.
+function routeRegExp(segments: string[]) {
+  let source = "";
+  for (const segment of segments) {
+    source +=
+      segment === "$$"
+        ? "(?:\\/.*)?"
+        : segment === "$"
+          ? "\\/[^/]+"
+          : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  }
+  return `/^${source || "\\/"}$/`;
+}
+
+function compareSpecificity(a: string[], b: string[]) {
+  const rank = (segment: string | undefined) =>
+    segment === undefined ? 3 : segment === "$$" ? 2 : segment === "$" ? 1 : 0;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = rank(a[i]) - rank(b[i]);
+    if (diff) return diff;
+  }
+  return 0;
+}
+
+// A route's client code loads for its registrations alone: an exported
+// template would keep its whole render chain in the bundle.
+export function renderPersistedEntry(route: Route, rootDir: string): string {
+  return `import ${JSON.stringify(
+    normalizedRelativePath(rootDir, route.templateFilePath!),
+  )};\n`;
+}
+
+export function getPersistedEntryFileName(route: Route) {
+  return `${markoRunFilePrefix}persisted-entry${route.key.replace(/\//g, ".")}.js`;
 }
 
 export function renderRouteEntry(route: Route, rootDir: string): string {

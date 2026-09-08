@@ -188,22 +188,37 @@ export function createContext(
       }
 
       // A persisted page asks for a patch: frames that update the live
-      // document instead of a new one.
+      // document instead of a new one. An error status renders a document
+      // (the special pages have no client entry), and either representation
+      // of the URL varies by `accept`.
+      const persisted = (template as PersistedTemplate<typeof template>).patch;
       const patch =
+        persisted &&
         request.headers.get("accept") === PATCH_CONTENT_TYPE &&
-        (template as PersistedTemplate<typeof template>).patch;
-      if (patch) {
+        (init.status ?? 200) < 400 &&
+        persisted;
+      if (persisted) {
         const headers = new Headers(init.headers);
-        headers.set("content-type", "text/javascript;charset=UTF-8");
-        headers.set("cache-control", "no-store");
         headers.append("vary", "accept");
+        if (patch) {
+          headers.set("content-type", "text/javascript;charset=UTF-8");
+          headers.set("cache-control", "no-store");
+        }
         init = { ...init, headers };
       }
 
-      const rendered = (patch || template.render).call(template, {
+      const renderInput = {
         ...input,
         $global: context as unknown as Marko.Global,
-      });
+      };
+      // The live page's token rides the patch request; marko reads it.
+      const rendered = patch
+        ? patch.call(
+            template,
+            renderInput,
+            request.headers.get("x-marko-persisted") ?? undefined,
+          )
+        : template.render.call(template, renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
       // `toReadable`.
@@ -265,7 +280,10 @@ export function render<T>(
 const PATCH_CONTENT_TYPE = "text/marko-patch";
 // Typed here until the published Marko types declare `patch`.
 type PersistedTemplate<T extends Marko.Template<any>> = T & {
-  patch?: T["render"];
+  patch?: (
+    input: Parameters<T["render"]>[0],
+    from?: string,
+  ) => ReturnType<T["render"]>;
 };
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();

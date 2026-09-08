@@ -23,7 +23,10 @@ import {
 
 import { prepareError } from "../adapter/utils";
 import {
+  getPersistedEntryFileName,
   renderMiddleware,
+  renderPersisted,
+  renderPersistedEntry,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -32,6 +35,7 @@ import {
 import {
   httpVerbs,
   markoRunFilePrefix,
+  persistedFilename,
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
@@ -94,6 +98,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
   const { ...markoVitePluginOptions } = opts;
+  // Typed loosely until the published @marko/vite declares the option.
+  const persisted = !!(opts as { persisted?: boolean }).persisted;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -305,6 +311,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       route,
       await getMarkoApiForRoute(context, route),
       !isBuild,
+      persisted,
     );
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -384,6 +391,28 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           virtualFiles.set(
             path.posix.join(root, MIDDLEWARE_FILENAME),
             renderMiddleware(routes.middleware, root),
+          );
+        }
+
+        if (persisted) {
+          for (const route of routes.list) {
+            if (route.page) {
+              virtualFiles.set(
+                path.posix.join(root, getPersistedEntryFileName(route)),
+                renderPersistedEntry(route, root),
+              );
+            }
+          }
+          // The same runtime build the templates compile against
+          // (@marko/vite exports its choice through MARKO_DEBUG).
+          virtualFiles.set(
+            path.posix.join(root, persistedFilename),
+            renderPersisted(
+              routes,
+              opts.runtimeId,
+              process.env.MARKO_DEBUG !== "false" &&
+                process.env.MARKO_DEBUG !== "0",
+            ),
           );
         }
 
