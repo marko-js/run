@@ -180,12 +180,6 @@ The CLI section of `packages/run/README.md` documents only bare `marko-run dev|b
 
 c8 only auto-discovers `.c8rc`, `.c8rc.json`, `.nycrc`, `.nycrc.json`, or a `c8` key in `package.json`, so the repo's root `.c8r.json` has never been read and `@ci:test` (`c8 pnpm test`) runs on c8 defaults (`reporter: "text"`, `all: false`, `excludeAfterRemap: false`). Nothing is written under `coverage/`, so the `codecov/codecov-action@v5` step in `.github/workflows/ci.yml` has no report to upload and `pnpm run report` opens a file that is never generated; re-running the identical command with an explicit `--config .c8r.json` does emit `coverage/lcov.info` and `coverage/lcov-report/`, so the config is valid and only the filename is wrong. Rename it to `.c8rc.json`, and update the globs for today's layout while doing so: `packages/*/src/**` misses all three adapters under `packages/adapters/{netlify,node,static}/src`, and the `*.marko` include is inert because `.marko` is not in c8's `extension` list (default `.js,.cjs,.mjs,.ts,.tsx,.jsx`).
 
-## Run cspell in CI — `@ci:lint` omits the spell check that `pnpm lint` runs
-
-`package.json` › `scripts["@ci:lint"]` | 2026-08-03 | impact:low | effort:low
-
-The root `lint` script is `eslint --format unix . && prettier . --check --log-level=warn && cspell "**/*.{md,ts,marko}"`, but `@ci:lint` — the only lint script the `build` job in `.github/workflows/ci.yml` runs — stops after eslint and prettier, and `.husky/pre-commit` (lint-staged, globs `*.{ts,js}` and `*.{json,md,css}`) has no cspell step either, so nothing gates spelling except a human typing `pnpm lint`. cspell was appended to `lint` in "feat: add spell checking" (#185) and never to the already-existing `@ci:lint`, so unknown words reach `main` unchallenged — three had accumulated in `agent-feedback/bugs.md` before being added to `cspell.json`. `CLAUDE.md` and `AGENTS.md` both advertise `pnpm run lint  # eslint + prettier + cspell`, so a contributor who follows them gets a red result they did not cause and cannot tell from a real regression. Append `&& cspell "**/*.{md,ts,marko}"` to `@ci:lint`, or drop cspell from `lint` so the two scripts agree.
-
 ## Fix or drop the undocumented `MR_EXPLORER=1` route explorer — it dies on startup under pnpm while the dev banner advertises its URL
 
 `packages/run/src/adapter/index.ts` › `adapter` | 2026-08-03 | impact:low | effort:low
@@ -204,23 +198,11 @@ The root `lint` script is `eslint --format unix . && prettier . --check --log-le
 
 CodeRabbit's pre-merge checks (configured in the organization UI; the repo has no `.coderabbit.yaml`) require 80% docstring coverage and flagged PR #243 at 13.33% with "Write docstrings for the functions missing them", while `AGENTS.md` treats comments as a last resort and only guarantees JSDoc where it earns its place — so the two policies will disagree on nearly every code PR, and following the bot's resolution would violate the repo's own conventions. Lower or disable the docstring-coverage threshold in the CodeRabbit organization settings, or add a repo `.coderabbit.yaml` that overrides it, so reviews stop prompting for docstrings the conventions reject.
 
-## Add "macrotask" to the cspell dictionary so `pnpm run lint` passes on main
-
-`cspell.json` › `words` | 2026-08-11 | impact:med | effort:low
-
-`pnpm run lint` fails on a clean `main` with a single cspell error: `agent-feedback/cleanup.md` uses "macrotask", which is not in `cspell.json`'s `words` list. The word arrived with 445114c (#256) and the check covers `**/*.{md,ts,marko}`, so every branch cut from main inherits a red lint until the word is added. Re-verify: `npx cspell "**/*.{md,ts,marko}" --no-progress` on main reports one issue.
-
 ## A `params` validator on a route with two `$` segments loses its typing
 
 `packages/run/src/runtime/types.ts` › `RouteForFileDef` | 2026-08-17 | impact:low | effort:med
 
 In an app with `api/workspaces/$id/+middleware.ts` (a `Run.ALL` middleware calling `next({ workspace })`) and a leaf `api/workspaces/$id/review/$commentId/+handler.ts` exporting `Run.DELETE({ params({ id, commentId }) { … } }, (ctx) => …)`, `tsc` reports TS7031 (`id` / `commentId` implicitly any) on the validator's destructured argument and TS2554 ("Expected 1 arguments, but got 2") on the `Run.DELETE` call, so the two-argument form is unusable there. The identical shape on a one-segment route with no parent middleware (`api/procs/$pid/+handler.ts`, `Run.DELETE({ params({ pid }) … }, handler)`) type-checks. Something in the merge of the parent middleware's options with the leaf's `params` (`MergedRouteOptionsForFile` → `RouteForFileDef.params`) collapses when the path has two params, since the workaround is simply parsing `ctx.params.commentId` inside the handler. Repro: the two files above in a fixture under `packages/run/src/__tests__/fixtures/`, then `tsc` on it; a passing fixture with the validator form is the fix's test.
-
-## cspell's Node engine requirement breaks `pnpm run lint` on the pinned toolchain
-
-`package.json` › `scripts.lint` | 2026-08-18 | impact:med | effort:low
-
-The cspell version in the lockfile refuses to run on Node < 22.18 ("Unsupported NodeJS version (22.14.0); >=22.18.0 is required"), but a machine whose toolchain pins an older Node 22 (here 22.14 via mise) can build and pass the full test suite while `pnpm run lint` exits red at the cspell step — eslint and prettier having already passed. Either declare `engines.node >= 22.18` at the repo root so the mismatch fails loudly at install, or pin cspell below the version that raised its floor.
 
 ## Print the bound address from the built server's default entry
 
