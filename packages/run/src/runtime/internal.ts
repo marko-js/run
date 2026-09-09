@@ -210,7 +210,7 @@ export function createContext(
         $global: context as unknown as Marko.Global,
       };
       const rendered = patch
-        ? endPatch(patch.call(template, renderInput))
+        ? endPatch(patch.call(template, renderInput, request.headers))
         : template.render.call(template, renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
@@ -273,7 +273,10 @@ export function render<T>(
 const PATCH_CONTENT_TYPE = "text/marko-patch";
 // Typed here until the published Marko types declare `patch`.
 type PersistedTemplate<T extends Marko.Template<any>> = T & {
-  patch?: (input: Parameters<T["render"]>[0]) => ReturnType<T["render"]>;
+  patch?: (
+    input: Parameters<T["render"]>[0],
+    headers?: Headers,
+  ) => ReturnType<T["render"]>;
 };
 
 // Set by a persisted build's router module with the build's id: a debug
