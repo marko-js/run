@@ -221,6 +221,22 @@ describe("persisted router", () => {
     ]);
   });
 
+  it("scrolls to the fragment only once a deferred frame has applied", async () => {
+    let settle!: (ok: boolean) => void;
+    applyResult = new Promise<boolean>((resolve) => (settle = resolve));
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/item/3"),
+    );
+    await click("#item");
+    assert.deepEqual(calls, ["push http://app.example/item/3#reviews"]);
+    settle(true);
+    await tick();
+    assert.deepEqual(calls, [
+      "push http://app.example/item/3#reviews",
+      "scrollIntoView #reviews",
+    ]);
+  });
+
   it("replaces the document when a later frame fails after the commit", async () => {
     applyResult = false;
     responses.push(() =>

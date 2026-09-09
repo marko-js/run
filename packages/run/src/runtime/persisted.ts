@@ -198,6 +198,9 @@ async function applyFrames(
 ) {
   let ended = false;
   let failed = false;
+  // Frames a module load defers: they apply in order on their own, and
+  // the navigation succeeds only once every one of them has.
+  const pending: Promise<boolean>[] = [];
   const fail = () => {
     if (!failed && run === epoch) {
       failed = true;
@@ -217,17 +220,20 @@ async function applyFrames(
       const applied = apply(frame);
       if (applied === false) return (fail(), false);
       if (applied !== true) {
-        applied.then(
-          (ok) => ok || fail(),
-          () => fail(),
+        pending.push(
+          applied.then(
+            (ok) => ok || (fail(), false),
+            () => (fail(), false),
+          ),
         );
       }
     }
   } catch {
     ended = false;
   }
-  if (!ended) fail();
-  return ended;
+  if (!ended) return (fail(), false);
+  for (const applied of pending) if (!(await applied)) return false;
+  return run === epoch;
 }
 
 async function* readFrames(body: ReadableStream<Uint8Array>) {
