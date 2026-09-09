@@ -116,7 +116,7 @@ export function renderPersistedApp(
 
   writer.writeLines(
     "",
-    `<script>router(() => patch($global), ${pagesRegExp(routes)})</script>`,
+    `<script>router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)})</script>`,
   );
   writeBranches(pageTree(pages));
   return writer.end();
@@ -158,6 +158,8 @@ export function renderPersistedApp(
 export interface PersistedApp {
   filePath: string;
   pages: Map<Route, number>;
+  /** Names the build: a patch applies only between a document and frames of the same one. */
+  id: string;
 }
 
 /**
@@ -374,7 +376,9 @@ export function renderRouter(
   imports.writeLines(
     `import { NotHandled, NotMatched, createContext${persisted ? ", usePersisted, acceptsPatch" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
-  if (persisted) imports.writeLines("usePersisted();");
+  if (persisted) {
+    imports.writeLines(`usePersisted(${JSON.stringify(persisted.id)});`);
+  }
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);

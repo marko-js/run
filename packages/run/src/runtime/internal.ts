@@ -200,7 +200,7 @@ export function createContext(
         if (patch) {
           headers.set("content-type", "text/javascript;charset=UTF-8");
           headers.set("cache-control", "no-store");
-          headers.set("x-marko-patch", "1");
+          headers.set("x-marko-patch", persisted);
         }
         init = { ...init, headers };
       }
@@ -276,16 +276,20 @@ type PersistedTemplate<T extends Marko.Template<any>> = T & {
   patch?: (input: Parameters<T["render"]>[0]) => ReturnType<T["render"]>;
 };
 
-// Set by a persisted build's router module: a debug marko template carries
-// a throwing `patch` stub, so the template alone does not say.
-let persisted = false;
-export function usePersisted() {
-  persisted = true;
+// Set by a persisted build's router module with the build's id: a debug
+// marko template carries a throwing `patch` stub, so the template alone
+// does not say, and a document from another build gets a document back.
+let persisted = "";
+export function usePersisted(id: string) {
+  persisted = id;
 }
 
-/** Whether a request asks for a patch rather than a document. */
+/** Whether a request asks for a patch of this build rather than a document. */
 export function acceptsPatch(request: Request) {
-  return request.headers.get("accept") === PATCH_CONTENT_TYPE;
+  return (
+    request.headers.get("accept") === PATCH_CONTENT_TYPE &&
+    request.headers.get("x-marko-patch") === persisted
+  );
 }
 
 // A closing frame the router requires: a stream cut short is not a patch.

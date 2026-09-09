@@ -85,6 +85,7 @@ interface RouteData {
   times: TimeMetrics;
   builtEntries: string[];
   sourceEntries: string[];
+  persistedId?: string;
 }
 
 declare module "vite" {
@@ -261,6 +262,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           persistedApp = {
             filePath: path.join(entryFilesDir, persistedAppFilename),
             pages: persistedPages(routes),
+            // The browser build reuses the ssr build's id (route data).
+            id: persistedApp?.id || Date.now().toString(36),
           };
           entryTemplates.add(normalizePath(persistedApp.filePath));
         }
@@ -784,6 +787,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             persistedApp = {
               filePath: path.join(entryFilesDir, persistedAppFilename),
               pages: persistedPages(routes),
+              id: routeData.persistedId!,
             };
           }
 
@@ -951,6 +955,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             times,
             builtEntries,
             sourceEntries: ssrEntryFiles,
+            persistedId: persistedApp?.id,
           };
           for (const [key, code] of virtualFiles) {
             routeData.files.push({ key, code });

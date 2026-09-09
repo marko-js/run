@@ -18,13 +18,14 @@ describe("persisted router", () => {
       (frame: string) => boolean | Promise<boolean>,
     ],
     pages: RegExp,
+    build: string,
   ) => void;
 
   const patchResponse = (frames: string[], { end = true, url = "" } = {}) =>
     new Response(frames.map((f) => f + "\n").join("") + (end ? "//\n" : ""), {
       headers: {
         "content-type": "text/javascript;charset=UTF-8",
-        "x-marko-patch": "1",
+        "x-marko-patch": "b1",
       },
       ...(url && { url }),
     });
@@ -150,7 +151,7 @@ describe("persisted router", () => {
       return next();
     };
     ({ router } = await import(`../persisted.ts?${Math.random()}`));
-    router(page, /^(?:\/cart|\/search|\/item\/[^/]+)$/);
+    router(page, /^(?:\/cart|\/search|\/item\/[^/]+)$/, "b1");
   });
 
   it("patches a page link, pushing history on the first frame only", async () => {
@@ -184,6 +185,24 @@ describe("persisted router", () => {
     );
     await click("#page");
     assert.deepEqual(calls, ["assign http://app.example/login"]);
+  });
+
+  it("names its build and loads the document when another build answers", async () => {
+    responses.push(() =>
+      withUrl(
+        new Response("{a:1}\n//\n", {
+          headers: {
+            "content-type": "text/javascript;charset=UTF-8",
+            "x-marko-patch": "b2",
+          },
+        }),
+        "http://app.example/search",
+      ),
+    );
+    await click("#page");
+    assert.equal(requests[0].headers.get("x-marko-patch"), "b1");
+    assert.deepEqual(applied, []);
+    assert.deepEqual(calls, ["assign http://app.example/search"]);
   });
 
   it("loads the document when a read never answers", async () => {

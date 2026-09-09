@@ -23,6 +23,7 @@ export const PATCH_END = "//";
 
 let patch: Patch | undefined;
 let pages: RegExp;
+let build: string;
 let current: string;
 let epoch = 0;
 let inflight: AbortController | undefined;
@@ -33,10 +34,11 @@ let resubmitting = false;
  * document; anything that is not a patch becomes a document load. The app
  * template installs it from its own scope, once.
  */
-export function router(page: Patch, pagePaths: RegExp) {
+export function router(page: Patch, pagePaths: RegExp, buildId: string) {
   if (patch) return;
   patch = page;
   pages = pagePaths;
+  build = buildId;
   history.scrollRestoration = "manual";
   document.addEventListener("click", onClick);
   document.addEventListener("submit", onSubmit);
@@ -139,6 +141,7 @@ async function navigate(request: Request, nav: Navigation) {
   // Marko's own account of what the live page holds rides its headers.
   const [headers, apply] = patch!();
   request.headers.set("accept", PATCH_CONTENT_TYPE);
+  request.headers.set("x-marko-patch", build);
   for (const name in headers) request.headers.set(name, headers[name]);
   let response: Response;
   try {
@@ -152,9 +155,9 @@ async function navigate(request: Request, nav: Navigation) {
     return;
   }
   if (run !== epoch) return;
-  // Only a patch this build produced applies; anything else, for any
-  // method, is the document at the landed URL (a non-GET as a GET).
-  if (!response.headers.get("x-marko-patch") || !response.body) {
+  // Only a patch this build produced applies; anything else (another
+  // build's, any method) is the document at the landed URL.
+  if (response.headers.get("x-marko-patch") !== build || !response.body) {
     return location.assign(response.url);
   }
   let committed = false;

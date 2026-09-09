@@ -99,6 +99,7 @@ describe("router codegen", () => {
           ? {
               filePath: path.join(entryFilesDir, persistedAppFilename),
               pages: persistedPages(routes),
+              id: "build",
             }
           : undefined;
         if (persisted) {

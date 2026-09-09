@@ -18,7 +18,7 @@ import Page8 from "../../src/routes/blog/tag.$$/+page.marko" with { load: "rende
 import Layout9 from "../../src/routes/admin/+layout.marko" with { load: "render" };
 import Page10 from "../../src/routes/admin/users/+page.marko" with { load: "render" };
 
-<script>router(() => patch($global), /^(?:\/|\/blog|\/blog\/[^/]+|\/blog\/tag(?:\/.*)?|\/about|\/admin\/users)$/)</script>
+<script>router(() => patch($global), /^(?:\/|\/blog|\/blog\/[^/]+|\/blog\/tag(?:\/.*)?|\/about|\/admin\/users)$/, "build")</script>
 <Layout0>
 	<if=input.page<=0>
 		<Page1/>
