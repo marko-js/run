@@ -523,6 +523,22 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         );
         markoVitePluginOptions.runtimeId = opts.runtimeId;
         markoVitePluginOptions.basePathVar = opts.basePathVar;
+        // A route's pages and layouts render only where the app template's
+        // chain selects them: the server's structure.
+        if (persisted) {
+          (
+            markoVitePluginOptions as {
+              constructed?: (filename: string) => boolean;
+            }
+          ).constructed = (filename) => {
+            const type = matchRoutableFile(path.basename(filename));
+            return (
+              (type === RoutableFileTypes.Page ||
+                type === RoutableFileTypes.Layout) &&
+              filename.startsWith(resolvedRoutesDir + path.sep)
+            );
+          };
+        }
         markoVitePluginOptions.isEntry = (importee, importer) => {
           return (
             entryTemplates.has(importee) ||
