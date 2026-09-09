@@ -24,6 +24,7 @@ export const PATCH_END = "//";
 let patch: Patch | undefined;
 let pages: RegExp;
 let build: string;
+let preloads: [RegExp, (() => Promise<unknown>)[]][];
 let current: string;
 let epoch = 0;
 let inflight: AbortController | undefined;
@@ -34,11 +35,17 @@ let resubmitting = false;
  * document; anything that is not a patch becomes a document load. The app
  * template installs it from its own scope, once.
  */
-export function router(page: Patch, pagePaths: RegExp, buildId: string) {
+export function router(
+  page: Patch,
+  pagePaths: RegExp,
+  buildId: string,
+  pageLoads: typeof preloads = [],
+) {
   if (patch) return;
   patch = page;
   pages = pagePaths;
   build = buildId;
+  preloads = pageLoads;
   history.scrollRestoration = "manual";
   document.addEventListener("click", onClick);
   document.addEventListener("submit", onSubmit);
@@ -138,6 +145,17 @@ async function navigate(request: Request, nav: Navigation) {
   inflight?.abort();
   inflight = mutation ? undefined : new AbortController();
   if (!nav.pop) saveScroll();
+  // The page's lazy modules load alongside the request (a failure is the
+  // frame's to report when it needs them).
+  const pathname = decodeURIComponent(new URL(request.url).pathname).replace(
+    /(.)\/$/,
+    "$1",
+  );
+  for (const [pathPattern, loads] of preloads) {
+    if (pathPattern.test(pathname)) {
+      for (const load of loads) load().catch(() => {});
+    }
+  }
   // Marko's own account of what the live page holds rides its headers.
   const [headers, apply] = patch!();
   request.headers.set("accept", PATCH_CONTENT_TYPE);

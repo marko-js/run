@@ -114,9 +114,27 @@ export function renderPersistedApp(
     return id;
   };
 
+  // A navigation starts a page's lazy modules (its own and its lazy
+  // layouts') alongside the request, so the frame never waits on them.
+  const preloads: string[] = [];
+  for (const route of pages.keys()) {
+    const loads = [...route.layouts, route.page!]
+      .filter((file) => shared.get(file) !== pages.size)
+      .map(
+        (file) =>
+          // `.then(() => {})` drops the namespace: the chunk keeps only what
+          // the site's own loader keeps.
+          `() => import(${JSON.stringify(
+            normalizedRelativePath(path.dirname(app.filePath), file.filePath),
+          )}).then(() => {})`,
+      );
+    if (loads.length) {
+      preloads.push(`[${pagePattern(route)}, [${loads.join(", ")}]]`);
+    }
+  }
   writer.writeLines(
     "",
-    `<script>router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)})</script>`,
+    `<script>router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)}, [${preloads.join(", ")}])</script>`,
   );
   writeBranches(pageTree(pages));
   return writer.end();
@@ -211,19 +229,26 @@ function pageTree(pages: Map<Route, number>) {
 function pagesRegExp(routes: BuiltRoutes) {
   const patterns = routes.list
     .filter((route) => route.page)
-    .map(
-      ({ path: { segments } }) =>
-        segments
-          .map((segment) =>
-            segment === "$$"
-              ? "(?:\\/.*)?"
-              : segment === "$"
-                ? "\\/[^/]+"
-                : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"),
-          )
-          .join("") || "\\/",
-    );
+    .map((route) => pagePath(route));
   return `/^(?:${patterns.join("|")})$/`;
+}
+
+function pagePattern(route: Route) {
+  return `/^${pagePath(route)}$/`;
+}
+
+function pagePath({ path: { segments } }: Route) {
+  return (
+    segments
+      .map((segment) =>
+        segment === "$$"
+          ? "(?:\\/.*)?"
+          : segment === "$"
+            ? "\\/[^/]+"
+            : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"),
+      )
+      .join("") || "\\/"
+  );
 }
 
 export function renderRouteEntry(

@@ -19,6 +19,7 @@ describe("persisted router", () => {
     ],
     pages: RegExp,
     build: string,
+    preloads?: [RegExp, (() => Promise<unknown>)[]][],
   ) => void;
 
   const patchResponse = (frames: string[], { end = true, url = "" } = {}) =>
@@ -151,7 +152,12 @@ describe("persisted router", () => {
       return next();
     };
     ({ router } = await import(`../persisted.ts?${Math.random()}`));
-    router(page, /^(?:\/cart|\/search|\/item\/[^/]+)$/, "b1");
+    router(page, /^(?:\/cart|\/search|\/item\/[^/]+)$/, "b1", [
+      [
+        /^\/item\/[^/]+$/,
+        [() => (calls.push("preload item"), Promise.resolve())],
+      ],
+    ]);
   });
 
   it("patches a page link, pushing history on the first frame only", async () => {
@@ -216,6 +222,7 @@ describe("persisted router", () => {
     );
     await click("#item");
     assert.deepEqual(calls, [
+      "preload item",
       "push http://app.example/item/3#reviews",
       "scrollIntoView #reviews",
     ]);
@@ -228,10 +235,14 @@ describe("persisted router", () => {
       withUrl(patchResponse(["{}"]), "http://app.example/item/3"),
     );
     await click("#item");
-    assert.deepEqual(calls, ["push http://app.example/item/3#reviews"]);
+    assert.deepEqual(calls, [
+      "preload item",
+      "push http://app.example/item/3#reviews",
+    ]);
     settle(true);
     await tick();
     assert.deepEqual(calls, [
+      "preload item",
       "push http://app.example/item/3#reviews",
       "scrollIntoView #reviews",
     ]);
@@ -280,6 +291,7 @@ describe("persisted router", () => {
     await tick();
     assert.deepEqual(applied, ["{}"]);
     assert.deepEqual(calls, [
+      "preload item",
       "push http://app.example/item/3#reviews",
       "scrollIntoView #reviews",
     ]);

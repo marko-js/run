@@ -18,7 +18,7 @@ import Page8 from "../../src/routes/blog/tag.$$/+page.marko" with { load: "rende
 import Layout9 from "../../src/routes/admin/+layout.marko" with { load: "render" };
 import Page10 from "../../src/routes/admin/users/+page.marko" with { load: "render" };
 
-<script>router(() => patch($global), /^(?:\/|\/blog|\/blog\/[^/]+|\/blog\/tag(?:\/.*)?|\/about|\/admin\/users)$/, "build")</script>
+<script>router(() => patch($global), /^(?:\/|\/blog|\/blog\/[^/]+|\/blog\/tag(?:\/.*)?|\/about|\/admin\/users)$/, "build", [[/^\/$/, [() => import("../../src/routes/+page.marko").then(() => {})]], [/^\/about$/, [() => import("../../src/routes/about/+page.marko").then(() => {})]], [/^\/$/, [() => import("../../src/routes/+404.marko").then(() => {})]], [/^\/$/, [() => import("../../src/routes/+500.marko").then(() => {})]], [/^\/blog$/, [() => import("../../src/routes/blog/+layout.marko").then(() => {}), () => import("../../src/routes/blog/+page.marko").then(() => {})]], [/^\/blog\/[^/]+$/, [() => import("../../src/routes/blog/+layout.marko").then(() => {}), () => import("../../src/routes/blog/$slug/+page.marko").then(() => {})]], [/^\/blog\/tag(?:\/.*)?$/, [() => import("../../src/routes/blog/+layout.marko").then(() => {}), () => import("../../src/routes/blog/tag.$$/+page.marko").then(() => {})]], [/^\/admin\/users$/, [() => import("../../src/routes/admin/+layout.marko").then(() => {}), () => import("../../src/routes/admin/users/+page.marko").then(() => {})]]])</script>
 <Layout0>
 	<if=input.page<=0>
 		<Page1/>
