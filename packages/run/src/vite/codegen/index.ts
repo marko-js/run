@@ -372,8 +372,9 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${persisted ? ", usePersisted, acceptsPatch" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
+  if (persisted) imports.writeLines("usePersisted();");
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
@@ -406,7 +407,7 @@ export function renderRouter(
         : "{}";
   // A page of the persisted app answers a patch request as well.
   const acceptsPage = persisted
-    ? `/text\\/(html|marko-patch)/.test(context.request.headers.get('Accept'))`
+    ? `context.request.headers.get('Accept')?.includes('text/html') || acceptsPatch(context.request)`
     : `context.request.headers.get('Accept')?.includes('text/html')`;
 
   writer

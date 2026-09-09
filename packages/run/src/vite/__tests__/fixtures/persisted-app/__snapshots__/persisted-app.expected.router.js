@@ -1,4 +1,5 @@
-import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { NotHandled, NotMatched, createContext, usePersisted, acceptsPatch } from "virtual:marko-run/runtime/internal";
+usePersisted();
 import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__index.js";
 import { get4, get4_options, head4, head4_options, post4, post4_options, put4, put4_options, delete4, delete4_options, patch4, patch4_options, options4, options4_options, query4, query4_options } from "virtual:marko-run/__marko-run__api.js";
 import { get5, get5_options, head5, head5_options } from "virtual:marko-run/__marko-run__blog.js";
@@ -217,14 +218,14 @@ export async function invoke(route, request, platform, url) {
 			}
 		}
 
-    if (/text\/(html|marko-patch)/.test(context.request.headers.get('Accept'))) {
+    if (context.request.headers.get('Accept')?.includes('text/html') || acceptsPatch(context.request)) {
       return context.render(page404, { page: 2 }, { status: 404 });
     }	
     return new Response(null, {
       status: 404,
     });
 	} catch (error) {
-		if (/text\/(html|marko-patch)/.test(context.request.headers.get('Accept'))) {
+		if (context.request.headers.get('Accept')?.includes('text/html') || acceptsPatch(context.request)) {
 			return context.render(page500, { page: 3, error }, { status: 500 });
 		}
 		throw error;

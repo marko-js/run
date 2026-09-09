@@ -387,6 +387,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           if (!persistedApp) await writeEntryTemplate(context, route);
         }
         if (persistedApp) {
+          // The app template is a tags template; a class-API layout cannot
+          // compose into it and marko's error would not name the cause.
+          for (const route of routes.list) {
+            if (
+              route.page &&
+              (await getMarkoApiForRoute(context, route)) === "class"
+            ) {
+              throw new Error(
+                `Route ${route.key} has a class API layout (${path.relative(root, route.layouts[0].filePath)}); persisted pages need tags API layouts.`,
+              );
+            }
+          }
           // The same runtime build the templates compile against
           // (@marko/vite exports its choice through MARKO_DEBUG).
           writeTemplate(

@@ -187,20 +187,20 @@ export function createContext(
         return new Response(null, init);
       }
 
-      // A persisted page asks for a patch: frames that update the live
-      // document instead of a new one. Either representation of the URL
-      // varies by `accept`.
-      const persisted = (template as PersistedTemplate<typeof template>).patch;
+      // A persisted build's page asks for a patch: frames that update the
+      // live document instead of a new one, so the URL varies by `accept`.
       const patch =
         persisted &&
-        request.headers.get("accept") === PATCH_CONTENT_TYPE &&
-        persisted;
+        (template as PersistedTemplate<typeof template>).patch &&
+        acceptsPatch(request) &&
+        (template as PersistedTemplate<typeof template>).patch!;
       if (persisted) {
         const headers = new Headers(init.headers);
         headers.append("vary", "accept");
         if (patch) {
           headers.set("content-type", "text/javascript;charset=UTF-8");
           headers.set("cache-control", "no-store");
+          headers.set("x-marko-patch", "1");
         }
         init = { ...init, headers };
       }
@@ -210,7 +210,7 @@ export function createContext(
         $global: context as unknown as Marko.Global,
       };
       const rendered = patch
-        ? patch.call(template, renderInput)
+        ? endPatch(patch.call(template, renderInput))
         : template.render.call(template, renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
@@ -275,6 +275,29 @@ const PATCH_CONTENT_TYPE = "text/marko-patch";
 type PersistedTemplate<T extends Marko.Template<any>> = T & {
   patch?: (input: Parameters<T["render"]>[0]) => ReturnType<T["render"]>;
 };
+
+// Set by a persisted build's router module: a debug marko template carries
+// a throwing `patch` stub, so the template alone does not say.
+let persisted = false;
+export function usePersisted() {
+  persisted = true;
+}
+
+/** Whether a request asks for a patch rather than a document. */
+export function acceptsPatch(request: Request) {
+  return request.headers.get("accept") === PATCH_CONTENT_TYPE;
+}
+
+// A closing frame the router requires: a stream cut short is not a patch.
+function endPatch<T extends AsyncIterable<string>>(rendered: T): T {
+  return {
+    ...rendered,
+    async *[Symbol.asyncIterator]() {
+      yield* rendered;
+      yield "//\n";
+    },
+  } as T;
+}
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
 
