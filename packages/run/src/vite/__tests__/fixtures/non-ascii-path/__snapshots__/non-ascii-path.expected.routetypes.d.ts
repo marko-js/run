@@ -22,6 +22,7 @@ declare module "@marko/run" {
 
 type P1 = $.Template<"P1", typeof import("../src/routes/café/+page.marko")>;
 declare module "../src/routes/café/+page.marko" {
+  interface Input extends $.PageInput<P1> {}
   const Run: $.Namespace<P1>;
   namespace Run {
     type Context = $.ContextForFile<P1> & Marko.Global;
@@ -57,6 +58,7 @@ declare module "../src/routes/café/+page.marko" {
 
 type P2 = $.Template<"P2", typeof import("../src/routes/café/sub/+page.marko")>;
 declare module "../src/routes/café/sub/+page.marko" {
+  interface Input extends $.PageInput<P2> {}
   const Run: $.Namespace<P2>;
   namespace Run {
     type Context = $.ContextForFile<P2> & Marko.Global;
@@ -92,6 +94,7 @@ declare module "../src/routes/café/sub/+page.marko" {
 
 type P3 = $.Template<"P3", typeof import("../src/routes/menu/+page.marko")>;
 declare module "../src/routes/menu/+page.marko" {
+  interface Input extends $.PageInput<P3> {}
   const Run: $.Namespace<P3>;
   namespace Run {
     type Context = $.ContextForFile<P3> & Marko.Global;
@@ -127,6 +130,7 @@ declare module "../src/routes/menu/+page.marko" {
 
 type P4 = $.Template<"P4", typeof import("../src/routes/x^y/+page.marko")>;
 declare module "../src/routes/x^y/+page.marko" {
+  interface Input extends $.PageInput<P4> {}
   const Run: $.Namespace<P4>;
   namespace Run {
     type Context = $.ContextForFile<P4> & Marko.Global;

@@ -1,0 +1,23 @@
++layout.marko
++page.marko
++404.marko
+@header.marko
+@footer.marko
+/docs
+  +layout.marko
+  +page.marko
+  @header.marko
+  /$slug
+    +page.marko
+    @header.marko
+    @sidebar.marko
+/blog
+  +handler.ts
+  +page.marko
+  @sidebar.marko
+(a,b)@nav.marko
+flat.page@header.marko
+flat.page+page.marko
+a+page.marko
+b+page.marko
++500.marko

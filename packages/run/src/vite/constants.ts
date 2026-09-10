@@ -24,6 +24,7 @@ export const RoutableFileTypes = {
   NotFound: "404",
   Error: "500",
   Meta: "meta",
+  Partial: "partial",
 } as const;
 
 export type RoutableFileType = ValuesOf<typeof RoutableFileTypes>;

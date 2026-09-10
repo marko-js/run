@@ -90,6 +90,7 @@ declare module "../src/routes/+layout.marko" {
 
 type P1 = $.Template<"P1", typeof import("../src/routes/+page.marko")>;
 declare module "../src/routes/+page.marko" {
+  interface Input extends $.PageInput<P1> {}
   const Run: $.Namespace<P1>;
   namespace Run {
     type Context = $.ContextForFile<P1> & Marko.Global;
@@ -123,8 +124,9 @@ declare module "../src/routes/+page.marko" {
   }
 }
 
+type S1 = $.Template<"S1", typeof import("../src/routes/+500.marko")>;
 declare module "../src/routes/+500.marko" {
-  export interface Input {
+  export interface Input extends $.PageInput<S1, []> {
     error: unknown;
   }
   const Run: $.Namespace<any>;

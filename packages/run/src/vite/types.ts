@@ -84,11 +84,16 @@ export interface MarkoRunOptions extends Partial<RouterOptions> {
 
 export type Options = MarkoRunOptions & MarkoViteOptions;
 
+/** Per partial name, one value per template in its override chain. */
+export type Partials<T> = Record<string, T[]>;
+
 export interface Route {
   key: string;
   index: number;
   path: PathInfo;
   layouts: RoutableFile[];
+  /** Per partial name, its templates from the root down: each overrides the one before it. */
+  partials?: Partials<RoutableFile>;
   middleware: RoutableFile[];
   meta?: RoutableFile;
   handler?: RoutableFile;
@@ -113,6 +118,8 @@ export interface RoutableFile {
   id: string;
   name: string;
   type: RoutableFileType;
+  /** Name of a `@partial.marko`, exactly as written. */
+  partial?: string;
   filePath: string;
   verbs?: HttpVerb[];
 }

@@ -1,0 +1,7 @@
++layout.marko
+@header.marko
+/docs
+  @header.marko
+  /$slug
+    +page.marko
+    @header.marko

@@ -447,6 +447,7 @@ declare module "../src/routes/_protected/_home/+layout.marko" {
 
 type P1 = $.Template<"P1", typeof import("../src/routes/_protected/_home/+page.marko")>;
 declare module "../src/routes/_protected/_home/+page.marko" {
+  interface Input extends $.PageInput<P1> {}
   const Run: $.Namespace<P1>;
   namespace Run {
     type Context = $.ContextForFile<P1> & Marko.Global;
@@ -482,6 +483,7 @@ declare module "../src/routes/_protected/_home/+page.marko" {
 
 type P2 = $.Template<"P2", typeof import("../src/routes/_protected/_home/new/+page.marko")>;
 declare module "../src/routes/_protected/_home/new/+page.marko" {
+  interface Input extends $.PageInput<P2> {}
   const Run: $.Namespace<P2>;
   namespace Run {
     type Context = $.ContextForFile<P2> & Marko.Global;
@@ -517,6 +519,7 @@ declare module "../src/routes/_protected/_home/new/+page.marko" {
 
 type P3 = $.Template<"P3", typeof import("../src/routes/_protected/_home/notes/$id/+page.marko")>;
 declare module "../src/routes/_protected/_home/notes/$id/+page.marko" {
+  interface Input extends $.PageInput<P3> {}
   const Run: $.Namespace<P3>;
   namespace Run {
     type Context = $.ContextForFile<P3> & Marko.Global;
@@ -552,6 +555,7 @@ declare module "../src/routes/_protected/_home/notes/$id/+page.marko" {
 
 type P4 = $.Template<"P4", typeof import("../src/routes/my/+page.marko")>;
 declare module "../src/routes/my/+page.marko" {
+  interface Input extends $.PageInput<P4> {}
   const Run: $.Namespace<P4>;
   namespace Run {
     type Context = $.ContextForFile<P4> & Marko.Global;
@@ -585,7 +589,9 @@ declare module "../src/routes/my/+page.marko" {
   }
 }
 
+type S1 = $.Template<"S1", typeof import("../src/routes/+404.marko")>;
 declare module "../src/routes/+404.marko" {
+  export interface Input extends $.PageInput<S1, []> {}
   const Run: $.Namespace<any>;
   namespace Run {
     type Context = $.ContextForFile<any> & Marko.Global;
@@ -619,8 +625,9 @@ declare module "../src/routes/+404.marko" {
   }
 }
 
+type S2 = $.Template<"S2", typeof import("../src/routes/+500.marko")>;
 declare module "../src/routes/+500.marko" {
-  export interface Input {
+  export interface Input extends $.PageInput<S2, []> {
     error: unknown;
   }
   const Run: $.Namespace<any>;

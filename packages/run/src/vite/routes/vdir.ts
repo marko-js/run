@@ -11,6 +11,7 @@ export default class VDir {
   readonly path: string;
   readonly segment: Segment;
   files: Map<RoutableFileType, RoutableFile> | undefined;
+  partials: Map<string, RoutableFile> | undefined;
 
   constructor();
   constructor(parent: VDir, segment: Segment, source: Path);
@@ -85,7 +86,9 @@ export default class VDir {
   }
 
   addFile(file: RoutableFile): void {
-    if (!this.files) {
+    if (file.type === RoutableFileTypes.Partial) {
+      this.addPartial(file);
+    } else if (!this.files) {
       this.files = new Map();
       this.files.set(file.type, file);
     } else if (!this.files.has(file.type)) {
@@ -108,6 +111,29 @@ export default class VDir {
         `Ambiguous path definition: file ${this.path} is included multiple times by ${file.filePath}`,
       );
     }
+  }
+
+  addPartial(file: RoutableFile): void {
+    const name = file.partial!;
+    const existing = (this.partials ??= new Map()).get(name);
+    if (existing === file) {
+      throw new Error(
+        `Ambiguous path definition: file ${this.path} is included multiple times by ${file.filePath}`,
+      );
+    }
+    if (existing) {
+      throw new Error(
+        `Duplicate partial @${name} added at path ${this.path}. File ${file.filePath} collides with ${existing.filePath}.`,
+      );
+    }
+    // A case-only difference would collide on a case-insensitive file system.
+    const lookalike = findIgnoringCase(this.partials, name);
+    if (lookalike) {
+      throw new Error(
+        `Partial @${name} at path ${this.path} differs only by case from @${lookalike.partial}. File ${file.filePath} collides with ${lookalike.filePath}.`,
+      );
+    }
+    this.partials.set(name, file);
   }
 
   *dirs(): IterableIterator<VDir> {
@@ -157,4 +183,15 @@ export default class VDir {
     }
     return dirs;
   }
+}
+
+export function findIgnoringCase<T>(
+  map: Map<string, T>,
+  name: string,
+): T | undefined {
+  const lower = name.toLowerCase();
+  for (const [key, value] of map) {
+    if (key.toLowerCase() === lower) return value;
+  }
+  return undefined;
 }

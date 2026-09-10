@@ -3,6 +3,7 @@ import path from "path";
 import { RoutableFileTypes } from "../constants";
 import type {
   BuiltRoutes,
+  Partials,
   RoutableFile,
   RoutableFileType,
   Route,
@@ -10,14 +11,17 @@ import type {
 } from "../types";
 import { agentRouteFixGuide } from "../utils/agent-fix-guide";
 import { parseFlatRoute } from "./parse";
-import VDir from "./vdir";
+import VDir, { findIgnoringCase } from "./vdir";
 import type { Walker, WalkOptions } from "./walk";
 
 const markoFileTypes = `${RoutableFileTypes.Layout}|${RoutableFileTypes.Page}|${RoutableFileTypes.NotFound}|${RoutableFileTypes.Error}`;
 const markoFiles = `(${markoFileTypes})\\.(?:.*\\.)?(marko)`;
 const nonMarkoFiles = `(${RoutableFileTypes.Middleware}|${RoutableFileTypes.Handler}|${RoutableFileTypes.Meta})\\.(?:.*\\.)?(.+)`;
+const partialFiles = `@([^.@+]+)\\.(?:.*\\.)?marko`;
+// `content`/`renderBody` are the layout's child body; `error` is the 500 page's input.
+const reservedPartialNames = new Set(["content", "renderBody", "error"]);
 const RoutableFileRegex = new RegExp(
-  `[+](?:${markoFiles}|${nonMarkoFiles})$`,
+  `(?:[+](?:${markoFiles}|${nonMarkoFiles})|${partialFiles})$`,
   "i",
 );
 
@@ -25,9 +29,23 @@ export function isRoutableFile(filename: string) {
   return RoutableFileRegex.test(filename);
 }
 
-export function matchRoutableFile(filename: string) {
+export interface RoutableFileMatch {
+  type: RoutableFileType;
+  index: number;
+  partial: string;
+}
+
+export function matchRoutableFile(filename: string): RoutableFileMatch | null {
   const match = filename.match(RoutableFileRegex);
-  return match && ((match[1] || match[3]).toLowerCase() as RoutableFileType);
+  if (!match) return null;
+  const partial = match[5];
+  return {
+    type: partial
+      ? RoutableFileTypes.Partial
+      : ((match[1] || match[3]).toLowerCase() as RoutableFileType),
+    index: match.index!,
+    partial,
+  };
 }
 
 export interface RouteSource {
@@ -48,6 +66,7 @@ export async function buildRoutes(
   const unusedFiles = new Set<RoutableFile>();
 
   const currentLayouts = new Set<RoutableFile>();
+  const currentPartials = new Map<string, RoutableFile[]>();
   const currentMiddleware = new Set<RoutableFile>();
 
   const root = new VDir();
@@ -86,13 +105,21 @@ export async function buildRoutes(
     },
     onFile(file) {
       const { name } = file;
-      const match = name.match(RoutableFileRegex);
+      const match = matchRoutableFile(name);
       if (!match) {
         warnNonRoutableLookalike(name, file.path);
         return;
       }
 
-      const type = (match[1] || match[3]).toLowerCase() as RoutableFileType;
+      const { type, partial } = match;
+
+      if (partial) {
+        if (reservedPartialNames.has(partial)) {
+          throw new Error(
+            `Partial name @${partial} is reserved: it would collide with the same-named property of a template's input. File ${file.path}.`,
+          );
+        }
+      }
 
       if (
         dirStack.length &&
@@ -115,6 +142,7 @@ export async function buildRoutes(
         id: String(nextFileId++),
         name,
         type,
+        partial,
         filePath: file.path,
         verbs: type === RoutableFileTypes.Page ? ["get", "head"] : undefined,
       };
@@ -147,6 +175,22 @@ export async function buildRoutes(
   function traverse(dir: VDir) {
     let middleware: RoutableFile | undefined;
     let layout: RoutableFile | undefined;
+
+    if (dir.partials) {
+      for (const [name, file] of dir.partials) {
+        let partials = currentPartials.get(name);
+        if (!partials) {
+          const overridden = findIgnoringCase(currentPartials, name)?.[0];
+          if (overridden) {
+            throw new Error(
+              `Partial @${name} at path ${dir.path} does not match the casing of @${overridden.partial} which it overrides. File ${file.filePath} overrides ${overridden.filePath}.`,
+            );
+          }
+          currentPartials.set(name, (partials = []));
+        }
+        partials.push(file);
+      }
+    }
 
     if (dir.files) {
       middleware = dir.files.get(RoutableFileTypes.Middleware);
@@ -186,6 +230,7 @@ export async function buildRoutes(
               path: dir.pathInfo,
               middleware: [],
               layouts: [...currentLayouts],
+              partials: snapshotPartials(),
               page: file,
               templateFilePath: path.join(outDir, `${type}.marko`),
             };
@@ -232,6 +277,7 @@ export async function buildRoutes(
           path: pathInfo,
           middleware: [...currentMiddleware],
           layouts: page ? [...currentLayouts] : [],
+          partials: page && snapshotPartials(),
           meta: dir.files.get(RoutableFileTypes.Meta),
           page,
           handler,
@@ -262,6 +308,24 @@ export async function buildRoutes(
     if (layout) {
       currentLayouts.delete(layout);
     }
+    if (dir.partials) {
+      for (const name of dir.partials.keys()) {
+        const partials = currentPartials.get(name)!;
+        partials.pop();
+        if (!partials.length) {
+          currentPartials.delete(name);
+        }
+      }
+    }
+  }
+
+  function snapshotPartials(): Partials<RoutableFile> | undefined {
+    if (!currentPartials.size) return;
+    const partials: Partials<RoutableFile> = {};
+    for (const [name, files] of currentPartials) {
+      partials[name] = [...files];
+    }
+    return partials;
   }
 }
 
@@ -296,7 +360,7 @@ function warnNonRoutableLookalike(name: string, filePath: string): void {
   if (base.includes("+")) {
     const hint = /^\+server\./i.test(base)
       ? "request handlers are named `+handler.<ext>`"
-      : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko` and `+500.marko`";
+      : "routable files are `+page.marko`, `+layout.marko`, `+handler.*`, `+middleware.*`, `+meta.*`, `+404.marko`, `+500.marko` and `@<name>.marko` partials";
     warnLookalike(`${relativeFilePath} is not routable; ${hint}.`);
   } else if (base[0] === "$") {
     const stem = base.replace(/\.[^.]+$/, "");

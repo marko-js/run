@@ -11,6 +11,7 @@ import type {
   Adapter,
   BuiltRoutes,
   HttpVerb,
+  Partials,
   PathInfo,
   RoutableFile,
   Route,
@@ -52,16 +53,33 @@ export function renderRouteTemplate(
     );
   }
 
+  const templateDir = path.dirname(route.templateFilePath!);
+  const usedTagBases = new Set<string>();
+  // Tag names per partial, from the one that renders up to the root one it composes.
+  let partials: Partials<string> | undefined;
+  if (route.partials) {
+    partials = {};
+    for (const [name, files] of Object.entries(route.partials)) {
+      const base = toPascalCaseIdentifier(name, usedTagBases);
+      const tags: string[] = (partials[name] = []);
+      for (let i = files.length; i--; ) {
+        const tag = `${base}${i + 1}`;
+        importWriter.writeLines(
+          `import ${tag} from "${normalizedRelativePath(templateDir, files[i].filePath)}";`,
+        );
+        tags.push(tag);
+      }
+    }
+  }
+
   writer.writeLines("");
   writeEntryTemplateTag(
     writer,
     [...route.layouts, route.page].map((file) =>
-      normalizedRelativePath(
-        path.dirname(route.templateFilePath!),
-        file.filePath,
-      ),
+      normalizedRelativePath(templateDir, file.filePath),
     ),
     route.key === RoutableFileTypes.Error ? ["error"] : [],
+    partials,
   );
 
   return writer.end();
@@ -360,7 +378,13 @@ export function renderMiddleware(
 
 interface RoutableFileInfo {
   id: string;
-  typeName: "Middleware" | "Handler" | "Template" | "Meta" | null;
+  typeName:
+    | "Middleware"
+    | "Handler"
+    | "Template"
+    | "PartialTemplate"
+    | "Meta"
+    | null;
   modulePath: string;
   routes: Set<Route>;
 }
@@ -407,6 +431,7 @@ export async function renderRouteTypeInfo(
   >();
 
   let fileIndex = 1;
+  let specialIndex = 1;
 
   function addFile(file: RoutableFile) {
     let group = fileInfoByType.get(file.type);
@@ -446,9 +471,13 @@ export async function renderRouteTypeInfo(
           info.id = `P${group.size + 1}`;
           info.typeName = "Template";
           break;
-        case RoutableFileTypes.Error:
+        case RoutableFileTypes.Partial:
+          info.id = `T${group.size + 1}`;
+          info.typeName = "PartialTemplate";
+          break;
         case RoutableFileTypes.NotFound:
-          info.id = "";
+        case RoutableFileTypes.Error:
+          info.id = `S${specialIndex++}`;
           info.typeName = "Template";
           break;
         default:
@@ -479,8 +508,32 @@ export async function renderRouteTypeInfo(
     );
   }
 
-  for (const special of Object.values(routes.special)) {
-    addFile(special.page);
+  const overridingPartials = new Set<RoutableFile>();
+  const basePartials = new Set<RoutableFile>();
+  for (const route of routes.list) {
+    if (route.partials) {
+      for (const files of Object.values(route.partials)) {
+        let partials = basePartials;
+        for (const file of files) {
+          partials.add(file);
+          partials = overridingPartials;
+        }
+      }
+    }
+  }
+
+  // Special pages sit outside the route map, so their partials are listed
+  // on the page's own Input rather than resolved through PageInput.
+  const specialPartialIds = new Map<RoutableFile, string[]>();
+  for (const special of Object.values(routes.special) as Route[]) {
+    const ids: string[] = [];
+    if (special.partials) {
+      for (const files of Object.values(special.partials)) {
+        ids.push(addFile(files.at(-1)!).id);
+      }
+    }
+    specialPartialIds.set(special.page!, ids);
+    addFile(special.page!);
   }
 
   writer.writeBlockEnd(`}> {}`).writeBlockEnd(`}`);
@@ -494,14 +547,18 @@ export async function renderRouteTypeInfo(
       writer.writeLines("");
     }
 
-    for (const info of fileGroup.values()) {
+    for (const [file, info] of fileGroup) {
       if (hasModule) {
         writer.writeLines("");
       }
 
       if (info.typeName && info.id) {
+        const nameArg =
+          info.typeName === "PartialTemplate"
+            ? `${JSON.stringify(file.partial)}, `
+            : "";
         writer.writeLines(
-          `type ${info.id} = $.${info.typeName}<"${info.id}", typeof import("${info.modulePath}")>;`,
+          `type ${info.id} = $.${info.typeName}<"${info.id}", ${nameArg}typeof import("${info.modulePath}")>;`,
         );
       }
 
@@ -514,20 +571,51 @@ export async function renderRouteTypeInfo(
           writer.write(`
   interface Input extends $.LayoutInput<${info.id}> {}`);
           break;
-        case RoutableFileTypes.Error:
+        case RoutableFileTypes.Page:
           writer.write(`
-  export interface Input {
-    error: unknown;
-  }`);
+  interface Input extends $.PageInput<${info.id}> {}`);
           break;
+        case RoutableFileTypes.Partial:
+          // Optional when the partial is also a route's outermost: there it
+          // has nothing it overrides.
+          if (overridingPartials.has(file)) {
+            writer.write(
+              basePartials.has(file)
+                ? `
+  interface Input extends Partial<$.PartialInput<${info.id}>> {}`
+                : `
+  interface Input extends $.PartialInput<${info.id}> {}`,
+            );
+          }
+          break;
+        case RoutableFileTypes.NotFound:
+        case RoutableFileTypes.Error: {
+          const ids = specialPartialIds.get(file)!;
+          const base = `$.PageInput<${info.id}, [${ids.join(", ")}]>`;
+          writer.write(
+            fileType === RoutableFileTypes.Error
+              ? `
+  export interface Input extends ${base} {
+    error: unknown;
+  }`
+              : `
+  export interface Input extends ${base} {}`,
+          );
+          break;
+        }
       }
 
       if (info.typeName) {
-        const id = info.id || "any";
+        // Special pages have no path, so their context is the generic one.
+        const id =
+          fileType === RoutableFileTypes.NotFound ||
+          fileType === RoutableFileTypes.Error
+            ? "any"
+            : info.id;
         writer.write(`
   const Run: $.Namespace<${id}>;
   namespace Run {
-    type Context = $.ContextForFile<${id}>${info.typeName === "Template" ? " & Marko.Global" : ""};
+    type Context = $.ContextForFile<${id}>${info.typeName === "Template" || info.typeName === "PartialTemplate" ? " & Marko.Global" : ""};
   }\n`);
       }
 
@@ -610,29 +698,69 @@ function normalizedRelativePath(from: string, to: string): string {
   return relativePath.startsWith(".") ? relativePath : "./" + relativePath;
 }
 
+// Partial names may hold any character the file name allows, so the import
+// identifier is sanitized, and two names that sanitize alike stay distinct.
+function toPascalCaseIdentifier(name: string, used: Set<string>): string {
+  let base = name.replace(/[^\w$]/g, "_");
+  base = /^[0-9]/.test(base)
+    ? `_${base}`
+    : base[0].toUpperCase() + base.slice(1);
+  while (used.has(base)) base += "_";
+  used.add(base);
+  return base;
+}
+
 function writeEntryTemplateTag(
   writer: Writer,
   [file, ...rest]: string[],
   pageInputs: string[],
+  partials: Partials<string> | undefined,
   index: number = 1,
 ): void {
   if (file) {
     const isLast = !rest.length;
     const tag = isLast ? "Page" : `Layout${index}`;
+    const attributes =
+      isLast && pageInputs.length
+        ? " " + pageInputs.map((name) => `${name}=input.${name}`).join(" ")
+        : "";
 
     writer.branch("imports").writeLines(`import ${tag} from "${file}";`);
 
-    if (isLast) {
-      const attributes = pageInputs.length
-        ? " " + pageInputs.map((name) => `${name}=input.${name}`).join(" ")
-        : "";
+    if (isLast && !partials) {
       writer.writeLines(`<${tag}${attributes}/>`);
-    } else {
-      writer.writeBlockStart(`<${tag}>`);
-      writeEntryTemplateTag(writer, rest, pageInputs, index + 1);
-      writer.writeBlockEnd(`</>`);
+      return;
     }
+
+    writer.writeBlockStart(`<${tag}${attributes}>`);
+    if (partials) {
+      for (const [name, tags] of Object.entries(partials)) {
+        writePartialAttrTag(writer, name, tags);
+      }
+    }
+    if (!isLast) {
+      writeEntryTemplateTag(writer, rest, pageInputs, partials, index + 1);
+    }
+    writer.writeBlockEnd(`</>`);
   }
+}
+
+// The deepest partial renders; each one above it arrives as the same-named
+// attribute tag so an override can compose what it replaced.
+function writePartialAttrTag(
+  writer: Writer,
+  name: string,
+  [tag, ...overridden]: string[],
+): void {
+  writer.writeBlockStart(`<@${name}>`);
+  if (overridden.length) {
+    writer.writeBlockStart(`<${tag}>`);
+    writePartialAttrTag(writer, name, overridden);
+    writer.writeBlockEnd(`</>`);
+  } else {
+    writer.writeLines(`<${tag}/>`);
+  }
+  writer.writeBlockEnd(`</>`);
 }
 
 function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
@@ -1066,5 +1194,12 @@ function* routeFileIter(route: Route) {
   if (route.handler) yield route.handler;
   yield* route.layouts;
   if (route.page) yield route.page;
+  // Whole override chains, winner last: the type level resolves the winner
+  // per name the same way.
+  if (route.partials) {
+    for (const partials of Object.values(route.partials)) {
+      yield* partials;
+    }
+  }
   if (route.meta) yield route.meta;
 }
