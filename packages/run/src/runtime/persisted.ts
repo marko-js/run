@@ -176,6 +176,9 @@ async function navigate(request: Request, nav: Navigation) {
   // Only a patch this build produced applies; anything else (another
   // build's, any method) is the document at the landed URL.
   if (response.headers.get("x-marko-patch") !== build || !response.body) {
+    warnFallback(
+      `the response is not this page's build (${response.headers.get("x-marko-patch")} vs ${build})`,
+    );
     return location.assign(response.url);
   }
   let committed = false;
@@ -219,9 +222,10 @@ async function applyFrames(
   // Frames a module load defers: they apply in order on their own, and
   // the navigation succeeds only once every one of them has.
   const pending: Promise<boolean>[] = [];
-  const fail = () => {
+  const fail = (why: string) => {
     if (!failed && run === epoch) {
       failed = true;
+      warnFallback(why);
       on.fail();
     }
   };
@@ -232,16 +236,16 @@ async function applyFrames(
         ended = true;
         continue;
       }
-      if (ended) return (fail(), false);
+      if (ended) return (fail("a frame followed the end"), false);
       on.commit();
       on.commit = () => {};
       const applied = apply(frame);
-      if (applied === false) return (fail(), false);
+      if (applied === false) return (fail("a frame did not apply"), false);
       if (applied !== true) {
         pending.push(
           applied.then(
-            (ok) => ok || (fail(), false),
-            () => (fail(), false),
+            (ok) => ok || (fail("a deferred frame did not apply"), false),
+            () => (fail("a deferred frame threw"), false),
           ),
         );
       }
@@ -249,7 +253,8 @@ async function applyFrames(
   } catch {
     ended = false;
   }
-  if (!ended) return (fail(), false);
+  if (!ended)
+    return (fail("the stream ended without its closing frame"), false);
   for (const applied of pending) if (!(await applied)) return false;
   return run === epoch;
 }
@@ -328,4 +333,11 @@ function isSelfTarget(el: Element, submitter?: HTMLElement | null) {
   const target =
     submitter?.getAttribute("formtarget") ?? el.getAttribute("target");
   return !target || target === "_self";
+}
+
+// Dev builds say why a patch navigation became a document load.
+function warnFallback(why: string) {
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`A patch navigation fell back to a document load: ${why}.`);
+  }
 }
