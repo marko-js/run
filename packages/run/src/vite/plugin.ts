@@ -118,6 +118,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devEntryFilePosix: string;
+  let adapterEntryFilePosix: string | undefined;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let entryTemplates: Set<string>;
@@ -514,6 +515,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           if (adapterOptions) {
             opts = mergeConfig(opts, adapterOptions);
           }
+          const adapterEntryFile = await adapter.getEntryFile?.();
+          adapterEntryFilePosix =
+            adapterEntryFile && normalizePath(adapterEntryFile);
         }
 
         routesDir = opts.routesDir || "src/routes";
@@ -797,11 +801,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         let virtualFilePath: string | undefined;
+        // The adapter's entry may run in its own runtime (a worker), where
+        // only importing the generated router sets the global the facade reads.
         const isDevEntry =
           !isBuild &&
           !!importer &&
           (importer === devEntryFile ||
-            normalizePath(importer) === devEntryFilePosix);
+            normalizePath(importer) === devEntryFilePosix ||
+            normalizePath(importer) === adapterEntryFilePosix);
 
         if (importee === "@marko/run/router") {
           // In dev, module imports get the runtime facade, which defers to
@@ -875,11 +882,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       name: `${PLUGIN_NAME_PREFIX}:post`,
       enforce: "post",
 
-      async transform(code) {
+      async transform(code, _id, options) {
         // Only direct `Run.href(...)` calls are supported in client code:
         // aliasing or destructuring `Run` breaks in production (won't fix).
-        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+        if (isSSRBuild || !code.includes("Run.href")) {
           return;
+        }
+
+        // In dev the module evaluates as its own graph reaches it (a lazy
+        // site's load entry), so it imports the runtime defining `Run` first.
+        if (!isBuild) {
+          if (options?.ssr || this.environment.name !== "client") return;
+          const s = new RolldownMagicString(code).prepend(
+            'import "virtual:marko-run/runtime/client";',
+          );
+          return {
+            code: s.toString(),
+            map: s.generateMap({ hires: true }).toString(),
+          };
         }
 
         try {
