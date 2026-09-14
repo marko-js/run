@@ -23,10 +23,10 @@ import {
 
 import { prepareError } from "../adapter/utils";
 import {
-  type PersistedApp,
-  persistedPages,
+  type PatchApp,
+  patchPages,
   renderMiddleware,
-  renderPersistedApp,
+  renderPatchApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -35,7 +35,7 @@ import {
 import {
   httpVerbs,
   markoRunFilePrefix,
-  persistedAppFilename,
+  patchAppFilename,
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
@@ -85,7 +85,7 @@ interface RouteData {
   times: TimeMetrics;
   builtEntries: string[];
   sourceEntries: string[];
-  persistedId?: string;
+  patchId?: string;
 }
 
 declare module "vite" {
@@ -100,8 +100,8 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
   const { ...markoVitePluginOptions } = opts;
   // Typed loosely until the published @marko/vite declares the option.
-  const persisted = !!(opts as { persisted?: boolean }).persisted;
-  let persistedApp: PersistedApp | undefined;
+  const patches = !!(opts as { patches?: boolean }).patches;
+  let patchApp: PatchApp | undefined;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -259,18 +259,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         entryTemplates = new Set();
         entryTemplateImporters = new Set();
-        if (persisted) {
-          persistedApp = {
-            filePath: path.join(entryFilesDir, persistedAppFilename),
-            pages: persistedPages(routes),
+        if (patches) {
+          patchApp = {
+            filePath: path.join(entryFilesDir, patchAppFilename),
+            pages: patchPages(routes),
             // The browser build reuses the ssr build's id (route data).
-            id: persistedApp?.id || Date.now().toString(36),
+            id: patchApp?.id || Date.now().toString(36),
           };
-          entryTemplates.add(normalizePath(persistedApp.filePath));
+          entryTemplates.add(normalizePath(patchApp.filePath));
         }
 
         for (const route of routes.list) {
-          if (route.templateFilePath && !persisted) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
           for (const middleware of route.middleware) {
@@ -286,7 +286,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.templateFilePath && !persisted) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
         }
@@ -378,19 +378,19 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (route.templateFilePath && !persistedApp) {
+          if (route.templateFilePath && !patchApp) {
             await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root, persistedApp),
+            renderRouteEntry(route, root, patchApp),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (!persistedApp) await writeEntryTemplate(context, route);
+          if (!patchApp) await writeEntryTemplate(context, route);
         }
-        if (persistedApp) {
+        if (patchApp) {
           // The app template is a tags template; a class-API layout cannot
           // compose into it and marko's error would not name the cause.
           for (const route of routes.list) {
@@ -399,17 +399,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
               (await getMarkoApiForRoute(context, route)) === "class"
             ) {
               throw new Error(
-                `Route ${route.key} has a class API layout (${path.relative(root, route.layouts[0].filePath)}); persisted pages need tags API layouts.`,
+                `Route ${route.key} has a class API layout (${path.relative(root, route.layouts[0].filePath)}); patches pages need tags API layouts.`,
               );
             }
           }
           // The same runtime build the templates compile against
           // (@marko/vite exports its choice through MARKO_DEBUG).
           writeTemplate(
-            persistedApp.filePath,
-            renderPersistedApp(
+            patchApp.filePath,
+            renderPatchApp(
               routes,
-              persistedApp,
+              patchApp,
               !isBuild,
               process.env.MARKO_DEBUG !== "false" &&
                 process.env.MARKO_DEBUG !== "0",
@@ -444,7 +444,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             root,
             runtimeInclude,
             { trailingSlashes },
-            persistedApp,
+            patchApp,
           ),
         );
 
@@ -787,11 +787,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
           }
-          if (persisted) {
-            persistedApp = {
-              filePath: path.join(entryFilesDir, persistedAppFilename),
-              pages: persistedPages(routes),
-              id: routeData.persistedId!,
+          if (patches) {
+            patchApp = {
+              filePath: path.join(entryFilesDir, patchAppFilename),
+              pages: patchPages(routes),
+              id: routeData.patchId!,
             };
           }
 
@@ -975,7 +975,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             times,
             builtEntries,
             sourceEntries: ssrEntryFiles,
-            persistedId: persistedApp?.id,
+            patchId: patchApp?.id,
           };
           for (const [key, code] of virtualFiles) {
             routeData.files.push({ key, code });
@@ -989,7 +989,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             routes,
             [...externalRoutes],
             bundle,
-            persistedApp?.filePath,
+            patchApp?.filePath,
           );
         }
       },

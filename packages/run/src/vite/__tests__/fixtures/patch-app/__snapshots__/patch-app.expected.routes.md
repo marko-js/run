@@ -5,7 +5,7 @@
 <!-- use tags -->
 
 client import { patch } from "marko/dom";
-client import { router } from "virtual:marko-run/runtime/persisted";
+client import { router } from "virtual:marko-run/runtime/patch";
 import Layout0 from "../../src/routes/+layout.marko";
 import Page1 from "../../src/routes/+page.marko" with { load: "render" };
 import Page2 from "../../src/routes/about/+page.marko" with { load: "render" };

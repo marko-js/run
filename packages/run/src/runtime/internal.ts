@@ -187,20 +187,20 @@ export function createContext(
         return new Response(null, init);
       }
 
-      // A persisted build's page asks for a patch: frames that update the
+      // A patch build's page asks for a patch: frames that update the
       // live document instead of a new one, so the URL varies by `accept`.
       const patch =
-        persisted &&
-        (template as PersistedTemplate<typeof template>).patch &&
+        patchBuild &&
+        (template as PatchTemplate<typeof template>).patch &&
         acceptsPatch(request) &&
-        (template as PersistedTemplate<typeof template>).patch!;
-      if (persisted) {
+        (template as PatchTemplate<typeof template>).patch!;
+      if (patchBuild) {
         const headers = new Headers(init.headers);
         headers.append("vary", "accept");
         if (patch) {
           headers.set("content-type", "text/javascript;charset=UTF-8");
           headers.set("cache-control", "no-store");
-          headers.set("x-marko-patch", persisted);
+          headers.set("x-marko-patch", patchBuild);
         }
         init = { ...init, headers };
       }
@@ -272,26 +272,26 @@ export function render<T>(
 
 const PATCH_CONTENT_TYPE = "text/marko-patch";
 // Typed here until the published Marko types declare `patch`.
-type PersistedTemplate<T extends Marko.Template<any>> = T & {
+type PatchTemplate<T extends Marko.Template<any>> = T & {
   patch?: (
     input: Parameters<T["render"]>[0],
     headers?: Headers,
   ) => ReturnType<T["render"]>;
 };
 
-// Set by a persisted build's router module with the build's id: a debug
+// Set by a patch build's router module with the build's id: a debug
 // marko template carries a throwing `patch` stub, so the template alone
 // does not say, and a document from another build gets a document back.
-let persisted = "";
-export function usePersisted(id: string) {
-  persisted = id;
+let patchBuild = "";
+export function usePatch(id: string) {
+  patchBuild = id;
 }
 
 /** Whether a request asks for a patch of this build rather than a document. */
 export function acceptsPatch(request: Request) {
   return (
     request.headers.get("accept") === PATCH_CONTENT_TYPE &&
-    request.headers.get("x-marko-patch") === persisted
+    request.headers.get("x-marko-patch") === patchBuild
   );
 }
 

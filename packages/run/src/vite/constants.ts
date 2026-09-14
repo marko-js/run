@@ -3,7 +3,7 @@ type ValuesOf<T> = T[keyof T];
 export const markoRunFilePrefix = "__marko-run__";
 
 export const virtualFilePrefix = "virtual:marko-run";
-export const persistedAppFilename = `${markoRunFilePrefix}app.marko`;
+export const patchAppFilename = `${markoRunFilePrefix}app.marko`;
 
 // no support for "connect" or "trace" verbs
 export const httpVerbs = [

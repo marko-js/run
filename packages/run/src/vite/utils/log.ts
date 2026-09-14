@@ -23,7 +23,7 @@ export function logRoutesTable(
   routes: BuiltRoutes,
   externalRoutes: ExternalRoutes[],
   bundle: OutputBundle,
-  persistedApp?: string,
+  patchApp?: string,
 ) {
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
@@ -65,8 +65,8 @@ export function logRoutesTable(
       if (route.page && (verb === "get" || verb === "head")) {
         entryType.push(kleur.yellow("page"));
         if (verb === "get") {
-          const routeSize = (persistedApp
-            ? computePersistedRouteSize(persistedApp, route, bundle)
+          const routeSize = (patchApp
+            ? computePatchRouteSize(patchApp, route, bundle)
             : computeRouteSize(route.templateFilePath, bundle)) || [0, 0];
           size = prettySize(routeSize);
         }
@@ -99,8 +99,8 @@ export function logRoutesTable(
     hasMiddleware && row.push("");
     hasMeta && row.push("");
 
-    const routeSize = (persistedApp
-      ? computePersistedRouteSize(persistedApp, route, bundle)
+    const routeSize = (patchApp
+      ? computePatchRouteSize(patchApp, route, bundle)
       : computeRouteSize(route.templateFilePath, bundle)) || [0, 0];
     row.push(prettySize(routeSize));
 
@@ -161,9 +161,9 @@ function computeRouteSize(
   if (chunk) return computeChunkSize(chunk, bundle);
 }
 
-// A persisted page's first load: the app entry plus the lazy chunks of its
+// A patch page's first load: the app entry plus the lazy chunks of its
 // layouts and page (a layout every page shares is already in the entry).
-function computePersistedRouteSize(
+function computePatchRouteSize(
   appFilePath: string,
   route: Route,
   bundle: OutputBundle,

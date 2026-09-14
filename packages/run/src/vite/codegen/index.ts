@@ -68,15 +68,15 @@ export function renderRouteTemplate(
 }
 
 /**
- * The one template of a persisted build: every page is a branch of a chain
- * that follows the layout tree, picked by `input.page` (`persistedPages`), so
+ * The one template of a patch build: every page is a branch of a chain
+ * that follows the layout tree, picked by `input.page` (`patchPages`), so
  * a navigation is a branch change on a root every page shares. A page (and a
  * layout only some pages use) loads lazily, so a page ships what its own
  * route would have; the router installs from the template's own scope.
  */
-export function renderPersistedApp(
+export function renderPatchApp(
   routes: BuiltRoutes,
-  app: PersistedApp,
+  app: PatchApp,
   dev = false,
   debug = false,
 ): string {
@@ -88,7 +88,7 @@ export function renderPersistedApp(
   }
   imports.writeLines(
     `client import { patch } from "marko/${debug ? "debug/" : ""}dom";`,
-    `client import { router } from "${virtualFilePrefix}/runtime/persisted";`,
+    `client import { router } from "${virtualFilePrefix}/runtime/patch";`,
   );
 
   const { pages } = app;
@@ -172,8 +172,8 @@ export function renderPersistedApp(
   }
 }
 
-/** The persisted app template: where it is written and each page's branch. */
-export interface PersistedApp {
+/** The patch app template: where it is written and each page's branch. */
+export interface PatchApp {
   filePath: string;
   pages: Map<Route, number>;
   /** Names the build: a patch applies only between a document and frames of the same one. */
@@ -181,11 +181,11 @@ export interface PersistedApp {
 }
 
 /**
- * Each page's branch index in the persisted app template: depth-first over
+ * Each page's branch index in the patch app template: depth-first over
  * the layout tree so every subtree is a contiguous range, and the chain
  * decides a branch with one comparison.
  */
-export function persistedPages(routes: BuiltRoutes) {
+export function patchPages(routes: BuiltRoutes) {
   const pages = new Map<Route, number>();
   const visit = (node: PageNode) => {
     for (const route of node.pages) pages.set(route, pages.size);
@@ -254,7 +254,7 @@ function pagePath({ path: { segments } }: Route) {
 export function renderRouteEntry(
   route: Route,
   rootDir: string,
-  persisted?: PersistedApp,
+  patches?: PatchApp,
 ): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
@@ -336,7 +336,7 @@ export function renderRouteEntry(
     imports.writeLines(
       `import page from "${normalizedRelativePath(
         rootDir,
-        persisted ? persisted.filePath : route.templateFilePath!,
+        patches ? patches.filePath : route.templateFilePath!,
       )}";`,
     );
   }
@@ -369,7 +369,7 @@ export function renderRouteEntry(
       writer,
       route,
       verb,
-      persisted ? `{ page: ${persisted.pages.get(route)} }` : "{}",
+      patches ? `{ page: ${patches.pages.get(route)} }` : "{}",
     );
   }
 
@@ -385,7 +385,7 @@ export function renderRouter(
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
-  persisted?: PersistedApp,
+  patches?: PatchApp,
 ): string {
   const writer = createStringWriter();
 
@@ -399,10 +399,10 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext${persisted ? ", usePersisted, acceptsPatch" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${patches ? ", usePatch, acceptsPatch" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
-  if (persisted) {
-    imports.writeLines(`usePersisted(${JSON.stringify(persisted.id)});`);
+  if (patches) {
+    imports.writeLines(`usePatch(${JSON.stringify(patches.id)});`);
   }
 
   for (const route of routes.list) {
@@ -424,18 +424,18 @@ export function renderRouter(
     imports.writeLines(
       `import page${route.key} from "${normalizedRelativePath(
         rootDir,
-        persisted ? persisted.filePath : route.templateFilePath!,
+        patches ? patches.filePath : route.templateFilePath!,
       )}";`,
     );
   }
   const pageInput = (route: Route, rest = "") =>
-    persisted
-      ? `{ page: ${persisted.pages.get(route)}${rest && ","}${rest} }`
+    patches
+      ? `{ page: ${patches.pages.get(route)}${rest && ","}${rest} }`
       : rest
         ? `{${rest} }`
         : "{}";
-  // A page of the persisted app answers a patch request as well.
-  const acceptsPage = persisted
+  // A page of the patch app answers a patch request as well.
+  const acceptsPage = patches
     ? `context.request.headers.get('Accept')?.includes('text/html') || acceptsPatch(context.request)`
     : `context.request.headers.get('Accept')?.includes('text/html')`;
 

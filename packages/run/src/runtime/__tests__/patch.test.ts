@@ -4,7 +4,7 @@ import { JSDOM } from "jsdom";
 // The router runs against a jsdom document with the page's globals faked:
 // `fetch` answers from a script of responses, `location` and `history`
 // record what the browser would have done.
-describe("persisted router", () => {
+describe("patch router", () => {
   const PATCH = "text/marko-patch";
   let dom: JSDOM;
   let requests: Request[];
@@ -151,7 +151,7 @@ describe("persisted router", () => {
       if (!next) throw new TypeError("network");
       return next();
     };
-    ({ router } = await import(`../persisted.ts?${Math.random()}`));
+    ({ router } = await import(`../patch.ts?${Math.random()}`));
     router(page, /^(?:\/cart|\/search|\/item\/[^/]+)$/, "b1", [
       [
         /^\/item\/[^/]+$/,
