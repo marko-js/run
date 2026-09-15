@@ -159,11 +159,15 @@ async function navigate(request: Request, nav: Navigation) {
       for (const load of loads) load().catch(() => {});
     }
   }
-  // Marko's own account of what the live page holds rides its headers.
+  // Marko's own account of what the live page holds rides its headers;
+  // its `x-marko-patch` follows the build id, `<build>;<held>`.
   const [headers, apply] = patch!();
   request.headers.set("accept", PATCH_CONTENT_TYPE);
-  request.headers.set("x-marko-patch", build);
   for (const name in headers) request.headers.set(name, headers[name]);
+  request.headers.set(
+    "x-marko-patch",
+    build + ";" + (headers["x-marko-patch"] || ""),
+  );
   let response: Response;
   try {
     response = await fetch(request, { signal: inflight?.signal });

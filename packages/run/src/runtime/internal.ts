@@ -291,7 +291,7 @@ export function usePatch(id: string) {
 export function acceptsPatch(request: Request) {
   return (
     request.headers.get("accept") === PATCH_CONTENT_TYPE &&
-    request.headers.get("x-marko-patch") === patchBuild
+    request.headers.get("x-marko-patch")?.split(";")[0] === patchBuild
   );
 }
 

@@ -206,7 +206,8 @@ describe("patch router", () => {
       ),
     );
     await click("#page");
-    assert.equal(requests[0].headers.get("x-marko-patch"), "b1");
+    // The build leads; the page's token (none yet) follows the separator.
+    assert.equal(requests[0].headers.get("x-marko-patch"), "b1;");
     assert.deepEqual(applied, []);
     assert.deepEqual(calls, ["assign http://app.example/search"]);
   });
