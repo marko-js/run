@@ -67,7 +67,195 @@ export function renderRouteTemplate(
   return writer.end();
 }
 
-export function renderRouteEntry(route: Route, rootDir: string): string {
+/**
+ * The one template of a patch build: every page is a branch of a chain
+ * that follows the layout tree, picked by `input.page` (`patchPages`), so
+ * a navigation is a branch change on a root every page shares. A page (and a
+ * layout only some pages use) loads lazily, so a page ships what its own
+ * route would have; the router installs from the template's own scope.
+ */
+export function renderPatchApp(
+  routes: BuiltRoutes,
+  app: PatchApp,
+  dev = false,
+  debug = false,
+): string {
+  const writer = createStringWriter();
+  writer.writeLines("<!-- use tags -->\n");
+  const imports = writer.branch("imports");
+  if (dev) {
+    imports.writeLines(`client import "virtual:marko-run/runtime/client";`);
+  }
+  imports.writeLines(
+    `client import { patch } from "marko/${debug ? "debug/" : ""}dom";`,
+    `client import { router } from "${virtualFilePrefix}/runtime/patch";`,
+  );
+
+  const { pages } = app;
+  const shared = new Map<RoutableFile, number>();
+  for (const route of pages.keys()) {
+    for (const layout of route.layouts) {
+      shared.set(layout, (shared.get(layout) || 0) + 1);
+    }
+  }
+  const names = new Map<RoutableFile, string>();
+  const importName = (file: RoutableFile, name: string) => {
+    let id = names.get(file);
+    if (!id) {
+      names.set(file, (id = `${name}${names.size}`));
+      const lazy = shared.get(file) !== pages.size;
+      imports.writeLines(
+        `import ${id} from "${normalizedRelativePath(
+          path.dirname(app.filePath),
+          file.filePath,
+        )}"${lazy ? ` with { load: "render" }` : ""};`,
+      );
+    }
+    return id;
+  };
+
+  // A navigation starts a page's lazy modules (its own and its lazy
+  // layouts') alongside the request, so the frame never waits on them.
+  const preloads: string[] = [];
+  for (const route of pages.keys()) {
+    const loads = [...route.layouts, route.page!]
+      .filter((file) => shared.get(file) !== pages.size)
+      .map(
+        (file) =>
+          // `.then(() => {})` drops the namespace: the chunk keeps only what
+          // the site's own loader keeps.
+          `() => import(${JSON.stringify(
+            normalizedRelativePath(path.dirname(app.filePath), file.filePath),
+          )}).then(() => {})`,
+      );
+    if (loads.length) {
+      preloads.push(`[${pagePattern(route)}, [${loads.join(", ")}]]`);
+    }
+  }
+  writer.writeLines(
+    "",
+    `<script>router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)}, [${preloads.join(", ")}])</script>`,
+  );
+  writeBranches(pageTree(pages));
+  return writer.end();
+
+  function writeBranches(node: PageNode) {
+    const branches = [...node.pages, ...node.children];
+    const last = branches.length - 1;
+    for (let i = 0; i <= last; i++) {
+      const branch = branches[i];
+      const tag = !last ? "" : !i ? "if" : i < last ? "else-if" : "else";
+      if (tag) {
+        writer.writeBlockStart(
+          `<${tag}${tag === "else" ? "" : `=input.page<=${lastPage(branch)}`}>`,
+        );
+      }
+      if ("pages" in branch) {
+        writer.writeBlockStart(`<${importName(branch.layout!, "Layout")}>`);
+        writeBranches(branch);
+        writer.writeBlockEnd("</>");
+      } else {
+        writer.writeLines(
+          `<${importName(branch.page!, "Page")}${
+            branch.key === RoutableFileTypes.Error ? " error=input.error" : ""
+          }/>`,
+        );
+      }
+      if (tag) writer.writeBlockEnd("</>");
+    }
+  }
+
+  function lastPage(branch: Route | PageNode): number {
+    return "pages" in branch
+      ? lastPage(branch.children.at(-1) || branch.pages.at(-1)!)
+      : pages.get(branch)!;
+  }
+}
+
+/** The patch app template: where it is written and each page's branch. */
+export interface PatchApp {
+  filePath: string;
+  pages: Map<Route, number>;
+  /** Names the build: a patch applies only between a document and frames of the same one. */
+  id: string;
+}
+
+/**
+ * Each page's branch index in the patch app template: depth-first over
+ * the layout tree so every subtree is a contiguous range, and the chain
+ * decides a branch with one comparison.
+ */
+export function patchPages(routes: BuiltRoutes) {
+  const pages = new Map<Route, number>();
+  const visit = (node: PageNode) => {
+    for (const route of node.pages) pages.set(route, pages.size);
+    for (const child of node.children) visit(child);
+  };
+  visit(
+    pageTree(
+      new Map(
+        [...routes.list, ...(Object.values(routes.special) as Route[])]
+          .filter((route) => route.page)
+          .map((route) => [route, 0]),
+      ),
+    ),
+  );
+  return pages;
+}
+
+interface PageNode {
+  layout?: RoutableFile;
+  pages: Route[];
+  children: PageNode[];
+}
+
+function pageTree(pages: Map<Route, number>) {
+  const root: PageNode = { pages: [], children: [] };
+  for (const route of pages.keys()) {
+    let node = root;
+    for (const layout of route.layouts) {
+      let child = node.children.find((child) => child.layout === layout);
+      if (!child)
+        node.children.push((child = { layout, pages: [], children: [] }));
+      node = child;
+    }
+    node.pages.push(route);
+  }
+  return root;
+}
+
+// One expression tells the client router whether a URL is a page; `$` is a
+// dynamic segment, `$$` the rest of the path.
+function pagesRegExp(routes: BuiltRoutes) {
+  const patterns = routes.list
+    .filter((route) => route.page)
+    .map((route) => pagePath(route));
+  return `/^(?:${patterns.join("|")})$/`;
+}
+
+function pagePattern(route: Route) {
+  return `/^${pagePath(route)}$/`;
+}
+
+function pagePath({ path: { segments } }: Route) {
+  return (
+    segments
+      .map((segment) =>
+        segment === "$$"
+          ? "(?:\\/.*)?"
+          : segment === "$"
+            ? "\\/[^/]+"
+            : "\\/" + segment.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"),
+      )
+      .join("") || "\\/"
+  );
+}
+
+export function renderRouteEntry(
+  route: Route,
+  rootDir: string,
+  patches?: PatchApp,
+): string {
   const { key, index, handler, page, middleware, meta } = route;
   const verbs = getVerbs(route);
 
@@ -146,7 +334,10 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   if (page) {
     imports.writeLines(
-      `import page from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      `import page from "${normalizedRelativePath(
+        rootDir,
+        patches ? patches.filePath : route.templateFilePath!,
+      )}";`,
     );
   }
   if (meta) {
@@ -174,7 +365,12 @@ export function renderRouteEntry(route: Route, rootDir: string): string {
 
   for (const verb of verbs) {
     writeRouteOptions(optionsWriter, route, verb);
-    writeRouteEntryHandler(writer, route, verb);
+    writeRouteEntryHandler(
+      writer,
+      route,
+      verb,
+      patches ? `{ page: ${patches.pages.get(route)} }` : "{}",
+    );
   }
 
   optionsWriter.join();
@@ -189,6 +385,7 @@ export function renderRouter(
   options: RouterOptions = {
     trailingSlashes: "RedirectWithout",
   },
+  patches?: PatchApp,
 ): string {
   const writer = createStringWriter();
 
@@ -202,8 +399,11 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${patches ? ", usePatch, acceptsPatch" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
+  if (patches) {
+    imports.writeLines(`usePatch(${JSON.stringify(patches.id)});`);
+  }
 
   for (const route of routes.list) {
     const verbs = getVerbs(route);
@@ -222,9 +422,22 @@ export function renderRouter(
   }
   for (const route of Object.values(routes.special) as Route[]) {
     imports.writeLines(
-      `import page${route.key} from "${normalizedRelativePath(rootDir, route.templateFilePath!)}";`,
+      `import page${route.key} from "${normalizedRelativePath(
+        rootDir,
+        patches ? patches.filePath : route.templateFilePath!,
+      )}";`,
     );
   }
+  const pageInput = (route: Route, rest = "") =>
+    patches
+      ? `{ page: ${patches.pages.get(route)}${rest && ","}${rest} }`
+      : rest
+        ? `{${rest} }`
+        : "{}";
+  // A page of the patch app answers a patch request as well.
+  const acceptsPage = patches
+    ? `context.request.headers.get('Accept')?.includes('text/html') || acceptsPatch(context.request)`
+    : `context.request.headers.get('Accept')?.includes('text/html')`;
 
   writer
     .writeLines(
@@ -299,8 +512,8 @@ function match_internal(method, pathname) {
 
   if (hasNotFoundPage) {
     writer.write(`
-    if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, { status: 404 });
+    if (${acceptsPage}) {
+      return context.render(page404, ${pageInput(routes.special[RoutableFileTypes.NotFound]!)}, { status: 404 });
     }`);
   }
 
@@ -316,10 +529,10 @@ function match_internal(method, pathname) {
   if (hasErrorPage) {
     writer
       .writeBlockStart(`} catch (error) {`)
-      .writeBlockStart(
-        `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
+      .writeBlockStart(`if (${acceptsPage}) {`)
+      .writeLines(
+        `return context.render(page500, ${pageInput(routes.special[RoutableFileTypes.Error]!, " error")}, { status: 500 });`,
       )
-      .writeLines(`return context.render(page500, { error }, { status: 500 });`)
       .writeBlockEnd("}")
       .writeLines("throw error;")
       .writeBlockEnd("}");
@@ -659,6 +872,7 @@ function writeRouteEntryHandler(
   writer: Writer,
   route: Route,
   verb: HttpVerb,
+  pageInput: string,
 ): void {
   const { key, index, page, handler, middleware } = route;
   const len = middleware.length;
@@ -682,7 +896,7 @@ function writeRouteEntryHandler(
       const name = `${verb}Handler`;
 
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
 
       if (len) {
@@ -706,10 +920,10 @@ function writeRouteEntryHandler(
       hasBody = true;
     } else if (len) {
       continuations.writeLines(
-        `const ${currentName} = (data) => render(context, page, {}, data);`,
+        `const ${currentName} = (data) => render(context, page, ${pageInput}, data);`,
       );
     } else {
-      writer.writeLines(`return render(context, page, {});`);
+      writer.writeLines(`return render(context, page, ${pageInput});`);
       hasBody = true;
     }
   } else if (handler?.verbs?.includes(verb)) {

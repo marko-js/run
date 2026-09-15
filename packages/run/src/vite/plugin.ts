@@ -23,7 +23,10 @@ import {
 
 import { prepareError } from "../adapter/utils";
 import {
+  type PatchApp,
+  patchPages,
   renderMiddleware,
+  renderPatchApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -32,6 +35,7 @@ import {
 import {
   httpVerbs,
   markoRunFilePrefix,
+  patchAppFilename,
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
@@ -81,6 +85,7 @@ interface RouteData {
   times: TimeMetrics;
   builtEntries: string[];
   sourceEntries: string[];
+  patchId?: string;
 }
 
 declare module "vite" {
@@ -94,6 +99,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
   const { ...markoVitePluginOptions } = opts;
+  // Typed loosely until the published @marko/vite declares the option.
+  const patches = !!(opts as { patches?: boolean }).patches;
+  let patchApp: PatchApp | undefined;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -110,6 +118,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devEntryFilePosix: string;
+  let adapterEntryFilePosix: string | undefined;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let entryTemplates: Set<string>;
@@ -250,9 +259,18 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         entryTemplates = new Set();
         entryTemplateImporters = new Set();
+        if (patches) {
+          patchApp = {
+            filePath: path.join(entryFilesDir, patchAppFilename),
+            pages: patchPages(routes),
+            // The browser build reuses the ssr build's id (route data).
+            id: patchApp?.id || Date.now().toString(36),
+          };
+          entryTemplates.add(normalizePath(patchApp.filePath));
+        }
 
         for (const route of routes.list) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
           for (const middleware of route.middleware) {
@@ -268,7 +286,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
         }
@@ -306,6 +324,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       await getMarkoApiForRoute(context, route),
       !isBuild,
     );
+    writeTemplate(filePath, source);
+  }
+
+  function writeTemplate(filePath: string, source: string) {
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, source);
@@ -356,17 +378,43 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patchApp) {
             await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root),
+            renderRouteEntry(route, root, patchApp),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          await writeEntryTemplate(context, route);
+          if (!patchApp) await writeEntryTemplate(context, route);
+        }
+        if (patchApp) {
+          // The app template is a tags template; a class-API layout cannot
+          // compose into it and marko's error would not name the cause.
+          for (const route of routes.list) {
+            if (
+              route.page &&
+              (await getMarkoApiForRoute(context, route)) === "class"
+            ) {
+              throw new Error(
+                `Route ${route.key} has a class API layout (${path.relative(root, route.layouts[0].filePath)}); patches pages need tags API layouts.`,
+              );
+            }
+          }
+          // The same runtime build the templates compile against
+          // (@marko/vite exports its choice through MARKO_DEBUG).
+          writeTemplate(
+            patchApp.filePath,
+            renderPatchApp(
+              routes,
+              patchApp,
+              !isBuild,
+              process.env.MARKO_DEBUG !== "false" &&
+                process.env.MARKO_DEBUG !== "0",
+            ),
+          );
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
@@ -391,9 +439,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
-          renderRouter(routes, root, runtimeInclude, {
-            trailingSlashes,
-          }),
+          renderRouter(
+            routes,
+            root,
+            runtimeInclude,
+            { trailingSlashes },
+            patchApp,
+          ),
         );
 
         await writeTypesFile(routes);
@@ -463,6 +515,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           if (adapterOptions) {
             opts = mergeConfig(opts, adapterOptions);
           }
+          const adapterEntryFile = await adapter.getEntryFile?.();
+          adapterEntryFilePosix =
+            adapterEntryFile && normalizePath(adapterEntryFile);
         }
 
         routesDir = opts.routesDir || "src/routes";
@@ -732,6 +787,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
           }
+          if (patches) {
+            patchApp = {
+              filePath: path.join(entryFilesDir, patchAppFilename),
+              pages: patchPages(routes),
+              id: routeData.patchId!,
+            };
+          }
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
@@ -739,11 +801,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       },
       async resolveId(importee, importer) {
         let virtualFilePath: string | undefined;
+        // The adapter's entry may run in its own runtime (a worker), where
+        // only importing the generated router sets the global the facade reads.
         const isDevEntry =
           !isBuild &&
           !!importer &&
           (importer === devEntryFile ||
-            normalizePath(importer) === devEntryFilePosix);
+            normalizePath(importer) === devEntryFilePosix ||
+            normalizePath(importer) === adapterEntryFilePosix);
 
         if (importee === "@marko/run/router") {
           // In dev, module imports get the runtime facade, which defers to
@@ -817,11 +882,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       name: `${PLUGIN_NAME_PREFIX}:post`,
       enforce: "post",
 
-      async transform(code) {
+      async transform(code, _id, options) {
         // Only direct `Run.href(...)` calls are supported in client code:
         // aliasing or destructuring `Run` breaks in production (won't fix).
-        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+        if (isSSRBuild || !code.includes("Run.href")) {
           return;
+        }
+
+        // In dev the module evaluates as its own graph reaches it (a lazy
+        // site's load entry), so it imports the runtime defining `Run` first.
+        if (!isBuild) {
+          if (options?.ssr || this.environment.name !== "client") return;
+          const s = new RolldownMagicString(code).prepend(
+            'import "virtual:marko-run/runtime/client";',
+          );
+          return {
+            code: s.toString(),
+            map: s.generateMap({ hires: true }).toString(),
+          };
         }
 
         try {
@@ -897,6 +975,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             times,
             builtEntries,
             sourceEntries: ssrEntryFiles,
+            patchId: patchApp?.id,
           };
           for (const [key, code] of virtualFiles) {
             routeData.files.push({ key, code });
@@ -906,7 +985,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else {
-          logRoutesTable(routes, [...externalRoutes], bundle);
+          logRoutesTable(
+            routes,
+            [...externalRoutes],
+            bundle,
+            patchApp?.filePath,
+          );
         }
       },
       async closeBundle() {

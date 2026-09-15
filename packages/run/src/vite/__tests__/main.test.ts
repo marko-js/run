@@ -5,13 +5,15 @@ import url from "url";
 
 import { prepareError } from "../../adapter/utils";
 import {
+  patchPages,
   renderMiddleware,
+  renderPatchApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
   renderRouteTypeInfo,
 } from "../codegen";
-import { httpVerbs } from "../constants";
+import { httpVerbs, patchAppFilename } from "../constants";
 import { buildRoutes, type RouteSource } from "../routes/builder";
 import { createTestWalker } from "../routes/walk";
 import type { RoutableFile } from "../types";
@@ -92,6 +94,20 @@ describe("router codegen", () => {
           stack: preparedError.stack,
         })}`;
       } else {
+        // A `patch-*` fixture renders as a patch build.
+        const patches = fixture.startsWith("patch-")
+          ? {
+              filePath: path.join(entryFilesDir, patchAppFilename),
+              pages: patchPages(routes),
+              id: "build",
+            }
+          : undefined;
+        if (patches) {
+          routesSnap += "## App\n";
+          routesSnap += "```marko\n";
+          routesSnap += renderPatchApp(routes, patches);
+          routesSnap += "```\n---\n\n";
+        }
         if (routes.middleware.length) {
           routesSnap += `## Middleware\n`;
           routesSnap += "```js\n";
@@ -117,7 +133,7 @@ describe("router codegen", () => {
           routesSnap += `## Route \`\`${route.key}\`\`\n`;
           routesSnap += `### Path: \`\`${route.path.path}\`\`\n`;
 
-          if (route.page) {
+          if (route.page && !patches) {
             const layoutData = route.layouts.length
               ? getFileData<{ api: string }>(route.layouts[0])
               : undefined;
@@ -128,13 +144,13 @@ describe("router codegen", () => {
           }
           routesSnap += "### Handler\n";
           routesSnap += "```js\n";
-          routesSnap += renderRouteEntry(route, dir);
+          routesSnap += renderRouteEntry(route, dir, patches);
           routesSnap += "```\n";
           i++;
         }
 
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.page && route.layouts.length) {
+          if (route.page && route.layouts.length && !patches) {
             routesSnap += `\n\n## Special \`${route.key}\`\n`;
             routesSnap += "### Template\n";
             routesSnap += "```marko\n";
@@ -143,7 +159,7 @@ describe("router codegen", () => {
           }
         }
 
-        routerSnap = renderRouter(routes, dir);
+        routerSnap = renderRouter(routes, dir, undefined, undefined, patches);
         typesSnap = await renderRouteTypeInfo(routes, typesDir);
       }
 

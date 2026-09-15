@@ -187,10 +187,31 @@ export function createContext(
         return new Response(null, init);
       }
 
-      const rendered = template.render({
+      // A patch build's page asks for a patch: frames that update the
+      // live document instead of a new one, so the URL varies by `accept`.
+      const patch =
+        patchBuild &&
+        (template as PatchTemplate<typeof template>).patch &&
+        acceptsPatch(request) &&
+        (template as PatchTemplate<typeof template>).patch!;
+      if (patchBuild) {
+        const headers = new Headers(init.headers);
+        headers.append("vary", "accept");
+        if (patch) {
+          headers.set("content-type", "text/javascript;charset=UTF-8");
+          headers.set("cache-control", "no-store");
+          headers.set("x-marko-patch", patchBuild);
+        }
+        init = { ...init, headers };
+      }
+
+      const renderInput = {
         ...input,
         $global: context as unknown as Marko.Global,
-      });
+      };
+      const rendered = patch
+        ? endPatch(patch.call(template, renderInput, request.headers))
+        : template.render.call(template, renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
       // `toReadable`.
@@ -247,6 +268,42 @@ export function render<T>(
     Object.assign(context.data, data);
   }
   return context.render(template, input);
+}
+
+const PATCH_CONTENT_TYPE = "text/marko-patch";
+// Typed here until the published Marko types declare `patch`.
+type PatchTemplate<T extends Marko.Template<any>> = T & {
+  patch?: (
+    input: Parameters<T["render"]>[0],
+    headers?: Headers,
+  ) => ReturnType<T["render"]>;
+};
+
+// Set by a patch build's router module with the build's id: a debug
+// marko template carries a throwing `patch` stub, so the template alone
+// does not say, and a document from another build gets a document back.
+let patchBuild = "";
+export function usePatch(id: string) {
+  patchBuild = id;
+}
+
+/** Whether a request asks for a patch of this build rather than a document. */
+export function acceptsPatch(request: Request) {
+  return (
+    request.headers.get("accept") === PATCH_CONTENT_TYPE &&
+    request.headers.get("x-marko-patch") === patchBuild
+  );
+}
+
+// A closing frame the router requires: a stream cut short is not a patch.
+function endPatch<T extends AsyncIterable<string>>(rendered: T): T {
+  return {
+    ...rendered,
+    async *[Symbol.asyncIterator]() {
+      yield* rendered;
+      yield "//\n";
+    },
+  } as T;
 }
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
