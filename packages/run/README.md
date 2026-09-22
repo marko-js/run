@@ -141,39 +141,39 @@ export const POST = Run.POST(async (context, next) => {
 
 <details>
   <summary>More Info</summary>
-  
-  - Valid exports are named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
-  - Exports can be one of the following
-    - Handler function (see below) — created with the matching `Run` verb helper
-    - Array of handler functions - will be composed by calling them in order
-    - Promise that resolves to a handler function or array of handler functions 
-  - Handler functions are synchronous or asynchronous functions that
-    - Receives a `context` and `next` argument,
-      - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-      - The `next` argument will render the page for `GET`, `HEAD`, and `POST` requests where applicable or return a `204` response. Pass it an object to [make data available](#loading-data) to downstream handlers and the page.
-    - Return a WHATWG response, throw a WHATWG response, or return undefined. If the function returns undefined the `next` argument will be automatically called and used as the response.
 
-        ```js
-        export function POST(context, next) {
-          const { request, params, url, meta } = context;
-          return new Response('Successfully updated', { status: 200 });
-        }
+- Valid exports are named `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
+- Exports can be one of the following
+  - Handler function (see below) — created with the matching `Run` verb helper
+  - Array of handler functions - will be composed by calling them in order
+  - Promise that resolves to a handler function or array of handler functions
+- Handler functions are synchronous or asynchronous functions that
+  - Receives a `context` and `next` argument,
+    - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
+    - The `next` argument will render the page for `GET`, `HEAD`, and `POST` requests where applicable or return a `204` response. Pass it an object to [make data available](#loading-data) to downstream handlers and the page.
+  - Return a WHATWG response, throw a WHATWG response, or return undefined. If the function returns undefined the `next` argument will be automatically called and used as the response.
 
-        export function PUT(context, next) {
-          // `next` will be called for you by the runtime
-        }
+    ```js
+    export function POST(context, next) {
+      const { request, params, url, meta } = context;
+      return new Response("Successfully updated", { status: 200 });
+    }
 
-        export async function GET(context, next) {
-          // do something before calling `next`
-          const response = await next();
-          // do something with the response from `next`
-          return response;
-        }
+    export function PUT(context, next) {
+      // `next` will be called for you by the runtime
+    }
 
-        export function DELETE(context, next) {
-          return new Response('Successfully removed', { status: 204 });
-        }
-        ```
+    export async function GET(context, next) {
+      // do something before calling `next`
+      const response = await next();
+      // do something with the response from `next`
+      return response;
+    }
+
+    export function DELETE(context, next) {
+      return new Response("Successfully removed", { status: 204 });
+    }
+    ```
 
 </details>
 
@@ -185,33 +185,35 @@ These files are like layouts, but for handlers. Middleware files are called befo
 
 <details>
   <summary>More Info</summary>
-  
-  - Expects a `default` export that can be one of the following
-    - Handler function (see below) — created with `Run.ALL` or a `Run` verb helper
-    - Array of handler functions - will be composed by calling them in order
-    - Promise that resolves to a handler function or array of handler functions
-    - Options-only, e.g. `Run.ALL({ search: ... })`, to attach [validation](#validation-and-data-loading) for every route below without adding behavior
-  - Handler functions are synchronous or asynchronous functions that
-    - Receives a `context` and `next` argument,
-      - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
-      - The `next` argument will call the page for `GET` requests where applicable or return a `204` response.
-    - Return a WHATWG response, throw a WHATWG response, and return undefined. If the function returns undefined the `next` argument with be automatically called and used as the response.
 
-        ```ts
-        export default async function(context, next) {
-          const requestName = `${context.request.method} ${context.url.href}`;
-          let success = true;
-          console.log(`${requestName} request started`)
-          try {
-            return await next(); // Wait for subsequent middleware, handler, and page
-          } catch (err) {
-            success = false;
-            throw err;
-          } finally {
-            console.log(`${requestName} completed ${success ? 'successfully' : 'with errors'}`);
-          }
-        }
-        ```
+- Expects a `default` export that can be one of the following
+  - Handler function (see below) — created with `Run.ALL` or a `Run` verb helper
+  - Array of handler functions - will be composed by calling them in order
+  - Promise that resolves to a handler function or array of handler functions
+  - Options-only, e.g. `Run.ALL({ search: ... })`, to attach [validation](#validation-and-data-loading) for every route below without adding behavior
+- Handler functions are synchronous or asynchronous functions that
+  - Receives a `context` and `next` argument,
+    - The `context` argument contains the WHATWG request object, path parameters, URL, and route metadata.
+    - The `next` argument will call the page for `GET` requests where applicable or return a `204` response.
+  - Return a WHATWG response, throw a WHATWG response, and return undefined. If the function returns undefined the `next` argument with be automatically called and used as the response.
+
+    ```ts
+    export default async function (context, next) {
+      const requestName = `${context.request.method} ${context.url.href}`;
+      let success = true;
+      console.log(`${requestName} request started`);
+      try {
+        return await next(); // Wait for subsequent middleware, handler, and page
+      } catch (err) {
+        success = false;
+        throw err;
+      } finally {
+        console.log(
+          `${requestName} completed ${success ? "successfully" : "with errors"}`,
+        );
+      }
+    }
+    ```
 
 </details>
 

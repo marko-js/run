@@ -6,6 +6,11 @@
   id="GENERATED-0"
 >
   Loading...
+  <script
+    async=""
+    src="/dist/.marko-run/other.client-[hash].marko"
+    type="module"
+  />
 </div>
 ```
 

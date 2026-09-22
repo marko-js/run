@@ -1,6 +1,6 @@
 import assert from "assert";
-import { parseSync } from "oxc-parser";
 import { RolldownMagicString } from "rolldown";
+import { parseSync } from "rolldown/utils";
 
 import { findHrefReplacements } from "../utils/href-replace";
 

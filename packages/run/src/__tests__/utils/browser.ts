@@ -479,18 +479,32 @@ function streamWriter(document: Document, chunks: string[]) {
         return true;
       }
 
-      const isInline = isInlineScript(node);
-      const clone = document.importNode(node, isInline);
+      let clone: Node;
+      if (isInlineScript(node)) {
+        clone = recreateScript(document, node);
+        if (node.firstChild) walker.nextNode();
+      } else {
+        clone = document.importNode(node, false);
+      }
       targetNodes.set(node, clone);
       (targetNodes.get(node.parentNode!) as ParentNode).appendChild(clone);
-
-      if (isInline && node.firstChild) {
-        walker.nextNode();
-      }
     }
     document.close();
     return false;
   };
+}
+
+/**
+ * Clones carry the parsed script's "already started" flag, which stops them
+ * from running, so inline scripts are rebuilt instead.
+ */
+function recreateScript(document: Document, script: HTMLScriptElement) {
+  const clone = document.createElement("script");
+  for (const { name, value } of script.attributes) {
+    clone.setAttribute(name, value);
+  }
+  clone.text = script.text;
+  return clone;
 }
 
 function isInlineScript(node: Node): node is HTMLScriptElement {
