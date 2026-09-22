@@ -269,3 +269,15 @@ The virtual modules are keyed by `path.posix.join(root, ROUTER_FILENAME)` and `g
 `packages/run/src/runtime/router.ts` › `fromRuntime` | 2026-09-04 | impact:med | effort:low
 
 `fromRuntime` throws `This should have been replaced by the @marko/run plugin at build/dev time` whenever `globalThis.__marko_run__` is unset, but the plugin's `resolveId` only swaps `@marko/run/router` for the generated router on a build, on a request with no importer, or from the dev entry file (`packages/run/src/vite/plugin.ts`), and hands every other importer the facade on purpose. So in any other process that has the plugin registered — a Vitest run being the case that matters, since the README's `## Embedding in Existing Server` section presents `Run.fetch` as the way to drive the app from your own code — the message asserts the exact opposite of what is true and sends the reader looking for a misconfigured plugin. Reword it to say the router has not been loaded in this process and name what loads it, keeping the existing intent comment's reasoning intact. Check: a Vitest config with `plugins: [markoRun()]` and a test doing `await (await import("@marko/run/router")).fetch(new Request("http://localhost/"), {})` throws that message, while `await import("virtual:marko-run/__marko-run__router.js")` in the same run returns a working `fetch`.
+
+## Surface child stderr when a preview test server exits during startup
+
+`packages/run/src/vite/utils/server.ts` › `waitForError` | 2026-09-22 | impact:med | effort:low
+
+Preview fixtures intermittently fail with `Process exited with code 1 while waiting for server to start on port "<port>"` (seen once each on `all-http-verbs` and `basic-redirect-back` across ~10 full `pnpm test` runs; the same fixtures pass on rerun). The error drops the child's stderr, so the cause (port race, build output race, etc.) cannot be diagnosed from the failure. Buffer the spawned process's stderr and include it in the rejection message so the next occurrence explains itself.
+
+## Make the examples type-check and cover them in CI
+
+`examples/node-express/src/index.ts` | 2026-09-22 | impact:low | effort:low
+
+`npx tsc --noEmit -p .` fails on `origin/main` in two examples and nothing in CI notices. `examples/node-express` has 4 errors: TS7016 for `compression` and `express` (no `@types/compression`/`@types/express` in its devDependencies, unlike `examples/netlify`) and implicit-any `request`/`next` in `src/routes/other/$$rest/+handler.ts`. `examples/netlify` reports TS2345 in `packages/run/src/adapter/middleware.ts` › `createMiddleware` where `NodePlatformInfo` is passed as the netlify `Platform`, because the example's ambient platform type leaks into the shared source. Add the missing `@types/*` devDependencies, type the handler, scope the netlify platform augmentation, then typecheck the examples in CI.
