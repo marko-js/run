@@ -1,5 +1,12 @@
 # @marko/run
 
+## 0.11.13
+
+### Patch Changes
+
+- 2c82af3: Update `esbuild-plugin-browserslist` to v4 and drop the unused `warp10` and `@oxc-project/types` dependencies.
+- 7a6c206: Bring the shipped cheatsheet up to date with the runtime: context properties, body limits and error codes, options-only middleware, HEAD/QUERY handling and `Run.href` options.
+
 ## 0.11.12
 
 ### Patch Changes
