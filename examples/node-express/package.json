@@ -16,10 +16,10 @@
   "devDependencies": {
     "@marko/run": "^0.11.12",
     "@marko/run-adapter-node": "^2.0.6",
-    "@types/node": "^25.5.2",
-    "prettier": "^3.8.1",
-    "tsx": "^4.21.0",
+    "@types/node": "^26.6.2",
+    "prettier": "^3.9.8",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vite": "^8.0.7"
+    "vite": "^8.3.0"
   }
 }

@@ -13,8 +13,7 @@ export type JsonBodyValidatorOptions = {
   maxBytes?: number;
 };
 export type FormBodyValidator<Ctx> =
-  | Validator<Record<string, any>>
-  | FormBodyValidatorOptions<Ctx>;
+  Validator<Record<string, any>> | FormBodyValidatorOptions<Ctx>;
 export type FormBodyValidatorOptions<Ctx> = {
   /** Validates the parsed form fields; its result is `ctx.body`. Without one the option only sets limits and `ctx.body` stays `undefined`. */
   validator?: Validator<Record<string, any>>;
@@ -33,8 +32,7 @@ export interface Empty {}
 
 /** Result of a Standard Schema validator: `[value, undefined]` on success, `[input, issues]` on failure. */
 export type Schema<I, O> =
-  | [O, undefined]
-  | [I, StandardSchemaV1.FailureResult["issues"]];
+  [O, undefined] | [I, StandardSchemaV1.FailureResult["issues"]];
 type Validated<V, Default = unknown> =
   V extends StandardSchemaV1<infer I, infer O>
     ? Schema<I, O>
@@ -52,11 +50,7 @@ type HttpVerbWithBody = "POST" | "PUT" | "PATCH" | "QUERY";
 export type HttpVerb = HttpVerbWithoutBody | HttpVerbWithBody;
 export type HttpVerbOrAll = HttpVerb | "ALL";
 type RouteFileType =
-  | "handler"
-  | "middleware"
-  | "template"
-  | "meta"
-  | `@${string}`;
+  "handler" | "middleware" | "template" | "meta" | `@${string}`;
 type RouteFileGroup = {
   all: File[];
   handler: File | never;
@@ -201,9 +195,11 @@ type NormalizedMetaFiles<
   [I in keyof Files]: NormalizedMeta<Files[I]["exports"], Verb>;
 };
 type RouteFiles<Files extends readonly File[]> = {
-  [Type in RouteFileType | "all" as Type extends `@${string}`
-    ? "partial"
-    : Type]: Type extends "all"
+  [
+    Type in RouteFileType | "all" as Type extends `@${string}`
+      ? "partial"
+      : Type
+  ]: Type extends "all"
     ? Files
     : Type extends "handler"
       ? FindTuple<Files, "type", Type>
@@ -367,8 +363,9 @@ type DefineRoute<Path extends string, Group extends RouteFileGroup> = {
         RouteFileGroupMeta<Group, Verb>,
         Verb extends "GET"
           ? {
-              [File in Group["partial"][number] as File["name"] &
-                string]: File["exports"];
+              [
+                File in Group["partial"][number] as File["name"] & string
+              ]: File["exports"];
             }
           : Record<string, unknown>,
         RouteOptionsContainer<Path, Verb>
@@ -407,10 +404,9 @@ type MergeHandlerData<U> = Simplify<
   {
     [K in HandlerDataRequiredKeys<U>]: HandlerDataUnionValue<U, K>;
   } & {
-    [K in Exclude<
-      HandlerDataUnionKeys<U>,
-      HandlerDataRequiredKeys<U>
-    >]?: HandlerDataUnionValue<U, K>;
+    [
+      K in Exclude<HandlerDataUnionKeys<U>, HandlerDataRequiredKeys<U>>
+    ]?: HandlerDataUnionValue<U, K>;
   }
 >;
 type HandlerFuncData<T> =
@@ -827,24 +823,28 @@ type HasBodyValidator<V> = V extends
   ? true
   : false;
 type Validation<T> = Simplify<{
-  [K in "params" | "search" | "form" | "json" as K extends keyof T
-    ? K extends "form" | "json"
-      ? T extends Record<K, infer Value>
-        ? HasBodyValidator<Value> extends true
-          ? K
+  [
+    K in "params" | "search" | "form" | "json" as K extends keyof T
+      ? K extends "form" | "json"
+        ? T extends Record<K, infer Value>
+          ? HasBodyValidator<Value> extends true
+            ? K
+            : never
           : never
-        : never
-      : K
-    : never]: T extends Record<K, infer Value>
+        : K
+      : never
+  ]: T extends Record<K, infer Value>
     ? Value extends { validator: infer U }
       ? Validated<U>
       : Validated<Value>
     : keyof T;
 }>;
 type RoutesForFile<F extends File> = {
-  [K in keyof AppPaths as F["id"] extends AppPaths[K]["files"]["all"][number]["id"]
-    ? K
-    : never]: AppPaths[K];
+  [
+    K in keyof AppPaths as F["id"] extends AppPaths[K]["files"]["all"][number]["id"]
+      ? K
+      : never
+  ]: AppPaths[K];
 };
 type PathsForFile<F extends File> = keyof RoutesForFile<F>;
 type FilterContextByVerb<
@@ -931,9 +931,11 @@ type VerbsForPath<
 export type PathsForVerb<Verb extends HttpVerbOrAll = "ALL"> =
   Verb extends HttpVerb
     ? Union<{
-        [Path in keyof AppPaths as Verb extends keyof AppPaths[Path]["verbs"]
-          ? Path
-          : never]: Path;
+        [
+          Path in keyof AppPaths as Verb extends keyof AppPaths[Path]["verbs"]
+            ? Path
+            : never
+        ]: Path;
       }>
     : keyof AppPaths;
 export type ContextForFile<
@@ -944,13 +946,15 @@ export type ContextForFile<
 > = Union<{
   [Path in PathsForFile<F>]: Fallback<
     Union<{
-      [V in VerbsForPath<Path, Verb> as F["type"] extends "template"
-        ? HandlerPassthrough<
-            AppPaths[Path]["files"]["handler"]["exports"][V]
-          > extends true
-          ? V
-          : never
-        : V]: V extends HttpVerb
+      [
+        V in VerbsForPath<Path, Verb> as F["type"] extends "template"
+          ? HandlerPassthrough<
+              AppPaths[Path]["files"]["handler"]["exports"][V]
+            > extends true
+            ? V
+            : never
+          : V
+      ]: V extends HttpVerb
         ? Context<
             Simplify<
               Route<
@@ -1097,8 +1101,8 @@ export interface Context<T extends Route = Route> {
 export type GetContext<
   Scope extends keyof AppPaths | `*` | `/${string}*` | object = "*",
   Verb extends
-    | AvailableVerbs<Scope extends string ? MatchedPaths<Scope> : Scope>
-    | "ALL" = "ALL",
+    AvailableVerbs<Scope extends string ? MatchedPaths<Scope> : Scope> | "ALL" =
+    "ALL",
 > = Scope extends string
   ? {
       [Path in MatchedPaths<Scope>]: Path extends keyof AppPaths
@@ -1216,10 +1220,7 @@ interface HrefBaseOptions<Path extends string> {
   search?: {
     // `undefined` omits the entry; `null` serializes as a value.
     [K in keyof Valid<GetRawSearchValidator<Path>>]:
-      | string
-      | number
-      | null
-      | undefined;
+      string | number | null | undefined;
   };
   hash?: string | number;
 }

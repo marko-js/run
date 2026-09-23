@@ -14,14 +14,7 @@ const codeDir = path.join(cacheDir, "code");
 const dataFilePath = path.join(cacheDir, "data.json");
 
 type Verb =
-  | "get"
-  | "post"
-  | "put"
-  | "delete"
-  | "patch"
-  | "head"
-  | "options"
-  | "query";
+  "get" | "post" | "put" | "delete" | "patch" | "head" | "options" | "query";
 export interface RoutesData {
   hasMiddleware: boolean;
   hasLayouts: boolean;

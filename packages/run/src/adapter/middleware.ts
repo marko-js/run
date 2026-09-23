@@ -259,8 +259,7 @@ const kRender = Symbol.for("@marko/run.render");
  */
 export function getBodyReader(response: Response) {
   const direct = (response as any)[kRender] as
-    | { render: AsyncIterable<string>; body: ReadableStream }
-    | undefined;
+    { render: AsyncIterable<string>; body: ReadableStream } | undefined;
 
   if (
     direct &&

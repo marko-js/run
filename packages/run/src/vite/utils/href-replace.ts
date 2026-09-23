@@ -1,10 +1,4 @@
-import type {
-  Expression,
-  Node,
-  ObjectExpression,
-  ObjectProperty,
-  Program,
-} from "@oxc-project/types";
+import type { ESTree } from "rolldown/utils";
 
 import { href, parsePathParts } from "../../runtime/url-builder";
 
@@ -60,7 +54,7 @@ interface ParsedPath {
  */
 export function findHrefReplacements(
   code: string,
-  ast: Program,
+  ast: ESTree.Program,
 ): HrefReplacement[] {
   const replacements: HrefReplacement[] = [];
   const consumed: HrefEdit[] = [];
@@ -73,7 +67,7 @@ export function findHrefReplacements(
     return replacements;
   }
 
-  walk(ast, (node: Node) => {
+  walk(ast, (node: ESTree.Node) => {
     if (node.type !== "CallExpression") return;
 
     // A call inside a range an outer call already rewrote is dead source;
@@ -98,7 +92,7 @@ export function findHrefReplacements(
       return;
     }
 
-    const pathString = tryStaticEval(args[0] as Expression)?.value;
+    const pathString = tryStaticEval(args[0] as ESTree.Expression)?.value;
 
     if (typeof pathString !== "string") {
       // Dynamic path — just replace callee with runtime href
@@ -248,7 +242,7 @@ export function findHrefReplacements(
   return replacements;
 }
 
-function isRunHrefCallee(callee: Node): boolean {
+function isRunHrefCallee(callee: ESTree.Node): boolean {
   return (
     callee.type === "MemberExpression" &&
     !callee.computed &&
@@ -259,9 +253,9 @@ function isRunHrefCallee(callee: Node): boolean {
   );
 }
 
-function containsRunHrefCall(node: Node): boolean {
+function containsRunHrefCall(node: ESTree.Node): boolean {
   let found = false;
-  walk(node, (n: Node) => {
+  walk(node, (n: ESTree.Node) => {
     if (!found && n.type === "CallExpression" && isRunHrefCallee(n.callee)) {
       found = true;
     }
@@ -274,10 +268,10 @@ function containsRunHrefCall(node: Node): boolean {
  * imports, variable/function/class declarations, function params, or
  * catch clause params.
  */
-function hasRunBinding(ast: Program): boolean {
+function hasRunBinding(ast: ESTree.Program): boolean {
   let found = false;
 
-  const checkPattern = (pattern: Node | null | undefined) => {
+  const checkPattern = (pattern: ESTree.Node | null | undefined) => {
     if (!pattern || found) return;
     switch (pattern.type) {
       case "Identifier":
@@ -302,7 +296,7 @@ function hasRunBinding(ast: Program): boolean {
     }
   };
 
-  walk(ast, (node: Node) => {
+  walk(ast, (node: ESTree.Node) => {
     if (found) return;
     switch (node.type) {
       case "VariableDeclarator":
@@ -332,7 +326,7 @@ function hasRunBinding(ast: Program): boolean {
   return found;
 }
 
-function walk(node: Node, visitor: (node: Node) => void) {
+function walk(node: ESTree.Node, visitor: (node: ESTree.Node) => void) {
   if (!node || typeof node !== "object") return;
   if (node.type) {
     visitor(node);
@@ -382,7 +376,7 @@ function parsePathPattern(path: string): ParsedPath {
 function buildPathTemplate(
   code: string,
   parsed: ParsedPath,
-  paramsMap?: Map<string, ObjectProperty>,
+  paramsMap?: Map<string, ESTree.ObjectProperty>,
 ): string {
   let template = "";
   for (let i = 0; i < parsed.params.length; i++) {
@@ -410,7 +404,7 @@ function escapeTemplateChunk(value: string): string {
   return value.replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${");
 }
 
-function getStaticKey(prop: ObjectProperty): string | null {
+function getStaticKey(prop: ESTree.ObjectProperty): string | null {
   if (prop.computed) return null;
   if (prop.key.type === "Identifier") return prop.key.name;
   if (prop.key.type === "Literal" && typeof prop.key.value === "string")
@@ -423,7 +417,7 @@ function getStaticKey(prop: ObjectProperty): string | null {
  * Returns the value wrapped in an object, or `null` if the node cannot be
  * statically determined at build time.
  */
-function tryStaticEval(node: Node): { value: unknown } | null {
+function tryStaticEval(node: ESTree.Node): { value: unknown } | null {
   switch (node.type) {
     case "Literal":
       return { value: node.value };
@@ -476,7 +470,10 @@ function tryStaticEval(node: Node): { value: unknown } | null {
  * Returns a map of key → AST property node if all keys are static identifiers/string literals.
  * Returns null if the object doesn't have the named property or it's not analyzable.
  */
-function tryExtractObjectProperty(obj: ObjectExpression, propertyName: string) {
+function tryExtractObjectProperty(
+  obj: ESTree.ObjectExpression,
+  propertyName: string,
+) {
   const props = obj.properties;
 
   // Scanning from the end: a spread after the property would override it.
@@ -488,7 +485,7 @@ function tryExtractObjectProperty(obj: ObjectExpression, propertyName: string) {
     // Found it — value must be an object literal with static keys
     if (prop.value.type !== "ObjectExpression") return null;
 
-    const map = new Map<string, ObjectProperty>();
+    const map = new Map<string, ESTree.ObjectProperty>();
     for (const paramProp of prop.value.properties) {
       if (paramProp.type === "SpreadElement") return null;
       const paramKey = getStaticKey(paramProp);

@@ -13,7 +13,7 @@ declare global {
     | undefined;
 }
 
-export default globalThis.__marko_run_middleware__ ??=
+export default (globalThis.__marko_run_middleware__ ??=
   process.env.NODE_ENV && process.env.NODE_ENV !== "development"
     ? (factory) => factory
     : (() => {
@@ -73,4 +73,4 @@ export default globalThis.__marko_run_middleware__ ??=
               });
             };
           };
-      })();
+      })());
