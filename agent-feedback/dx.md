@@ -281,3 +281,9 @@ Preview fixtures intermittently fail with `Process exited with code 1 while wait
 `examples/node-express/src/index.ts` | 2026-09-22 | impact:low | effort:low
 
 `npx tsc --noEmit -p .` fails on `origin/main` in two examples and nothing in CI notices. `examples/node-express` has 4 errors: TS7016 for `compression` and `express` (no `@types/compression`/`@types/express` in its devDependencies, unlike `examples/netlify`) and implicit-any `request`/`next` in `src/routes/other/$$rest/+handler.ts`. `examples/netlify` reports TS2345 in `packages/run/src/adapter/middleware.ts` › `createMiddleware` where `NodePlatformInfo` is passed as the netlify `Platform`, because the example's ambient platform type leaks into the shared source. Add the missing `@types/*` devDependencies, type the handler, scope the netlify platform augmentation, then typecheck the examples in CI.
+
+## Match `adapter-is-entry`'s entry glob against a relative path so the fixture passes under a dot-directory checkout
+
+`packages/run/src/__tests__/fixtures/adapter-is-entry/customAdapter.ts` › `isEntryTemplate` | 2026-09-25 | impact:low | effort:low
+
+The fixture's adapter decides hydration with `micromatch.isMatch(template, "**/src/pages/**/*.marko")` on the template's absolute path, and micromatch's `**` does not cross dot-prefixed segments, so a checkout anywhere under a dot-directory (a worktree in `.lanes/`, `~/.cache/…`) makes it return `false`: no client bundle is emitted and both `adapter-is-entry` tests fail with the counter stuck at `0` while every other fixture passes. `node -e 'const m=require("micromatch");console.log(m.isMatch("/x/.lanes/run/src/pages/p.marko","**/src/pages/**/*.marko"))'` prints `false` (and `true` without the dot). Pass `{ dot: true }` or match `path.relative(process.cwd(), template)` so the suite does not depend on where the repo is cloned.

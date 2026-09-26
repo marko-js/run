@@ -134,29 +134,19 @@ export function createContext(
       url: true,
     },
     get params() {
-      const value = route
-        ? route.options.params
-          ? route.options.params(route.params as Record<string, any>)
-          : route.params
-        : {};
-      Object.defineProperty(context, "params", {
-        configurable: true,
-        enumerable: true,
-        value,
-      });
-      return value;
+      return resolveOnce(context, "params", () =>
+        route
+          ? route.options.params
+            ? route.options.params(route.params as Record<string, any>)
+            : route.params
+          : {},
+      );
     },
     get search() {
-      const search = searchParamsToObject(url.searchParams);
-      const value = route?.options.search
-        ? route.options.search(search)
-        : search;
-      Object.defineProperty(context, "search", {
-        configurable: true,
-        enumerable: true,
-        value,
+      return resolveOnce(context, "search", () => {
+        const search = searchParamsToObject(url.searchParams);
+        return route?.options.search ? route.options.search(search) : search;
       });
-      return value;
     },
     async fetch(resource, init) {
       const request = new Request(
@@ -247,6 +237,25 @@ export function render<T>(
     Object.assign(context.data, data);
   }
   return context.render(template, input);
+}
+
+/**
+ * Renders `+500.marko` for `error`. Reads `params` and `search` first, so a
+ * validator that throws leaves `undefined` rather than failing this render.
+ */
+export function renderErrorPage(
+  context: Context,
+  template: Marko.Template<{ error: unknown }>,
+  error: unknown,
+) {
+  for (const key of ["params", "search"] as const) {
+    try {
+      context[key];
+    } catch {
+      // The page reports `error`, which caused this render.
+    }
+  }
+  return context.render(template, { error }, { status: 500 });
 }
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
@@ -615,6 +624,25 @@ function toResponseBody(
     },
     { highWaterMark: 0 },
   );
+}
+
+// Replaces the getter with the first result, or `undefined` if the validator
+// throws, so later reads (the `+500.marko` render) do not rerun it.
+function resolveOnce<K extends "params" | "search">(
+  context: Context,
+  key: K,
+  resolve: () => Context[K],
+) {
+  let value: Context[K] | undefined;
+  try {
+    return (value = resolve());
+  } finally {
+    Object.defineProperty(context, key, {
+      configurable: true,
+      enumerable: true,
+      value,
+    });
+  }
 }
 
 function searchParamsToObject(params: URLSearchParams | FormData) {
