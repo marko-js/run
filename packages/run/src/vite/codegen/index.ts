@@ -202,7 +202,7 @@ export function renderRouter(
   }
 
   imports.writeLines(
-    `import { NotHandled, NotMatched, createContext } from "${virtualFilePrefix}/runtime/internal";`,
+    `import { NotHandled, NotMatched, createContext${hasErrorPage ? ", renderErrorPage" : ""} } from "${virtualFilePrefix}/runtime/internal";`,
   );
 
   for (const route of routes.list) {
@@ -319,7 +319,7 @@ function match_internal(method, pathname) {
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
-      .writeLines(`return context.render(page500, { error }, { status: 500 });`)
+      .writeLines(`return renderErrorPage(context, page500, error);`)
       .writeBlockEnd("}")
       .writeLines("throw error;")
       .writeBlockEnd("}");

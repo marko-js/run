@@ -1,4 +1,4 @@
-import { NotHandled, NotMatched, createContext } from "virtual:marko-run/runtime/internal";
+import { NotHandled, NotMatched, createContext, renderErrorPage } from "virtual:marko-run/runtime/internal";
 import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__index.js";
 import { get4, get4_options, get4_meta, head4, head4_options, head4_meta, post4, post4_options, post4_meta } from "virtual:marko-run/__marko-run__new.js";
 import { get5, get5_options, head5, head5_options, post5, post5_options, put5, put5_options, delete5, delete5_options } from "virtual:marko-run/__marko-run__notes.$.js";
@@ -187,7 +187,7 @@ export async function invoke(route, request, platform, url) {
     });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return context.render(page500, { error }, { status: 500 });
+			return renderErrorPage(context, page500, error);
 		}
 		throw error;
 	}

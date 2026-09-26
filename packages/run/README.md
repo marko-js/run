@@ -540,7 +540,9 @@ export const GET = Run.GET(
 );
 ```
 
-`context.params` and `context.search` are computed lazily from the validators. Function validators replace the value with whatever they return. Standard Schema validators produce a `[value, issues]` tuple, where `issues` is `undefined` when validation succeeds. Schema validation must be synchronous.
+`context.params` and `context.search` hold the validated values. Function validators replace the value with whatever they return. Standard Schema validators produce a `[value, issues]` tuple, where `issues` is `undefined` when validation succeeds. Schema validation must be synchronous.
+
+Each validator runs at most once per request, when its value is first read. Rendering a page can read both values, since they are part of `$global`, so expect their validators to run for every page request even if nothing uses the value. A validator that throws fails the request like an error thrown from a handler. Its value then reads as `undefined`, which its type does not reflect, so `+500.marko` should check `$global.params` and `$global.search` before using them.
 
 Options declared in middleware and handlers along a route are merged, so shared validation can live in a `+middleware` file. A key explicitly set to `undefined` overrides the inherited value; omitting the key leaves it in place.
 
