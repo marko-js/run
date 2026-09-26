@@ -1079,7 +1079,12 @@ export interface Context<T extends Route = Route> {
   readonly platform: Platform;
   /** Context of the route that called `ctx.fetch`, if any. */
   readonly parent: Context | undefined;
-  /** Which context properties serialize to the browser on `$global`. */
+  /**
+   * Which context properties serialize to the browser on `$global`. `params`
+   * and `url` are on by default, so a `params` validator must return a
+   * serializable value; never enable `request`, whose headers (cookies
+   * included) would be written into the page.
+   */
   serializedGlobals: Record<string, boolean>;
   /** Makes a request through the app's router, with the native `fetch` signature. */
   fetch(
