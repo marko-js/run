@@ -18,3 +18,13 @@
 </pre>
 ```
 
+# Errors
+
+```
+The GET export of a handler was defined with Run.POST — it would never run, since the runtime only invokes it for POST requests
+      at [Normalized Error Stack]
+
+Request failed with error: The GET export of a handler was defined with Run.POST — it would never run, since the runtime only invokes it for POST requests
+      at [Normalized Error Stack]
+```
+
