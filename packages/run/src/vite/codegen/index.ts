@@ -1,4 +1,5 @@
 import path from "path";
+import type { Rollup } from "vite";
 
 import {
   httpVerbs,
@@ -92,49 +93,54 @@ export function renderPatchApp(
   );
 
   const { pages } = app;
-  const shared = new Map<RoutableFile, number>();
-  for (const route of pages.keys()) {
-    for (const layout of route.layouts) {
-      shared.set(layout, (shared.get(layout) || 0) + 1);
-    }
-  }
+  const lazyFiles = patchLoads(pages);
+  const lazy = new Set([...lazyFiles.values()].flat());
   const names = new Map<RoutableFile, string>();
   const importName = (file: RoutableFile, name: string) => {
     let id = names.get(file);
     if (!id) {
       names.set(file, (id = `${name}${names.size}`));
-      const lazy = shared.get(file) !== pages.size;
       imports.writeLines(
         `import ${id} from "${normalizedRelativePath(
           path.dirname(app.filePath),
           file.filePath,
-        )}"${lazy ? ` with { load: "render" }` : ""};`,
+        )}"${lazy.has(file) ? ` with { load: "render" }` : ""};`,
       );
     }
     return id;
   };
 
   // A navigation starts a page's lazy modules (its own and its lazy
-  // layouts') alongside the request, so the frame never waits on them.
+  // layouts') alongside the request; a 404 or 500 page has no URL to match.
+  // Pages share one loader per module, so a layout's import appears once.
+  const loaders = new Map<RoutableFile, string>();
   const preloads: string[] = [];
-  for (const route of pages.keys()) {
-    const loads = [...route.layouts, route.page!]
-      .filter((file) => shared.get(file) !== pages.size)
-      .map(
-        (file) =>
-          // `.then(() => {})` drops the namespace: the chunk keeps only what
-          // the site's own loader keeps.
-          `() => import(${JSON.stringify(
-            normalizedRelativePath(path.dirname(app.filePath), file.filePath),
-          )}).then(() => {})`,
-      );
+  for (const route of routes.list) {
+    if (!route.page) continue;
+    const loads = lazyFiles.get(route)!.map((file) => {
+      let loader = loaders.get(file);
+      if (!loader) loaders.set(file, (loader = `l${loaders.size}`));
+      return loader;
+    });
     if (loads.length) {
-      preloads.push(`[${pagePattern(route)}, [${loads.join(", ")}]]`);
+      preloads.push(
+        `[${pagePattern(route)}, [${loads.join(", ")}], ${pages.get(route)}]`,
+      );
     }
   }
+  // `.then(() => {})` drops the namespace: the chunk keeps only what the
+  // site's own loader keeps.
+  let loaderDecls = "";
+  for (const [file, loader] of loaders) {
+    loaderDecls += `${loaderDecls ? ", " : "const "}${loader} = () => import(${JSON.stringify(
+      normalizedRelativePath(path.dirname(app.filePath), file.filePath),
+    )}).then(() => {})`;
+  }
+  // A build appends each page's stylesheets once the bundle names them
+  // (`renderPatchStyles`); in dev, vite injects a module's styles itself.
   writer.writeLines(
     "",
-    `<script>router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)}, [${preloads.join(", ")}])</script>`,
+    `<script>${loaderDecls && loaderDecls + "; "}router(() => patch($global), ${pagesRegExp(routes)}, ${JSON.stringify(app.id)}, [${preloads.join(", ")}]${dev ? "" : `, ${patchStylesId}()`})</script>`,
   );
   writeBranches(pageTree(pages));
   return writer.end();
@@ -201,6 +207,109 @@ export function patchPages(routes: BuiltRoutes) {
     ),
   );
   return pages;
+}
+
+/**
+ * The function a patch build's app reads its pages' stylesheets from, declared
+ * in the chunk that calls it (hoisted, so the call may run as the chunk does).
+ */
+export const patchStylesId = "__MARKO_RUN_STYLES__";
+
+/**
+ * Each page's lazy modules in a patch build: its page and the layouts not
+ * every page shares. The rest load with the app template on every page.
+ */
+export function patchLoads(pages: Map<Route, number>) {
+  // By path: a browser build reads its routes back from the ssr build's data.
+  const shared = new Map<string, number>();
+  for (const route of pages.keys()) {
+    for (const { filePath } of route.layouts) {
+      shared.set(filePath, (shared.get(filePath) || 0) + 1);
+    }
+  }
+  const loads = new Map<Route, RoutableFile[]>();
+  for (const route of pages.keys()) {
+    loads.set(
+      route,
+      [...route.layouts, route.page!].filter(
+        (file) => shared.get(file.filePath) !== pages.size,
+      ),
+    );
+  }
+  return loads;
+}
+
+/**
+ * Declares, for the chunk that installs the router, the stylesheets each page
+ * links for its lazy modules, as and in the order its document does: the css
+ * their chunks reach through static and dynamic imports, less what the app
+ * template's own chunks reach, which every page links. It lists every href,
+ * then each page's (by branch) as indexes into them.
+ */
+export function renderPatchStyles(
+  bundle: Rollup.OutputBundle,
+  app: PatchApp,
+  base: string,
+) {
+  const chunkOf = new Map<string, string>();
+  for (const fileName in bundle) {
+    const chunk = bundle[fileName];
+    if (chunk.type === "chunk") {
+      for (const id of chunk.moduleIds) chunkOf.set(id, fileName);
+    }
+  }
+  const entry = chunkOf.get(normalizePath(app.filePath));
+  // Without the template's chunk, no stylesheet is known to be on every page.
+  if (!entry) return `function ${patchStylesId}() {}`;
+
+  const loads = patchLoads(app.pages);
+  const lazy = new Set<string>();
+  for (const files of loads.values()) {
+    for (const file of files) {
+      const chunk = chunkOf.get(normalizePath(file.filePath));
+      if (chunk) lazy.add(chunk);
+    }
+  }
+  // Another page's modules are its own to link, though a chunk reaches them.
+  const collect = (starts: string[], seen: Set<string>) => {
+    const css = new Set<string>();
+    const visit = (fileName: string, dynamic?: boolean) => {
+      const chunk = bundle[fileName];
+      if (
+        chunk?.type !== "chunk" ||
+        seen.has(fileName) ||
+        (dynamic && lazy.has(fileName))
+      ) {
+        return;
+      }
+      seen.add(fileName);
+      for (const file of chunk.viteMetadata?.importedCss || []) css.add(file);
+      for (const imported of chunk.imports) visit(imported);
+      for (const imported of chunk.dynamicImports) visit(imported, true);
+    };
+    for (const start of starts) visit(start);
+    return css;
+  };
+
+  const always = collect([entry], new Set());
+  const hrefs: string[] = [];
+  const pages: number[][] = [];
+  for (const [route, index] of app.pages) {
+    const starts: string[] = [];
+    for (const file of loads.get(route)!) {
+      const chunk = chunkOf.get(normalizePath(file.filePath));
+      if (chunk) starts.push(chunk);
+    }
+    pages[index] = [];
+    for (const css of collect(starts, new Set([entry]))) {
+      if (!always.has(css)) {
+        const href = base + css;
+        const i = hrefs.indexOf(href);
+        pages[index].push(i < 0 ? hrefs.push(href) - 1 : i);
+      }
+    }
+  }
+  return `function ${patchStylesId}() { return ${JSON.stringify([hrefs, pages])}; }`;
 }
 
 interface PageNode {

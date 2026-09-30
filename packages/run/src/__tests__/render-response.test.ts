@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { createContext } from "../runtime/internal";
+import { createContext, usePatch } from "../runtime/internal";
 
 const kRender = Symbol.for("@marko/run.render");
 
@@ -66,6 +66,28 @@ describe("Context Render", () => {
       assert.deepEqual(rejections, []);
     } finally {
       process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
+  it("should name the page a patch renders", async () => {
+    usePatch("b1");
+    try {
+      const context = createContext(
+        null,
+        new Request("http://test/", {
+          headers: { accept: "text/marko-patch", "x-marko-patch": "b1;" },
+        }),
+        {},
+      );
+      const response = context.render(
+        { patch: async function* () {} } as any,
+        { page: 3 } as any,
+      );
+      assert.equal(response.headers.get("x-marko-patch"), "b1");
+      assert.equal(response.headers.get("x-marko-page"), "3");
+      assert.equal(await response.text(), "//\n");
+    } finally {
+      usePatch("");
     }
   });
 

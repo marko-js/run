@@ -25,8 +25,10 @@ import { prepareError } from "../adapter/utils";
 import {
   type PatchApp,
   patchPages,
+  patchStylesId,
   renderMiddleware,
   renderPatchApp,
+  renderPatchStyles,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -101,6 +103,15 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   const { ...markoVitePluginOptions } = opts;
   // Typed loosely until the published @marko/vite declares the option.
   const patches = !!(opts as { patches?: boolean }).patches;
+  // An @marko/vite with patch support reads the option as it configures;
+  // one without ignores it, and every navigation would load a document.
+  let patchesRead = false;
+  if (patches) {
+    Object.defineProperty(markoVitePluginOptions, "patches", {
+      enumerable: true,
+      get: () => (patchesRead = true),
+    });
+  }
   let patchApp: PatchApp | undefined;
 
   let store: ReadOncePersistedStore<RouteData>;
@@ -677,6 +688,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         };
       },
       configResolved(config) {
+        if (patches && !patchesRead) {
+          throw new Error(
+            "The `patches` option needs an @marko/vite that supports it, and the installed @marko/vite ignores it (pages would compile without patches, so every navigation would load a full document). Install an @marko/vite with `patches` support.",
+          );
+        }
         resolvedConfig = config;
         const {
           ssr,
@@ -874,6 +890,26 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           }
         } else if (/[/\\]__marko-run__[^?/\\]+\.(js|marko)$/.exec(id)) {
           return "";
+        }
+      },
+      generateBundle(_options, bundle) {
+        // Read before vite folds a chunk that is only css into its importers,
+        // which loses it from a dynamic import. Appended lines keep sourcemaps.
+        if (isBuild && !isSSRBuild && patchApp) {
+          const styles = renderPatchStyles(
+            bundle,
+            patchApp,
+            resolvedConfig.base,
+          );
+          for (const fileName in bundle) {
+            const chunk = bundle[fileName];
+            if (chunk.type === "chunk" && chunk.code.includes(patchStylesId)) {
+              chunk.code = chunk.code.replace(
+                /(\n\/\/# sourceMappingURL=[^\n]*)?\s*$/,
+                `\n${styles}$1\n`,
+              );
+            }
+          }
         }
       },
     },

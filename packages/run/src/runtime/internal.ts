@@ -201,6 +201,9 @@ export function createContext(
           headers.set("content-type", "text/javascript;charset=UTF-8");
           headers.set("cache-control", "no-store");
           headers.set("x-marko-patch", patchBuild);
+          // The page it renders, whose stylesheets the router links.
+          const { page } = input as { page?: number };
+          if (page !== undefined) headers.set("x-marko-page", "" + page);
         }
         init = { ...init, headers };
       }

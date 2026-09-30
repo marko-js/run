@@ -103,6 +103,7 @@ export function createMiddleware(
     // A client disconnect surfaces as the response closing before it
     // finished; abort so handlers can observe it via `request.signal`.
     const controller = new AbortController();
+    let response: Response | void = undefined;
     res.on("close", () => {
       if (!res.writableFinished) {
         controller.abort();
@@ -157,7 +158,7 @@ export function createMiddleware(
         response: res,
       });
 
-      const response = await fetch(request, platform);
+      response = await fetch(request, platform);
 
       if (res.destroyed || res.headersSent) {
         // The request ended while `fetch` was pending; the response is
@@ -212,6 +213,14 @@ export function createMiddleware(
       // signal aborted; there is no client left to answer.
       if (controller.signal.aborted && res.destroyed) {
         return;
+      }
+
+      // A body that failed before its first chunk leaves headers unsent; they
+      // describe that response, not the error response `next` writes.
+      if (response && !res.headersSent) {
+        for (const name of response.headers.keys()) {
+          if (name !== "set-cookie") res.removeHeader(name);
+        }
       }
 
       // A handler can throw a primitive; reading properties off it would crash
