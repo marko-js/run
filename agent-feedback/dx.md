@@ -287,3 +287,9 @@ Preview fixtures intermittently fail with `Process exited with code 1 while wait
 `packages/run/src/adapter/dev-server.ts` › `createErrorMiddleware` | 2026-10-14 | impact:low | effort:low
 
 `createErrorMiddleware` answers with `res.statusCode = 500; res.end(html)` and never sets `content-type`, so the overlay page is HTML only through the browser's MIME sniffing. It is served without one when a handler throws and, since `createMiddleware` clears a failed response's headers before `next(error)`, when a page render fails before its first chunk. Set `content-type: text/html; charset=utf-8` there, as Express's `finalhandler` does for its own error page.
+
+## Let `adapter-is-entry` pass when the checkout sits under a dot directory
+
+`packages/run/src/__tests__/fixtures/adapter-is-entry/customAdapter.ts` › `isEntryTemplate` | 2026-10-07 | impact:low | effort:low
+
+The fixture's adapter matches entry templates with `micromatch.isMatch(template, "**/src/pages/**/*.marko")` against the absolute template path, and micromatch's `**` does not cross a segment starting with a dot. In a checkout under `.worktrees/` (a git worktree layout), the page is not an entry template, so it ships no client script, its button never hydrates, and both the `dev` and `preview` snapshots fail with every click step missing: `micromatch.isMatch("/a/.worktrees/b/src/pages/x.marko", "**/src/pages/**/*.marko")` is `false`, the same path without the dot is `true`. Pass `{ dot: true }`, or match the path relative to the project root, so the fixture tests the adapter hook rather than where the repo was cloned.
