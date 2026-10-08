@@ -55,23 +55,30 @@ describe("dev server restart", () => {
 // A WebSocket handshake with a cookie, which the WebSocket API cannot send.
 function connect(port: number, cookie: string) {
   return new Promise<void>((resolve, reject) => {
-    http
-      .request({
-        port,
-        headers: {
-          connection: "Upgrade",
-          upgrade: "websocket",
-          "sec-websocket-version": "13",
-          "sec-websocket-key": crypto.randomBytes(16).toString("base64"),
-          "sec-websocket-protocol": "vite-hmr",
-          cookie,
-        },
-      })
+    const request = http.request({
+      port,
+      headers: {
+        connection: "Upgrade",
+        upgrade: "websocket",
+        "sec-websocket-version": "13",
+        "sec-websocket-key": crypto.randomBytes(16).toString("base64"),
+        "sec-websocket-protocol": "vite-hmr",
+        cookie,
+      },
+    });
+    request
       .on("upgrade", (_res, socket) => {
         socket.destroy();
         resolve();
       })
+      .on("response", (res) => {
+        res.resume();
+        reject(new Error(`No upgrade: the server answered ${res.statusCode}`));
+      })
       .on("error", reject)
+      .setTimeout(2000, () => {
+        request.destroy(new Error("No answer to the WebSocket handshake"));
+      })
       .end();
   });
 }
