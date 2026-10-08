@@ -27,8 +27,6 @@ function serves(page: StepContext["page"], body: RegExp) {
   );
 }
 
-// The value is written whatever the file holds: a run that failed before
-// restoring it leaves "after", and the next run must still restore "before".
 function writeConfigValue(value: string) {
   fs.writeFileSync(
     configFile,
@@ -38,7 +36,12 @@ function writeConfigValue(value: string) {
 
 async function editTheConfig({ page }: StepContext) {
   writeConfigValue("after");
-  await until(() => serves(page, /config after/), "the edited config");
+  try {
+    await until(() => serves(page, /config after/), "the edited config");
+  } catch (error) {
+    writeConfigValue("before");
+    throw error;
+  }
 }
 
 async function restoreTheConfig({ page }: StepContext) {
