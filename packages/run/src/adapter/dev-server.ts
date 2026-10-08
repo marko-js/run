@@ -5,6 +5,7 @@ import {
   type Connect,
   createServer,
   type InlineConfig,
+  type Plugin,
   type Rolldown,
   type ViteDevServer,
 } from "vite";
@@ -38,6 +39,7 @@ export async function createViteDevServer(
     ...config,
     appType: "custom",
     server: { ...config?.server, middlewareMode: true },
+    plugins: [devServerPlugin(), ...(config?.plugins ?? [])],
   } satisfies InlineConfig;
 
   const { cors } = finalConfig.server;
@@ -69,52 +71,23 @@ export async function createViteDevServer(
 
   getDevGlobal().addDevServer(devServer);
 
-  devServer.middlewares.use(logger());
-
   return devServer;
 }
 
 export async function createDevServer(
   config?: InlineConfig,
 ): Promise<ViteDevServer> {
-  const devServer = await createViteDevServer(config);
-  const routerMiddleware = createMiddleware((request, platform) =>
-    globalThis.__marko_run__.fetch(request, platform),
-  );
-  devServer.middlewares
-    .use(async (req, res, next) => {
-      try {
-        await devServer.ssrLoadModule("@marko/run/router");
-      } catch (err) {
-        return next(err);
-      }
-      routerMiddleware(req, res, next);
-    })
-    .use(createErrorMiddleware(devServer));
-  return devServer;
+  return createViteDevServer({
+    ...config,
+    plugins: [...(config?.plugins ?? []), routerPlugin()],
+  });
 }
 
 let devGlobal: MarkoRunDev | undefined;
+let clientCallbacks: DevErrorCallback[] = [];
 export function getDevGlobal(): MarkoRunDev {
   if (!devGlobal) {
     const devServers = new Set<ViteDevServer>();
-    let callbacks: DevErrorCallback[] = [];
-
-    function handleConnection(ws: WebSocket, req: IncomingMessage) {
-      if (callbacks?.length) {
-        const id = getClientId(req);
-        const now = Date.now();
-        const nextCallbacks: DevErrorCallback[] = [];
-        for (const entry of callbacks) {
-          if (entry.id === id) {
-            entry.callback(ws);
-          } else if (entry.expires > now) {
-            nextCallbacks.push(entry);
-          }
-        }
-        callbacks = nextCallbacks;
-      }
-    }
 
     globalThis.__marko_run_dev__ = devGlobal = {
       devServers,
@@ -126,19 +99,19 @@ export function getDevGlobal(): MarkoRunDev {
         };
         devServers.add(devServer);
 
-        devServer.ws.on("connection", handleConnection);
+        devServer.ws.on("connection", handleClientConnection);
       },
       clear() {
-        callbacks = [];
+        clientCallbacks = [];
         for (const devServer of devServers) {
-          devServer.ws.off("connection", handleConnection);
+          devServer.ws.off("connection", handleClientConnection);
           devServer.close();
         }
       },
       onClient(res, callback) {
         const expires = Date.now() + 1000;
         const id = Math.floor(Math.random() * expires).toString(36);
-        callbacks.push({
+        clientCallbacks.push({
           id,
           expires,
           callback,
@@ -203,11 +176,68 @@ export function createErrorMiddleware(
   };
 }
 
+// On a restart Vite keeps only the middlewares that plugins add, and reuses the
+// registered server object: only its new websocket needs the client listener.
+function devServerPlugin(): Plugin {
+  let isRestart = false;
+  return {
+    name: "marko-run:dev-server",
+    configureServer(devServer) {
+      if (isRestart) {
+        devServer.ws.on("connection", handleClientConnection);
+      }
+      isRestart = true;
+      return () => {
+        devServer.middlewares.use(logger());
+      };
+    },
+  };
+}
+
+function routerPlugin(): Plugin {
+  const routerMiddleware = createMiddleware((request, platform) =>
+    globalThis.__marko_run__.fetch(request, platform),
+  );
+  return {
+    name: "marko-run:router",
+    configureServer(devServer) {
+      return () => {
+        devServer.middlewares
+          .use(async (req, res, next) => {
+            try {
+              await devServer.ssrLoadModule("@marko/run/router");
+            } catch (err) {
+              return next(err);
+            }
+            routerMiddleware(req, res, next);
+          })
+          .use(createErrorMiddleware(devServer));
+      };
+    },
+  };
+}
+
 function stripHtml(string: string) {
   return string.replace(/</g, "\\u003c");
 }
 
 const ClientIdCookieName = "marko-run-client-id";
+
+function handleClientConnection(ws: WebSocket, req: IncomingMessage) {
+  if (clientCallbacks.length) {
+    const id = getClientId(req);
+    const now = Date.now();
+    const nextCallbacks: DevErrorCallback[] = [];
+    for (const entry of clientCallbacks) {
+      if (entry.id === id) {
+        entry.callback(ws);
+      } else if (entry.expires > now) {
+        nextCallbacks.push(entry);
+      }
+    }
+    clientCallbacks = nextCallbacks;
+  }
+}
 
 function getClientId(req: IncomingMessage) {
   if (req.headers.cookie) {
