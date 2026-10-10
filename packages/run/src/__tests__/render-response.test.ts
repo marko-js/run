@@ -69,6 +69,81 @@ describe("Context Render", () => {
     }
   });
 
+  describe("in a patch build", () => {
+    // The app template, and marko's headers as `@marko/vite/patch` binds them.
+    const app = { patch: async function* () {} };
+    const headers = (kind: "patch" | undefined): Record<string, string> =>
+      kind
+        ? {
+            vary: "x-marko-patch",
+            "content-type": "text/javascript;charset=UTF-8",
+            "x-marko-patch": "1",
+          }
+        : { vary: "x-marko-patch" };
+    const patchContext = (kind: "patch" | undefined) =>
+      createContext(null, new Request("http://test/"), {}, undefined, {
+        kind,
+        app: app as any,
+        headers,
+      });
+
+    it("should answer a patch request with the app's patch", async () => {
+      const response = patchContext("patch").render(app as any, {} as any, {
+        status: 404,
+      });
+      assert.equal(response.status, 404);
+      assert.equal(response.headers.get("x-marko-patch"), "1");
+      assert.equal(response.headers.get("vary"), "x-marko-patch");
+      assert.equal(
+        response.headers.get("content-type"),
+        "text/javascript;charset=UTF-8",
+      );
+      assert.equal(await response.text(), "");
+    });
+
+    it("should vary a document by `x-marko-patch`", () => {
+      const response = patchContext(undefined).render(
+        { render: async function* () {} } as any,
+        {} as any,
+        { headers: { vary: "accept-language" } },
+      );
+      assert.equal(
+        response.headers.get("vary"),
+        "accept-language, x-marko-patch",
+      );
+      assert.equal(response.headers.get("x-marko-patch"), null);
+    });
+
+    it("should answer a patch request for another template with a document", () => {
+      const response = patchContext("patch").render(
+        { render: async function* () {} } as any,
+        {} as any,
+      );
+      assert.equal(response.headers.get("x-marko-patch"), null);
+      assert.equal(
+        response.headers.get("content-type"),
+        "text/html;charset=UTF-8",
+      );
+    });
+  });
+
+  it("should give a page render its request's signal", () => {
+    const request = new Request("http://test/", {
+      signal: new AbortController().signal,
+    });
+    let signal: unknown;
+    createContext(null, request, {}).render(
+      {
+        render(input: { $global: { signal: unknown } }) {
+          signal = input.$global.signal;
+          return (async function* () {})();
+        },
+      } as any,
+      {} as any,
+    );
+    assert.equal(signal, request.signal);
+  });
+
   it("should fall back to `toReadable` for renders that cannot be iterated directly", async () => {
     const response = render(() => ({
       toReadable: () => new Response("legacy").body,

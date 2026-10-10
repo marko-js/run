@@ -255,6 +255,39 @@ describe("Adapter Middleware", () => {
       }
     });
 
+    it("should not describe the error response with the headers of a body that failed", async () => {
+      // A render that throws before its first chunk, as a patch does.
+      const server = await serveWithNext(
+        async () =>
+          new Response(
+            new ReadableStream({
+              pull(ctrl) {
+                ctrl.error(new Error("render failed"));
+              },
+            }),
+            {
+              headers: {
+                "content-type": "text/javascript;charset=UTF-8",
+                "x-marko-patch": "1",
+                "set-cookie": "a=1",
+              },
+            },
+          ),
+      );
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(response.status, 500);
+        assert.equal(await response.text(), "next");
+        assert.equal(response.headers.get("x-marko-patch"), null);
+        assert.equal(response.headers.get("content-type"), null);
+        assert.equal(response.headers.get("set-cookie"), "a=1");
+        assert.equal((server.passedToNext as Error).message, "render failed");
+      } finally {
+        await server.close();
+      }
+    });
+
     it("should pass a non-Error throw to next as an Error", async () => {
       // A null-prototype object has no primitive conversion, so building the
       // message out of the thrown value would throw inside the error path.

@@ -1,0 +1,20 @@
++layout.marko
++page.marko
++404.marko
++500.marko
+/api
+  +handler.ts
+/blog
+  +layout.marko
+  +page.marko
+  /$slug
+    +page.marko
+  /tag.$$
+    +page.marko
+/about
+  +page.marko
+/admin
+  +layout.marko
+  /users
+    +page.marko
+    +handler.ts

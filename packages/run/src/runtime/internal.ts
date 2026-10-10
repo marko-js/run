@@ -113,6 +113,13 @@ export function createContext(
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
+  // A patch build's request: what marko read it to ask for, the app template
+  // whose patch the page takes, and marko's response headers.
+  patch?: {
+    kind: "patch" | undefined;
+    app: Marko.Template;
+    headers(kind: "patch" | undefined): Record<string, string>;
+  },
 ): Context {
   const context: Context = {
     route: route?.path || "",
@@ -127,6 +134,8 @@ export function createContext(
     data: {},
     url,
     request,
+    // Marko stops a render when it aborts (its `$global.signal`).
+    signal: request.signal,
     platform,
     parent: parentContextLookup.get(request),
     serializedGlobals: {
@@ -171,10 +180,17 @@ export function createContext(
       );
     },
     render(template, input, init) {
-      if (init) {
+      // A patch build answers a patch request for its app with frames that
+      // update the live document; any other render is a document.
+      const kind = patch?.app === template ? patch.kind : undefined;
+      if (init || patch) {
         // Merged rather than replaced: a caller-supplied init keeps the HTML
         // content-type and 200 status unless it names its own.
-        const headers = new Headers(init.headers);
+        const headers = new Headers(init?.headers);
+        if (patch) {
+          const added = patch.headers(kind);
+          for (const name in added) headers.append(name, added[name]);
+        }
         if (!headers.has("content-type")) {
           headers.set("content-type", "text/html;charset=UTF-8");
         }
@@ -187,10 +203,16 @@ export function createContext(
         return new Response(null, init);
       }
 
-      const rendered = template.render({
+      const renderInput = {
         ...input,
         $global: context as unknown as Marko.Global,
-      });
+      };
+      const rendered = kind
+        ? (template as PatchTemplate<typeof template>).patch(
+            renderInput,
+            request.headers,
+          )
+        : template.render(renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
       // `toReadable`.
@@ -248,6 +270,14 @@ export function render<T>(
   }
   return context.render(template, input);
 }
+
+// Typed here until the published Marko types declare `patch`.
+type PatchTemplate<T extends Marko.Template<any>> = T & {
+  patch: (
+    input: Parameters<T["render"]>[0],
+    headers?: Headers,
+  ) => ReturnType<T["render"]>;
+};
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
 

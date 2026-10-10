@@ -1081,6 +1081,9 @@ export interface Context<T extends Route = Route> {
   readonly parent: Context | undefined;
   /** Which context properties serialize to the browser on `$global`. */
   serializedGlobals: Record<string, boolean>;
+  /** The request's signal, which aborts when its client goes away and stops a
+   * page render (pass it to an `<await>`'s reads). */
+  readonly signal: AbortSignal;
   /** Makes a request through the app's router, with the native `fetch` signature. */
   fetch(
     resource: string | URL | Request,
