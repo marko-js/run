@@ -17,6 +17,7 @@ import {
   type ModuleNode,
   type Plugin,
   type ResolvedConfig,
+  type Rollup,
   transformWithOxc,
   type ViteDevServer,
 } from "vite";
@@ -641,14 +642,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         const baseError = config.logger.error;
         config.logger.error = function (msg, options) {
-          if (!options?.error?.message) {
+          const error = options?.error;
+          if (!error?.message) {
             baseError.call(this, msg, options);
-          } else if (!seenErrors.has(options.error.message)) {
-            seenErrors.add(options.error.message);
+            return;
+          }
+
+          const key = getErrorKey(error);
+          if (!seenErrors.has(key)) {
+            seenErrors.add(key);
             console.error(
-              buildErrorMessage(options.error, [
-                `\x1b[31;1m${options.error.message}\x1b[0m`,
-              ]),
+              buildErrorMessage(error, [`\x1b[31;1m${error.message}\x1b[0m`]),
             );
           }
         };
@@ -1005,6 +1009,16 @@ export const defaultConfigPlugin: Plugin = {
     };
   },
 };
+
+/**
+ * Repeats of one error share a key, while the same message reported at another
+ * location (eg one mistake made in two templates) does not.
+ */
+function getErrorKey({ id, message, loc }: Rollup.RollupError) {
+  return loc
+    ? `${loc.file ?? id}:${loc.line}:${loc.column}\n${message}`
+    : message;
+}
 
 function getBrowserslistTargets(path: string) {
   const browserslistTarget = browserslist(undefined, { path });

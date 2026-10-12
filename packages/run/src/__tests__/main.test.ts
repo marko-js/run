@@ -6,6 +6,7 @@ import snap from "mocha-snap";
 import { createRequire } from "module";
 import path from "path";
 import { fileURLToPath } from "url";
+import { stripVTControlCharacters } from "util";
 
 import * as cli from "../cli/commands";
 import type { Options } from "../vite";
@@ -184,6 +185,9 @@ async function testPage(
   server: SpawnedServer,
   referer?: string | URL,
 ) {
+  const printed: string[] = [];
+  const { error } = console;
+  console.error = (...args: unknown[]) => printed.push(args.join(" "));
   try {
     const url = new URL(pathname, `http://localhost:${server.port}`);
     const referrerUrl = referer
@@ -227,8 +231,13 @@ async function testPage(
       snapshot += `\`\`\`\n${await page.response.text()}\n\`\`\`\n\n`;
     }
 
+    if (printed.length) {
+      snapshot += `# Errors\n\n\`\`\`\n${normalizeErrors(printed.join("\n\n"))}\n\`\`\`\n\n`;
+    }
+
     await snap(snapshot, { ext: ".md", dir });
   } finally {
+    console.error = error;
     await server.close();
   }
 }
@@ -259,6 +268,20 @@ function getStepString(step: Step) {
     .replace(/^.*?{\s*([\s\S]*?)\s*}.*?$/, "$1")
     .replace(/^ {4}/gm, "")
     .replace(/;$/, "");
+}
+
+function normalizeErrors(text: string) {
+  return (
+    stripVTControlCharacters(text)
+      .replaceAll(root, "")
+      .replace(/\\/g, "/")
+      // Stack frames vary by machine; a compile error's `at file:line` stays.
+      .replace(
+        /^( *)at (?:.+ \(.+\)|\/.+)(?:\n *at (?:.+ \(.+\)|\/.+))*$/gm,
+        "$1at [Normalized Error Stack]",
+      )
+      .trimEnd()
+  );
 }
 
 function htmlSnapshot(html: string, prevHtml?: string) {
