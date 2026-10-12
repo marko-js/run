@@ -28,7 +28,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get1_options = normalizeOptions('GET', mware3, getHandler);
-export const head1_options = normalizeOptions('HEAD', mware3);
+export const head1_options = normalizeOptions('HEAD', mware3, getHandler);
 export const post1_options = normalizeOptions('POST', mware3, postHandler);
 
 export function get1(context) {
