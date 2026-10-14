@@ -173,9 +173,6 @@ export function createMiddleware(
       }
 
       if (response) {
-        res.statusCode = response.status;
-        copyResponseHeaders(res, response.headers);
-
         const reader = getBodyReader(response);
         if (reader) {
           controller.signal.addEventListener("abort", reader.cancel, {
@@ -183,9 +180,12 @@ export function createMiddleware(
           });
 
           try {
-            for (;;) {
-              const result = await reader.read();
-              if (result.done) break;
+            // The head goes on once the body produces, so a body that fails
+            // first leaves `res` as it was for the error response.
+            let result = await reader.read();
+            if (res.destroyed || res.headersSent) return;
+            writeResponseHead(res, response);
+            for (; !result.done; result = await reader.read()) {
               if (res.destroyed) return;
               res.write(result.value);
               (res as any).flush?.();
@@ -194,13 +194,16 @@ export function createMiddleware(
             controller.signal.removeEventListener("abort", reader.cancel);
             reader.cancel();
           }
-        } else if (
-          !response.headers.has("content-length") &&
-          req.method !== "HEAD" &&
-          response.status !== 204 &&
-          response.status !== 304
-        ) {
-          res.setHeader("content-length", "0");
+        } else {
+          writeResponseHead(res, response);
+          if (
+            !response.headers.has("content-length") &&
+            req.method !== "HEAD" &&
+            response.status !== 204 &&
+            response.status !== 304
+          ) {
+            res.setHeader("content-length", "0");
+          }
         }
 
         res.end();
@@ -288,6 +291,11 @@ export function getBodyReader(response: Response) {
       reader.cancel().catch(() => {});
     },
   };
+}
+
+function writeResponseHead(res: ServerResponse, response: Response) {
+  res.statusCode = response.status;
+  copyResponseHeaders(res, response.headers);
 }
 
 // TODO: Support the newer `Forwarded` standard header

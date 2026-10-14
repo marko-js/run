@@ -33,7 +33,7 @@ In `src/routes/products/$id/+page.marko`:
 <p>from handler: ${$global.data.title}</p>
 ```
 
-Context/`$global` properties: `request` (WHATWG Request), `url` (URL), `route` (pattern), `method`, `params`, `search` (parsed query object, repeated keys as arrays), `body` (promise; only with a `json`/`form` validator on POST/PUT/PATCH/QUERY; `await` it), `meta`, `data`, `platform`, `parent` (caller under `ctx.fetch`), `serializedGlobals` (props the browser's `$global` gets; `params`/`url` by default). Methods: `ctx.render(template, input)`, `ctx.redirect(to, status = 302)` (301/302/303/307/308 only), `ctx.back(fallback = "/")` (uses `Referer`), `ctx.fetch(resource, init?)` (through the app router).
+Context/`$global` properties: `request` (WHATWG Request), `signal` (the request's AbortSignal; aborts on client disconnect and stops a Marko 6 render), `url` (URL), `route` (pattern), `method`, `params`, `search` (parsed query object, repeated keys as arrays), `body` (promise; only with a `json`/`form` validator on POST/PUT/PATCH/QUERY; `await` it), `meta`, `data`, `platform`, `parent` (caller under `ctx.fetch`), `serializedGlobals` (props the browser's `$global` gets; `params`/`url` by default). Methods: `ctx.render(template, input)`, `ctx.redirect(to, status = 302)` (301/302/303/307/308 only), `ctx.back(fallback = "/")` (uses `Referer`), `ctx.fetch(resource, init?)` (through the app router).
 
 ## Handler contract
 

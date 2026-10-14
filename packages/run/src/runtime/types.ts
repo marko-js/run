@@ -1075,6 +1075,8 @@ export interface Context<T extends Route = Route> {
   readonly url: URL;
   /** The incoming WHATWG request. */
   readonly request: Request;
+  /** Aborts when the client disconnects; pass it to the page's data reads. */
+  readonly signal: AbortSignal;
   /** Data provided by the adapter, e.g. Node's `req`/`res`. */
   readonly platform: Platform;
   /** Context of the route that called `ctx.fetch`, if any. */
