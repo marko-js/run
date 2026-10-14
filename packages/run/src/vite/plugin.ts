@@ -110,6 +110,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devEntryFilePosix: string;
+  let routerFacadeId: string | undefined;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let entryTemplates: Set<string>;
@@ -748,14 +749,22 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // In dev, module imports get the runtime facade, which defers to
           // the __marko_run__ global so app code reachable from middleware
           // can't create an evaluation cycle with the generated router.
-          if (isBuild || !importer || isDevEntry) {
+          // The facade's own import loads the router where no dev entry ran.
+          if (
+            isBuild ||
+            !importer ||
+            isDevEntry ||
+            importer === routerFacadeId
+          ) {
             return normalizePath(path.resolve(root, ROUTER_FILENAME));
           }
-          return await this.resolve(
+          const facade = await this.resolve(
             path.resolve(__dirname, "../runtime/router"),
             importer,
             { skipSelf: true },
           );
+          routerFacadeId = facade?.id;
+          return facade;
         } else if (
           importee.endsWith(".marko") &&
           importee.includes(relativeEntryFilesDirPosix)
