@@ -136,7 +136,12 @@ export function createMiddleware(
           break;
       }
 
-      const url = new URL(req.url!, origin || getOrigin(req, trustProxy));
+      // The request target is read as a path, so one like `//evil.example/` or
+      // `http://evil.example/` cannot change the host.
+      const base = origin || getOrigin(req, trustProxy);
+      const url = new URL(
+        req.url![0] === "/" ? base + req.url : `${base}/${req.url}`,
+      );
       const request = new Request(url, {
         method: req.method,
         headers: req.headers as Record<string, string>,

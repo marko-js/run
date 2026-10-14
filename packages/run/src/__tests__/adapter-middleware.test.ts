@@ -154,6 +154,39 @@ describe("Adapter Middleware", () => {
   });
 
   describe("createMiddleware", () => {
+    for (const [target, expected] of [
+      ["//evil.example//", "http://127.0.0.1:{port}//evil.example//"],
+      [
+        "//evil.example/docs?q=1",
+        "http://127.0.0.1:{port}//evil.example/docs?q=1",
+      ],
+      [
+        "http://evil.example/docs",
+        "http://127.0.0.1:{port}/http://evil.example/docs",
+      ],
+    ]) {
+      it(`should keep the server origin for the request target ${target}`, async () => {
+        let url = "";
+        const server = await serve(async (request) => {
+          url = request.url;
+          return new Response(null, { status: 204 });
+        });
+
+        try {
+          await new Promise<void>((resolve, reject) =>
+            http
+              .request({ port: server.port, host: "127.0.0.1", path: target })
+              .on("response", (res) => res.resume().on("end", resolve))
+              .on("error", reject)
+              .end(),
+          );
+          assert.equal(url, expected.replace("{port}", String(server.port)));
+        } finally {
+          await server.close();
+        }
+      });
+    }
+
     it("should abort the request signal and cancel an idle stream when the client disconnects", async () => {
       const cancelled = deferred();
       let signal!: AbortSignal;
