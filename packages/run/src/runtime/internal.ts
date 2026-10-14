@@ -230,8 +230,9 @@ export function createContext(
       });
     },
     back(fallback = "/", status) {
+      const referer = URL.parse(request.headers.get("referer") || "");
       return context.redirect(
-        request.headers.get("referer") || fallback,
+        referer?.origin === url.origin ? referer : fallback,
         status,
       );
     },
