@@ -707,7 +707,7 @@ Creates a redirect response that will resolve relative paths.
 back(fallback?: string | URL, status?: number): Response;
 ```
 
-Creates a redirect response that uses the current request referer or an optional fallback.
+Creates a redirect response to the current request referer when it has the same origin, or to an optional fallback otherwise.
 
 ### Embedding in Existing Server
 

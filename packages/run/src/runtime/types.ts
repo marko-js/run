@@ -1096,7 +1096,7 @@ export interface Context<T extends Route = Route> {
   ): Response;
   /** Creates a redirect response, resolving relative paths against the current URL. */
   redirect(to: string | URL, status?: number): Response;
-  /** Redirects to the request referrer, or to `fallback` when there is none. */
+  /** Redirects to the request referrer when it has the same origin, or to `fallback` otherwise. */
   back(fallback?: string | URL, status?: number): Response;
 }
 /** Resolves the `Run.Context` type for a path pattern (e.g. `GetContext<"/products/*">`) or an imported route module. */
