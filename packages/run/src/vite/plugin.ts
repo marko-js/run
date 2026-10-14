@@ -831,24 +831,24 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
 
           if (replacements.length) {
-            const helpers = new Set<string>();
+            const helpers = new Map<string, string>();
             const s = new RolldownMagicString(code);
-            for (const { helper, edits } of replacements) {
-              for (const { start, end, code } of edits) {
+            for (const replacement of replacements) {
+              for (const { start, end, code } of replacement.edits) {
                 if (code) {
                   s.overwrite(start, end, code);
                 } else {
                   s.remove(start, end);
                 }
               }
-              if (helper) {
-                helpers.add(helper);
+              if (replacement.helper) {
+                helpers.set(replacement.helper, replacement.local);
               }
             }
 
             if (helpers.size) {
               s.prepend(
-                `import { ${[...helpers].join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
+                `import { ${[...helpers].map(([helper, local]) => (helper === local ? helper : `${helper} as ${local}`)).join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
               );
             }
             return {

@@ -11,12 +11,23 @@ interface HrefEdit {
   code: string;
 }
 
-export interface HrefReplacement {
-  /** Which runtime helper is needed (false = no import needed). */
-  helper: false | "href" | "href_path" | "href_values" | "href_keys";
-  /** Source edits to apply for this call site. */
-  edits: HrefEdit[];
-}
+type HrefHelper = "href" | "href_path" | "href_values" | "href_keys";
+
+export type HrefReplacement =
+  | {
+      /** No helper: the call became a literal. */
+      helper: false;
+      /** Source edits to apply for this call site. */
+      edits: HrefEdit[];
+    }
+  | {
+      /** The runtime helper the edits call. */
+      helper: HrefHelper;
+      /** The name the edits call it by, unused elsewhere in the module. */
+      local: string;
+      /** Source edits to apply for this call site. */
+      edits: HrefEdit[];
+    };
 
 interface ParsedPath {
   /** Static segments alternating with param slots: [static, static, ...]. */
@@ -62,6 +73,21 @@ export function findHrefReplacements(
     replacements.push(replacement);
     consumed.push(...replacement.edits);
   };
+  // The helpers are imported under names no identifier in the module uses, so
+  // a local `href` (a param, a loop variable) cannot shadow or clash with one.
+  const locals = new Map<HrefHelper, string>();
+  let usedNames: Set<string> | undefined;
+  const local = (helper: HrefHelper) => {
+    let name = locals.get(helper);
+    if (!name) {
+      usedNames ??= collectIdentifierNames(ast);
+      name = helper;
+      for (let i = 1; usedNames.has(name); i++) name = `${helper}$${i}`;
+      usedNames.add(name);
+      locals.set(helper, name);
+    }
+    return name;
+  };
 
   if (hasRunBinding(ast)) {
     return replacements;
@@ -98,7 +124,8 @@ export function findHrefReplacements(
       // Dynamic path — just replace callee with runtime href
       add({
         helper: "href",
-        edits: [{ start: callee.start, end: callee.end, code: "href" }],
+        local: local("href"),
+        edits: [{ start: callee.start, end: callee.end, code: local("href") }],
       });
       return;
     }
@@ -125,7 +152,8 @@ export function findHrefReplacements(
     if (containsRunHrefCall(optionsNode)) {
       add({
         helper: "href",
-        edits: [{ start: callee.start, end: callee.end, code: "href" }],
+        local: local("href"),
+        edits: [{ start: callee.start, end: callee.end, code: local("href") }],
       });
       return;
     }
@@ -162,11 +190,12 @@ export function findHrefReplacements(
           // Tier 1a: href_path — replace entire call
           add({
             helper: "href_path",
+            local: local("href_path"),
             edits: [
               {
                 start: node.start,
                 end: node.end,
-                code: "href_path`" + pathPart + "`",
+                code: local("href_path") + "`" + pathPart + "`",
               },
             ],
           });
@@ -179,11 +208,12 @@ export function findHrefReplacements(
           if (remaining.length === 1 && remaining[0].type === "SpreadElement") {
             add({
               helper: "href_values",
+              local: local("href_values"),
               edits: [
                 {
                   start: node.start,
                   end: remaining[0].argument.start,
-                  code: "href_values`${",
+                  code: local("href_values") + "`${",
                 },
                 {
                   start: remaining[0].argument.end,
@@ -195,11 +225,12 @@ export function findHrefReplacements(
           } else {
             add({
               helper: "href_values",
+              local: local("href_values"),
               edits: [
                 {
                   start: node.start,
                   end: optionsNode.start,
-                  code: "href_values`${",
+                  code: local("href_values") + "`${",
                 },
                 {
                   start: optionsNode.end,
@@ -228,8 +259,13 @@ export function findHrefReplacements(
     // Tier 2: static path, opaque options — wrap options in tagged template
     add({
       helper: "href_keys",
+      local: local("href_keys"),
       edits: [
-        { start: node.start, end: optionsNode.start, code: "href_keys`${" },
+        {
+          start: node.start,
+          end: optionsNode.start,
+          code: local("href_keys") + "`${",
+        },
         {
           start: optionsNode.end,
           end: node.end,
@@ -324,6 +360,31 @@ function hasRunBinding(ast: ESTree.Program): boolean {
   });
 
   return found;
+}
+
+// The names the module binds or references: property names (`Run.href`'s
+// `href`) and keys are neither, so they do not count.
+function collectIdentifierNames(ast: ESTree.Program) {
+  const names = new Set<string>();
+  const keys = new WeakSet<ESTree.Node>();
+  walk(ast, (node: ESTree.Node) => {
+    switch (node.type) {
+      case "MemberExpression":
+        if (!node.computed) keys.add(node.property);
+        break;
+      case "Property":
+        if (!node.computed && !node.shorthand) keys.add(node.key);
+        break;
+      case "MethodDefinition":
+      case "PropertyDefinition":
+        if (!node.computed) keys.add(node.key);
+        break;
+      case "Identifier":
+        if (!keys.has(node)) names.add(node.name);
+        break;
+    }
+  });
+  return names;
 }
 
 function walk(node: ESTree.Node, visitor: (node: ESTree.Node) => void) {
