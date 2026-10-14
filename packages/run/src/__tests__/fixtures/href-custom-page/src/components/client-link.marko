@@ -1,0 +1,11 @@
+class {
+  onCreate() {
+    this.state = { id: 0 };
+  }
+  increment() {
+    this.state.id++;
+  }
+}
+
+<button on-click("increment")>${state.id}</button>
+<a href=Run.href("/thing/$id", { params: { id: state.id } })>Link</a>

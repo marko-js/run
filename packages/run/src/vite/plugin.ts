@@ -304,7 +304,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     const source = renderRouteTemplate(
       route,
       await getMarkoApiForRoute(context, route),
-      !isBuild,
     );
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -820,7 +819,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async transform(code) {
         // Only direct `Run.href(...)` calls are supported in client code:
         // aliasing or destructuring `Run` breaks in production (won't fix).
-        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+        if (
+          isSSRBuild ||
+          !code.includes("Run.href") ||
+          (!isBuild && this.environment.config.consumer !== "client")
+        ) {
           return;
         }
 
@@ -851,9 +854,14 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 `import { ${[...helpers].map(([helper, local]) => (helper === local ? helper : `${helper} as ${local}`)).join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
               );
             }
-            return {
-              code: s,
-            };
+            // Vite's dev plugin container takes `code` as a string; only the
+            // Rolldown build accepts the magic string itself.
+            return isBuild
+              ? { code: s }
+              : {
+                  code: s.toString(),
+                  map: s.generateMap({ hires: "boundary" }).toString(),
+                };
           }
 
           return null;
@@ -862,9 +870,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // but a regression in this pass must not be invisible.
           this.warn(`Run.href optimization failed: ${error}`);
           return {
-            code: new RolldownMagicString(code).prepend(
-              'import "virtual:marko-run/runtime/client";',
-            ),
+            // Appended: imports still run before the body, and no position moves.
+            code: code + '\nimport "virtual:marko-run/runtime/client";',
+            map: null,
           };
         }
       },

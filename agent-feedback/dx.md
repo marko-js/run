@@ -281,3 +281,9 @@ Preview fixtures intermittently fail with `Process exited with code 1 while wait
 `examples/node-express/src/index.ts` | 2026-09-22 | impact:low | effort:low
 
 `npx tsc --noEmit -p .` fails on `origin/main` in two examples and nothing in CI notices. `examples/node-express` has 4 errors: TS7016 for `compression` and `express` (no `@types/compression`/`@types/express` in its devDependencies, unlike `examples/netlify`) and implicit-any `request`/`next` in `src/routes/other/$$rest/+handler.ts`. `examples/netlify` reports TS2345 in `packages/run/src/adapter/middleware.ts` › `createMiddleware` where `NodePlatformInfo` is passed as the netlify `Platform`, because the example's ambient platform type leaks into the shared source. Add the missing `@types/*` devDependencies, type the handler, scope the netlify platform augmentation, then typecheck the examples in CI.
+
+## Set a `content-type` on the dev error page
+
+`packages/run/src/adapter/dev-server.ts` › `createErrorMiddleware` | 2026-10-14 | impact:low | effort:low
+
+`createErrorMiddleware` answers with `res.statusCode = 500; res.end(html)` and never sets `content-type`, so the overlay page is HTML only through the browser's MIME sniffing. It is served without one when a handler throws and, since `createMiddleware` clears a failed response's headers before `next(error)`, when a page render fails before its first chunk. Set `content-type: text/html; charset=utf-8` there, as Express's `finalhandler` does for its own error page.

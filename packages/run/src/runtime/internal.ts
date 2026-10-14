@@ -127,6 +127,8 @@ export function createContext(
     data: {},
     url,
     request,
+    // Marko 6 reads it as `$global.signal` and stops the render when it aborts.
+    signal: request.signal,
     platform,
     parent: parentContextLookup.get(request),
     serializedGlobals: {

@@ -1,0 +1,5 @@
+static const first = Run.href("/thing/$id", { params: { id: 0 } });
+
+<let/id=0>
+<button onClick() { id++ }>${id}</button>
+<a href=(id ? Run.href("/thing/$id", { params: { id } }) : first)>Link</a>

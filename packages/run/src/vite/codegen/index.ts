@@ -30,11 +30,7 @@ interface RouteTrie {
   dynamic?: RouteTrie;
 }
 
-export function renderRouteTemplate(
-  route: Route,
-  markoApi?: string,
-  dev = false,
-): string {
+export function renderRouteTemplate(route: Route, markoApi?: string): string {
   if (!route.page) {
     throw new Error(`Route ${route.key} has no page to render`);
   }
@@ -44,14 +40,8 @@ export function renderRouteTemplate(
     writer.writeLines(`<!-- use ${markoApi} -->\n`);
   }
 
-  const importWriter = writer.branch("imports");
-
-  if (dev) {
-    importWriter.writeLines(
-      `client import "virtual:marko-run/runtime/client";`,
-    );
-  }
-
+  // Opened here so the tag's imports land above the template.
+  writer.branch("imports");
   writer.writeLines("");
   writeEntryTemplateTag(
     writer,
