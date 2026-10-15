@@ -153,6 +153,10 @@ export default function cloudflareAdapter(): Adapter {
         ...wranglerArgs,
         ...(await viteServerArgs(cwd, wranglerArgs)),
       ];
+      // Share dev's local bindings rather than keep them beside the build.
+      if (!wranglerArgs.some((arg) => arg.startsWith("--persist-to"))) {
+        args.push("--persist-to", path.join(cwd, ".wrangler", "state"));
+      }
 
       // Spawn through a shell only on Windows, where `wrangler` is a `.cmd`
       // shim that can't be spawned directly. On POSIX, spawning directly means
@@ -263,6 +267,7 @@ const devFlags = new RegExp(
     "live-reload",
     "remote",
     "local",
+    "persist-to=.+",
     "show-interactive-dev-session",
   ]
     .map((flag) => `--${flag}`)
