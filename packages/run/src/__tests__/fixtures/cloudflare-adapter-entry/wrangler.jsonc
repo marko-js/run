@@ -1,0 +1,7 @@
+{
+  "name": "cloudflare-adapter-entry",
+  "durable_objects": {
+    "bindings": [{ "name": "GREETER", "class_name": "Greeter" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Greeter"] }],
+}

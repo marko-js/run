@@ -2,6 +2,16 @@ packages:
   - examples/*
   - packages/*
   - packages/adapters/*
+# vite@8 takes `esbuild` as an optional peer (^0.27.0 || ^0.28.0). Left alone,
+# @cloudflare/vite-plugin resolves a vite peered against esbuild 0.28.1 while
+# the workspace resolves one peered against 0.27.7, yielding two vite instances
+# (a type mismatch on the adapter's `plugins()` return, and two runtimes). Pin
+# esbuild to the workspace's line so there is a single vite, while letting
+# wrangler/workerd keep the 0.28.1 they depend on directly.
+overrides:
+  esbuild: 0.27.7
+  wrangler>esbuild: 0.28.1
+  workerd>esbuild: 0.28.1
 # Dependencies whose postinstall scripts must run (binary downloads/native builds).
 allowBuilds:
   "@parcel/watcher": true
@@ -9,6 +19,7 @@ allowBuilds:
   netlify-cli: true
   sharp: true
   unix-dgram: true
+  workerd: true
 linkWorkspacePackages: true
 publicHoistPattern:
   # marko 5's tags-api compiled output imports this dep of marko itself via

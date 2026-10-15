@@ -21,6 +21,7 @@
     "@changesets/cli": "^2.31.1",
     "@eslint/js": "^10.0.1",
     "@marko/fixture-snapshots": "^2.2.1",
+    "@marko/run-adapter-cloudflare": "workspace:*",
     "@marko/run-adapter-netlify": "workspace:*",
     "@marko/run-adapter-node": "workspace:*",
     "@marko/run-adapter-static": "workspace:*",
