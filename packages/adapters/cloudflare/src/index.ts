@@ -154,7 +154,7 @@ export default function cloudflareAdapter(): Adapter {
         ...(await viteServerArgs(cwd, wranglerArgs)),
       ];
       // Share dev's local bindings rather than keep them beside the build.
-      if (!wranglerArgs.some((arg) => arg.startsWith("--persist-to"))) {
+      if (!hasFlag(wranglerArgs, "persist-to")) {
         args.push("--persist-to", path.join(cwd, ".wrangler", "state"));
       }
 
@@ -223,13 +223,12 @@ async function viteServerArgs(cwd: string, given: string[]) {
     "serve",
   );
   const args: string[] = [];
-  const has = (flag: string) => given.some((arg) => arg.startsWith(flag));
   const host = config.preview.host ?? config.server.host;
-  if (host && !has("--ip")) {
+  if (host && !hasFlag(given, "ip")) {
     args.push("--ip", host === true ? "0.0.0.0" : host);
   }
   const https = config.preview.https ?? config.server.https;
-  if (https?.key && https?.cert && !has("--local-protocol")) {
+  if (https?.key && https?.cert && !hasFlag(given, "local-protocol")) {
     // Wrangler takes the key and cert as files, so they go in Vite's cache,
     // out of the build output.
     const dir = path.join(config.cacheDir, "cloudflare-preview");
@@ -254,28 +253,56 @@ async function viteServerArgs(cwd: string, given: string[]) {
   return args;
 }
 
-const devFlags = new RegExp(
-  [
-    "compatibility-date=.+",
-    "compatibility-flags=.+",
-    "env=.+",
-    "ip=.+",
-    "local-protocol=.+",
-    "https-key-path=.+",
-    "https-cert-path=.+",
-    "inspector-port=.+",
-    "live-reload",
-    "remote",
-    "local",
-    "persist-to=.+",
-    "show-interactive-dev-session",
-  ]
-    .map((flag) => `--${flag}`)
-    .join("|"),
-);
+/** The `wrangler dev` flags preview passes on that take a value. */
+const valueFlags = new Set([
+  "compatibility-date",
+  "compatibility-flags",
+  "env",
+  "ip",
+  "local-protocol",
+  "https-key-path",
+  "https-cert-path",
+  "inspector-port",
+  "persist-to",
+]);
 
+/** The `wrangler dev` flags preview passes on that take none. */
+const switchFlags = new Set([
+  "live-reload",
+  "remote",
+  "local",
+  "show-interactive-dev-session",
+]);
+
+/**
+ * The flags preview was given that `wrangler dev` takes, a value flag with
+ * its value whether written `--flag=value` or `--flag value`. As in wrangler,
+ * a flag after a value flag is the next flag, not its value.
+ */
 function parseWranglerArgs(args: string[]) {
-  return args.filter((arg) => devFlags.test(arg));
+  const kept: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const name = flagName(arg);
+    if (switchFlags.has(name)) {
+      kept.push(arg);
+    } else if (valueFlags.has(name)) {
+      if (arg.includes("=")) {
+        kept.push(arg);
+      } else if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
+        kept.push(arg, args[++i]);
+      }
+    }
+  }
+  return kept;
+}
+
+function hasFlag(args: string[], name: string) {
+  return args.some((arg) => flagName(arg) === name);
+}
+
+function flagName(arg: string) {
+  return arg.startsWith("--") ? arg.slice(2).split("=", 1)[0] : "";
 }
 
 function assertWranglerCLI() {
