@@ -1,14 +1,19 @@
 import type {
   ExecutionContext,
+  Fetcher,
   Request as CfRequest,
 } from "@cloudflare/workers-types";
 import { fetch } from "@marko/run/router";
 
 import { heldOpen } from "./runtime";
-import type { CloudflareEnv, CloudflarePlatformInfo } from "./types";
+import type { CloudflarePlatformInfo } from "./types";
 
 export default {
-  async fetch(request: CfRequest, env: CloudflareEnv, ctx: ExecutionContext) {
+  async fetch(
+    request: CfRequest,
+    env: { ASSETS?: Fetcher },
+    ctx: ExecutionContext,
+  ) {
     const response = await fetch<CloudflarePlatformInfo>(request as any, {
       env,
       ctx,

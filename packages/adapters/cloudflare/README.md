@@ -95,7 +95,19 @@ export default {
 
 ## Platform info
 
-The Worker environment, execution context and Cloudflare request properties are available on the `platform` argument of your route handlers:
+The Worker environment, execution context and Cloudflare request properties are available on the `platform` argument of your route handlers. Declare the bindings your Wrangler config adds by augmenting `CloudflareEnv`, typed with the `@cloudflare/workers-types` your app uses:
+
+```ts
+// src/env.d.ts
+declare module "@marko/run-adapter-cloudflare" {
+  interface CloudflareEnv {
+    ASSETS: Fetcher;
+    MY_KV: KVNamespace;
+  }
+}
+
+export {};
+```
 
 ```ts
 import type { CloudflarePlatformInfo } from "@marko/run-adapter-cloudflare";
