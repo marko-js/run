@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.11.15
+
+### Patch Changes
+
+- 4e9859e: Add a Cloudflare adapter that develops, previews and deploys apps on Cloudflare Workers, with the app's own entry as the Worker when given one.
+
 ## 0.11.14
 
 ### Patch Changes
