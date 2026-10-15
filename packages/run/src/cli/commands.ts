@@ -137,7 +137,7 @@ export async function dev(
   }
 
   let plugins =
-    adapter.plugins && (await adapter.plugins({ root, command: "dev" }));
+    adapter.plugins && (await adapter.plugins({ root, command: "dev", entry }));
   if (!isPluginIncluded(resolvedConfig)) {
     plugins = (plugins || []).concat(plugin());
   }
@@ -193,7 +193,8 @@ export async function build(
   }
 
   let plugins =
-    adapter.plugins && (await adapter.plugins({ root, command: "build" }));
+    adapter.plugins &&
+    (await adapter.plugins({ root, command: "build", entry }));
   if (!isPluginIncluded(resolvedConfig)) {
     plugins = (plugins || []).concat(plugin());
   }

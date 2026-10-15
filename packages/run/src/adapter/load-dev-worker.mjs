@@ -28,7 +28,11 @@ async function start(entry, config) {
     const adapter = await resolveAdapter(resolvedConfig);
     const plugins =
       (adapter.plugins &&
-        (await adapter.plugins({ root: config.root, command: "dev" }))) ||
+        (await adapter.plugins({
+          root: config.root,
+          command: "dev",
+          entry,
+        }))) ||
       [];
 
     if (config.plugins.some((plugin) => plugin.name === "marko-run-vite:pre")) {

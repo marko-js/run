@@ -37,6 +37,7 @@ export interface Adapter {
   plugins?(event: {
     root: string;
     command: "dev" | "build";
+    entry: string | undefined;
   }): Promise<Plugin[] | undefined> | Plugin[] | undefined;
   configure?(config: AdapterConfig): void;
   pluginOptions?(options: Options): Promise<Options> | Options | undefined;
