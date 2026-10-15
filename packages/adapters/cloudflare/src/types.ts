@@ -1,18 +1,14 @@
 import type {
   ExecutionContext,
-  Fetcher,
   IncomingRequestCfProperties,
 } from "@cloudflare/workers-types";
 
 /**
- * The bindings available to the worker. The `ASSETS` binding is provided
- * automatically by Cloudflare Pages and by Workers configured with a static
- * assets directory, and is used to serve the app's static files.
+ * The Worker's bindings, as the app's Wrangler config declares them. Empty
+ * here: the app adds its own by augmenting this interface, typed with
+ * whichever `@cloudflare/workers-types` it uses.
  */
-export interface CloudflareEnv {
-  ASSETS: Fetcher;
-  [key: string]: unknown;
-}
+export interface CloudflareEnv {}
 
 /**
  * The platform object passed to Marko Run route handlers when deployed to
