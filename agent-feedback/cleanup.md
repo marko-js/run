@@ -91,3 +91,9 @@ The published `exports` of `@marko/run` 0.11.13, `@marko/run-adapter-node` 2.0.6
 `packages/adapters/*/scripts/build.ts` › `opts.target` | 2026-11-05 | impact:low | effort:low
 
 The cloudflare, netlify, node and static adapter build scripts compile with `target: ["node14"]`, but nothing that loads them runs that old: Vite 8, a peer of `@marko/run`, requires Node `^20.19.0 || >=22.12.0`, and Vercel and Cloudflare run Node 22+. The target makes esbuild down-level syntax for no supported runtime, and it reads as a support promise the packages don't keep (it kept a hand-written recursive copy in the Vercel adapter in place of `fs.cpSync` until that adapter moved to `node20`). Set the target to `node20` in the four scripts together (they are copies of one another), and declare the matching `engines.node` in their `package.json` files so the floor is stated once.
+
+## Replace the `patches` read check with an explicit @marko/vite feature check
+
+`packages/run/src/vite/plugin.ts` › `markoRun` | 2026-09-30 | impact:low | effort:low
+
+run detects whether the installed `@marko/vite` supports `patches` by defining the option as a getter on the options it passes to `markoVitePlugin` and failing `configResolved` if `@marko/vite`'s `config` hook never read it (`patchesRead`). That works with both today's published `@marko/vite` 6.1.x (which never reads it) and the branch that forwards it to the compiler, but it depends on `@marko/vite` reading the option inside `config`, not on a stated contract. Once a `@marko/vite` with `patches` is published, raise run's dependency floor to it (or have `@marko/vite` export a marker such as a `features` object) and check that instead; the `patches-unsupported-vite` fixture in `packages/run/src/__tests__/fixtures` also relies on the repo's installed `@marko/vite` lacking the option and must change with that bump.

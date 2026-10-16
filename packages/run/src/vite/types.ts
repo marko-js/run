@@ -81,6 +81,17 @@ export interface MarkoRunOptions extends Partial<RouterOptions> {
   routesDir?: string;
   emitRoutes?(routes: Route[]): void | Promise<void>;
   adapter?: Adapter | null;
+  /**
+   * Navigates between pages by patching the live document from the server's
+   * response, so client state outside the changed content is kept. Needs an
+   * adapter that runs the server, and an @marko/vite and Marko with patches.
+   * A route's handler is assumed to answer a link or form with its page or a
+   * redirect. Anything else (a download, JSON, HTML of its own) is discarded
+   * and the router loads the URL as a document, so a form's POST is followed
+   * by a GET; `rel="external"` on the link or form leaves it to the browser.
+   * @experimental The patch protocol may change in a minor release.
+   */
+  patches?: boolean;
 }
 
 export type Options = MarkoRunOptions & MarkoViteOptions;

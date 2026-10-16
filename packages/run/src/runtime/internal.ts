@@ -113,6 +113,13 @@ export function createContext(
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
+  // A patch build's request: what marko read it to ask for, the app template
+  // whose patch the page takes, and marko's response headers.
+  patch?: {
+    kind: "patch" | undefined;
+    app: Marko.Template;
+    headers(kind: "patch" | undefined): Record<string, string>;
+  },
 ): Context {
   const context: Context = {
     route: route?.path || "",
@@ -173,10 +180,17 @@ export function createContext(
       );
     },
     render(template, input, init) {
-      if (init) {
+      // A patch build answers a patch request for its app with frames that
+      // update the live document; any other render is a document.
+      const kind = patch?.app === template ? patch.kind : undefined;
+      if (init || patch) {
         // Merged rather than replaced: a caller-supplied init keeps the HTML
         // content-type and 200 status unless it names its own.
-        const headers = new Headers(init.headers);
+        const headers = new Headers(init?.headers);
+        if (patch) {
+          const added = patch.headers(kind);
+          for (const name in added) headers.append(name, added[name]);
+        }
         if (!headers.has("content-type")) {
           headers.set("content-type", "text/html;charset=UTF-8");
         }
@@ -189,10 +203,16 @@ export function createContext(
         return new Response(null, init);
       }
 
-      const rendered = template.render({
+      const renderInput = {
         ...input,
         $global: context as unknown as Marko.Global,
-      });
+      };
+      const rendered = kind
+        ? (template as PatchTemplate<typeof template>).patch(
+            renderInput,
+            request.headers,
+          )
+        : template.render(renderInput);
 
       // Older/custom renders that cannot be iterated directly go through
       // `toReadable`.
@@ -251,6 +271,66 @@ export function render<T>(
   }
   return context.render(template, input);
 }
+
+/**
+ * The request a patch request's handlers read: the same request with the query
+ * marko left in `url` once it stripped the marker, so none of them sees it.
+ */
+export function unmarkedRequest(request: Request, search: string) {
+  const url = new URL(request.url);
+  url.search = search;
+  return new Request(url, request);
+}
+
+/**
+ * A patch request's response as the router takes it. A redirect within the
+ * origin is marked as the request was, so its target is fetched as a patch;
+ * one elsewhere, which the router's same-origin fetch cannot follow, is
+ * answered in-band (a 202 with its `location`) for the router to load, a GET,
+ * so a 307 or 308 elsewhere drops a form's body. Both keep the redirect's other
+ * headers (a sign-out's cookies), and that answer and a patch are never stored,
+ * whatever middleware set.
+ */
+export function patchResponse(
+  response: Response | undefined,
+  request: Request,
+) {
+  if (!response) return response;
+  const location =
+    followedRedirects.has(response.status) && response.headers.get("location");
+  if (location) {
+    const target = new URL(location, request.url);
+    const within = target.origin === new URL(request.url).origin;
+    if (within) markPatch(target);
+    response = new Response(null, {
+      status: within ? response.status : 202,
+      headers: response.headers,
+    });
+    response.headers.set("location", target.href);
+    if (within) return response;
+  } else if (!response.headers.has("x-marko-patch")) {
+    return response;
+  }
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
+const followedRedirects = new Set([301, 302, 303, 307, 308]);
+
+// A bare `~` keys a patch request apart from its document in every cache; it
+// goes last, once, where the router strips it from the URL it lands on.
+function markPatch(url: URL) {
+  const query = url.search.replace(/[?&]~(?=&|$)/g, "").slice(1);
+  url.search = (query && query + "&") + "~";
+}
+
+// Typed here until the published Marko types declare `patch`.
+type PatchTemplate<T extends Marko.Template<any>> = T & {
+  patch: (
+    input: Parameters<T["render"]>[0],
+    headers?: Headers,
+  ) => ReturnType<T["render"]>;
+};
 
 const handlerMethod = new WeakMap<HandlerFunction, HttpVerb | false>();
 

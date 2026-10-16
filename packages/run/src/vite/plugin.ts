@@ -23,7 +23,10 @@ import {
 
 import { prepareError } from "../adapter/utils";
 import {
+  type PatchApp,
+  patchPages,
   renderMiddleware,
+  renderPatchApp,
   renderRouteEntry,
   renderRouter,
   renderRouteTemplate,
@@ -32,6 +35,7 @@ import {
 import {
   httpVerbs,
   markoRunFilePrefix,
+  patchAppFilename,
   RoutableFileTypes,
   virtualFilePrefix,
 } from "./constants";
@@ -94,6 +98,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let adapter: NonNullable<(typeof opts)["adapter"]> | null;
   let trailingSlashes: NonNullable<(typeof opts)["trailingSlashes"]>;
   const { ...markoVitePluginOptions } = opts;
+  const patches = !!opts.patches;
+  // An @marko/vite with patch support reads the option as it configures;
+  // one without ignores it, and every navigation would load a document.
+  let patchesRead = false;
+  if (patches) {
+    Object.defineProperty(markoVitePluginOptions, "patches", {
+      enumerable: true,
+      get: () => (patchesRead = true),
+    });
+  }
+  let patchApp: PatchApp | undefined;
 
   let store: ReadOncePersistedStore<RouteData>;
   let root: string;
@@ -251,9 +266,16 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         virtualFiles.clear();
         entryTemplates = new Set();
         entryTemplateImporters = new Set();
+        if (patches) {
+          patchApp = {
+            filePath: path.join(entryFilesDir, patchAppFilename),
+            pages: patchPages(routes),
+          };
+          entryTemplates.add(normalizePath(patchApp.filePath));
+        }
 
         for (const route of routes.list) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
           for (const middleware of route.middleware) {
@@ -269,7 +291,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patches) {
             entryTemplates.add(normalizePath(route.templateFilePath));
           }
         }
@@ -306,6 +328,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       route,
       await getMarkoApiForRoute(context, route),
     );
+    writeTemplate(filePath, source);
+  }
+
+  function writeTemplate(filePath: string, source: string) {
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, source);
@@ -356,17 +382,32 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             }
           }
 
-          if (route.templateFilePath) {
+          if (route.templateFilePath && !patchApp) {
             await writeEntryTemplate(context, route);
           }
 
           virtualFiles.set(
             path.posix.join(root, getRouteVirtualFileName(route)),
-            renderRouteEntry(route, root),
+            renderRouteEntry(route, root, patchApp),
           );
         }
         for (const route of Object.values(routes.special) as Route[]) {
-          await writeEntryTemplate(context, route);
+          if (!patchApp) await writeEntryTemplate(context, route);
+        }
+        if (patchApp) {
+          // The app template is a tags template; a class-API layout cannot
+          // compose into it and marko's error would not name the cause.
+          for (const route of routes.list) {
+            if (
+              route.page &&
+              (await getMarkoApiForRoute(context, route)) === "class"
+            ) {
+              throw new Error(
+                `Route ${route.key} has a class API layout (${path.relative(root, route.layouts[0].filePath)}); patches pages need tags API layouts.`,
+              );
+            }
+          }
+          writeTemplate(patchApp.filePath, renderPatchApp(routes, patchApp));
         }
         if (routes.middleware.length) {
           for (const middleware of routes.middleware) {
@@ -391,9 +432,13 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
         virtualFiles.set(
           path.posix.join(root, ROUTER_FILENAME),
-          renderRouter(routes, root, runtimeInclude, {
-            trailingSlashes,
-          }),
+          renderRouter(
+            routes,
+            root,
+            runtimeInclude,
+            { trailingSlashes },
+            patchApp,
+          ),
         );
 
         await writeTypesFile(routes);
@@ -622,6 +667,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         };
       },
       configResolved(config) {
+        if (patches && !patchesRead) {
+          throw new Error(
+            "The `patches` option needs an @marko/vite that supports it, and the installed @marko/vite ignores it (pages would compile without patches, so every navigation would load a full document). Install an @marko/vite with `patches` support.",
+          );
+        }
         resolvedConfig = config;
         const {
           ssr,
@@ -731,6 +781,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           times = routeData.times;
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
+          }
+          if (patches) {
+            patchApp = {
+              filePath: path.join(entryFilesDir, patchAppFilename),
+              pages: patchPages(routes),
+            };
           }
 
           buildVirtualFilesResult = Promise.resolve(routes);
@@ -923,7 +979,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           await opts?.emitRoutes?.(routes.list);
         } else {
-          logRoutesTable(routes, [...externalRoutes], bundle);
+          logRoutesTable(
+            routes,
+            [...externalRoutes],
+            bundle,
+            patchApp?.filePath,
+          );
         }
       },
       async closeBundle() {
