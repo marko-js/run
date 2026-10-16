@@ -61,6 +61,11 @@ export default function staticAdapter(options: Options = {}): Adapter {
     },
 
     pluginOptions(options) {
+      if (options.patches) {
+        throw new Error(
+          "The static adapter cannot answer the patch requests `patches` sends: its pages are files, so every navigation would fetch a document and then load it again. Remove `patches`, or deploy with an adapter that runs the server (such as @marko/run-adapter-node).",
+        );
+      }
       return (markoRunOptions = options);
     },
 
