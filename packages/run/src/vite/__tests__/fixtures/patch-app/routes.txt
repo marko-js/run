@@ -1,0 +1,26 @@
++layout.marko
++page.marko
++404.marko
++500.marko
+/api
+  +handler.ts
+  /events
+    +handler.ts { "verbs": ["post"] }
+  /items
+    +handler.ts { "verbs": ["put", "delete"] }
+    /$id
+      +handler.ts { "verbs": ["patch"] }
+/blog
+  +layout.marko
+  +page.marko
+  /$slug
+    +page.marko
+  /tag.$$
+    +page.marko
+/about
+  +page.marko
+/admin
+  +layout.marko
+  /users
+    +page.marko
+    +handler.ts
