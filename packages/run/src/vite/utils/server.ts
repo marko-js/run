@@ -217,6 +217,21 @@ export async function waitForWorker(worker: Worker, port: number) {
   });
 }
 
+export function retireWorker(worker: Worker) {
+  const timeout = setTimeout(() => worker.kill(), 2000);
+  worker.once("exit", () => clearTimeout(timeout));
+  worker.send({ type: "shutdown" });
+  worker.disconnect();
+}
+
+export function killWorker(worker: Worker) {
+  return new Promise<void>((resolve) => {
+    if (worker.isDead()) return resolve();
+    worker.once("exit", () => resolve());
+    worker.kill();
+  });
+}
+
 export async function getConnection(port: number): Promise<Socket | null> {
   return new Promise((resolve) => {
     const connection = net
