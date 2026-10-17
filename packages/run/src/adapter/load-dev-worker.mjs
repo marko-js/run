@@ -1,7 +1,10 @@
 import { getDevGlobal, resolveAdapter } from "@marko/run/adapter";
 import plugin, { defaultConfigPlugin } from "@marko/run/vite";
 import net from "net";
-import { createServer, resolveConfig } from "vite";
+import path from "path";
+import { createServer, normalizePath, resolveConfig } from "vite";
+
+let loader;
 
 process
   .on("message", (message) => {
@@ -44,9 +47,12 @@ async function start(entry, config) {
 
   globalThis.__marko_run_vite_config__ = config;
 
-  let changed = false;
-  const loader = await createServer({
+  loader = await createServer({
     ...config,
+    plugins: [
+      ...(config.plugins || []),
+      restartOnEntryChange(path.resolve(config.root, entry)),
+    ],
     ssr: { external: ["@marko/run/router"] },
   });
 
@@ -69,21 +75,64 @@ async function start(entry, config) {
       );
     }
   });
-
-  loader.watcher.on("change", (path) => {
-    if (!changed && loader.moduleGraph.getModulesByFile(path)) {
-      changed = true;
-      process.send("restart");
-    }
-  });
 }
 
-function shutdown() {
+async function shutdown() {
   const devGlobal = getDevGlobal();
   for (const devServer of devGlobal.devServers) {
     devServer.ws.send({ type: "full-reload" });
   }
   devGlobal.clear();
+  await loader?.close();
+}
+
+/**
+ * Asks for a fresh worker when the entry, a module it imports, or the Vite
+ * config changes. A plugin so the watcher survives Vite's own server restarts.
+ */
+function restartOnEntryChange(entryFile) {
+  const entryId = normalizePath(entryFile);
+  let requested = false;
+  return {
+    name: "marko-run:dev-entry-restart",
+    configureServer(server) {
+      server.watcher.on("change", (changedFile) => {
+        const file = normalizePath(changedFile);
+        if (
+          !requested &&
+          process.connected &&
+          (isConfigFile(server.config, file) ||
+            importsFile(server.moduleGraph, entryId, file))
+        ) {
+          requested = true;
+          process.send("restart");
+        }
+      });
+    },
+  };
+}
+
+function isConfigFile(config, file) {
+  return (
+    file === config.configFile || config.configFileDependencies.includes(file)
+  );
+}
+
+function importsFile(moduleGraph, entryId, file) {
+  const queue = [...(moduleGraph.getModulesByFile(file) || [])];
+  const seen = new Set(queue);
+  for (const mod of queue) {
+    if (mod.file === entryId) {
+      return true;
+    }
+    for (const importer of mod.importers) {
+      if (!seen.has(importer)) {
+        seen.add(importer);
+        queue.push(importer);
+      }
+    }
+  }
+  return false;
 }
 
 async function getAvailablePort() {
