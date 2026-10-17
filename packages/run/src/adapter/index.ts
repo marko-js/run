@@ -12,7 +12,9 @@ import {
   closeServer,
   getAvailablePort,
   getInspectOptions,
+  killWorker,
   loadEnv,
+  retireWorker,
   type SpawnedServer,
   spawnServer,
   spawnServerWorker,
@@ -70,7 +72,10 @@ export default function adapter(): Adapter {
 
       if (entry && entry !== defaultEntry) {
         const { nodeArgs } = parseNodeArgs(options.args);
-        let worker: Worker;
+        const workers = new Set<Worker>();
+        let worker: Worker | undefined;
+        let pendingWorker: Worker | undefined;
+        let closed = false;
 
         async function start() {
           const nextWorker = await spawnServerWorker(
@@ -79,29 +84,48 @@ export default function adapter(): Adapter {
             port,
             envFile,
           );
+          if (closed) {
+            nextWorker.kill();
+            return;
+          }
+          workers.add(nextWorker);
+          nextWorker.once("exit", () => workers.delete(nextWorker));
+
+          // A newer change supersedes a worker that never started listening.
+          pendingWorker?.kill();
+          pendingWorker = nextWorker;
 
           nextWorker
             .on("message", (message) => {
-              if (message === "restart") {
-                start();
+              if (
+                message === "restart" &&
+                (nextWorker === pendingWorker || nextWorker === worker)
+              ) {
+                // Superseded and failed starts are already logged by the worker.
+                start().catch(() => {});
               }
             })
             .send({ type: "start", entry, config });
 
-          await waitForWorker(nextWorker, port);
-
-          if (worker) {
-            const prevWorker = worker;
-            worker.once("disconnect", () => {
-              clearTimeout(timeout);
-            });
-            worker.send({ type: "shutdown" });
-            worker.disconnect();
-            const timeout = setTimeout(() => {
-              prevWorker.kill();
-            }, 2000);
+          try {
+            await waitForWorker(nextWorker, port);
+          } catch (err) {
+            if (nextWorker === pendingWorker) {
+              pendingWorker = undefined;
+              nextWorker.kill();
+              throw err;
+            }
+            return;
           }
 
+          // A newer start or close() has already killed this worker.
+          if (closed || nextWorker !== pendingWorker) {
+            return;
+          }
+          pendingWorker = undefined;
+          if (worker) {
+            retireWorker(worker);
+          }
           worker = nextWorker;
         }
 
@@ -110,7 +134,11 @@ export default function adapter(): Adapter {
         return {
           port,
           async close() {
-            await Promise.allSettled([worker.kill(), explorer?.close()]);
+            closed = true;
+            await Promise.allSettled([
+              ...[...workers].map(killWorker),
+              explorer?.close(),
+            ]);
           },
         };
       }
