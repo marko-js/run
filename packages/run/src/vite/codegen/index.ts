@@ -627,9 +627,13 @@ function writeEntryTemplateTag(
 
 function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
   const hasHandler = route.handler?.verbs?.includes(verb);
+  // HEAD without its own handler is served by the GET handler, so it must
+  // also get the GET handler's options (e.g. the `search` validator).
+  const usesGetHandler =
+    verb === "head" && !hasHandler && route.handler?.verbs?.includes("get");
   writer.write(`export const ${verb}${route.index}_options = `);
 
-  if (route.middleware.length || hasHandler) {
+  if (route.middleware.length || hasHandler || usesGetHandler) {
     writer.write(`normalizeOptions('${verb.toUpperCase()}'`);
 
     for (const { id } of route.middleware) {
@@ -637,6 +641,8 @@ function writeRouteOptions(writer: Writer, route: Route, verb: HttpVerb): void {
     }
     if (hasHandler) {
       writer.write(`, ${verb}Handler`);
+    } else if (usesGetHandler) {
+      writer.write(", getHandler");
     }
     writer.write(");");
   } else {

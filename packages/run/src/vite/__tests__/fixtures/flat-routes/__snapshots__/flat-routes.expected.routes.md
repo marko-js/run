@@ -52,7 +52,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get2_options = normalizeOptions('GET', getHandler);
-export const head2_options = {};
+export const head2_options = normalizeOptions('HEAD', getHandler);
 export const post2_options = normalizeOptions('POST', postHandler);
 
 export function get2(context) {
@@ -133,7 +133,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get5_options = normalizeOptions('GET', getHandler);
-export const head5_options = {};
+export const head5_options = normalizeOptions('HEAD', getHandler);
 export const post5_options = normalizeOptions('POST', postHandler);
 
 export function get5(context) {
@@ -161,7 +161,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get6_options = normalizeOptions('GET', mware3, getHandler);
-export const head6_options = normalizeOptions('HEAD', mware3);
+export const head6_options = normalizeOptions('HEAD', mware3, getHandler);
 export const post6_options = normalizeOptions('POST', mware3, postHandler);
 
 export function get6(context) {
@@ -190,7 +190,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get7_options = normalizeOptions('GET', getHandler);
-export const head7_options = {};
+export const head7_options = normalizeOptions('HEAD', getHandler);
 export const post7_options = normalizeOptions('POST', postHandler);
 
 export function get7(context) {
@@ -217,7 +217,7 @@ const getHandler = normalizeHandler(GET, 'GET');
 const postHandler = normalizeHandler(POST, 'POST');
 
 export const get8_options = normalizeOptions('GET', getHandler);
-export const head8_options = {};
+export const head8_options = normalizeOptions('HEAD', getHandler);
 export const post8_options = normalizeOptions('POST', postHandler);
 
 export function get8(context) {

@@ -224,7 +224,7 @@ import { GET } from "./src/routes/callback/oauth2/+handler.ts";
 const getHandler = normalizeHandler(GET, 'GET');
 
 export const get7_options = normalizeOptions('GET', mware4, getHandler);
-export const head7_options = normalizeOptions('HEAD', mware4);
+export const head7_options = normalizeOptions('HEAD', mware4, getHandler);
 
 export function get7(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);
@@ -284,7 +284,7 @@ import { GET } from "./src/routes/$$match/+handler.ts";
 const getHandler = normalizeHandler(GET, 'GET');
 
 export const get9_options = normalizeOptions('GET', mware4, getHandler);
-export const head9_options = normalizeOptions('HEAD', mware4);
+export const head9_options = normalizeOptions('HEAD', mware4, getHandler);
 
 export function get9(context) {
 	const __getHandler = (data) => call(getHandler, noContent, context, data);
