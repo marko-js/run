@@ -44,6 +44,31 @@ describe("href-replace", () => {
     });
   });
 
+  describe("helper names the module already uses", () => {
+    it("renames a helper a parameter would shadow", () => {
+      assert.equal(
+        apply(`export function link(href) {\n  return Run.href(href);\n}`),
+        `export function link(href) {\n  return href$1(href);\n}`,
+      );
+    });
+
+    it("renames a helper a module binding would clash with", () => {
+      assert.equal(
+        apply(
+          `const href_path = "/x";\nexport const url = Run.href("/u/$id", { params: { id } });`,
+        ),
+        `const href_path = "/x";\nexport const url = href_path$1\`/u/\${id}\`;`,
+      );
+    });
+
+    it("keeps a helper's name when only a property shares it", () => {
+      assert.equal(
+        apply(`export const url = Run.href(link.href);`),
+        `export const url = href(link.href);`,
+      );
+    });
+  });
+
   describe("template literal escaping", () => {
     it("escapes backticks in static path segments", () => {
       assert.equal(

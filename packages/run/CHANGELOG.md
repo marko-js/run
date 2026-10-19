@@ -1,5 +1,25 @@
 # @marko/run
 
+## 0.11.15
+
+### Patch Changes
+
+- 4e9859e: Add a Cloudflare adapter that develops, previews and deploys apps on Cloudflare Workers, with the app's own entry as the Worker when given one.
+
+## 0.11.14
+
+### Patch Changes
+
+- d602102: The production `Run.href` rewrite no longer breaks in a client module that binds `href` (a parameter, a loop variable, a module-level name): its helpers are imported under names the module does not use.
+- 8683127: The Node middleware keeps the server's origin for a request whose path starts with `//` (or is an absolute URL), so such a path can no longer redirect to another host, and `context.back()` only follows a referer from the same origin.
+- eba9ac3: A Marko 6 page now stops rendering when its client disconnects: the context exposes the request's `signal`, which Marko reads as `$global.signal`.
+
+  The node middleware no longer passes a failed response's status and headers on to the error response `next` writes, such as a page's `cache-control` when its render throws before the first chunk.
+
+  In dev, client `Run.href` calls are rewritten as in production builds, so they no longer need the global `Run` defined first: a template a handler renders, or a tag calling it at module level, now works. Dev entries no longer define the global, matching production.
+
+  In dev, an entry that runs in its own runtime (such as an adapter's worker) can import `@marko/run/router`: its first `fetch` or `invoke` loads the generated router.
+
 ## 0.11.13
 
 ### Patch Changes

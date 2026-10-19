@@ -666,6 +666,7 @@ Context is passed to `middleware` and `handler` functions as the first parameter
 
 - `route` - A string identifying the current route
 - `request` - Current WHATWG Request instance
+- `signal` - The request's `AbortSignal`, which aborts when the client disconnects. A Marko 6 page render stops when it aborts.
 - `url` - WHATWG URL instance of the current request
 - `method` - HTTP method of the current request
 - `params` - The route's path parameters, transformed by any [`params` validators](#validating-params-and-search)
@@ -706,7 +707,7 @@ Creates a redirect response that will resolve relative paths.
 back(fallback?: string | URL, status?: number): Response;
 ```
 
-Creates a redirect response that uses the current request referer or an optional fallback.
+Creates a redirect response to the current request referer when it has the same origin, or to an optional fallback otherwise.
 
 ### Embedding in Existing Server
 

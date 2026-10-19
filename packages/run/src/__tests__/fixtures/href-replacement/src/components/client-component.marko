@@ -1,6 +1,11 @@
 static const path = "/thing/$id";
 static const params = { id: 3 };
 static const options = { params: { id: 4 }, search: { q: "quz" }, hash: "here4" };
+// Names the rewrite's helpers would take, bound by the module itself.
+static const href = "/thing/6";
+static function linkTo(href) {
+  return Run.href(href, { params: { id: 5 } });
+}
 
 class {
   onCreate() {
@@ -19,3 +24,5 @@ class {
 <a href=Run.href("/thing/$id", { params: { id: 2 }, search: { q: "bar", page: state.page }, hash: "here2" })>Dynamic Search</a>
 <a href=Run.href("/thing/$id", { params, search: { q: "baz" }, hash: "here3" })>Opaque Params</a>
 <a href=Run.href(path, options)>Full Runtime</a>
+<a href=linkTo("/thing/$id")>Shadowing Param</a>
+<a href=href>Module Binding</a>

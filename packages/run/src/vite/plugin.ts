@@ -110,6 +110,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let ssrEntryFiles: string[];
   let devEntryFile: string;
   let devEntryFilePosix: string;
+  let routerFacadeId: string | undefined;
   let devServer: ViteDevServer;
   let routes: BuiltRoutes;
   let entryTemplates: Set<string>;
@@ -304,7 +305,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     const source = renderRouteTemplate(
       route,
       await getMarkoApiForRoute(context, route),
-      !isBuild,
     );
     const previous = writtenEntryTemplates.get(filePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -749,14 +749,22 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // In dev, module imports get the runtime facade, which defers to
           // the __marko_run__ global so app code reachable from middleware
           // can't create an evaluation cycle with the generated router.
-          if (isBuild || !importer || isDevEntry) {
+          // The facade's own import loads the router where no dev entry ran.
+          if (
+            isBuild ||
+            !importer ||
+            isDevEntry ||
+            importer === routerFacadeId
+          ) {
             return normalizePath(path.resolve(root, ROUTER_FILENAME));
           }
-          return await this.resolve(
+          const facade = await this.resolve(
             path.resolve(__dirname, "../runtime/router"),
             importer,
             { skipSelf: true },
           );
+          routerFacadeId = facade?.id;
+          return facade;
         } else if (
           importee.endsWith(".marko") &&
           importee.includes(relativeEntryFilesDirPosix)
@@ -820,7 +828,11 @@ export default function markoRun(opts: Options = {}): Plugin[] {
       async transform(code) {
         // Only direct `Run.href(...)` calls are supported in client code:
         // aliasing or destructuring `Run` breaks in production (won't fix).
-        if (!isBuild || isSSRBuild || !code.includes("Run.href")) {
+        if (
+          isSSRBuild ||
+          !code.includes("Run.href") ||
+          (!isBuild && this.environment.config.consumer !== "client")
+        ) {
           return;
         }
 
@@ -831,29 +843,34 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           );
 
           if (replacements.length) {
-            const helpers = new Set<string>();
+            const helpers = new Map<string, string>();
             const s = new RolldownMagicString(code);
-            for (const { helper, edits } of replacements) {
-              for (const { start, end, code } of edits) {
+            for (const replacement of replacements) {
+              for (const { start, end, code } of replacement.edits) {
                 if (code) {
                   s.overwrite(start, end, code);
                 } else {
                   s.remove(start, end);
                 }
               }
-              if (helper) {
-                helpers.add(helper);
+              if (replacement.helper) {
+                helpers.set(replacement.helper, replacement.local);
               }
             }
 
             if (helpers.size) {
               s.prepend(
-                `import { ${[...helpers].join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
+                `import { ${[...helpers].map(([helper, local]) => (helper === local ? helper : `${helper} as ${local}`)).join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
               );
             }
-            return {
-              code: s,
-            };
+            // Vite's dev plugin container takes `code` as a string; only the
+            // Rolldown build accepts the magic string itself.
+            return isBuild
+              ? { code: s }
+              : {
+                  code: s.toString(),
+                  map: s.generateMap({ hires: "boundary" }).toString(),
+                };
           }
 
           return null;
@@ -862,9 +879,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           // but a regression in this pass must not be invisible.
           this.warn(`Run.href optimization failed: ${error}`);
           return {
-            code: new RolldownMagicString(code).prepend(
-              'import "virtual:marko-run/runtime/client";',
-            ),
+            // Appended: imports still run before the body, and no position moves.
+            code: code + '\nimport "virtual:marko-run/runtime/client";',
+            map: null,
           };
         }
       },

@@ -264,11 +264,11 @@ The virtual modules are keyed by `path.posix.join(root, ROUTER_FILENAME)` and `g
 
 `packages/run/package.json` declares `peerDependencies: { "marko": "5 - 6" }`, but the README's Installation section is `npm install @marko/run` and nothing else, the string "Marko 6" appears once in the whole file (an aside in the `## What about @marko/serve?` FAQ), and the repo's own devDependency pins `marko: ^5.39.7`. So an app author choosing the tags API has no statement of the dependency set, no note on which template syntax the surrounding examples assume, and no confirmation that the combination is supported at all. The answer is worth writing down precisely because it is short: `marko@6` — which is `@marko/runtime-tags` renamed, depends on `@marko/compiler@^5` and ships its own `./translator` — needs no extra package, no `@marko/translator-tags`, and no `marko.json`; `pnpm add marko@6 @marko/run` plus the stock `plugins: [markoRun()]` renders a tags-API `+page.marko`, hydrates, builds and serves, and `Run.href` still folds to a literal at build time. Say so under Installation and mark which of the README's template snippets are class-API-only. Check: `grep -in 'marko 6' packages/run/README.md` returns exactly one hit, inside the `@marko/serve` FAQ prose, and `grep -in 'translator\|runtime-tags\|tags api' packages/run/README.md` returns nothing.
 
-## Say what a `@marko/run/router` import outside the generated entry means; the facade blames a plugin that is installed
+## Say what a synchronous `match` from `@marko/run/router` needs; the facade blames a plugin that is installed
 
-`packages/run/src/runtime/router.ts` › `fromRuntime` | 2026-09-04 | impact:med | effort:low
+`packages/run/src/runtime/router.ts` › `getRuntime` | 2026-09-04 | impact:low | effort:low
 
-`fromRuntime` throws `This should have been replaced by the @marko/run plugin at build/dev time` whenever `globalThis.__marko_run__` is unset, but the plugin's `resolveId` only swaps `@marko/run/router` for the generated router on a build, on a request with no importer, or from the dev entry file (`packages/run/src/vite/plugin.ts`), and hands every other importer the facade on purpose. So in any other process that has the plugin registered — a Vitest run being the case that matters, since the README's `## Embedding in Existing Server` section presents `Run.fetch` as the way to drive the app from your own code — the message asserts the exact opposite of what is true and sends the reader looking for a misconfigured plugin. Reword it to say the router has not been loaded in this process and name what loads it, keeping the existing intent comment's reasoning intact. Check: a Vitest config with `plugins: [markoRun()]` and a test doing `await (await import("@marko/run/router")).fetch(new Request("http://localhost/"), {})` throws that message, while `await import("virtual:marko-run/__marko-run__router.js")` in the same run returns a working `fetch`.
+When `globalThis.__marko_run__` is unset, the facade's `fetch` and `invoke` import the generated router themselves, but `match` is synchronous and cannot, so it throws `This should have been replaced by the @marko/run plugin at build/dev time` even in a process that has the plugin registered (a Vitest run, or an adapter's worker that calls `match` before any `fetch`). The message sends the reader looking for a misconfigured plugin. Reword it to say the router has not been loaded in this process yet, and that an awaited `fetch`/`invoke` (or importing the generated router) loads it.
 
 ## Surface child stderr when a preview test server exits during startup
 
@@ -281,3 +281,27 @@ Preview fixtures intermittently fail with `Process exited with code 1 while wait
 `examples/node-express/src/index.ts` | 2026-09-22 | impact:low | effort:low
 
 `npx tsc --noEmit -p .` fails on `origin/main` in two examples and nothing in CI notices. `examples/node-express` has 4 errors: TS7016 for `compression` and `express` (no `@types/compression`/`@types/express` in its devDependencies, unlike `examples/netlify`) and implicit-any `request`/`next` in `src/routes/other/$$rest/+handler.ts`. `examples/netlify` reports TS2345 in `packages/run/src/adapter/middleware.ts` › `createMiddleware` where `NodePlatformInfo` is passed as the netlify `Platform`, because the example's ambient platform type leaks into the shared source. Add the missing `@types/*` devDependencies, type the handler, scope the netlify platform augmentation, then typecheck the examples in CI.
+
+## Set a `content-type` on the dev error page
+
+`packages/run/src/adapter/dev-server.ts` › `createErrorMiddleware` | 2026-10-14 | impact:low | effort:low
+
+`createErrorMiddleware` answers with `res.statusCode = 500; res.end(html)` and never sets `content-type`, so the overlay page is HTML only through the browser's MIME sniffing. It is served without one when a handler throws and, since `createMiddleware` clears a failed response's headers before `next(error)`, when a page render fails before its first chunk. Set `content-type: text/html; charset=utf-8` there, as Express's `finalhandler` does for its own error page.
+
+## Let `adapter-is-entry` pass when the checkout sits under a dot directory
+
+`packages/run/src/__tests__/fixtures/adapter-is-entry/customAdapter.ts` › `isEntryTemplate` | 2026-10-07 | impact:low | effort:low
+
+The fixture's adapter matches entry templates with `micromatch.isMatch(template, "**/src/pages/**/*.marko")` against the absolute template path, and micromatch's `**` does not cross a segment starting with a dot. In a checkout under `.worktrees/` (a git worktree layout), the page is not an entry template, so it ships no client script, its button never hydrates, and both the `dev` and `preview` snapshots fail with every click step missing: `micromatch.isMatch("/a/.worktrees/b/src/pages/x.marko", "**/src/pages/**/*.marko")` is `false`, the same path without the dot is `true`. Pass `{ dot: true }`, or match the path relative to the project root, so the fixture tests the adapter hook rather than where the repo was cloned.
+
+## Cloudflare dev's first request can be cancelled by the plugin's SSR dep-optimization reload
+
+`packages/adapters/cloudflare/src/index.ts` › `startDev` | 2026-07-03 | impact:low | effort:med
+
+`@cloudflare/vite-plugin` optimizes the worker's SSR dependencies on the first request through the dev server and then reloads the workerd module runner, which cancels the in-flight request ("Request was cancelled" from miniflare/undici). In a browser this self-heals on the next request, but a one-shot programmatic client (or the test harness's single `page.goto`, `main.test.ts` › `testPage`) sees the first navigation fail. Observed as a ~25% flake on the `cloudflare-adapter-workers` dev fixture before adding an `assert_dev` retry (`packages/run/src/__tests__/fixtures/cloudflare-adapter-workers/test.config.ts`). The retry is fixture-scoped and doesn't help real first-request UX. A proper fix would warm the SSR module graph before `startDev` returns so optimization/reload settles up front — but it must go through Vite's module transform, not an actual request, to avoid executing a user's route handler/middleware (side effects) on every dev startup. `server.warmupRequest`/`optimizeDeps.include` for the `ssr` environment are candidate levers; neither was pursued here because the workerd module-runner reload trigger vs. plain transform warmup wasn't confirmed.
+
+## Make the `href-lazy-tag` dev test reliable
+
+`packages/run/src/__tests__/fixtures/href-lazy-tag/test.config.ts` › `steps` | 2026-10-19 | impact:med | effort:med
+
+The `dev` run intermittently hits mocha's 20s timeout during its `click` steps, which fails the whole suite. On `0e72c34` (`main`) it failed 5 of 5 isolated runs (`pnpm test --grep href-lazy-tag`) on one machine, and 1–4 of 6 on other commits the same day, while passing in other full-suite runs. The fixture's lazily loaded tag (`src/tags/lazy-link.marko`) is the likely place a dev-only race sits; the timeout gives no hint which click stalls, so a first step is to bound each step with its own timeout and log which one hangs.

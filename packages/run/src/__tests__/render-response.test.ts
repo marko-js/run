@@ -69,6 +69,31 @@ describe("Context Render", () => {
     }
   });
 
+  it("should give the render a signal that aborts with its request", () => {
+    // Marko 6 stops a render when `$global.signal` aborts, which is how a
+    // client disconnect stops a page that is still rendering.
+    const controller = new AbortController();
+    const context = createContext(
+      null,
+      new Request("http://test/", { signal: controller.signal }),
+      {},
+    );
+    let signal: AbortSignal | undefined;
+    context.render(
+      {
+        render(input: { $global: { signal: AbortSignal } }) {
+          signal = input.$global.signal;
+          return (async function* () {})();
+        },
+      } as any,
+      {},
+    );
+
+    assert.equal(signal, context.request.signal);
+    controller.abort();
+    assert.equal(signal!.aborted, true);
+  });
+
   it("should fall back to `toReadable` for renders that cannot be iterated directly", async () => {
     const response = render(() => ({
       toReadable: () => new Response("legacy").body,

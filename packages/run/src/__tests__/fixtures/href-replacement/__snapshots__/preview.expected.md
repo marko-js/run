@@ -26,6 +26,16 @@
 >
   Full Runtime
 </a>
+<a
+  href="/thing/5"
+>
+  Shadowing Param
+</a>
+<a
+  href="/thing/6"
+>
+  Module Binding
+</a>
 ```
 
 # Step 0

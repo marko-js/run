@@ -50,10 +50,12 @@ async function serve(fetch: Fetch<any>) {
 async function serveWithNext(fetch: Fetch<any>) {
   const handled = deferred();
   let passedToNext: unknown;
+  let statusCodeAtNext: number | undefined;
   const middleware = createMiddleware(fetch);
   const server = http.createServer((req, res) => {
     middleware(req, res, (err) => {
       passedToNext = err;
+      statusCodeAtNext = res.statusCode;
       res.statusCode = 500;
       res.end("next");
       handled.resolve();
@@ -65,6 +67,9 @@ async function serveWithNext(fetch: Fetch<any>) {
     handled: handled.promise,
     get passedToNext() {
       return passedToNext;
+    },
+    get statusCodeAtNext() {
+      return statusCodeAtNext;
     },
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
@@ -149,6 +154,39 @@ describe("Adapter Middleware", () => {
   });
 
   describe("createMiddleware", () => {
+    for (const [target, expected] of [
+      ["//evil.example//", "http://127.0.0.1:{port}//evil.example//"],
+      [
+        "//evil.example/docs?q=1",
+        "http://127.0.0.1:{port}//evil.example/docs?q=1",
+      ],
+      [
+        "http://evil.example/docs",
+        "http://127.0.0.1:{port}/http://evil.example/docs",
+      ],
+    ]) {
+      it(`should keep the server origin for the request target ${target}`, async () => {
+        let url = "";
+        const server = await serve(async (request) => {
+          url = request.url;
+          return new Response(null, { status: 204 });
+        });
+
+        try {
+          await new Promise<void>((resolve, reject) =>
+            http
+              .request({ port: server.port, host: "127.0.0.1", path: target })
+              .on("response", (res) => res.resume().on("end", resolve))
+              .on("error", reject)
+              .end(),
+          );
+          assert.equal(url, expected.replace("{port}", String(server.port)));
+        } finally {
+          await server.close();
+        }
+      });
+    }
+
     it("should abort the request signal and cancel an idle stream when the client disconnects", async () => {
       const cancelled = deferred();
       let signal!: AbortSignal;
@@ -250,6 +288,101 @@ describe("Adapter Middleware", () => {
 
         await closed.promise;
         assert.equal(signal.aborted, false);
+      } finally {
+        await server.close();
+      }
+    });
+
+    it("should not describe the error response with the head of a response that failed before sending it", async () => {
+      // A render that throws before its first chunk, with a head an error
+      // handler must not inherit (Express falls back to a 4xx/5xx status).
+      const server = await serveWithNext(
+        async () =>
+          new Response(
+            new ReadableStream({
+              pull(ctrl) {
+                ctrl.error(new Error("render failed"));
+              },
+            }),
+            {
+              status: 404,
+              headers: {
+                "cache-control": "public, max-age=3600",
+                "content-type": "application/json",
+                "set-cookie": "session=1",
+              },
+            },
+          ),
+      );
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(await response.text(), "next");
+        assert.equal(server.statusCodeAtNext, 200);
+        assert.equal(response.headers.get("cache-control"), null);
+        assert.equal(response.headers.get("content-type"), null);
+        assert.equal(response.headers.get("set-cookie"), null);
+        assert.equal((server.passedToNext as Error).message, "render failed");
+      } finally {
+        await server.close();
+      }
+    });
+
+    it("should leave an earlier header to the error response when the body fails first", async () => {
+      // A header set before the response's head (as an earlier middleware
+      // does) keeps its value when the response it shares a name with fails.
+      const server = await serveWithNext(async (_request, platform) => {
+        platform.response.setHeader("x-frame-options", "DENY");
+        return new Response(
+          new ReadableStream({
+            pull(ctrl) {
+              ctrl.error(new Error("render failed"));
+            },
+          }),
+          { headers: { "x-frame-options": "SAMEORIGIN" } },
+        );
+      });
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(await response.text(), "next");
+        assert.equal(response.headers.get("x-frame-options"), "DENY");
+      } finally {
+        await server.close();
+      }
+    });
+
+    it("should leave a response sent while the first chunk was pending to its sender", async () => {
+      const cancelled = deferred();
+
+      // A zero high-water mark defers `pull` to the middleware's first read,
+      // so the response is ended (as a timeout would) while that read is pending.
+      const server = await serveWithNext(async (_request, platform) => {
+        return new Response(
+          new ReadableStream(
+            {
+              pull(ctrl) {
+                platform.response.end("timeout");
+                ctrl.enqueue(encoder.encode("late"));
+              },
+              cancel() {
+                cancelled.resolve();
+              },
+            },
+            { highWaterMark: 0 },
+          ),
+          { headers: { "x-late": "1" } },
+        );
+      });
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${server.port}/`);
+        assert.equal(await response.text(), "timeout");
+        assert.equal(response.headers.get("x-late"), null);
+
+        await cancelled.promise;
+        await new Promise((resolve) => setImmediate(resolve));
+        assert.equal(server.passedToNext, undefined);
       } finally {
         await server.close();
       }
