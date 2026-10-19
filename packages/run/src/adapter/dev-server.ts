@@ -23,6 +23,7 @@ interface DevErrorCallback {
 export interface MarkoRunDev {
   readonly devServers: ReadonlySet<ViteDevServer>;
   addDevServer(devServer: ViteDevServer): void;
+  deleteDevServer(devServer: ViteDevServer): void;
   clear(): void;
   onClient(res: ServerResponse, callback: (ws: WebSocket) => void): void;
 }
@@ -33,9 +34,29 @@ declare global {
 
 export async function createViteDevServer(
   config?: InlineConfig,
+  useMiddleware?: (devServer: ViteDevServer) => void,
 ): Promise<ViteDevServer> {
+  let registered: ViteDevServer | undefined;
   const finalConfig = {
     ...config,
+    plugins: [
+      ...(config?.plugins || []),
+      // A config edit restarts Vite with a new server, websocket and
+      // middleware stack, so each server is registered and set up here.
+      {
+        name: "marko-run:dev-server",
+        enforce: "post",
+        configureServer(devServer) {
+          const devGlobal = getDevGlobal();
+          if (registered) devGlobal.deleteDevServer(registered);
+          devGlobal.addDevServer((registered = devServer));
+          return () => {
+            devServer.middlewares.use(logger());
+            useMiddleware?.(devServer);
+          };
+        },
+      },
+    ],
     appType: "custom",
     server: { ...config?.server, middlewareMode: true },
   } satisfies InlineConfig;
@@ -65,33 +86,27 @@ export async function createViteDevServer(
     };
   }
 
-  const devServer = await createServer(finalConfig);
-
-  getDevGlobal().addDevServer(devServer);
-
-  devServer.middlewares.use(logger());
-
-  return devServer;
+  return createServer(finalConfig);
 }
 
 export async function createDevServer(
   config?: InlineConfig,
 ): Promise<ViteDevServer> {
-  const devServer = await createViteDevServer(config);
   const routerMiddleware = createMiddleware((request, platform) =>
     globalThis.__marko_run__.fetch(request, platform),
   );
-  devServer.middlewares
-    .use(async (req, res, next) => {
-      try {
-        await devServer.ssrLoadModule("@marko/run/router");
-      } catch (err) {
-        return next(err);
-      }
-      routerMiddleware(req, res, next);
-    })
-    .use(createErrorMiddleware(devServer));
-  return devServer;
+  return createViteDevServer(config, (devServer) => {
+    devServer.middlewares
+      .use(async (req, res, next) => {
+        try {
+          await devServer.ssrLoadModule("@marko/run/router");
+        } catch (err) {
+          return next(err);
+        }
+        routerMiddleware(req, res, next);
+      })
+      .use(createErrorMiddleware(devServer));
+  });
 }
 
 let devGlobal: MarkoRunDev | undefined;
@@ -127,6 +142,10 @@ export function getDevGlobal(): MarkoRunDev {
         devServers.add(devServer);
 
         devServer.ws.on("connection", handleConnection);
+      },
+      deleteDevServer(devServer) {
+        devServers.delete(devServer);
+        devServer.ws.off("connection", handleConnection);
       },
       clear() {
         callbacks = [];
