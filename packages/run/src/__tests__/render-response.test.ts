@@ -126,7 +126,7 @@ describe("Context Render", () => {
       );
     });
 
-    // As the generated `invoke` does once marko's `patchRequest(headers, url)`
+    // As the generated `invoke` does once marko's `patchRequestKind(headers, url)`
     // stripped the marker from `url` (here as marko does it).
     it("should hand a patch request's handlers no URL marker to read", async () => {
       const marked = new Request("http://test/cart?x=1&~", {

@@ -113,12 +113,12 @@ export function createContext(
   request: Request,
   platform: Platform,
   url: URL = new URL(request.url),
-  // A patch build's request: what marko read it to ask for, the app template
-  // whose patch the page takes, and marko's response headers.
+  // A patch build's request: its kind (never stale: the router answers that),
+  // the app template whose patch the page takes, and marko's response headers.
   patch?: {
-    kind: "patch" | undefined;
+    kind: PatchRequestKind | undefined;
     app: Marko.Template;
-    headers(kind: "patch" | undefined): Record<string, string>;
+    headers(kind: PatchRequestKind | undefined): Record<string, string>;
   },
 ): Context {
   const context: Context = {
@@ -324,7 +324,9 @@ function markPatch(url: URL) {
   url.search = (query && query + "&") + "~";
 }
 
-// Typed here until the published Marko types declare `patch`.
+// Typed here until the published Marko types declare `patch` and its
+// `PatchRequestKind`, the kind `patchRequestKind` reads a request as.
+type PatchRequestKind = "patch" | "stale";
 type PatchTemplate<T extends Marko.Template<any>> = T & {
   patch: (
     input: Parameters<T["render"]>[0],

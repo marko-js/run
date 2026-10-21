@@ -1,5 +1,5 @@
 import { NotHandled, NotMatched, createContext, patchResponse, unmarkedRequest } from "virtual:marko-run/runtime/internal";
-import { patchRequest, patchResponseHeaders } from "@marko/vite/patch";
+import { PatchRequestKind, patchRequestKind, patchResponseHeaders } from "@marko/vite/patch";
 import patchApp from "./dist/.marko-run/__marko-run__app.marko";
 import { get3, get3_options, head3, head3_options } from "virtual:marko-run/__marko-run__index.js";
 import { get4, get4_options, head4, head4_options, post4, post4_options, put4, put4_options, delete4, delete4_options, patch4, patch4_options, options4, options4_options, query4, query4_options } from "virtual:marko-run/__marko-run__api.js";
@@ -251,8 +251,8 @@ export async function invoke(route, request, platform, url) {
 	url ??= new URL(request.url);
 	const { search } = url;
 	// Marko strips the request's URL marker, so no handler sees it.
-	const kind = patchRequest(request.headers, url);
-	if (kind === "stale") return new Response(null, { status: 412, headers: patchResponseHeaders(kind) });
+	const kind = patchRequestKind(request.headers, url);
+	if (kind === PatchRequestKind.Stale) return new Response(null, { status: 412, headers: patchResponseHeaders(kind) });
 	if (url.search !== search) request = unmarkedRequest(request, url.search);
 	const response = await invoke_internal(route, request, platform, url, kind);
 	return kind ? patchResponse(response, request) : response;

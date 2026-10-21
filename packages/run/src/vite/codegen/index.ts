@@ -377,7 +377,7 @@ export function renderRouter(
   );
   if (patches) {
     imports.writeLines(
-      `import { patchRequest, patchResponseHeaders } from "@marko/vite/patch";`,
+      `import { PatchRequestKind, patchRequestKind, patchResponseHeaders } from "@marko/vite/patch";`,
       `import patchApp from "${normalizedRelativePath(rootDir, patches.filePath)}";`,
     );
   }
@@ -468,8 +468,8 @@ function match_internal(method, pathname) {
         "url ??= new URL(request.url);",
         "const { search } = url;",
         "// Marko strips the request's URL marker, so no handler sees it.",
-        "const kind = patchRequest(request.headers, url);",
-        `if (kind === "stale") return new Response(null, { status: 412, headers: patchResponseHeaders(kind) });`,
+        "const kind = patchRequestKind(request.headers, url);",
+        "if (kind === PatchRequestKind.Stale) return new Response(null, { status: 412, headers: patchResponseHeaders(kind) });",
         "if (url.search !== search) request = unmarkedRequest(request, url.search);",
         "const response = await invoke_internal(route, request, platform, url, kind);",
         "return kind ? patchResponse(response, request) : response;",
