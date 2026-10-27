@@ -27,6 +27,10 @@ describe("patch router", () => {
   let current: (() => void) | undefined;
   // Each `patch()` call's `replay`.
   let replays: (1 | undefined)[];
+  // Each `patch()` call and each abort of its signal, in order.
+  let order: string[];
+  // What the router's `onFail` returned each time it ran.
+  let failed: unknown[];
 
   const encoder = new TextEncoder();
   const markers = {
@@ -79,6 +83,9 @@ describe("patch router", () => {
   const patch = (signal: AbortSignal, replay?: unknown) => {
     // Marko only reads whether it is a replay.
     replays.push(replay ? 1 : undefined);
+    const id = order.filter((e) => e.startsWith("patch")).length;
+    order.push(`patch ${id}`);
+    signal.addEventListener("abort", () => order.push(`abort ${id}`));
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     // The signal, a failure or the next `patch()` stops the response at once,
     // with no callbacks.
@@ -105,7 +112,7 @@ describe("patch router", () => {
       const fail = () => {
         if (live()) {
           stop();
-          onFail();
+          failed.push(onFail());
         }
       };
       const done = (ok: boolean) =>
@@ -251,6 +258,8 @@ describe("patch router", () => {
     signals = [];
     responses = [];
     replays = [];
+    order = [];
+    failed = [];
     applied = [];
     applyResult = true;
     calls = [];
@@ -1110,6 +1119,45 @@ describe("patch router", () => {
     await submit("#get");
     assert.equal(requests[0].url, "http://app.example/search?q=b&~");
     assert.equal(input.value, "a");
+  });
+
+  it("starts a navigation's patch before aborting the one it supersedes", async () => {
+    const stream = streamResponse("http://app.example/search");
+    responses.push(() => stream.response);
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/docs"),
+    );
+    await click("#page");
+    await click("#docs");
+    assert.deepEqual(order, ["patch 0", "patch 1", "abort 0"]);
+  });
+
+  it("aborts a mutation's patch when its request fails", async () => {
+    await submit("#post");
+    assert.equal(signals[0]!.aborted, true);
+    assert.deepEqual(order, ["patch 0", "abort 0"]);
+  });
+
+  it("reports whether the page stays when a response fails", async () => {
+    const stream = streamResponse("http://app.example/search");
+    responses.push(() => stream.response);
+    await click("#page");
+    stream.send("{a}");
+    await tick();
+    leave();
+    stream.cut();
+    await tick();
+    assert.deepEqual(failed, [1]);
+    // A failure that loads the document leaves nothing standing.
+    const next = streamResponse("http://app.example/docs");
+    responses.push(() => next.response);
+    await click("#docs");
+    next.send("{b}");
+    await tick();
+    next.cut();
+    await tick();
+    assert.equal(failed.length, 2);
+    assert.ok(!failed[1]);
   });
 
   it("never sends a mutation again when its request fails, leaving the page", async () => {

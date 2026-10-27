@@ -1,3 +1,5 @@
+import { navigates } from "@marko/runtime-tags/dom/patch";
+
 /**
  * The live page's side of a patch, as marko's `patch($global)` gives it: the
  * request headers to send and the apply for the response, which reads its
@@ -13,7 +15,7 @@ type Patch = (
     onCommit: () => void,
     onApplied: () => void,
     onEnd: () => void,
-    onFail: () => void,
+    onFail: () => unknown,
   ) => void,
 ];
 /** A navigation; its one letter names stay short in the router's bundle. */
@@ -164,41 +166,16 @@ function onPopState() {
 }
 
 function onClick(ev: MouseEvent) {
-  if (
-    ev.defaultPrevented ||
-    ev.button ||
-    ev.metaKey ||
-    ev.ctrlKey ||
-    ev.shiftKey ||
-    ev.altKey
-  ) {
-    return;
-  }
-  const anchor = (ev.target as Element).closest?.("a[href]");
-  if (
-    !anchor ||
-    anchor.hasAttribute("download") ||
-    isExternal(anchor) ||
-    !isSelfTarget(anchor)
-  ) {
-    return;
-  }
-  const href = anchor.getAttribute("href")!;
-  const url = new URL(href, location.href);
-  // A fragment of the current document is the browser's own scroll.
-  if (
-    !isLocal(url) ||
-    !isRoute(url) ||
-    (href.includes("#") && documentOf(url) === documentOf(location))
-  ) {
-    return;
-  }
+  if (!navigates(ev)) return;
+  const anchor = (ev.target as Element).closest("a[href]")!;
+  const url = new URL(anchor.getAttribute("href")!, location.href);
+  if (isExternal(anchor) || !isLocal(url) || !isRoute(url)) return;
   ev.preventDefault();
   navigate(url, {});
 }
 
 function onSubmit(ev: SubmitEvent) {
-  if (ev.defaultPrevented || native) return;
+  if (native || !navigates(ev)) return;
   const form = ev.target as HTMLFormElement;
   const submitter = ev.submitter;
   const attr = (name: string) =>
@@ -211,7 +188,6 @@ function onSubmit(ev: SubmitEvent) {
     !isLocal(url) ||
     !isRoute(url) ||
     isExternal(form) ||
-    !isSelfTarget(form, submitter) ||
     (!get && method !== "POST")
   ) {
     return;
@@ -234,9 +210,6 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
   const { href } = url;
   nav.h = url.hash;
   holdAnchoring(0);
-  // Stopping a navigation stops its request and its response.
-  active?.x?.abort();
-  active = nav;
   const { signal } = (nav.x = new AbortController());
   // A read of the URL shown replaces its entry, as a browser does.
   const replace = !body && href === location.href;
@@ -244,6 +217,10 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
   const replay = nav.p && kept.get(nav.p);
   // Marko's headers name the page's build and what it holds.
   const [headers, apply] = patch!(signal, replay);
+  // Stopping a navigation stops its request and its response; marko's patch
+  // starts first so the stop can tell a successor is coming.
+  active?.x?.abort();
+  active = nav;
   let response: Response;
   let key: number;
   try {
@@ -262,7 +239,10 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     // A mutation may have run before its fetch failed, so it is never sent
     // again and the page stays as it was; a read loads its document.
     if (!body) load(nav, href);
-    else if (nav === active) active = null;
+    else {
+      nav.x?.abort();
+      if (nav === active) active = null;
+    }
     return;
   }
   // A 204 or 205 leaves the page as it is, as a browser's navigation does.
@@ -318,10 +298,12 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     },
     // A 412 to a form is another build's refusal, sent before any handler
     // ran, so it submits natively; anything else loads where it landed.
-    (_?: never) =>
-      body && response.status === 412
-        ? resubmit(nav.f!, nav.b)
-        : load(nav, response.headers.get("location") || landed),
+    (_?: never) => {
+      if (body && response.status === 412) resubmit(nav.f!, nav.b);
+      else load(nav, response.headers.get("location") || landed);
+      // A page that stays is not left by a load.
+      return nav.l;
+    },
   );
 }
 
@@ -469,10 +451,4 @@ function documentOf(url: URL | Location) {
 
 function isExternal(el: Element) {
   return /(^|\s)external(\s|$)/.test(el.getAttribute("rel") || "");
-}
-
-function isSelfTarget(el: Element, submitter?: HTMLElement | null) {
-  const target =
-    submitter?.getAttribute("formtarget") ?? el.getAttribute("target");
-  return !target || target === "_self";
 }
