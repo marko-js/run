@@ -140,7 +140,9 @@ function onPopState() {
   // A new fragment's entry gets its key here, pushed as the browser pushed
   // it; the browser scrolls to it.
   if (!k) push(setKey(pop));
-  if (current === documentOf(location)) {
+  // A new fragment while a navigation is under way (from app code it runs)
+  // is an entry of the page shown, whatever its URL, and never navigates.
+  if (current === documentOf(location) || (!k && active?.x)) {
     // A traversal within the shown document stops a navigation that has not
     // committed; one that has is this document's, which streams on.
     if (k && !active?.c) {
@@ -267,6 +269,7 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
   // A 204 or 205 leaves the page as it is, as a browser's navigation does: a
   // traversal (`p` set; a link's is not found) goes back to the entry shown.
   if ((response.status | 1) === 205) {
+    nav.x = null;
     const at = order.indexOf(nav.p!);
     const back = order.indexOf(entry) - at;
     if (~at && back) history.go(back);
@@ -283,13 +286,10 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     // The document changes only once the first frame applies (a held one
     // once its modules land), so a superseded navigation records no entry.
     (_?: never) => {
-      // A document load starts with focus at the document; what the app's
-      // handlers do to history meanwhile is the commit's own.
-      native = 1;
+      // A document load starts with focus at the document.
       (document.activeElement as HTMLElement).blur();
       // The form's own reset, which a control named `reset` shadows.
       whole = nav.f && HTMLFormElement.prototype.reset.call(nav.f);
-      native = 0;
       nav.c = 1;
       // A mutation (a logout, say) may change what every kept page showed.
       if (body) kept.clear();

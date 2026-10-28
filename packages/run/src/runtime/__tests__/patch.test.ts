@@ -1205,6 +1205,49 @@ describe("patch router", () => {
     ]);
   });
 
+  it("returns to the shown entry after a reset fragment and a 204 traversal", async () => {
+    const form = dom.window.document.querySelector("#post") as HTMLFormElement;
+    const input = form.querySelector("input")!;
+    input.addEventListener("blur", () =>
+      history.replaceState(history.state, "", "?draft=1"),
+    );
+    form.addEventListener("reset", () => {
+      void fragment("#top");
+    });
+    input.focus();
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/cart"),
+    );
+    await submit("#post");
+    responses.push(() =>
+      withUrl(
+        new Response(null, { status: 204 }),
+        "http://app.example/cart?draft=1",
+      ),
+    );
+    await traverse(-1);
+    await tick();
+    assert.equal(loc.href, "http://app.example/cart");
+    assert.equal(requests.length, 2);
+  });
+
+  it("leaves a 204 re-sync of the shown entry in place", async () => {
+    const stream = streamResponse("http://app.example/search");
+    responses.push(() => stream.response);
+    await click("#page");
+    stream.send("{a}");
+    await tick();
+    responses.push(() => new Promise<Response>(() => {}));
+    await traverse(-1);
+    responses.push(() =>
+      withUrl(new Response(null, { status: 204 }), "http://app.example/search"),
+    );
+    await traverse(1);
+    await tick();
+    assert.equal(loc.href, "http://app.example/search");
+    assert.ok(!calls.some((call) => /^(go |reload)/.test(call)));
+  });
+
   it("resets a submitted GET form too", async () => {
     const input = dom.window.document.querySelector(
       "#get input",
@@ -1718,6 +1761,21 @@ describe("patch router", () => {
     await traverse(1);
     assert.equal(requests[0].url, "http://app.example/api/x?~");
     assert.equal(calls.at(-1), "reload");
+  });
+
+  it("requests a traversal to another document's entry after a 204 ended a navigation", async () => {
+    responses.push(() =>
+      withUrl(new Response(null, { status: 204 }), "http://app.example/search"),
+    );
+    await click("#page");
+    // Only app code pushes an entry the router does not serve.
+    history.pushState(null, "", "/api/x");
+    history.pushState(null, "", "/api/y");
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/api/x"),
+    );
+    await traverse(-1);
+    assert.equal(requests[1]?.url, "http://app.example/api/x?~");
   });
 
   it("abandons a traversal once history returns to the page shown", async () => {
