@@ -283,10 +283,13 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     // The document changes only once the first frame applies (a held one
     // once its modules land), so a superseded navigation records no entry.
     (_?: never) => {
-      // A document load starts with focus at the document.
+      // A document load starts with focus at the document; what the app's
+      // handlers do to history meanwhile is the commit's own.
+      native = 1;
       (document.activeElement as HTMLElement).blur();
       // The form's own reset, which a control named `reset` shadows.
       whole = nav.f && HTMLFormElement.prototype.reset.call(nav.f);
+      native = 0;
       nav.c = 1;
       // A mutation (a logout, say) may change what every kept page showed.
       if (body) kept.clear();

@@ -1181,6 +1181,28 @@ describe("patch router", () => {
     ]);
   });
 
+  it("commits past the app's own history changes as focus leaves and the form resets", async () => {
+    const form = dom.window.document.querySelector("#post") as HTMLFormElement;
+    const input = form.querySelector("input")!;
+    input.addEventListener("blur", () =>
+      history.replaceState(history.state, "", "?draft=1"),
+    );
+    form.addEventListener("reset", () => location.replace("#top"));
+    input.focus();
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/cart"),
+    );
+    await submit("#post");
+    assert.equal(requests.length, 1);
+    assert.deepEqual(calls, [
+      "replace-state ?draft=1",
+      "replace #top",
+      "push http://app.example/cart",
+      "apply {}",
+      "scrollTo 0,0",
+    ]);
+  });
+
   it("resets a submitted GET form too", async () => {
     const input = dom.window.document.querySelector(
       "#get input",
