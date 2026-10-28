@@ -205,7 +205,6 @@ function onSubmit(ev: SubmitEvent) {
     submitter?.getAttribute("form" + name) ?? form.getAttribute(name);
   const method = (attr("method") || "GET").toUpperCase();
   const get = method === "GET";
-  const enctype = attr("enctype");
   const url = new URL(attr("action") || "", location.href);
   if (
     !isLocal(url) ||
@@ -219,7 +218,7 @@ function onSubmit(ev: SubmitEvent) {
   const data = new FormData(form, submitter);
   // A multipart POST sends the form data itself; anything else, its query.
   const body =
-    !get && enctype?.[0] === "m"
+    !get && /^m/i.test(attr("enctype")!)
       ? data
       : new URLSearchParams(data as unknown as string[][]);
   if (get) {
