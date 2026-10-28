@@ -191,7 +191,7 @@ function onClick(ev: MouseEvent) {
   if (
     !isLocal(url) ||
     !isRoute(url) ||
-    (href.includes("#") && documentOf(url) === documentOf(location))
+    (/#/.test(href) && documentOf(url) === documentOf(location))
   ) {
     return;
   }
@@ -340,7 +340,7 @@ function load(nav: Navigation, url: string) {
   if (nav !== active) return;
   active = null;
   // A URL naming no fragment keeps the navigation's, as a redirect does.
-  if (!url.includes("#")) url += nav.h;
+  if (!/#/.test(url)) url += nav.h;
   if (nav.l) holdAnchoring(0);
   else if (nav.p) location.reload();
   else if (nav.c) location.replace(url);
