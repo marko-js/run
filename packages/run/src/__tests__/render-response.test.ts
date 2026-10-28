@@ -211,6 +211,37 @@ describe("Context Render", () => {
       assert.equal(redirect.headers.get("set-cookie"), "a=1");
     });
 
+    // A fetch follows a redirect without its fragment, so the router loads one
+    // naming a fragment, which it keeps (or clears, with a bare `#`).
+    it("should answer a redirect within the origin naming a fragment in-band", () => {
+      const request = new Request("http://test/comment?~", { method: "POST" });
+      for (const [location, status, landing] of [
+        ["/post/1#comment-2", 303, "http://test/post/1#comment-2"],
+        ["/post/1#", 302, "http://test/post/1#"],
+      ] as const) {
+        const response = patchResponse(
+          new Response(null, { status, headers: { location } }),
+          request,
+        )!;
+        assert.equal(response.status, 202);
+        assert.equal(response.headers.get("location"), landing);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+      }
+      // A 307 or 308 keeps a form's body, so it is followed.
+      const kept = patchResponse(
+        new Response(null, {
+          status: 307,
+          headers: { location: "/post/1#comment-2" },
+        }),
+        request,
+      )!;
+      assert.equal(kept.status, 307);
+      assert.equal(
+        kept.headers.get("location"),
+        "http://test/post/1?~#comment-2",
+      );
+    });
+
     it("should leave a response the router's fetch does not follow as it is", () => {
       const request = new Request("http://test/cart?~");
       const choices = new Response(null, {
