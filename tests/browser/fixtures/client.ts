@@ -4,6 +4,8 @@ declare global {
   interface Window {
     navigation: EventTarget & {
       transition: object | null;
+      currentEntry: { key: string };
+      traverseTo(key: string): unknown;
       navigate(url: string): unknown;
     };
     /** The app's listener that runs before the router's. */

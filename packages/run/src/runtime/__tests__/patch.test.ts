@@ -205,6 +205,7 @@ describe("patch router", () => {
     "history",
     "sessionStorage",
     "fetch",
+    "self",
   ];
   const saved: Record<string, unknown> = {};
 
@@ -259,6 +260,7 @@ describe("patch router", () => {
     g.FormData = dom.window.FormData;
     g.addEventListener = dom.window.addEventListener.bind(dom.window);
     g.sessionStorage = dom.window.sessionStorage;
+    g.self = dom.window;
     g.scrollX = 0;
     g.scrollY = 40;
     maxScroll = Infinity;

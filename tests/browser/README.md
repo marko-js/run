@@ -23,3 +23,10 @@ observable, and server gates hold the first flush or the rest of the response.
 Tests wait for those events, never timed sleeps; an app's `navigate` listener
 runs before the router's or after it, and tests that involve one run both. This isolates router/browser
 behavior; Marko's patch application and flush ordering have their own tests.
+
+The loading test asserts `navigation.transition` before commit and while the
+stream remains open. It proves the held browser navigation's lifetime, not the
+browser chrome's animated pixels (only Chromium displayed those in the probes).
+`window.stop()` exercises native stop; there is no DOM selector for the toolbar
+stop button. Safari 26 and the base path have no precommit hold, so the native
+stop-before-commit assertion applies only to engines that expose precommit.

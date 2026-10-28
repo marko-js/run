@@ -148,6 +148,133 @@ for (const action of ["assign", "replace", "navigate", "post", "get"]) {
   );
 }
 
+// An app's listener runs before the router's or after it, as the app added it.
+const orders = ["app listener first", "router listener first"] as const;
+function listen(page: Page, order: (typeof orders)[number], fn: string) {
+  return page.evaluate(
+    ([first, fn]) => {
+      const listener = new Function("event", fn) as (event: Event) => void;
+      if (first) window.appFirst = listener;
+      else window.navigation.addEventListener("navigate", listener);
+    },
+    [order === orders[0], fn] as const,
+  );
+}
+// The app's record of a navigate event, and its cancel of one to /r/b.
+const seen = `if (event.navigationType !== "traverse")
+  window.events.push({ type: "seen", url: new URL(event.destination.url).pathname });`;
+const cancelB = `if (new URL(event.destination.url).pathname === "/r/b") {
+  window.events.push({ type: "cancel", url: "/r/b" });
+  event.preventDefault();
+}`;
+// Navigates, then patches /r/long: anything the first started has had its turn.
+async function control(page: Page) {
+  await page.evaluate(() =>
+    (document.getElementById("long") as HTMLElement).click(),
+  );
+  await ended(page, "/r/long");
+}
+function commits(page: Page) {
+  return page.evaluate(() =>
+    window.events.filter((e) => e.type === "commit").map((e) => e.url),
+  );
+}
+function go(page: Page, how: string) {
+  return how === "link"
+    ? page.click("#b")
+    : page.evaluate(() => location.assign("/r/b"));
+}
+
+// An app that cancels a link's navigation gets nothing: where the browser holds
+// it before its commit, its patch starts only once no listener canceled it.
+for (const order of orders) {
+  test(`app canceling a link leaves the page: ${order}`, async ({
+    page,
+    app,
+  }, info) => {
+    test.skip(
+      !!info.project.metadata.base || !info.project.metadata.precommit,
+      "Requires precommit hold",
+    );
+    await listen(page, order, cancelB);
+    await page.click("#b");
+    await control(page);
+    expect(await commits(page)).toEqual(["/r/long"]);
+    expect(app.requests.some((r) => r.path === "/r/b")).toBe(false);
+    expect(
+      await page.evaluate(
+        () => window.events.filter((e) => e.type === "cancel").length,
+      ),
+    ).toBe(1);
+  });
+}
+
+// A canceled navigation leaves the patch under way streaming, as a canceled
+// navigation leaves a document load.
+for (const how of ["link", "assign"]) {
+  for (const order of orders) {
+    test(`app canceling a navigation leaves the stream running: ${how}, ${order}`, async ({
+      page,
+      app,
+    }, info) => {
+      test.skip(!!info.project.metadata.base, "No Navigation API");
+      test.skip(
+        how === "link" && !info.project.metadata.precommit,
+        "The link's request supersedes before the app sees its commit",
+      );
+      await page.click("#slow");
+      await expect(page).toHaveTitle("patched");
+      await listen(page, order, cancelB);
+      await go(page, how);
+      await page.waitForFunction(() =>
+        window.events.some((e) => e.type === "cancel"),
+      );
+      app.release("end");
+      await ended(page, "/r/slow");
+      await expect(page).toHaveURL(app.url + "/r/slow");
+      expect(app.requests.some((r) => r.path === "/r/b")).toBe(false);
+      expect(
+        await page.evaluate(() => window.events.some((e) => e.type === "stop")),
+      ).toBe(false);
+    });
+  }
+}
+
+// A guard that cancels the router's navigation and starts its own gets that
+// one from the browser: the router patches only the navigation it started.
+for (const [id, path] of [
+  ["b", "/r/b"],
+  ["postb", "/r/post"],
+]) {
+  for (const order of orders) {
+    test(`app's guard redirect loads its own URL: ${path}, ${order}`, async ({
+      page,
+      app,
+    }, info) => {
+      test.skip(
+        !!info.project.metadata.base || !info.project.metadata.precommit,
+        "Requires precommit hold",
+      );
+      await listen(
+        page,
+        order,
+        `if (new URL(event.destination.url).pathname === "${path}") {
+          event.preventDefault();
+          location.assign("/r/long");
+        }`,
+      );
+      const loaded = app.requests.length;
+      await page.click("#" + id);
+      await expect(page).toHaveTitle("doc long");
+      expect(
+        app.requests
+          .slice(loaded)
+          .map((r) => r.method + " " + r.path + (r.patch ? " patch" : "")),
+      ).toEqual(["GET /r/long"]);
+    });
+  }
+}
+
 test("412 resubmits natively", async ({ page, app }) => {
   await page.click("#staleb");
   await expect(page).toHaveTitle("doc stale-native");
@@ -216,6 +343,96 @@ test("supersede mid-stream stops applying the old response", async ({
   await expect(page.locator("#first")).toHaveText("b");
   await expect(page.locator("#target")).toHaveCount(1);
   await expect(page.locator("#target")).toHaveText("end b");
+});
+
+test("loading transition spans the wait and the stream", async ({
+  page,
+  app,
+}, info) => {
+  test.skip(
+    !!info.project.metadata.base,
+    "Base router has no browser transition",
+  );
+  await page.click("#late");
+  await expect
+    .poll(() => app.requests.some((r) => r.path === "/r/late"))
+    .toBe(true);
+  expect(await page.evaluate(() => !!window.navigation.transition)).toBe(
+    info.project.metadata.precommit,
+  );
+  app.release("first");
+  await expect(page).toHaveTitle("patched");
+  expect(await page.evaluate(() => !!window.navigation.transition)).toBe(true);
+  app.release("end");
+  await ended(page, "/r/late");
+  await page.waitForFunction(() => !window.navigation.transition);
+});
+
+test("a fragment link shows loading after its target arrives", async ({
+  page,
+  app,
+}, info) => {
+  test.skip(
+    !!info.project.metadata.base,
+    "Base router has no browser transition",
+  );
+  await page.evaluate(() =>
+    document
+      .querySelector("nav")!
+      .insertAdjacentHTML(
+        "beforeend",
+        '<a id="slowfirst" href="/r/slow#first">slow first</a>',
+      ),
+  );
+  await page.click("#slowfirst");
+  await expect(page.locator(":target")).toHaveAttribute("id", "first");
+  expect(await page.evaluate(() => !!window.navigation.transition)).toBe(true);
+  app.release("end");
+  await ended(page, "/r/slow");
+  await page.waitForFunction(() => !window.navigation.transition);
+  await expect(page).toHaveURL(app.url + "/r/slow#first");
+});
+
+test("native stop before commit leaves the page", async ({
+  page,
+  app,
+}, info) => {
+  test.skip(
+    !!info.project.metadata.base || !info.project.metadata.precommit,
+    "Requires precommit hold",
+  );
+  await page.click("#late");
+  await expect
+    .poll(() => app.requests.some((r) => r.path === "/r/late"))
+    .toBe(true);
+  await page.evaluate(() => window.stop());
+  await page.waitForFunction(() =>
+    window.events.some((e) => e.type === "stop"),
+  );
+  app.release("first");
+  app.release("end");
+  await expect(page).toHaveURL(app.url + "/r/a");
+  await expect(page).toHaveTitle("doc a");
+});
+
+test("native stop mid-stream keeps the partial page", async ({
+  page,
+  app,
+}, info) => {
+  test.skip(
+    !!info.project.metadata.base,
+    "Base router falls back after a stopped stream",
+  );
+  await page.click("#slow");
+  await expect(page).toHaveTitle("patched");
+  await page.evaluate(() => window.stop());
+  await page.waitForFunction(() =>
+    window.events.some((e) => e.type === "stop"),
+  );
+  app.release("end");
+  await expect(page).toHaveURL(app.url + "/r/slow");
+  await expect(page.locator("#first")).toHaveText("slow");
+  await expect(page.locator("#target")).toHaveCount(0);
 });
 
 test("fragment before commit keeps the pending patch", async ({
@@ -303,6 +520,100 @@ test("form POST to the shown URL adds its own entry", async ({ page }) => {
   );
   expect(await page.evaluate(() => history.length)).toBe(before + 1);
 });
+
+test("a traversal's patch shows loading until its response ends", async ({
+  page,
+  app,
+}, info) => {
+  test.skip(
+    !!info.project.metadata.base,
+    "Base router has no browser transition",
+  );
+  await page.click("#slow");
+  await expect(page).toHaveTitle("patched");
+  // Leaving before the response ends keeps nothing to replay.
+  await page.click("#b");
+  await ended(page, "/r/b");
+  await page.evaluate(() => history.back());
+  await page.waitForFunction(
+    () => window.events.filter((e) => e.type === "commit").length === 3,
+  );
+  expect(await page.evaluate(() => !!window.navigation.transition)).toBe(true);
+  app.release("end");
+  await ended(page, "/r/slow");
+  await page.waitForFunction(() => !window.navigation.transition);
+});
+
+// A stopped traversal never leaves the entry shown: one stopped before its page
+// arrives goes back, loading nothing, whether its request or its first frame waits.
+for (const when of ["request", "first frame"]) {
+  for (const order of orders) {
+    test(`stopping a traversal while its ${when} waits goes back: ${order}`, async ({
+      page,
+      app,
+    }, info) => {
+      test.skip(!!info.project.metadata.base, "No browser navigation to stop");
+      const pending = when === "request";
+      const start = pending ? "/r/late" : "/r/a";
+      if (pending) {
+        await page.goto(app.url + start);
+        await page.waitForFunction(() =>
+          window.events?.some((event) => event.type === "ready"),
+        );
+      }
+      // Documents loaded from here on: none, or a reload of the start page.
+      const loaded = app.requests.length;
+      await listen(page, order, seen);
+      await page.click("#b");
+      await ended(page, "/r/b");
+      if (!pending) await page.evaluate(() => (window.pauseFrame = true));
+      await page.evaluate(() => history.back());
+      await page.waitForFunction(
+        (pending) =>
+          window.events.some((e) =>
+            pending
+              ? e.type === "request" && e.url === "/r/late"
+              : e.type === "held",
+          ),
+        pending,
+      );
+      if (pending) await page.evaluate(() => window.stop());
+      else {
+        // The router's stop runs in a task the stop queues; the frame goes after it.
+        await page.evaluate(async () => {
+          window.stop();
+          await new Promise((resolve) => setTimeout(resolve));
+          window.releaseFrame!();
+        });
+      }
+      // Firefox's stop only cancels a pending request, which fails as a network
+      // error would, so the entry reloads; once the response came, it does nothing.
+      const firefox = info.project.name === "firefox";
+      const shown = !firefox ? "/r/b" : pending ? start : "/r/a";
+      await expect
+        .poll(() =>
+          page
+            .evaluate(
+              () =>
+                window.events.some((event) => event.type === "ready") &&
+                location.pathname +
+                  " " +
+                  (document.getElementById("first") ??
+                    document.getElementById("top"))!.textContent,
+            )
+            .catch(() => false),
+        )
+        .toBe(shown + " " + shown.slice(3));
+      expect(
+        app.requests
+          .slice(loaded)
+          .filter((r) => !r.patch && r.path.startsWith("/r/"))
+          .map((r) => r.path),
+      ).toEqual(firefox && pending ? [start] : []);
+      await control(page);
+    });
+  }
+}
 
 async function ended(page: Page, path: string) {
   await expect(page).toHaveTitle("patched");

@@ -42,6 +42,20 @@ interface Navigation {
   /** Leaving: after `beforeunload` a failure before the next frame is the
    * browser stopping the page's loads (Firefox does), which leaves it as is. */
   l?: unknown;
+  /** Body: a form's, which makes it a mutation (a POST). */
+  y?: BodyInit;
+  /** URL: where the router's own navigation or history call goes. */
+  u?: string;
+  /** View: the browser navigation that shows it loading, until a later
+   * navigation or the stop button ends it. */
+  v?: NavigateEvent | 0;
+  /** End: settles that navigation once the response ends (fails it before
+   * its commit, which only the history call makes). */
+  e?: () => void;
+  /** Fails that navigation, as the browser's own does when it stops. */
+  j?: () => void;
+  /** Key: the Navigation API's key of the entry a held traversal left. */
+  k?: string;
 }
 type Scroll = [x: number, y: number];
 /** The router's part of a history entry's state. */
@@ -76,6 +90,16 @@ const kept = new Map<number, Response>();
 let order: number[];
 /** The browser's own action under way (a resubmission, a fragment), let pass. */
 let native: unknown;
+/** The navigation whose call (to its `u`) is under way, which owns that
+ * call's navigate event. */
+let own: Navigation | 0 | undefined;
+/** The Navigation API, where the browser has it: it shows loading. */
+let navigation: NavigationAPI | undefined;
+/** Whether the browser holds a navigation until its handler lets it commit. */
+let held: boolean;
+/** A traversal's navigation, held from its navigate event until its popstate
+ * patches it. */
+let traversal: Navigation | undefined;
 /** Where the browser last reported the page scrolled, which a new fragment's
  * entry saves for the entry it left. */
 let atX: number;
@@ -100,6 +124,9 @@ export function router(page: Patch, routePaths: RegExp) {
   document.addEventListener("click", onClick);
   document.addEventListener("submit", onSubmit);
   addEventListener("popstate", onPopState);
+  navigation = (self as { navigation?: NavigationAPI }).navigation;
+  navigation?.addEventListener("navigate", onNavigate);
+  held = "NavigationPrecommitController" in self;
   addEventListener("beforeunload", (_: Event) => active && (active.l = 1));
   addEventListener("pagehide", (_: Event) => {
     if (!active?.f) active?.x?.abort();
@@ -140,7 +167,8 @@ function onPopState() {
   // A new fragment's entry gets its key here, pushed as the browser pushed
   // it; the browser scrolls to it.
   if (!k) push(setKey(pop));
-  if (current === documentOf(location)) {
+  // A traversal held from its own event patches, whatever committed since.
+  if (!traversal && current === documentOf(location)) {
     // A traversal within the shown document stops a navigation that has not
     // committed; one that has is this document's, which streams on.
     if (k && !active?.c) {
@@ -159,7 +187,10 @@ function onPopState() {
       navigate(location, { p: pop, s: [scrollX, scrollY] });
     }
   } else {
-    navigate(location, { p: pop, s: scroll });
+    const nav = traversal || {};
+    nav.p = pop;
+    nav.s = scroll;
+    navigate(location, nav);
   }
 }
 
@@ -226,12 +257,22 @@ function onSubmit(ev: SubmitEvent) {
     url.search = body as unknown as string;
   }
   ev.preventDefault();
-  navigate(url, { f: form, b: submitter }, get ? undefined : body);
+  navigate(url, { f: form, b: submitter, y: get ? undefined : body });
 }
 
-// A form's body makes it a mutation (a POST).
-async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
+// Where the browser can hold a navigation before its commit, a link's or form's
+// patch is that navigation, which starts it once no listener canceled it.
+function navigate(url: URL | Location, nav: Navigation) {
+  if (held && !nav.p) {
+    own = nav;
+    location.assign((nav.u = url.href));
+    own = 0;
+  } else start(url, nav);
+}
+
+async function start(url: URL | Location, nav: Navigation) {
   const { href } = url;
+  const body = nav.y;
   nav.h = url.hash;
   holdAnchoring(0);
   // Stopping a navigation stops its request and its response.
@@ -262,11 +303,14 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     // A mutation may have run before its fetch failed, so it is never sent
     // again and the page stays as it was; a read loads its document.
     if (!body) load(nav, href);
-    else if (nav === active) active = null;
+    else if (nav === active) {
+      nav.j?.();
+      active = null;
+    }
     return;
   }
   // A 204 or 205 leaves the page as it is, as a browser's navigation does.
-  if ((response.status | 1) === 205) return;
+  if ((response.status | 1) === 205) return nav.j?.();
   // The server marks a redirect within the origin as the router marks a request.
   const landed = response.url.replace(/[?&]~$/, "");
   const target = new URL(landed);
@@ -286,6 +330,9 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
       if (body) kept.clear();
       current = documentOf(target);
       saveScroll();
+      // The history call's navigation shows the rest loading.
+      own = nav;
+      nav.u = target.href;
       if (nav.p) {
         key = entry = nav.p;
         if (current !== documentOf(location)) {
@@ -301,12 +348,14 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
           target.href,
         );
       }
+      own = 0;
     },
     // A frame that applies shows the browser did not stop the response.
     (_?: never) => (nav.l = scrollEntry(nav)),
     (_?: never) => {
       // Nothing is left to stop, and an abort now errors the kept copy.
       nav.x = null;
+      nav.e?.();
       // The most recently ended entries stay kept, ten at most.
       kept.delete(key);
       if (kept.set(key, response).size > 10)
@@ -330,8 +379,11 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
 function load(nav: Navigation, url: string) {
   if (nav !== active) return;
   active = null;
-  if (nav.l) holdAnchoring(0);
-  else if (nav.p) location.reload();
+  if (nav.l) {
+    holdAnchoring(0);
+    // A stopped traversal whose page hasn't arrived goes back to the one shown.
+    if (nav.k && !nav.c) navigation!.traverseTo(nav.k);
+  } else if (nav.p) location.reload();
   else if (nav.c) location.replace(url);
   else location.assign(url);
 }
@@ -347,11 +399,10 @@ function scrollEntry(nav: Navigation, end?: 1) {
   if (end || nav.d || (nav.a !== undefined && nav.a !== scrollY)) {
     // A fragment with no element target (a text fragment) is searched once
     // content ends, as a browser does after a load.
-    if (end && nav.h && !nav.s && !nav.d && nav.a === scrollY)
-      toFragment(nav.h);
+    if (end && nav.h && !nav.s && !nav.d && nav.a === scrollY) toFragment(nav);
     nav.d = 1;
   } else {
-    if (target) toFragment(nav.h!);
+    if (target) toFragment(nav);
     else scrollTo(...(nav.s || [0, 0]));
     nav.a = scrollY;
     nav.d = target || (nav.s ? nav.a + 1 > nav.s[1] : !nav.h);
@@ -389,9 +440,11 @@ function holdAnchoring(hold: unknown) {
 
 // The browser's own fragment navigation, as a document does on finding the
 // target: it scrolls, sets `:target` and moves focus; the entry keeps its key.
-function toFragment(hash: string) {
+function toFragment(nav: Navigation) {
+  // The navigation showing it scrolls there itself, and goes on.
+  if (nav.v) return nav.v.scroll();
   native = 1;
-  location.replace(hash);
+  location.replace(nav.h!);
   native = 0;
   setKey(entry);
 }
@@ -472,4 +525,66 @@ function isSelfTarget(el: Element, submitter?: HTMLElement | null) {
   const target =
     submitter?.getAttribute("formtarget") ?? el.getAttribute("target");
   return !target || target === "_self";
+}
+
+// The browser's navigation shows a patch loading: the router's own call's, or
+// a traversal's that the router patches.
+function onNavigate(ev: NavigateEvent) {
+  // A navigation that ended the browser's view of the patch under way explains
+  // its abort; only an abort none explains (the stop button) stops the patch.
+  if (active?.v && active.v.signal.aborted) active.v = active.l = 0;
+  traversal = undefined;
+  if (ev.defaultPrevented || !ev.canIntercept) return;
+  const url = new URL(ev.destination.url);
+  if (own && url.href === own.u) {
+    // A link's or form's starts its patch; a commit's holds the one under way.
+    hold(ev, own, own.x ? undefined : url);
+  } else if (ev.navigationType === "traverse" && documentOf(url) !== current) {
+    hold(ev, (traversal = { k: navigation!.currentEntry.key }));
+  }
+}
+
+// Holds the browser's navigation for a patch until its response ends; with a
+// URL, the patch starts once the browser goes ahead, and never commits it.
+function hold(ev: NavigateEvent, nav: Navigation, url?: URL) {
+  nav.v = ev;
+  const wait = () =>
+    new Promise<void>((resolve, reject) => {
+      nav.e = url ? reject : resolve;
+      nav.j = reject;
+    });
+  ev.intercept({
+    scroll: "manual",
+    focusReset: "manual",
+    precommitHandler: url && (() => (start(url, nav), wait())),
+    handler: url ? undefined : wait,
+  });
+  // The stop button stops the patch, leaving the page as it is; one before
+  // the page arrives ends the navigation as a failure would.
+  ev.signal.addEventListener("abort", (_: Event) => {
+    nav.l = 1;
+    setTimeout(
+      () => nav.v === ev && nav.x && (nav.x.abort(), nav.c || load(nav, "")),
+    );
+  });
+}
+
+/** The Navigation API, which TypeScript's DOM types do not yet include. */
+type NavigationAPI = EventTarget & {
+  addEventListener(type: "navigate", fn: (ev: NavigateEvent) => void): void;
+  currentEntry: { key: string };
+  traverseTo(key: string): unknown;
+};
+interface NavigateEvent extends Event {
+  navigationType: string;
+  destination: { url: string };
+  canIntercept: boolean;
+  signal: AbortSignal;
+  scroll(): void;
+  intercept(options: {
+    scroll: "manual";
+    focusReset: "manual";
+    precommitHandler?: () => Promise<void>;
+    handler?: () => Promise<void>;
+  }): void;
 }
