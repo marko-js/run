@@ -233,6 +233,7 @@ describe("patch router", () => {
        <a id=docs href="/docs">d</a>
        <a id=ext href="https://other.example/search">e</a>
        <a id=rel rel="nofollow external" href="/search">r</a>
+       <a id=rel-upper rel="EXTERNAL" href="/search">r</a>
        <a id=hash href="#top">h</a>
        <a id=blank target=_blank href="/search">b</a>
        <form id=get action="/search"><input name=q value=a><button id=go>go</button></form>
@@ -404,6 +405,7 @@ describe("patch router", () => {
     await click("#api");
     await click("#ext");
     await click("#rel");
+    await click("#rel-upper");
     await click("#hash");
     await click("#blank");
     await click("#page", { ctrlKey: true });
