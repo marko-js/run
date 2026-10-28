@@ -189,7 +189,7 @@ function onClick(ev: MouseEvent) {
   const url = new URL(href, location.href);
   // A fragment of the current document is the browser's own scroll.
   if (
-    !isLocal(url) ||
+    url.origin !== location.origin ||
     !isRoute(url) ||
     (/#/.test(href) && documentOf(url) === documentOf(location))
   ) {
@@ -209,7 +209,7 @@ function onSubmit(ev: SubmitEvent) {
   const get = method === "GET";
   const url = new URL(attr("action") || "", location.href);
   if (
-    !isLocal(url) ||
+    url.origin !== location.origin ||
     !isRoute(url) ||
     isExternal(form) ||
     !isSelfTarget(form, submitter) ||
@@ -464,10 +464,6 @@ function isRoute(url: { pathname: string }) {
   } catch {
     return false;
   }
-}
-
-function isLocal(url: URL) {
-  return url.origin === location.origin;
 }
 
 // What names a document: its path and query, not its fragment.
