@@ -199,6 +199,7 @@ describe("patch router", () => {
   const globals = [
     "document",
     "FormData",
+    "HTMLFormElement",
     "addEventListener",
     "scrollX",
     "scrollY",
@@ -260,6 +261,7 @@ describe("patch router", () => {
     const g = globalThis as any;
     g.document = dom.window.document;
     g.FormData = dom.window.FormData;
+    g.HTMLFormElement = dom.window.HTMLFormElement;
     g.addEventListener = dom.window.addEventListener.bind(dom.window);
     g.sessionStorage = dom.window.sessionStorage;
     g.scrollX = 0;
@@ -1113,6 +1115,24 @@ describe("patch router", () => {
     );
     await submit("#post");
     assert.equal(input.value, "1");
+  });
+
+  it("resets a submitted form with a control named reset", async () => {
+    const form = dom.window.document.querySelector("#post") as HTMLFormElement;
+    const input = form.querySelector("input")!;
+    input.value = "typed";
+    // A browser's form names its controls as properties, over its methods.
+    Object.defineProperty(form, "reset", { value: input });
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/cart"),
+    );
+    await submit("#post");
+    assert.equal(input.value, "1");
+    assert.deepEqual(calls, [
+      "push http://app.example/cart",
+      "apply {}",
+      "scrollTo 0,0",
+    ]);
   });
 
   it("resets a submitted GET form too", async () => {
