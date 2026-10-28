@@ -15,3 +15,6 @@ coverage
 .vscode
 # Local Wrangler state
 .wrangler
+
+playwright-report
+test-results
