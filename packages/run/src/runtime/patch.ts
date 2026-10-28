@@ -279,7 +279,8 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     (_?: never) => {
       // A document load starts with focus at the document.
       (document.activeElement as HTMLElement).blur();
-      whole = nav.f?.reset();
+      // The form's own reset, which a control named `reset` shadows.
+      whole = nav.f && HTMLFormElement.prototype.reset.call(nav.f);
       nav.c = 1;
       // A mutation (a logout, say) may change what every kept page showed.
       if (body) kept.clear();
