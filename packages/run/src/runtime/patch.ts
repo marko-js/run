@@ -249,15 +249,15 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
   try {
     // Same-origin, by path (patched pages don't support `<base>`); a redirect
     // elsewhere comes back in-band, and a final bare `~` keys it apart in caches.
-    response = replay
-      ? replay.clone()
-      : await fetch(documentOf(url) + (url.search ? "&~" : "?~"), {
-          method: body && "POST",
-          body,
-          headers,
-          signal,
-          mode: "same-origin",
-        });
+    response =
+      replay ||
+      (await fetch(documentOf(url) + (url.search ? "&~" : "?~"), {
+        method: body && "POST",
+        body,
+        headers,
+        signal,
+        mode: "same-origin",
+      }));
   } catch {
     // A mutation may have run before its fetch failed, so it is never sent
     // again and the page stays as it was; a read loads its document.
@@ -271,11 +271,10 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
   const landed = response.url.replace(/[?&]~$/, "");
   const target = new URL(landed);
   target.hash = nav.h;
-  // A response is kept once it ends whole, a mutation's too (as a browser's
-  // back/forward cache keeps the page a form landed on); a replay stays kept.
-  const copy = replay || response.clone();
   apply(
-    response,
+    // A copy applies, so the response is kept once it ends whole, a mutation's
+    // too (as a browser's back/forward cache keeps the page a form landed on).
+    response.clone(),
     // The document changes only once the first frame applies (a held one
     // once its modules land), so a superseded navigation records no entry.
     (_?: never) => {
@@ -310,7 +309,8 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
       nav.x = null;
       // The most recently ended entries stay kept, ten at most.
       kept.delete(key);
-      if (kept.set(key, copy).size > 10) kept.delete(kept.keys().next().value!);
+      if (kept.set(key, response).size > 10)
+        kept.delete(kept.keys().next().value!);
       scrollEntry(nav, (whole = 1));
     },
     // A 412 to a form is another build's refusal, sent before any handler
