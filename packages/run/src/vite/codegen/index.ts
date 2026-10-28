@@ -74,8 +74,7 @@ export function renderPatchApp(routes: BuiltRoutes, app: PatchApp): string {
   );
 
   const { pages } = app;
-  const lazyFiles = patchLoads(pages);
-  const lazy = new Set([...lazyFiles.values()].flat());
+  const lazy = lazyFiles(pages);
   const names = new Map<RoutableFile, string>();
   const importName = (file: RoutableFile, name: string) => {
     let id = names.get(file);
@@ -95,7 +94,7 @@ export function renderPatchApp(routes: BuiltRoutes, app: PatchApp): string {
     "",
     `<script>router((signal, replay) => patch($global, signal, replay), ${routesRegExp(routes)})</script>`,
   );
-  writeBranches(pageTree(pages));
+  writeBranches(pageTree(pages.keys()));
   return writer.end();
 
   function writeBranches(node: PageNode) {
@@ -150,10 +149,8 @@ export function patchPages(routes: BuiltRoutes) {
   };
   visit(
     pageTree(
-      new Map(
-        [...routes.list, ...(Object.values(routes.special) as Route[])]
-          .filter((route) => route.page)
-          .map((route) => [route, 0]),
+      [...routes.list, ...(Object.values(routes.special) as Route[])].filter(
+        (route) => route.page,
       ),
     ),
   );
@@ -161,10 +158,10 @@ export function patchPages(routes: BuiltRoutes) {
 }
 
 /**
- * Each page's lazy modules in a patch build: its page and the layouts not
- * every page shares. The rest load with the app template on every page.
+ * The lazy modules of a patch build: each page and the layouts not every
+ * page shares. The rest load with the app template on every page.
  */
-export function patchLoads(pages: Map<Route, number>) {
+function lazyFiles(pages: Map<Route, number>) {
   // By path: a browser build reads its routes back from the ssr build's data.
   const shared = new Map<string, number>();
   for (const route of pages.keys()) {
@@ -172,16 +169,13 @@ export function patchLoads(pages: Map<Route, number>) {
       shared.set(filePath, (shared.get(filePath) || 0) + 1);
     }
   }
-  const loads = new Map<Route, RoutableFile[]>();
+  const lazy = new Set<RoutableFile>();
   for (const route of pages.keys()) {
-    loads.set(
-      route,
-      [...route.layouts, route.page!].filter(
-        (file) => shared.get(file.filePath) !== pages.size,
-      ),
-    );
+    for (const file of [...route.layouts, route.page!]) {
+      if (shared.get(file.filePath) !== pages.size) lazy.add(file);
+    }
   }
-  return loads;
+  return lazy;
 }
 
 interface PageNode {
@@ -190,9 +184,9 @@ interface PageNode {
   children: PageNode[];
 }
 
-function pageTree(pages: Map<Route, number>) {
+function pageTree(routes: Iterable<Route>) {
   const root: PageNode = { pages: [], children: [] };
-  for (const route of pages.keys()) {
+  for (const route of routes) {
     let node = root;
     for (const layout of route.layouts) {
       let child = node.children.find((child) => child.layout === layout);
