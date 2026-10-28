@@ -10,6 +10,8 @@ describe("patch router", () => {
   let requests: Request[];
   // The signal each request was fetched with.
   let signals: (AbortSignal | undefined)[];
+  // The body each request was fetched with, as the page gave it.
+  let bodies: unknown[];
   let responses: (() => Response | Promise<Response>)[];
   let applied: string[];
   let applyResult: boolean | Promise<boolean>;
@@ -249,6 +251,7 @@ describe("patch router", () => {
     };
     requests = [];
     signals = [];
+    bodies = [];
     responses = [];
     replays = [];
     applied = [];
@@ -336,6 +339,7 @@ describe("patch router", () => {
       // A browser resolves a path against the page's URL.
       requests.push(new Request(new URL(input, loc.href), init));
       signals.push(init?.signal || undefined);
+      bodies.push(init?.body);
       const next = responses.shift();
       if (!next) throw new TypeError("network");
       return next();
@@ -694,6 +698,18 @@ describe("patch router", () => {
     await submit("#get", "#go");
     assert.equal(requests[0].url, "http://app.example/search?q=a&~");
     assert.equal(requests[0].method, "GET");
+  });
+
+  it("posts a multipart form as its form data, whatever the enctype's case", async () => {
+    dom.window.document.body.insertAdjacentHTML(
+      "beforeend",
+      `<form id=upload method=post enctype="MULTIPART/FORM-DATA" action="/cart"><input name=id value=2></form>`,
+    );
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/cart"),
+    );
+    await submit("#upload");
+    assert.ok(bodies[0] instanceof dom.window.FormData);
   });
 
   it("patches a read of a handler path, landing where it redirects", async () => {
