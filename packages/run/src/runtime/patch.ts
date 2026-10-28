@@ -476,7 +476,7 @@ function documentOf(url: URL | Location) {
 }
 
 function isExternal(el: Element) {
-  return /(^|\s)external(\s|$)/.test(el.getAttribute("rel") || "");
+  return /(^|\s)external(\s|$)/i.test(el.getAttribute("rel") || "");
 }
 
 function isSelfTarget(el: Element, submitter?: HTMLElement | null) {
