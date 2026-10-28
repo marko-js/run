@@ -330,6 +330,8 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
 function load(nav: Navigation, url: string) {
   if (nav !== active) return;
   active = null;
+  // A URL naming no fragment keeps the navigation's, as a redirect does.
+  if (!url.includes("#")) url += nav.h;
   if (nav.l) holdAnchoring(0);
   else if (nav.p) location.reload();
   else if (nav.c) location.replace(url);
