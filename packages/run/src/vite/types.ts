@@ -88,7 +88,9 @@ export interface MarkoRunOptions extends Partial<RouterOptions> {
    * A route's handler is assumed to answer a link or form with its page or a
    * redirect. Anything else (a download, JSON, HTML of its own) is discarded
    * and the router loads the URL as a document, so a form's POST is followed
-   * by a GET; `rel="external"` on the link or form leaves it to the browser.
+   * by a GET; a 412, which it takes for another build's refusal, has the
+   * browser submit the form again. `rel="external"` on the link or form
+   * leaves it to the browser.
    * @experimental The patch protocol may change in a minor release.
    */
   patches?: boolean;
