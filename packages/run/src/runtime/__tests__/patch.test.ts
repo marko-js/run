@@ -329,6 +329,10 @@ describe("patch router", () => {
           state: structuredClone(state),
         });
       },
+      go(delta: number) {
+        calls.push(`go ${delta}`);
+        setTimeout(() => traverse(delta));
+      },
       replaceState(state: unknown, _: string, url?: string) {
         if (url) {
           calls.push(`replace-state ${url}`);
@@ -931,6 +935,21 @@ describe("patch router", () => {
     assert.equal(requests.length, 2);
     assert.deepEqual(calls, []);
     assert.equal(entries.length, 1);
+  });
+
+  it("goes back to the entry shown when a traversal answers 204", async () => {
+    responses.push(() =>
+      withUrl(patchResponse(["{}"]), "http://app.example/search"),
+    );
+    await click("#page");
+    responses.push(() =>
+      withUrl(new Response(null, { status: 204 }), "http://app.example/cart"),
+    );
+    await traverse(-1);
+    await tick();
+    assert.deepEqual(calls.slice(3), ["go 1"]);
+    assert.equal(loc.href, "http://app.example/search");
+    assert.deepEqual(applied, ["{}"]);
   });
 
   it("starts a navigation's page with focus at the document", async () => {

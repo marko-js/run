@@ -264,8 +264,14 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     else if (nav === active) active = null;
     return;
   }
-  // A 204 or 205 leaves the page as it is, as a browser's navigation does.
-  if ((response.status | 1) === 205) return;
+  // A 204 or 205 leaves the page as it is, as a browser's navigation does: a
+  // traversal (`p` set; a link's is not found) goes back to the entry shown.
+  if ((response.status | 1) === 205) {
+    const at = order.indexOf(nav.p!);
+    const back = order.indexOf(entry) - at;
+    if (~at && back) history.go(back);
+    return;
+  }
   // The server marks a redirect within the origin as the router marks a request.
   const landed = response.url.replace(/[?&]~$/, "");
   const target = new URL(landed);
