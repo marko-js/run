@@ -314,7 +314,7 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     // A frame that applies shows the browser did not stop the response.
     (_?: never) => (nav.l = scrollEntry(nav)),
     (_?: never) => {
-      // Nothing is left to stop, and an abort now errors the kept copy.
+      // Nothing is left to stop, and an abort now errors the kept response.
       nav.x = null;
       // The most recently ended entries stay kept, ten at most.
       kept.delete(key);
