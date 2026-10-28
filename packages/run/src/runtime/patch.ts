@@ -308,12 +308,9 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     (_?: never) => {
       // Nothing is left to stop, and an abort now errors the kept copy.
       nav.x = null;
-      if (copy) {
-        // The most recently ended entries stay kept, ten at most.
-        kept.delete(key);
-        if (kept.set(key, copy).size > 10)
-          kept.delete(kept.keys().next().value!);
-      }
+      // The most recently ended entries stay kept, ten at most.
+      kept.delete(key);
+      if (kept.set(key, copy).size > 10) kept.delete(kept.keys().next().value!);
       scrollEntry(nav, (whole = 1));
     },
     // A 412 to a form is another build's refusal, sent before any handler
