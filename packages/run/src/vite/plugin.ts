@@ -782,12 +782,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           for (const { key, code } of routeData.files) {
             virtualFiles.set(key, code);
           }
-          if (patches) {
-            patchApp = {
-              filePath: path.join(entryFilesDir, patchAppFilename),
-              pages: patchPages(routes),
-            };
-          }
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
@@ -983,7 +977,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             routes,
             [...externalRoutes],
             bundle,
-            patchApp?.filePath,
+            patches ? path.join(entryFilesDir, patchAppFilename) : undefined,
           );
         }
       },
