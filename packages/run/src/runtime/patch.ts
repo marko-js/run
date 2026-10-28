@@ -266,8 +266,8 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
     else if (nav === active) active = null;
     return;
   }
-  // A 204 or 205 leaves the page as it is, as a browser's navigation does: a
-  // traversal (`p` set; a link's is not found) goes back to the entry shown.
+  // A 204 or 205 keeps the page shown, as a browser does; a traversal has
+  // already moved the URL, so it returns to the shown entry (a link has no `p`).
   if ((response.status | 1) === 205) {
     nav.x = null;
     const at = order.indexOf(nav.p!);
@@ -322,8 +322,8 @@ async function navigate(url: URL | Location, nav: Navigation, body?: BodyInit) {
         kept.delete(kept.keys().next().value!);
       scrollEntry(nav, (whole = 1));
     },
-    // A 412 to a form is another build's refusal, sent before any handler
-    // ran, so it submits natively; anything else loads where it landed.
+    // A 412 is taken for another build's refusal, so a form submits natively;
+    // anything else loads where it landed.
     (_?: never) =>
       body && response.status === 412
         ? resubmit(nav.f!, nav.b)
