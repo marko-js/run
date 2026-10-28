@@ -285,11 +285,12 @@ export function unmarkedRequest(request: Request, search: string) {
 /**
  * A patch request's response as the router takes it. A redirect within the
  * origin is marked as the request was, so its target is fetched as a patch;
- * one elsewhere, which the router's same-origin fetch cannot follow, is
- * answered in-band (a 202 with its `location`) for the router to load, a GET,
- * so a 307 or 308 elsewhere drops a form's body. Both keep the redirect's other
- * headers (a sign-out's cookies), and that answer and a patch are never stored,
- * whatever middleware set.
+ * one elsewhere, which the router's same-origin fetch cannot follow, or one
+ * naming a fragment, which a fetch loses, is answered in-band (a 202 with its
+ * `location`) for the router to load, a GET, so a 307 or 308 elsewhere drops a
+ * form's body (one within the origin is followed, its fragment lost). Both keep
+ * the redirect's other headers (a sign-out's cookies), and that answer and a
+ * patch are never stored, whatever middleware set.
  */
 export function patchResponse(
   response: Response | undefined,
@@ -300,14 +301,16 @@ export function patchResponse(
     followedRedirects.has(response.status) && response.headers.get("location");
   if (location) {
     const target = new URL(location, request.url);
-    const within = target.origin === new URL(request.url).origin;
-    if (within) markPatch(target);
+    const follow =
+      target.origin === new URL(request.url).origin &&
+      (!location.includes("#") || response.status > 303);
+    if (follow) markPatch(target);
     response = new Response(null, {
-      status: within ? response.status : 202,
+      status: follow ? response.status : 202,
       headers: response.headers,
     });
     response.headers.set("location", target.href);
-    if (within) return response;
+    if (follow) return response;
   } else if (!response.headers.has("x-marko-patch")) {
     return response;
   }
