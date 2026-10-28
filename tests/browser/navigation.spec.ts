@@ -108,6 +108,29 @@ test("204 leaves the URL and page untouched", async ({ page, app }) => {
   expect(await page.evaluate(() => history.length)).toBe(before);
 });
 
+// A patch that ends before any frame applies leaves the page, and its URL: the
+// browser's held navigation fails rather than committing.
+test("a patch with no frames leaves the URL and page untouched", async ({
+  page,
+  app,
+}) => {
+  const before = await page.evaluate(() => history.length);
+  await page.evaluate(() =>
+    document
+      .querySelector("nav")!
+      .insertAdjacentHTML(
+        "beforeend",
+        '<a id="empty" href="/r/empty">empty</a>',
+      ),
+  );
+  await page.click("#empty");
+  await page.waitForFunction(() => window.events.some((e) => e.type === "end"));
+  await page.waitForFunction(() => !window.navigation?.transition);
+  await expect(page).toHaveURL(app.url + "/r/a");
+  await expect(page).toHaveTitle("doc a");
+  expect(await page.evaluate(() => history.length)).toBe(before);
+});
+
 for (const [selector, path, body] of [
   ["#getb", "/r/search", ""],
   ["#postb", "/r/post", "v=1%262&btn=yes"],

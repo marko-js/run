@@ -45,6 +45,8 @@ export async function serve() {
       res.writeHead(302, { location: "/r/b?~" }).end();
     } else if (name === "nocontent") {
       res.writeHead(204).end();
+    } else if (name === "empty") {
+      res.writeHead(200, { "x-marko-patch": "browser-test" }).end();
     } else if (name === "stale") {
       res.writeHead(412).end();
     } else if (name === "notpatch") {

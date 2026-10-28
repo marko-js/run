@@ -167,8 +167,7 @@ function onPopState() {
   // A new fragment's entry gets its key here, pushed as the browser pushed
   // it; the browser scrolls to it.
   if (!k) push(setKey(pop));
-  // A traversal held from its own event patches, whatever committed since.
-  if (!traversal && current === documentOf(location)) {
+  if (current === documentOf(location)) {
     // A traversal within the shown document stops a navigation that has not
     // committed; one that has is this document's, which streams on.
     if (k && !active?.c) {
