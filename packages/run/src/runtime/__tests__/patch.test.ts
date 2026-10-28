@@ -418,6 +418,33 @@ describe("patch router", () => {
     assert.deepEqual(calls, ["assign http://app.example/login"]);
   });
 
+  it("keeps the link's fragment where it loads the document instead", async () => {
+    responses.push(() =>
+      withUrl(
+        new Response("<html>", { headers: { "content-type": "text/html" } }),
+        "http://app.example/item/3",
+      ),
+    );
+    await click("#item");
+    for (const location of [
+      "https://pay.example/checkout",
+      "https://pay.example/checkout#pay",
+    ]) {
+      responses.push(() =>
+        withUrl(
+          new Response(null, { status: 202, headers: { location } }),
+          "http://app.example/item/3",
+        ),
+      );
+      await click("#item");
+    }
+    assert.deepEqual(calls, [
+      "assign http://app.example/item/3#reviews",
+      "assign https://pay.example/checkout#reviews",
+      "assign https://pay.example/checkout#pay",
+    ]);
+  });
+
   it("loads the document when the server refuses a read of a stale build", async () => {
     responses.push(() => withUrl(stale(), "http://app.example/search"));
     await click("#page");
