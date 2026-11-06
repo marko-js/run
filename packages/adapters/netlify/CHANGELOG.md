@@ -1,5 +1,11 @@
 # @marko/run-adapter-netlify
 
+## 3.1.0
+
+### Minor Changes
+
+- b6141f9: Have `marko-run dev` run the same entry and `platform` the deployed adapter uses, and keep the static crawler on its own origin for links whose path starts with `//`.
+
 ## 3.0.7
 
 ### Patch Changes

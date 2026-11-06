@@ -1,5 +1,11 @@
 # @marko/run
 
+## 0.11.17
+
+### Patch Changes
+
+- b6141f9: Have `marko-run dev` run the same entry and `platform` the deployed adapter uses, and keep the static crawler on its own origin for links whose path starts with `//`.
+
 ## 0.11.16
 
 ### Patch Changes
