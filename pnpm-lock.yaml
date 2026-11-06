@@ -34,6 +34,9 @@ importers:
       '@marko/run-adapter-static':
         specifier: workspace:*
         version: link:packages/adapters/static
+      '@marko/run-adapter-vercel':
+        specifier: workspace:*
+        version: link:packages/adapters/vercel
       '@marko/testing-library':
         specifier: ^6.4.2
         version: 6.4.2(marko@5.39.40)
@@ -306,6 +309,22 @@ importers:
       '@types/compression':
         specifier: ^1.8.1
         version: 1.8.1
+
+  packages/adapters/vercel:
+    dependencies:
+      '@vercel/functions':
+        specifier: ^3.10.6
+        version: 3.10.6(ws@8.21.0)
+      compression:
+        specifier: ^1.8.1
+        version: 1.8.2(supports-color@10.2.2)
+      serve-static:
+        specifier: ^2.2.1
+        version: 2.2.1(supports-color@10.2.2)
+    devDependencies:
+      '@marko/run':
+        specifier: workspace:*
+        version: link:../../run
 
   packages/explorer:
     dependencies:
@@ -9326,19 +9345,16 @@ snapshots:
     dependencies:
       xdg-app-paths: 5.5.1
       zod: 4.6.7
-    optional: true
 
   '@vercel/cli-exec@1.0.1':
     dependencies:
       execa: 5.1.1
-    optional: true
 
   '@vercel/functions@3.10.6(ws@8.21.0)':
     dependencies:
       '@vercel/oidc': 4.0.6
     optionalDependencies:
       ws: 8.21.0
-    optional: true
 
   '@vercel/nft@0.29.4(encoding@0.1.13)(supports-color@10.2.2)':
     dependencies:
@@ -9364,7 +9380,6 @@ snapshots:
       '@vercel/cli-config': 0.3.6
       '@vercel/cli-exec': 1.0.1
       jose: 5.10.0
-    optional: true
 
   '@vue/compiler-core@3.5.43':
     dependencies:
@@ -11760,8 +11775,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@5.10.0:
-    optional: true
+  jose@5.10.0: {}
 
   jpeg-js@0.4.4: {}
 
@@ -12658,8 +12672,7 @@ snapshots:
       macos-release: 3.5.1
       windows-release: 6.1.0
 
-  os-paths@4.4.0:
-    optional: true
+  os-paths@4.4.0: {}
 
   outdent@0.5.0: {}
 
@@ -14380,14 +14393,12 @@ snapshots:
     dependencies:
       os-paths: 4.4.0
       xdg-portable: 7.3.0
-    optional: true
 
   xdg-basedir@5.1.0: {}
 
   xdg-portable@7.3.0:
     dependencies:
       os-paths: 4.4.0
-    optional: true
 
   xml-name-validator@5.0.0: {}
 
@@ -14472,5 +14483,4 @@ snapshots:
 
   zod@4.6.5: {}
 
-  zod@4.6.7:
-    optional: true
+  zod@4.6.7: {}

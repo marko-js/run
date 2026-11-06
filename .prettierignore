@@ -17,3 +17,4 @@ pnpm-lock.yaml
 snapshots
 netlify/*-functions
 netlify/assets
+.vercel
