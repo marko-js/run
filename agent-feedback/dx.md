@@ -311,3 +311,9 @@ The `dev` run intermittently hits mocha's 20s timeout during its `click` steps, 
 `@marko/vite` › `configResolved` optimizeDeps setup | 2026-11-05 | impact:low | effort:low
 
 In dev, `@marko/vite` adds `compiler.getRuntimeEntryFiles("dom", translator)` to the client `optimizeDeps.include`. With `marko@5`, that list includes `@marko/runtime-tags/debug/dom` and its `*.feat` entries, but `@marko/runtime-tags` is a dependency of `marko`, not of the app. pnpm's isolated layout leaves it unresolvable from the app root, so a fresh `pnpm add marko@5 @marko/run` app prints about a dozen `Failed to resolve dependency: @marko/runtime-tags/debug/dom…, present in client 'optimizeDeps.include'` lines on every `marko-run dev`. This monorepo hides the problem with `publicHoistPattern: ["@marko/runtime-tags"]` in `pnpm-workspace.yaml`, and apps can apply the same workaround, but nothing tells them to. Either have `@marko/vite` resolve these entries relative to `marko`'s own location (or filter out ones that can't be resolved from the root), or document the hoist setting for pnpm users in `packages/run/README.md`.
+
+## Vercel adapter: expose request geolocation as `platform.geo`
+
+`packages/adapters/vercel/src/runtime.ts` › `createPlatform` | 2026-11-06 | impact:low | effort:low
+
+Vercel adds `x-vercel-ip-city`, `-country`, `-country-region`, `-latitude`, `-longitude`, `-timezone` and `-postal-code` request headers ([docs](https://vercel.com/docs/headers/request-headers)), which route code currently has to read and decode itself. Exposing them as `platform.geo` would mirror `platform.cf` on the Cloudflare adapter and Netlify's `context.geo`. `createPlatform` would take the request (the default entry has it in `fetch`), and the dev `platform` would leave `geo` empty, as the Netlify dev `Context` does.

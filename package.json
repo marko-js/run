@@ -25,6 +25,7 @@
     "@marko/run-adapter-netlify": "workspace:*",
     "@marko/run-adapter-node": "workspace:*",
     "@marko/run-adapter-static": "workspace:*",
+    "@marko/run-adapter-vercel": "workspace:*",
     "@marko/testing-library": "^6.4.2",
     "@micro-frame/marko": "^1.10.4",
     "@types/debug": "^4.1.13",

@@ -14,6 +14,7 @@ export default tseslint.config(
       "**/.cache",
       "**/.marko-run",
       "**/.netlify",
+      "**/.vercel",
       "**/__snapshots__",
       "**/*.marko.js",
       "**/*actual*",

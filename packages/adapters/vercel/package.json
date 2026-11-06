@@ -1,0 +1,42 @@
+{
+  "name": "@marko/run-adapter-vercel",
+  "version": "0.1.0",
+  "description": "Preview and deploy @marko/run apps to Vercel Functions",
+  "keywords": [
+    "marko"
+  ],
+  "homepage": "https://github.com/marko-js/run/tree/main/packages/adapters/vercel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marko-js/run.git"
+  },
+  "license": "MIT",
+  "author": "Ryan Turnquist <rturnq@gmail.com>",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b && tsx scripts/build.ts",
+    "test": ""
+  },
+  "dependencies": {
+    "@vercel/functions": "^3.10.6",
+    "compression": "^1.8.1",
+    "serve-static": "^2.2.1"
+  },
+  "devDependencies": {
+    "@marko/run": "workspace:*"
+  },
+  "peerDependencies": {
+    "@marko/run": "^0.11.17"
+  },
+  "logo": {
+    "url": "https://github.com/marko-js/run/raw/main/assets/marko-run.png"
+  }
+}
