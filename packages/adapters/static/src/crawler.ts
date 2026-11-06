@@ -64,7 +64,8 @@ export default function createCrawler(
   let pending: Promise<any> | undefined;
 
   async function visit(path: string): Promise<VisitResult> {
-    const url = new URL(path, origin);
+    // Concatenated, so a path such as `//evil.com` stays a path.
+    const url = new URL(origin.origin + path);
     const parser = new Parser({
       onopentag(name, attrs) {
         const href = getTagHref(name, attrs);

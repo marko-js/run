@@ -305,3 +305,9 @@ The fixture's adapter matches entry templates with `micromatch.isMatch(template,
 `packages/run/src/__tests__/fixtures/href-lazy-tag/test.config.ts` › `steps` | 2026-10-19 | impact:med | effort:med
 
 The `dev` run intermittently hits mocha's 20s timeout during its `click` steps, which fails the whole suite. On `0e72c34` (`main`) it failed 5 of 5 isolated runs (`pnpm test --grep href-lazy-tag`) on one machine, and 1–4 of 6 on other commits the same day, while passing in other full-suite runs. The fixture's lazily loaded tag (`src/tags/lazy-link.marko`) is the likely place a dev-only race sits; the timeout gives no hint which click stalls, so a first step is to bound each step with its own timeout and log which one hangs.
+
+## Stop Marko 5 apps under pnpm warning about unresolvable `@marko/runtime-tags` in dev
+
+`@marko/vite` › `configResolved` optimizeDeps setup | 2026-11-05 | impact:low | effort:low
+
+In dev, `@marko/vite` adds `compiler.getRuntimeEntryFiles("dom", translator)` to the client `optimizeDeps.include`. With `marko@5`, that list includes `@marko/runtime-tags/debug/dom` and its `*.feat` entries, but `@marko/runtime-tags` is a dependency of `marko`, not of the app. pnpm's isolated layout leaves it unresolvable from the app root, so a fresh `pnpm add marko@5 @marko/run` app prints about a dozen `Failed to resolve dependency: @marko/runtime-tags/debug/dom…, present in client 'optimizeDeps.include'` lines on every `marko-run dev`. This monorepo hides the problem with `publicHoistPattern: ["@marko/runtime-tags"]` in `pnpm-workspace.yaml`, and apps can apply the same workaround, but nothing tells them to. Either have `@marko/vite` resolve these entries relative to `marko`'s own location (or filter out ones that can't be resolved from the root), or document the hoist setting for pnpm users in `packages/run/README.md`.

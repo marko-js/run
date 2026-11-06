@@ -50,7 +50,8 @@ export interface Options {
 }
 
 export default function staticAdapter(options: Options = {}): Adapter {
-  const { startDev } = baseAdapter();
+  // Pages are prerendered by calling the router with an empty `platform`.
+  const { startDev } = baseAdapter({ createPlatform: () => ({}) });
   let adapterConfig!: AdapterConfig;
   let markoRunOptions: MarkoRunOptions;
   return {
