@@ -6,6 +6,8 @@ import { execSync, spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { createDevPlatform, isFallthrough } from "./dev-platform";
+
 export type {
   NetlifyEdgePlatformInfo,
   NetlifyFunctionsPlatformInfo,
@@ -20,7 +22,10 @@ export interface Options {
 }
 
 export default function netlifyAdapter(options: Options = {}): Adapter {
-  const { startDev } = baseAdapter();
+  const { startDev } = baseAdapter({
+    createPlatform: createDevPlatform,
+    getEntryHandler,
+  });
   const defaultEntry = options.edge ? defaultEdgeEntry : defaultFunctionsEntry;
   return {
     name: "netlify-adapter",
@@ -53,12 +58,7 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
       return defaultEntry;
     },
 
-    startDev(event) {
-      return startDev!({
-        ...event,
-        entry: event.entry === defaultEntry ? undefined : event.entry,
-      });
-    },
+    startDev,
 
     async startPreview({ options: previewOptions }) {
       assertNetlifyCLI();
@@ -119,6 +119,19 @@ export default function netlifyAdapter(options: Options = {}): Adapter {
     },
   };
 }
+/** Serves dev requests through a function entry the way Netlify calls it: with the request and its `Context`. */
+function getEntryHandler({ default: entry }: Record<string, any>) {
+  if (typeof entry !== "function") {
+    throw new Error(
+      "A Netlify function entry's default export must be a `(request, context)` function.",
+    );
+  }
+  return async (request: Request, context: unknown) => {
+    const response = await entry(request, context);
+    return isFallthrough(response) ? undefined : response;
+  };
+}
+
 const devFlags = new RegExp(
   [
     "context=.+",

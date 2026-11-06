@@ -23,24 +23,26 @@ export interface NodeMiddlewareOptions {
    * Set the origin part of the URL to a constant value.
    * It defaults to `process.env.ORIGIN`. If neither is set,
    * the origin is computed from the protocol and hostname.
-   * To determine the protocol, `req.protocol` is tried first.
-   * If `trustProxy` is set, `X-Forwarded-Proto` header is used.
-   * Otherwise, `req.socket.encrypted` is used.
-   * To determine the hostname, `X-Forwarded-Host`
-   * (if `trustProxy` is set) or `Host` header is used.
+   * The protocol is `X-Forwarded-Proto` (if `trustProxy` is set),
+   * else `https` for a TLS socket, else `req.protocol`, else `http`.
+   * The hostname is `X-Forwarded-Host` (if `trustProxy` is set)
+   * or the `Host` header.
    */
   origin?: string;
   /**
-   * Whether to trust `X-Forwarded-*` headers. `X-Forwarded-Proto`
-   * and `X-Forwarded-Host` are used to determine the origin when
-   * `origin` and `process.env.ORIGIN` are not set. `X-Forwarded-For`
-   * is used to determine the IP address. The leftmost values are used
-   * if multiple values are set. Defaults to true if `process.env.TRUST_PROXY`
+   * Whether to trust the `X-Forwarded-Proto` and `X-Forwarded-Host`
+   * headers, which determine the origin when `origin` and
+   * `process.env.ORIGIN` are not set. The leftmost value is used if a
+   * header has several. Defaults to true if `process.env.TRUST_PROXY`
    * is set to `1`, otherwise false.
    */
   trustProxy?: boolean;
 
-  createPlatform?(platform: NodePlatformInfo): Platform & NodePlatformInfo;
+  /**
+   * Creates the `platform` passed to route handlers from the Node request and
+   * response, and the web `Request` built from them. Defaults to the former.
+   */
+  createPlatform?(platform: NodePlatformInfo, request: Request): Platform;
 }
 
 export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
@@ -157,10 +159,13 @@ export function createMiddleware(
         value: controller.signal,
       });
 
-      const platform = createPlatform({
-        request: req,
-        response: res,
-      });
+      const platform = createPlatform(
+        {
+          request: req,
+          response: res,
+        },
+        request,
+      );
 
       const response = await fetch(request, platform);
 

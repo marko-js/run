@@ -21,19 +21,27 @@ import {
   waitForWorker,
   withTimeout,
 } from "../vite/utils/server";
-import { createDevServer, type MarkoRunDev } from "./dev-server";
+import {
+  createDevServer,
+  type GetEntryHandler,
+  type MarkoRunDev,
+} from "./dev-server";
+import type { NodeMiddlewareOptions } from "./middleware";
 import { logInfoBox } from "./utils";
 
 export {
   createDevServer,
   createErrorMiddleware,
   createViteDevServer,
+  type DevServerOptions,
+  type EntryHandler,
   getDevGlobal,
+  type GetEntryHandler,
   type MarkoRunDev,
 } from "./dev-server";
 export type { Adapter, SpawnedServer };
 export { closeServer, closeSpawnedProcess } from "../vite/utils/server";
-export type { NodePlatformInfo } from "./middleware";
+export type { NodeMiddlewareOptions, NodePlatformInfo } from "./middleware";
 
 export type MarkoRunDevAccessor = () => MarkoRunDev;
 
@@ -55,7 +63,23 @@ export async function resolveAdapter(
   return pluginResolveAdapter(config.root, options);
 }
 
-export default function adapter(): Adapter {
+export interface BaseAdapterOptions {
+  /**
+   * Creates the `platform` the dev server passes to route handlers, so it can
+   * match what the adapter's deployed entry passes.
+   */
+  createPlatform?: NodeMiddlewareOptions["createPlatform"];
+  /**
+   * Has the dev server serve requests through the entry, the adapter's default
+   * or a custom one, instead of running it as a server, with the request handler
+   * this gets from the loaded entry module. Called again only after the entry is edited.
+   */
+  getEntryHandler?: GetEntryHandler;
+}
+
+export default function adapter(
+  adapterOptions: BaseAdapterOptions = {},
+): Adapter {
   return {
     name: "base-adapter",
 
@@ -70,7 +94,7 @@ export default function adapter(): Adapter {
 
       const explorerPromise = startExplorer();
 
-      if (entry && entry !== defaultEntry) {
+      if (entry && entry !== defaultEntry && !adapterOptions.getEntryHandler) {
         const { nodeArgs } = parseNodeArgs(options.args);
         const workers = new Set<Worker>();
         let worker: Worker | undefined;
@@ -143,7 +167,13 @@ export default function adapter(): Adapter {
         };
       }
 
-      const devServer = await createDevServer(config);
+      const { getEntryHandler } = adapterOptions;
+      const devServer = await createDevServer(config, {
+        createPlatform: adapterOptions.createPlatform,
+        // Without `getEntryHandler`, an entry is a server program and isn't loaded here.
+        entry: getEntryHandler && entry,
+        getEntryHandler,
+      });
       envFile && (await loadEnv(envFile));
 
       const inspect = getInspectOptions(options.args);

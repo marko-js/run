@@ -6,6 +6,7 @@ import {
   copyResponseHeaders,
   createMiddleware,
   getBodyReader,
+  type NodeMiddlewareOptions,
 } from "../adapter/middleware";
 import type { Fetch } from "../runtime";
 
@@ -38,8 +39,8 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function serve(fetch: Fetch<any>) {
-  const server = http.createServer(createMiddleware(fetch));
+async function serve(fetch: Fetch<any>, options?: NodeMiddlewareOptions) {
+  const server = http.createServer(createMiddleware(fetch, options));
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return {
     port: (server.address() as AddressInfo).port,
@@ -186,6 +187,47 @@ describe("Adapter Middleware", () => {
         }
       });
     }
+
+    it("should pass createPlatform the request handed to fetch and fetch its result", async () => {
+      let platformRequest: Request | undefined;
+      let fetchRequest: Request | undefined;
+      let fetchPlatform: unknown;
+      const server = await serve(
+        async (request, platform) => {
+          fetchRequest = request;
+          fetchPlatform = platform;
+          return new Response(null, { status: 204 });
+        },
+        {
+          createPlatform(node, request) {
+            platformRequest = request;
+            return { nodeRequest: !!node.request, custom: true };
+          },
+        },
+      );
+
+      try {
+        await new Promise<void>((resolve, reject) =>
+          http
+            .request({
+              port: server.port,
+              host: "127.0.0.1",
+              path: "//evil.example/x",
+            })
+            .on("response", (res) => res.resume().on("end", resolve))
+            .on("error", reject)
+            .end(),
+        );
+        assert.equal(platformRequest, fetchRequest);
+        assert.equal(
+          platformRequest!.url,
+          `http://127.0.0.1:${server.port}//evil.example/x`,
+        );
+        assert.deepEqual(fetchPlatform, { nodeRequest: true, custom: true });
+      } finally {
+        await server.close();
+      }
+    });
 
     it("should abort the request signal and cancel an idle stream when the client disconnects", async () => {
       const cancelled = deferred();

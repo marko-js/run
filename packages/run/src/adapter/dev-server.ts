@@ -9,9 +9,14 @@ import {
   type ViteDevServer,
 } from "vite";
 
+import type { Platform } from "../runtime";
 import { getAvailablePort } from "../vite/utils/server";
 import logger from "./logger";
-import { createMiddleware } from "./middleware";
+import {
+  createMiddleware,
+  type NodeMiddleware,
+  type NodeMiddlewareOptions,
+} from "./middleware";
 import { prepareError } from "./utils";
 
 interface DevErrorCallback {
@@ -89,21 +94,65 @@ export async function createViteDevServer(
   return createServer(finalConfig);
 }
 
+export interface DevServerOptions extends Pick<
+  NodeMiddlewareOptions,
+  "createPlatform"
+> {
+  /** A module that serves requests in place of the router. */
+  entry?: string;
+  /** Gets the handler from the loaded `entry` module. Defaults to its `fetch` export. */
+  getEntryHandler?: GetEntryHandler;
+}
+
+/** Serves a request in dev the way the deployed entry would. */
+export type EntryHandler = (
+  request: Request,
+  platform: Platform,
+) => MaybePromise<Response | void>;
+
+export type GetEntryHandler = (entry: Record<string, any>) => EntryHandler;
+
+type MaybePromise<T> = T | Promise<T>;
+
 export async function createDevServer(
   config?: InlineConfig,
+  options: DevServerOptions = {},
 ): Promise<ViteDevServer> {
-  const routerMiddleware = createMiddleware((request, platform) =>
-    globalThis.__marko_run__.fetch(request, platform),
-  );
+  const {
+    entry,
+    getEntryHandler = (entry) => entry.fetch,
+    ...middlewareOptions
+  } = options;
+  // Keyed by the loaded module, which Vite replaces only when it is edited.
+  const middlewares = new WeakMap<object, NodeMiddleware>();
+
   return createViteDevServer(config, (devServer) => {
     devServer.middlewares
       .use(async (req, res, next) => {
+        let middleware: NodeMiddleware | undefined;
         try {
-          await devServer.ssrLoadModule("@marko/run/router");
+          // Installs this app's runtime, updated after route edits, which the entry's
+          // own `@marko/run/router` import uses even when Vite doesn't transform it.
+          const [router, entryModule] = await Promise.all([
+            devServer.ssrLoadModule("@marko/run/router"),
+            entry && devServer.ssrLoadModule(entry),
+          ]);
+          const module = entryModule || router;
+          middleware = middlewares.get(module);
+          if (!middleware) {
+            const handler: EntryHandler = entryModule
+              ? getEntryHandler(entryModule)
+              : router.fetch;
+            middleware = createMiddleware(
+              async (request, platform) => handler(request, platform),
+              middlewareOptions,
+            );
+            middlewares.set(module, middleware);
+          }
         } catch (err) {
           return next(err);
         }
-        routerMiddleware(req, res, next);
+        middleware(req, res, next);
       })
       .use(createErrorMiddleware(devServer));
   });
