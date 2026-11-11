@@ -1,6 +1,6 @@
 import assert from "assert";
-import { RolldownMagicString } from "rolldown";
-import { parseSync } from "rolldown/utils";
+import MagicString from "magic-string";
+import { parseSync } from "vite";
 
 import { findHrefReplacements } from "../utils/href-replace";
 
@@ -11,7 +11,7 @@ function apply(code: string) {
   });
   const replacements = findHrefReplacements(code, ast.program);
   if (replacements.length) {
-    const s = new RolldownMagicString(code);
+    const s = new MagicString(code);
     for (const { edits } of replacements) {
       for (const { start, end, code } of edits) {
         if (code) {

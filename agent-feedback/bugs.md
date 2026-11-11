@@ -373,3 +373,9 @@ With `build.manifest` enabled on an environment (e.g. `@cloudflare/vite-plugin` 
 `packages/run/src/__tests__/fixtures/adapter-is-entry/customAdapter.ts` › `default` | 2026-10-16 | impact:low | effort:med
 
 The fixture's client component never hydrates (each `click` step leaves the button at `0`), failing both `dev` and `preview`, when the repository sits under a dot-directory such as `~/work/x/.worktrees/topic/run` or `~/work/x/.tmp/run`. The same commit (`0e72c34`) passes once the worktree is moved to a path without a dot segment, and every other client-component fixture passes in both locations. Likely something on this fixture's custom-adapter entry path (`customAdapter.ts`) filters or resolves client assets with a glob or ignore rule that skips dot-directories; not isolated further.
+
+## Vite drops rolldown's `meta.magicString` before plugin transform hooks see it
+
+`packages/run/src/vite/plugin.ts` › `markoRun` (`marko-run-vite:post` transform; upstream vite) | 2026-11-11 | impact:low | effort:low
+
+Rolldown passes every transform hook a lazily built `meta.magicString` of its own class, which its transform result handling applies natively, without a string and source map round trip. Vite's build wraps each plugin's hook with `injectSsrFlag`, which passes `{ ...options, ssr }`, and the spread drops rolldown's non-enumerable `magicString` and `ast` getters, so no Vite plugin receives them (still true in vite 8.3.8, `dist/node/chunks/node.js` › `injectSsrFlag`). The `Run.href` rewrite therefore edits with `magic-string` and returns `{ code, map }`, since a magic string of any other rolldown copy is ignored. Report the spread upstream; once Vite forwards the getters, the rewrite would switch to editing the bundler's native `meta.magicString` in builds.

@@ -3,7 +3,7 @@ import zlib from "node:zlib";
 import Table, { HorizontalAlignment } from "cli-table3";
 import format from "human-format";
 import kleur from "kleur";
-import type { OutputAsset, OutputBundle, OutputChunk } from "rolldown";
+import type { Rolldown } from "vite";
 
 import type { BuiltRoutes, ExternalRoutes, HttpVerb, Route } from "../types";
 import { getUniqueSortedVerbs, getVerbs } from "./route";
@@ -22,7 +22,7 @@ const HttpVerbColors = {
 export function logRoutesTable(
   routes: BuiltRoutes,
   externalRoutes: ExternalRoutes[],
-  bundle: OutputBundle,
+  bundle: Rolldown.OutputBundle,
 ) {
   const hasMiddleware = routes.list.some((route) => route.middleware.length);
   const hasMeta = routes.list.some((route) => route.meta);
@@ -155,7 +155,7 @@ export function logRoutesTable(
 
 function computeRouteSize(
   filePath: string | undefined,
-  bundle: OutputBundle,
+  bundle: Rolldown.OutputBundle,
 ): [number, number] | undefined {
   if (filePath) {
     for (const chunk of Object.values(bundle)) {
@@ -179,8 +179,8 @@ function byteSize(source: string | Uint8Array): number {
 }
 
 function computeChunkSize(
-  chunk: OutputChunk | OutputAsset,
-  bundle: OutputBundle,
+  chunk: Rolldown.OutputChunk | Rolldown.OutputAsset,
+  bundle: Rolldown.OutputBundle,
   seen: Set<string> = new Set(),
 ): [number, number] {
   if (chunk.type === "asset") {

@@ -1,0 +1,12 @@
+<let/items=[{ id: 1 }]>
+
+<button#add onClick() { items = [...items, { id: items.length + 1 }] }>Add</button>
+<if=!items.length>
+  <p>Your cart is empty. <a href=Run.href("/search")>Browse products.</a></p>
+</if>
+<else>
+  <for|item| of=items by=(item) => "" + item.id>
+    <a href=Run.href("/item/$id", { params: { id: item.id } })>Item ${item.id}</a>
+    <button.remove onClick() { items = items.filter((it) => it !== item) }>Remove</button>
+  </for>
+</else>
