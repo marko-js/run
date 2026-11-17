@@ -304,7 +304,7 @@ The fixture's adapter matches entry templates with `micromatch.isMatch(template,
 
 `packages/run/src/__tests__/fixtures/href-lazy-tag/test.config.ts` › `steps` | 2026-10-19 | impact:med | effort:med
 
-The `dev` run intermittently hits mocha's 20s timeout during its `click` steps, which fails the whole suite. On `0e72c34` (`main`) it failed 5 of 5 isolated runs (`pnpm test --grep href-lazy-tag`) on one machine, and 1–4 of 6 on other commits the same day, while passing in other full-suite runs. The fixture's lazily loaded tag (`src/tags/lazy-link.marko`) is the likely place a dev-only race sits; the timeout gives no hint which click stalls, so a first step is to bound each step with its own timeout and log which one hangs.
+The `dev` run intermittently hits mocha's 20s timeout during its `click` steps, which fails the whole suite. On `0e72c34` (`main`) it failed 5 of 5 isolated runs (`pnpm test --grep href-lazy-tag`) on one machine, and 1–4 of 6 on other commits the same day, while passing in other full-suite runs. The fixture's lazily loaded tag (`src/tags/lazy-link.marko`) is the likely place a dev-only race sits; the timeout gives no hint which click stalls, so a first step is to bound each step with its own timeout and log which one hangs. Still flaky on `f4eb939` (2026-11-17): it failed 2 of 4 isolated runs with no source changes.
 
 ## Stop Marko 5 apps under pnpm warning about unresolvable `@marko/runtime-tags` in dev
 

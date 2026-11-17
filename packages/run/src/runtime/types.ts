@@ -1233,10 +1233,12 @@ interface HrefParamsOptions<
 }
 /** Builds a URL for an app route with typed path, params, search, and hash. */
 export type Href<Verb extends HttpVerbOrAll = "ALL"> = {
-  <Path extends PathsForVerb<Verb>>(
+  // `Options` resolves only once `Path` is fixed: typing an options literal
+  // against every route's options is circular inside that route's handler.
+  <Path extends PathsForVerb<Verb>, Options = HrefOptions<Path>>(
     path: Path,
     ...args: Path extends `${string}/$${string}`
-      ? [options: HrefOptions<Path>]
-      : [options?: HrefOptions<Path>]
+      ? [options: NoInfer<Options>]
+      : [options?: NoInfer<Options>]
   ): string;
 };
