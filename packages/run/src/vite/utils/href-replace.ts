@@ -1,4 +1,4 @@
-import type { ESTree } from "rolldown/utils";
+import type { ESTree } from "vite";
 
 import { href, parsePathParts } from "../../runtime/url-builder";
 
