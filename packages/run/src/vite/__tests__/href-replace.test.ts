@@ -1,8 +1,10 @@
 import assert from "assert";
-import { RolldownMagicString } from "rolldown";
-import { parseSync } from "vite";
+import { parseSync, type Rolldown } from "vite";
 
 import { findHrefReplacements } from "../utils/href-replace";
+import { loadViteRolldown } from "../utils/vite-rolldown";
+
+let RolldownMagicString: typeof Rolldown.RolldownMagicString;
 
 function apply(code: string) {
   const ast = parseSync("test.js", code, {
@@ -27,6 +29,10 @@ function apply(code: string) {
 }
 
 describe("href-replace", () => {
+  before(async () => {
+    ({ RolldownMagicString } = await loadViteRolldown());
+  });
+
   describe("shadowed Run bindings", () => {
     it("does not rewrite when Run is a local variable", () => {
       const code = `const Run = { href: (p) => p };\nexport const url = Run.href("/foo/bar");`;
