@@ -317,3 +317,9 @@ In dev, `@marko/vite` adds `compiler.getRuntimeEntryFiles("dom", translator)` to
 `packages/adapters/vercel/src/runtime.ts` › `createPlatform` | 2026-11-06 | impact:low | effort:low
 
 Vercel adds `x-vercel-ip-city`, `-country`, `-country-region`, `-latitude`, `-longitude`, `-timezone` and `-postal-code` request headers ([docs](https://vercel.com/docs/headers/request-headers)), which route code currently has to read and decode itself. Exposing them as `platform.geo` would mirror `platform.cf` on the Cloudflare adapter and Netlify's `context.geo`. `createPlatform` would take the request (the default entry has it in `fetch`), and the dev `platform` would leave `geo` empty, as the Netlify dev `Context` does.
+
+## Load Vite once in the test harness
+
+`.mocharc.json` › `require: ["tsx"]`, `packages/run/src/__tests__/main.test.ts` | 2026-11-16 | impact:low | effort:med
+
+tsx's `require` hook loads the spec files as CJS, so `main.test.ts` › `cli` gets a tsx-compiled CJS copy of Vite, while a fixture's `vite.config.ts` that imports `@marko/run/vite` gets Vite's ESM. One process then has two `BuildEnvironment` classes, so a plugin from the fixture config fails `this.environment instanceof BuildEnvironment` against the build the CLI runs. `href-replacement-native-magic-string` works around it by letting the CLI add `@marko/run` instead of its config. Loading the specs as ESM (e.g. `node --import tsx`) would give each fixture the Vite apps get.

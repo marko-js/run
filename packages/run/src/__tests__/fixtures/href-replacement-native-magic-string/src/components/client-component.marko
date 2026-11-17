@@ -1,0 +1,15 @@
+class {
+  onCreate() {
+    this.state = {
+      page: 0
+    }
+  }
+  incrementPage() {
+    this.state.page++;
+  }
+}
+
+<button#clickable on-click("incrementPage")>${state.page}</button>
+
+<a href=Run.href("/thing/$id", { params: { id: 1 }, search: { page: state.page } })>Dynamic Search</a>
+<a href=Run.href("/thing/$id", { params: { id: 2 } })>Static</a>
