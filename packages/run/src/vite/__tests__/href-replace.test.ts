@@ -1,6 +1,6 @@
 import assert from "assert";
 import { RolldownMagicString } from "rolldown";
-import { parseSync } from "rolldown/utils";
+import { parseSync } from "vite";
 
 import { findHrefReplacements } from "../utils/href-replace";
 

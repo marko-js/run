@@ -5,11 +5,7 @@ import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
 import { glob } from "glob";
 import path from "path";
-import {
-  type OutputOptions,
-  type PluginContext,
-  RolldownMagicString,
-} from "rolldown";
+import { RolldownMagicString } from "rolldown";
 import { fileURLToPath } from "url";
 import {
   buildErrorMessage,
@@ -17,6 +13,7 @@ import {
   type ModuleNode,
   type Plugin,
   type ResolvedConfig,
+  type Rolldown,
   transformWithOxc,
   type ViteDevServer,
 } from "vite";
@@ -130,7 +127,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     routesRender: 0,
   };
 
-  async function loadModule(context: PluginContext, id: string) {
+  async function loadModule(context: Rolldown.PluginContext, id: string) {
     if ("transformRequest" in context.environment) {
       await context.environment.transformRequest(id);
       return context.getModuleInfo(id);
@@ -138,7 +135,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     return await context.load({ id });
   }
 
-  async function getExportsFromFile(context: PluginContext, filePath: string) {
+  async function getExportsFromFile(
+    context: Rolldown.PluginContext,
+    filePath: string,
+  ) {
     if (devServer) {
       if (/\.[cm]?[jt]sx?$/i.test(filePath)) {
         // Parsed in isolation: these are server-only files, and transforming
@@ -159,7 +159,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   }
 
   let routeMarkoApiCache: Map<Route, string | undefined> | undefined;
-  async function getMarkoApiForRoute(context: PluginContext, route: Route) {
+  async function getMarkoApiForRoute(
+    context: Rolldown.PluginContext,
+    route: Route,
+  ) {
     routeMarkoApiCache ??= new Map();
     if (!routeMarkoApiCache.has(route)) {
       const markoAPI = route.layouts.length
@@ -300,7 +303,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     }));
   }
 
-  async function writeEntryTemplate(context: PluginContext, route: Route) {
+  async function writeEntryTemplate(
+    context: Rolldown.PluginContext,
+    route: Route,
+  ) {
     const filePath = route.templateFilePath!;
     const source = renderRouteTemplate(
       route,
@@ -319,7 +325,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   }
 
   let renderVirtualFilesResult: Promise<void> | undefined;
-  function renderVirtualFiles(context: PluginContext) {
+  function renderVirtualFiles(context: Rolldown.PluginContext) {
     return (renderVirtualFilesResult ??= (async () => {
       try {
         const routes = await buildVirtualFiles();
@@ -1051,9 +1057,9 @@ function getBrowserslistTargets(path: string) {
 }
 
 function mergeOutputOptions(
-  defaults: OutputOptions | OutputOptions[],
-  existing: OutputOptions | OutputOptions[] | undefined,
-): OutputOptions | OutputOptions[] {
+  defaults: Rolldown.OutputOptions | Rolldown.OutputOptions[],
+  existing: Rolldown.OutputOptions | Rolldown.OutputOptions[] | undefined,
+): Rolldown.OutputOptions | Rolldown.OutputOptions[] {
   if (!existing) {
     return defaults;
   } else if (Array.isArray(existing)) {
