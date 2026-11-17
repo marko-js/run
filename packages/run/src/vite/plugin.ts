@@ -5,10 +5,11 @@ import { resolveToEsbuildTarget } from "esbuild-plugin-browserslist";
 import fs from "fs";
 import { glob } from "glob";
 import path from "path";
-import { RolldownMagicString } from "rolldown";
 import { fileURLToPath } from "url";
 import {
+  BuildEnvironment,
   buildErrorMessage,
+  type Environment,
   mergeConfig,
   type ModuleNode,
   type Plugin,
@@ -55,6 +56,7 @@ import { findHrefReplacements } from "./utils/href-replace";
 import { logRoutesTable } from "./utils/log";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 import { getRouteVirtualFileName } from "./utils/route";
+import { loadViteRolldown } from "./utils/vite-rolldown";
 
 const debug = createDebug("@marko/run");
 
@@ -116,6 +118,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
   let resolvedConfig: ResolvedConfig;
   let typesFile: string | undefined;
   let runtimeInclude: string | undefined;
+  let nativeMagicString = false;
 
   const externalRoutes = new Set<ExternalRoutes>();
   const seenErrors = new Set<string>();
@@ -431,6 +434,23 @@ export default function markoRun(opts: Options = {}): Plugin[] {
     })());
   }
 
+  /**
+   * Whether this client build has `experimental.nativeMagicString` on, so
+   * `Run.href` replacements can return Rolldown's magic string. That needs the
+   * build to run on the Vite and Rolldown that `@marko/run` loads.
+   */
+  async function isNativeMagicStringEnabled(
+    context: Rolldown.PluginContext & { environment: Environment },
+  ) {
+    const { environment } = context;
+    return (
+      !!environment.config.build.rolldownOptions.experimental
+        ?.nativeMagicString &&
+      environment instanceof BuildEnvironment &&
+      context.meta.rolldownVersion === (await loadViteRolldown()).VERSION
+    );
+  }
+
   return [
     defaultConfigPlugin,
     {
@@ -741,6 +761,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           buildVirtualFilesResult = Promise.resolve(routes);
           renderVirtualFilesResult = Promise.resolve();
+          nativeMagicString = await isNativeMagicStringEnabled(this);
         }
       },
       async resolveId(importee, importer) {
@@ -850,6 +871,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
 
           if (replacements.length) {
             const helpers = new Map<string, string>();
+            const { RolldownMagicString } = await loadViteRolldown();
             const s = new RolldownMagicString(code);
             for (const replacement of replacements) {
               for (const { start, end, code } of replacement.edits) {
@@ -869,9 +891,7 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                 `import { ${[...helpers].map(([helper, local]) => (helper === local ? helper : `${helper} as ${local}`)).join(", ")} } from "virtual:marko-run/runtime/url-builder";`,
               );
             }
-            // Vite's dev plugin container takes `code` as a string; only the
-            // Rolldown build accepts the magic string itself.
-            return isBuild
+            return nativeMagicString
               ? { code: s }
               : {
                   code: s.toString(),
