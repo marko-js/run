@@ -36,19 +36,7 @@ describe("test sources type-check", () => {
   // TypeScript.
   it("should type-check the test sources", function () {
     this.timeout(120000);
-    const result = spawnSync(
-      process.execPath,
-      [
-        require.resolve("typescript/lib/tsc.js"),
-        "-p",
-        path.join(__dirname, "..", "..", "tsconfig.test.json"),
-        "--pretty",
-        "false",
-      ],
-      // Bounded here because mocha's timeout cannot interrupt a synchronous
-      // spawn — a hung tsc would hang the whole runner.
-      { encoding: "utf-8", timeout: 90000 },
-    );
+    const result = tsc(path.join(__dirname, "..", ".."), "tsconfig.test.json");
 
     assert.equal(
       result.status,
@@ -56,4 +44,38 @@ describe("test sources type-check", () => {
       result.error ? String(result.error) : result.stdout || result.stderr,
     );
   });
+
+  // Guards the generated `.marko-run/routes.d.ts` against handlers that call
+  // `Run.href` with options in their own return value.
+  it("should type-check the href-search-options fixture", function () {
+    this.timeout(120000);
+    const result = tsc(
+      path.join(__dirname, "fixtures", "href-search-options"),
+      "tsconfig.json",
+    );
+    // Package sources report known TS2344 errors against a concrete app
+    // (see agent-feedback/bugs.md), so only fixture files count.
+    const fixtureErrors = result.stdout
+      .split("\n")
+      .filter((line) => /^(src|\.marko-run)\/.*error TS/.test(line));
+
+    assert.ok(!result.error, String(result.error));
+    assert.deepEqual(fixtureErrors, []);
+  });
 });
+
+function tsc(cwd: string, project: string) {
+  return spawnSync(
+    process.execPath,
+    [
+      require.resolve("typescript/lib/tsc.js"),
+      "-p",
+      project,
+      "--pretty",
+      "false",
+    ],
+    // Bounded here because mocha's timeout cannot interrupt a synchronous
+    // spawn — a hung tsc would hang the whole runner.
+    { cwd, encoding: "utf-8", timeout: 90000 },
+  );
+}
