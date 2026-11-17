@@ -846,7 +846,24 @@ declare module "@marko/run" {
 
 If a [TSConfig](https://www.typescriptlang.org/tsconfig) file is discovered in the project root, the Vite plugin will automatically generate a .d.ts file which provides more specific types for each of your middleware, handlers, layouts, and pages. This file will be generated at `.marko-run/routes.d.ts` whenever the project is built - including dev.
 
-> **Note** TypeScript will not include this file by default. You should use the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) and [add it in your tsconfig](https://www.typescriptlang.org/tsconfig#include).
+TypeScript skips dot-directories when expanding a pattern like `src/**/*`, so list `.marko-run/*` in your tsconfig [`include`](https://www.typescriptlang.org/tsconfig#include) on its own. A `tsconfig.json` to start from:
+
+```json
+{
+  "include": ["src/**/*", ".marko-run/*"],
+  "compilerOptions": {
+    "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}
+```
+
+`"moduleResolution": "bundler"` reads the package `exports` that `@marko/run` publishes its types through, and also resolves the `+meta.json` files the generated types import. Use the [Marko VSCode plugin](https://marketplace.visualstudio.com/items?itemName=Marko-JS.marko-vscode) to check `.marko` files in your editor, and [`@marko/type-check`](https://github.com/marko-js/language-server/tree/main/packages/type-check) (`mtc`) to check them from the command line.
 
 With the generated types, the `Run` namespace is narrowed per routable file:
 
