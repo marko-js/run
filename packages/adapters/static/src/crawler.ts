@@ -206,7 +206,7 @@ export default function createCrawler(
         records: [],
       };
       try {
-        queue = startPaths.map(visit);
+        queue = [...seen].map(visit);
 
         while (queue.length) {
           pending = Promise.all(queue);
