@@ -10,7 +10,14 @@ export interface Options {
   out?: string;
   origin?: string;
   notFoundPath?: string;
+  /**
+   * Writes a page reachable with and without a trailing slash once, under its
+   * canonical form: `"add"` for `foo/index.html`, `"remove"` for `foo.html`.
+   */
+  trailingSlash?: TrailingSlash;
 }
+
+type TrailingSlash = "add" | "remove";
 
 /** The outcome of crawling a single path. */
 export interface VisitResult {
@@ -71,7 +78,7 @@ export default function createCrawler(
         const href = getTagHref(name, attrs);
         // Relative to the page it was found on, not the origin: `./sibling` on
         // /docs/reference/language is /docs/reference/sibling, not /sibling.
-        const found = href && resolvePath(href, url);
+        const found = href && resolvePath(href, url, opts.trailingSlash);
 
         if (found !== undefined && !seen.has(found)) {
           seen.add(found);
@@ -131,7 +138,7 @@ export default function createCrawler(
           redirect = resolvePathWithHash(location, url);
 
           if (redirect) {
-            const redirectPath = resolvePath(location, url);
+            const redirectPath = resolvePath(location, url, opts.trailingSlash);
             if (redirectPath && !seen.has(redirectPath)) {
               seen.add(redirectPath);
               queue.push(visit(redirectPath));
@@ -185,7 +192,7 @@ export default function createCrawler(
       }
 
       const startPaths = paths
-        .map((path) => resolvePath(path, origin))
+        .map((path) => resolvePath(path, origin, opts.trailingSlash))
         .concat(notFoundPath)
         .filter(Boolean) as string[];
 
@@ -349,9 +356,9 @@ function resolveUrl(href: string, base: URL) {
   }
 }
 
-function resolvePath(href: string, base: URL) {
+function resolvePath(href: string, base: URL, trailingSlash?: TrailingSlash) {
   const url = resolveUrl(href, base);
-  return url && url.pathname + url.search;
+  return url && withCanonicalSlash(url.pathname, trailingSlash) + url.search;
 }
 
 function resolvePathWithHash(href: string, base: URL) {
@@ -366,4 +373,16 @@ function resolvePathWithHash(href: string, base: URL) {
  */
 function withoutTrailingSlash(path: string) {
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+/** Files keep their path; `/` is the same with and without a trailing slash. */
+function withCanonicalSlash(pathname: string, trailingSlash?: TrailingSlash) {
+  if (!trailingSlash || pathname === "/" || /\.\w+$/.test(pathname)) {
+    return pathname;
+  }
+  return trailingSlash === "remove"
+    ? withoutTrailingSlash(pathname)
+    : pathname.endsWith("/")
+      ? pathname
+      : pathname + "/";
 }

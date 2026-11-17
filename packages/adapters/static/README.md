@@ -35,3 +35,16 @@ export default defineConfig({
   ],
 });
 ```
+
+## Output
+
+Each crawled page is written to an HTML file named after its path, following the [`trailingSlashes`](https://markojs.com/docs/marko-run/vite-plugin#trailingslashes) option of the `@marko/run` Vite plugin:
+
+| `trailingSlashes`           | `/about` is written to                                   |
+| --------------------------- | -------------------------------------------------------- |
+| `RedirectWithout` (default) | `about.html`                                             |
+| `RedirectWith`              | `about/index.html`, with a redirect page at `about.html` |
+| `RewriteWithout`            | `about.html`                                             |
+| `RewriteWith`               | `about/index.html`                                       |
+
+Hosts that serve `/about` from `about/index.html` but do not map extensionless paths to `.html` files call for `RedirectWith` or `RewriteWith`.

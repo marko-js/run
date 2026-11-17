@@ -141,6 +141,13 @@ export default function staticAdapter(options: Options = {}): Adapter {
       const trailingSlash =
         markoRunOptions.trailingSlashes === "RedirectWith" ||
         markoRunOptions.trailingSlashes === "RewriteWith";
+      // Rewrites serve both forms of a path; redirects keep a stub for the other.
+      const canonicalTrailingSlash =
+        markoRunOptions.trailingSlashes === "RewriteWith"
+          ? "add"
+          : markoRunOptions.trailingSlashes === "RewriteWithout"
+            ? "remove"
+            : undefined;
 
       if (sourceEntries[0] === defaultEntry) {
         envFile && (await loadEnv(envFile));
@@ -156,6 +163,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
             notFoundPath: routes.special["404"]
               ? "404" + (trailingSlash ? "/" : "")
               : undefined,
+            trailingSlash: canonicalTrailingSlash,
           },
         );
         await crawler.crawl(pathsToVisit);
@@ -193,6 +201,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
             notFoundPath: routes.special["404"]
               ? "404" + (trailingSlash ? "/" : "")
               : undefined,
+            trailingSlash: canonicalTrailingSlash,
           },
         );
 
