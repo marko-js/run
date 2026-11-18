@@ -57,9 +57,14 @@ export function href_path(
   if (!result || Array.isArray(result)) result = strings[i++];
   while (i < strings.length) {
     const param = params[j++];
+    const next = strings[i++];
+    // An empty param that ends the path links to the parent route.
     result +=
-      (Array.isArray(param) ? param.map(encode).join("/") : encode(param)) +
-      strings[i++];
+      (next || "" + param
+        ? Array.isArray(param)
+          ? param.map(encodeParam).join("/") || encodeParam("")
+          : encodeParam(param)
+        : "") + next;
   }
   return result;
 }
@@ -78,6 +83,14 @@ export function href_keys(
   ...keys: string[]
 ) {
   return href_values(strings, options, ...keys.map((k) => options!.params[k]));
+}
+
+// Rejects values that would turn the segment into `//`, `.` or `..`.
+function encodeParam(param: string | number) {
+  if (param === "" || param === "." || param === "..") {
+    throw new TypeError(`Invalid param "${param}"`);
+  }
+  return encode(param);
 }
 
 function joinHref(path: string, { search, hash }: HrefOptions<any>) {

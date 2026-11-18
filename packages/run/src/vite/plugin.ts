@@ -52,7 +52,10 @@ import {
   setExternalPluginOptions,
 } from "./utils/config";
 import { normalizePath } from "./utils/fs";
-import { findHrefReplacements } from "./utils/href-replace";
+import {
+  findHrefReplacements,
+  type HrefReplacements,
+} from "./utils/href-replace";
 import { logRoutesTable } from "./utils/log";
 import { ReadOncePersistedStore } from "./utils/read-once-persisted-store";
 import { getRouteVirtualFileName } from "./utils/route";
@@ -863,13 +866,12 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           return;
         }
 
+        let result!: HrefReplacements;
         try {
-          const replacements = findHrefReplacements(
-            code,
-            this.parse(code, { lang: "js" }),
-          );
+          result = findHrefReplacements(code, this.parse(code, { lang: "js" }));
+          const { replacements, error } = result;
 
-          if (replacements.length) {
+          if (!error && replacements.length) {
             const helpers = new Map<string, string>();
             const { RolldownMagicString } = await loadViteRolldown();
             const s = new RolldownMagicString(code);
@@ -898,8 +900,6 @@ export default function markoRun(opts: Options = {}): Plugin[] {
                   map: s.generateMap({ hires: "boundary" }).toString(),
                 };
           }
-
-          return null;
         } catch (error) {
           // The module ships unoptimized with the client runtime for `Run`,
           // but a regression in this pass must not be invisible.
@@ -910,6 +910,9 @@ export default function markoRun(opts: Options = {}): Plugin[] {
             map: null,
           };
         }
+
+        if (result.error) this.error(result.error.message, result.error.pos);
+        return null;
       },
 
       generateBundle(options, bundle) {

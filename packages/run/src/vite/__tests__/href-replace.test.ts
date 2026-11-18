@@ -11,7 +11,7 @@ function apply(code: string) {
     astType: "js",
     sourceType: "module",
   });
-  const replacements = findHrefReplacements(code, ast.program);
+  const { replacements } = findHrefReplacements(code, ast.program);
   if (replacements.length) {
     const s = new RolldownMagicString(code);
     for (const { edits } of replacements) {
@@ -87,6 +87,31 @@ describe("href-replace", () => {
       assert.equal(
         apply('Run.href("/a${x/$id", { params: { id } })'),
         "href_path`/a\\${x/${id}`",
+      );
+    });
+  });
+
+  describe("rejected params", () => {
+    function error(code: string) {
+      const ast = parseSync("test.js", code, {
+        astType: "js",
+        sourceType: "module",
+      });
+      return findHrefReplacements(code, ast.program).error;
+    }
+
+    it("reports a static empty param at the call", () => {
+      const code = `x; Run.href("/$a/$b", { params: { a: "", b: "evil.com" } })`;
+      assert.deepEqual(error(code), {
+        message: 'Invalid param ""',
+        pos: code.indexOf("Run.href"),
+      });
+    });
+
+    it("reports a static dot param at the call", () => {
+      assert.deepEqual(
+        error(`Run.href("/admin/$a/x", { params: { a: ".." } })`),
+        { message: 'Invalid param ".."', pos: 0 },
       );
     });
   });

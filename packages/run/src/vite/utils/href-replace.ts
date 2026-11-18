@@ -29,6 +29,13 @@ export type HrefReplacement =
       edits: HrefEdit[];
     };
 
+export interface HrefReplacements {
+  /** Source edits to apply, grouped by call site. */
+  replacements: HrefReplacement[];
+  /** A call whose params cannot be built; the build fails with it. */
+  error?: { message: string; pos: number };
+}
+
 interface ParsedPath {
   /** Static segments alternating with param slots: [static, static, ...]. */
   segments: string[];
@@ -40,7 +47,7 @@ interface ParsedPath {
  * Walk an ESTree AST and find `Run.href(pathString, options?)` call
  * expressions that can be optimized.
  *
- * Returns an array of surgical replacements (multiple per call site)
+ * Returns surgical replacements (multiple per call site)
  * that can be applied via magic string.
  *
  * Optimization tiers:
@@ -66,8 +73,9 @@ interface ParsedPath {
 export function findHrefReplacements(
   code: string,
   ast: ESTree.Program,
-): HrefReplacement[] {
+): HrefReplacements {
   const replacements: HrefReplacement[] = [];
+  let error: HrefReplacements["error"];
   const consumed: HrefEdit[] = [];
   const add = (replacement: HrefReplacement) => {
     replacements.push(replacement);
@@ -90,7 +98,7 @@ export function findHrefReplacements(
   };
 
   if (hasRunBinding(ast)) {
-    return replacements;
+    return { replacements };
   }
 
   walk(ast, (node: ESTree.Node) => {
@@ -165,14 +173,17 @@ export function findHrefReplacements(
       typeof optionsObject === "object" &&
       !Array.isArray(optionsObject)
     ) {
+      let url: string;
+      try {
+        url = href(pathString, optionsObject);
+      } catch (err) {
+        error ??= { message: (err as Error).message, pos: node.start };
+        return;
+      }
       add({
         helper: false,
         edits: [
-          {
-            start: node.start,
-            end: node.end,
-            code: JSON.stringify(href(pathString, optionsObject)),
-          },
+          { start: node.start, end: node.end, code: JSON.stringify(url) },
         ],
       });
       return;
@@ -275,7 +286,7 @@ export function findHrefReplacements(
     });
   });
 
-  return replacements;
+  return { replacements, error };
 }
 
 function isRunHrefCallee(callee: ESTree.Node): boolean {
