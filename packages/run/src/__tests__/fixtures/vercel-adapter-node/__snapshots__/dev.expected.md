@@ -33,3 +33,6 @@ ctx=>click(ctx)
 
 ```
 
+# Step 3
+ctx=>keepsServing(ctx)
+

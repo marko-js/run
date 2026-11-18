@@ -39,19 +39,31 @@ const headerRoutes = JSON.parse(
   fs.readFileSync(path.join(outputDir, "config.json"), "utf8"),
 ).routes.filter((route) => route.src && route.headers && route.continue);
 
+// Only the pathname is read, so any origin works as the base.
+const origin = "http://localhost";
+
 const serveStatic = createStaticServe(staticDir, {
   index: false,
   redirect: false,
   cacheControl: false,
   setHeaders(res) {
     res.setHeader("cache-control", "public, max-age=0, must-revalidate");
-    const { pathname } = new URL(res.req.url, "http://localhost");
-    for (const route of headerRoutes) {
-      if (new RegExp(route.src).test(pathname)) {
-        for (const [key, value] of Object.entries(route.headers)) {
-          res.setHeader(key, value);
+    try {
+      // The request target is read as a path, so one starting with `//` is
+      // not taken for a host.
+      const { url } = res.req;
+      const { pathname } = new URL(
+        url[0] === "/" ? origin + url : `${origin}/${url}`,
+      );
+      for (const route of headerRoutes) {
+        if (new RegExp(route.src).test(pathname)) {
+          for (const [key, value] of Object.entries(route.headers)) {
+            res.setHeader(key, value);
+          }
         }
       }
+    } catch {
+      // Extra headers are best effort; a bad path must not stop the server.
     }
   },
 });
