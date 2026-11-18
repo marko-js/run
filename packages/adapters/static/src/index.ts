@@ -126,7 +126,7 @@ export default function staticAdapter(options: Options = {}): Adapter {
 
       const pathsToVisit: string[] = [];
       for (const route of routes.list) {
-        if (!route.path.params || !Object.keys(route.path.params).length) {
+        if (!route.path.segments.some(isDynamicSegment)) {
           pathsToVisit.push(route.path.path);
         }
       }
@@ -235,4 +235,8 @@ function forceStatus(res: ServerResponse, status: number) {
       args,
     );
   } as ServerResponse["writeHead"];
+}
+
+function isDynamicSegment(segment: string) {
+  return segment === "$" || segment === "$$";
 }
