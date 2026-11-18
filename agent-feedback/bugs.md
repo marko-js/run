@@ -372,7 +372,7 @@ With `build.manifest` enabled on an environment (e.g. `@cloudflare/vite-plugin` 
 
 `packages/run/src/__tests__/fixtures/adapter-is-entry/customAdapter.ts` › `default` | 2026-10-16 | impact:low | effort:med
 
-The fixture's client component never hydrates (each `click` step leaves the button at `0`), failing both `dev` and `preview`, when the repository sits under a dot-directory such as `~/work/x/.worktrees/topic/run` or `~/work/x/.tmp/run`. The same commit (`0e72c34`) passes once the worktree is moved to a path without a dot segment, and every other client-component fixture passes in both locations. Likely something on this fixture's custom-adapter entry path (`customAdapter.ts`) filters or resolves client assets with a glob or ignore rule that skips dot-directories; not isolated further.
+The fixture's client component never hydrates (each `click` step leaves the button at `0`), failing both `dev` and `preview`, when the repository sits under a dot-directory such as `~/work/x/.worktrees/topic/run` or `~/work/x/.tmp/run`. The same commit (`0e72c34`) passes once the worktree is moved to a path without a dot segment, and every other client-component fixture passes in both locations. Cause: `isEntryTemplate` tests the absolute template path with `micromatch.isMatch(template, "**/src/pages/**/*.marko")`, and micromatch's `**` skips dot segments, so `src/pages/page.marko` is never an entry and no client bundle is emitted. Passing `{ dot: true }` or matching the path relative to the root would fix it.
 
 ## Key the Marko compile cache by file path, not optimized template id
 
