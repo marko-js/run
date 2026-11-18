@@ -606,7 +606,7 @@ When a route has both a page and a `POST` handler, the handler calling `next()` 
 })>Members</a>
 ```
 
-The path is typed against your application's routes, `params` is required exactly when the path has dynamic segments (catch-all `$$` params also accept arrays), and all values are URI-encoded. In client builds, the Vite plugin rewrites statically analyzable `Run.href(...)` calls at compile time, so most calls cost nothing at runtime.
+The path is typed against your application's routes, `params` is required exactly when the path has dynamic segments (catch-all `$$` params also accept arrays), and all values are URI-encoded. A param that is empty, `.` or `..` (or a catch-all item that is) throws, because it would change which path the URL points to; only the last param, when it ends the path, may be empty (`""`, `[]` or `[""]`). In client builds, the Vite plugin rewrites statically analyzable `Run.href(...)` calls at compile time, so most calls cost nothing at runtime.
 
 ## Vite Plugin
 

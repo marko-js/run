@@ -279,6 +279,54 @@ describe("url-builder", () => {
 
 // The client-build rewrite hands `Run.href(path, opts)` to these helpers
 // without `href`'s own nullish guard, so they must tolerate it themselves.
+describe("rejected path segments", () => {
+  const invalid = /Invalid param/;
+
+  it("rejects an empty param that is not last", () => {
+    assert.throws(() => href_path`/${""}/${"evil.com"}`, invalid);
+  });
+
+  it("rejects an empty param before static text", () => {
+    assert.throws(() => href_path`/${""}/x`, invalid);
+  });
+
+  it("rejects an empty catch-all item", () => {
+    assert.throws(() => href_path`/${["", "evil.com"]}`, invalid);
+    assert.throws(() => href_path`/a/${["b", ""]}`, invalid);
+  });
+
+  it("rejects an empty catch-all that is not last", () => {
+    assert.throws(() => href_path`/${[]}/${"evil.com"}`, invalid);
+    assert.throws(
+      () => href("/$a/x" as any, { params: { a: [] } } as any),
+      invalid,
+    );
+  });
+
+  it("rejects dot segments", () => {
+    assert.throws(() => href_path`/admin/${".."}/x`, invalid);
+    assert.throws(() => href_path`/admin/${"."}`, invalid);
+    assert.throws(() => href_path`/tags/${["a", ".."]}`, invalid);
+  });
+
+  it("rejects through every helper", () => {
+    const options = { params: { a: "", b: "evil.com" } };
+    assert.throws(() => href("/$a/$b" as any, options as any), invalid);
+    assert.throws(() => href_keys`${options}/${"a"}/${"b"}`, invalid);
+    assert.throws(() => href_values`${{}}/${""}/${"b"}`, invalid);
+  });
+
+  it("allows an empty final param so a catch-all can link to its parent", () => {
+    assert.equal(href_path`/docs/${""}`, "/docs/");
+    assert.equal(href_path`/docs/${[]}`, "/docs/");
+    assert.equal(href_path`/docs/${[""]}`, "/docs/");
+  });
+
+  it("keeps dots inside a longer segment", () => {
+    assert.equal(href_path`/files/${"a.b"}/${"..."}`, "/files/a.b/...");
+  });
+});
+
 describe("nullish options", () => {
   it("href returns the path for a nullish options argument", () => {
     assert.equal(href("/about", undefined as any), "/about");
