@@ -1,5 +1,13 @@
 # @marko/run
 
+## 0.11.18
+
+### Patch Changes
+
+- 8e3c1c2: Fix `Run.href` with an options literal inside a handler's return making the handler's type circular (`TS7022`).
+- 7743493: Fix `Run.href` calls left in client builds (`Run is not defined`) when an app installs more than one Rolldown version.
+- 267bfba: Require Vite 8.3.7 or later, which fixes a dev server vulnerability ([GHSA-p4f5-76q4-ffq7](https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7)).
+
 ## 0.11.17
 
 ### Patch Changes
