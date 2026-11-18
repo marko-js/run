@@ -135,16 +135,19 @@ export default function createCrawler(
             return { path, status, ok: true };
           }
 
-          redirect = resolvePathWithHash(location, url);
+          redirect = resolveRedirect(location, url);
+          if (redirect === undefined) {
+            console.warn(
+              `${kleur.yellow("Skipped")} ${path}: redirects to ${location}, which is not an http(s) URL`,
+            );
+            abortController.abort();
+            return { path, status, ok: true };
+          }
 
-          if (redirect) {
-            const redirectPath = resolvePath(location, url, opts.trailingSlash);
-            if (redirectPath && !seen.has(redirectPath)) {
-              seen.add(redirectPath);
-              queue.push(visit(redirectPath));
-            }
-          } else {
-            redirect = location;
+          const redirectPath = resolvePath(location, url, opts.trailingSlash);
+          if (redirectPath && !seen.has(redirectPath)) {
+            seen.add(redirectPath);
+            queue.push(visit(redirectPath));
           }
           break;
         }
@@ -161,8 +164,9 @@ export default function createCrawler(
 
       if (redirect) {
         if (path !== notFoundPath) {
-          const html = `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${redirect.replace(/"/g, "&#40;")}">`;
-          pageWriter.write(html);
+          pageWriter.write(
+            `<!DOCTYPE html><meta http-equiv=Refresh content="0;url=${escapeAttr(redirect)}">`,
+          );
         }
       } else if (res.body) {
         await res.body.pipeTo(
@@ -356,14 +360,42 @@ function resolveUrl(href: string, base: URL) {
   }
 }
 
+/**
+ * Files keep their path; `/` is the same with and without a trailing slash.
+ * Repeated slashes collapse, as static hosts serve `//x/` as `/x/`.
+ */
 function resolvePath(href: string, base: URL, trailingSlash?: TrailingSlash) {
   const url = resolveUrl(href, base);
-  return url && withCanonicalSlash(url.pathname, trailingSlash) + url.search;
+  if (!url) return;
+  const pathname = url.pathname.replace(/\/\/+/g, "/");
+  return (
+    (!trailingSlash || pathname === "/" || /\.\w+$/.test(pathname)
+      ? pathname
+      : trailingSlash === "remove"
+        ? withoutTrailingSlash(pathname)
+        : pathname.endsWith("/")
+          ? pathname
+          : pathname + "/") + url.search
+  );
 }
 
-function resolvePathWithHash(href: string, base: URL) {
-  const url = resolveUrl(href, base);
-  return url && url.pathname + url.search + url.hash;
+/**
+ * What a redirect page points at, or `undefined` when no page should be
+ * written. Same-origin targets stay paths; the `/.` keeps `//x` from reading as
+ * another host. Off-origin targets must be http(s).
+ */
+function resolveRedirect(location: string, base: URL) {
+  const url = resolveUrl(location, base);
+  if (url) {
+    const path = url.pathname + url.search + url.hash;
+    return path.startsWith("//") ? "/." + path : path;
+  }
+  const protocol = URL.parse(location, base)?.protocol;
+  return protocol === "http:" || protocol === "https:" ? location : undefined;
+}
+
+function escapeAttr(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
 /**
@@ -373,16 +405,4 @@ function resolvePathWithHash(href: string, base: URL) {
  */
 function withoutTrailingSlash(path: string) {
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-}
-
-/** Files keep their path; `/` is the same with and without a trailing slash. */
-function withCanonicalSlash(pathname: string, trailingSlash?: TrailingSlash) {
-  if (!trailingSlash || pathname === "/" || /\.\w+$/.test(pathname)) {
-    return pathname;
-  }
-  return trailingSlash === "remove"
-    ? withoutTrailingSlash(pathname)
-    : pathname.endsWith("/")
-      ? pathname
-      : pathname + "/";
 }
