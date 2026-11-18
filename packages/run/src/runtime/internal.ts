@@ -620,17 +620,32 @@ function toResponseBody(
   );
 }
 
-function searchParamsToObject(params: URLSearchParams | FormData) {
+function searchParamsToObject(params: Iterable<[string, any]>) {
   const obj: Record<string, any> = {};
   for (const [key, value] of params) {
-    if (key in obj) {
+    if (Object.hasOwn(obj, key)) {
       const prev = obj[key];
-      obj[key] = Array.isArray(prev) ? [...prev, value] : [prev, value];
+      if (Array.isArray(prev)) prev.push(value);
+      else obj[key] = [prev, value];
     } else {
-      obj[key] = value;
+      // Defined rather than assigned so keys like `__proto__` stay plain data.
+      Object.defineProperty(obj, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
   }
   return obj;
+}
+
+// `a` parses the same as `a=`; spelling out the `=` keeps parse time linear.
+// The leading `&` stops `URLSearchParams` from stripping a `?` from the first key.
+function parseUrlEncoded(body: string) {
+  return new URLSearchParams(
+    "&" + body.replace(/(^|&)([^&=]+)(?=&|$)/g, "$1$2="),
+  );
 }
 
 // Failures here are the client's fault, so they throw status-stamped errors
@@ -749,7 +764,7 @@ async function readBody(route: RouteMatch, context: Context) {
             },
             onFile ? (file) => onFile!(context, file) : undefined,
           )
-        : new URLSearchParams(await readBodyWithLimit(request, maxBytes)),
+        : parseUrlEncoded(await readBodyWithLimit(request, maxBytes)),
     );
   } catch (error) {
     if (
