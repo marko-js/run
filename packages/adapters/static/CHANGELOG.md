@@ -1,5 +1,11 @@
 # @marko/run-adapter-static
 
+## 2.0.12
+
+### Patch Changes
+
+- 8590024: Write each page once under `RewriteWith` and `RewriteWithout`, in the form the option prefers, instead of both `foo.html` and `foo/index.html` depending on how pages link to it.
+
 ## 2.0.11
 
 ### Patch Changes
