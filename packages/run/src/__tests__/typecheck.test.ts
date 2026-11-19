@@ -4,7 +4,13 @@ import { createRequire } from "module";
 import path from "path";
 import url from "url";
 
-import type { Context, Route, RouteDef } from "../runtime/types";
+import type {
+  Context,
+  LayoutInput,
+  Route,
+  RouteDef,
+  Template,
+} from "../runtime/types";
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -28,7 +34,34 @@ export type Cases = [
   >,
   Expect<Equal<Route["body"], undefined | Promise<unknown>>>,
   Expect<Equal<Context<Route<RouteDef<"/x", "GET">>>["body"], undefined>>,
+  // A layout takes its body by the API it is written in: a class API
+  // template has its `Component`, and an older one exports its `"~api"`.
+  Expect<
+    Equal<
+      Layout<{ default: Marko.Template<object> & { Component: unknown } }>,
+      { renderBody: Marko.Body }
+    >
+  >,
+  Expect<
+    Equal<Layout<{ default: Marko.Template<object> }>, { content: Marko.Body }>
+  >,
+  Expect<
+    Equal<
+      Layout<{ default: Marko.Template<object>; "~api": "class" }>,
+      { renderBody: Marko.Body }
+    >
+  >,
+  Expect<
+    Equal<
+      Layout<{ default: { Component: unknown }; "~api": "tags" }>,
+      { content: Marko.Body }
+    >
+  >,
+  // An untyped template takes the installed runtime's (Marko 5 here).
+  Expect<Equal<Layout<any>, { renderBody: Marko.Body }>>,
+  Expect<Equal<Layout<{ default: any }>, { renderBody: Marko.Body }>>,
 ];
+type Layout<Module> = LayoutInput<Template<"L1", Module>>;
 
 describe("test sources type-check", () => {
   // The package build excludes `__tests__`, so this compile is what makes

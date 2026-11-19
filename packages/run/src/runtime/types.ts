@@ -1178,16 +1178,25 @@ export interface RuntimeModule {
     ...args: Parameters<Invoke<TPlatform>>
   ): ReturnType<Invoke<TPlatform>>;
 }
-type TemplateAPI<T> = T extends {
-  "~api": infer API;
-}
+/**
+ * The API a route's template is written in: a class API template has its
+ * `Component`. An untyped one takes the installed runtime's.
+ */
+type TemplateAPI<T> = T extends { "~api": infer API }
   ? API
-  : keyof Exclude<
-        Marko.Renderable,
-        Marko.Template<any, any> | Marko.Body<any, any> | string
-      > extends "content"
-    ? "tags"
-    : "class";
+  : T extends { default: infer Template }
+    ? 0 extends 1 & Template
+      ? RuntimeAPI
+      : Template extends { Component: any }
+        ? "class"
+        : "tags"
+    : RuntimeAPI;
+type RuntimeAPI = keyof Exclude<
+  Marko.Renderable,
+  Marko.Template<any, any> | Marko.Body<any, any> | string
+> extends "content"
+  ? "tags"
+  : "class";
 /** Input of a `+layout` template: `content` (tags API) or `renderBody` (class API). */
 export type LayoutInput<F extends File> =
   TemplateAPI<F["module"]> extends "tags"
