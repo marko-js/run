@@ -1,6 +1,6 @@
 import assert from "assert";
 import http from "http";
-import type { AddressInfo } from "net";
+import net, { type AddressInfo } from "net";
 
 import {
   copyResponseHeaders,
@@ -187,6 +187,163 @@ describe("Adapter Middleware", () => {
         }
       });
     }
+
+    describe("origin headers", () => {
+      function send(port: number, headers: Record<string, string>) {
+        return new Promise<number>((resolve, reject) =>
+          http
+            .request({ port, host: "127.0.0.1", path: "/public", headers })
+            .on("response", (res) => {
+              res.resume().on("end", () => resolve(res.statusCode!));
+            })
+            .on("error", reject)
+            .end(),
+        );
+      }
+
+      const rejected: [string, Record<string, string>][] = [
+        ["a path in Host", { host: "localhost/admin?" }],
+        ["a port and fragment in Host", { host: "localhost:80/admin#" }],
+        ["a backslash in Host", { host: "evil.example\\admin?" }],
+        ["a query in Host", { host: "localhost?" }],
+        ["a fragment in Host", { host: "localhost#" }],
+        ["userinfo in Host", { host: "user:pass@localhost" }],
+        ["a tab in Host", { host: "local\thost" }],
+        ["an out of range port in Host", { host: "localhost:99999" }],
+        ["a malformed IPv6 literal in Host", { host: "[:::]" }],
+        ["a percent escape in Host", { host: "local%2fhost" }],
+        [
+          "a path in X-Forwarded-Host",
+          { "x-forwarded-host": "localhost/admin?" },
+        ],
+        ["a script protocol", { "x-forwarded-proto": "javascript" }],
+        [
+          "a protocol with a path",
+          { "x-forwarded-proto": "https://evil.example/?" },
+        ],
+      ];
+
+      for (const [name, headers] of rejected) {
+        it(`should answer 400 without calling fetch for ${name}`, async () => {
+          let called = false;
+          const server = await serve(
+            async () => {
+              called = true;
+              return new Response(null, { status: 204 });
+            },
+            { trustProxy: true },
+          );
+
+          try {
+            assert.equal(await send(server.port, headers), 400);
+            assert.equal(called, false);
+          } finally {
+            await server.close();
+          }
+        });
+      }
+
+      it("should answer 400 without passing the error to next", async () => {
+        const server = await serveWithNext(async () => new Response(null));
+
+        try {
+          const status = await send(server.port, { host: "localhost?" });
+          assert.equal(status, 400);
+          assert.equal(server.passedToNext, undefined);
+        } finally {
+          await server.close();
+        }
+      });
+
+      it("should answer 400 when Host is missing outside development", async () => {
+        let called = false;
+        const server = await serve(async () => {
+          called = true;
+          return new Response(null, { status: 204 });
+        });
+
+        try {
+          // HTTP/1.0 because node itself answers an HTTP/1.1 request without Host.
+          const head = await new Promise<string>((resolve, reject) => {
+            let data = "";
+            const socket = net.connect(server.port, "127.0.0.1", () =>
+              socket.end("GET /public HTTP/1.0\r\n\r\n"),
+            );
+            socket
+              .setEncoding("utf8")
+              .on("data", (chunk) => (data += chunk))
+              .on("end", () => resolve(data))
+              .on("error", reject);
+          });
+          assert.match(head, /^HTTP\/1\.1 400 /);
+          assert.equal(called, false);
+        } finally {
+          await server.close();
+        }
+      });
+
+      const accepted: [
+        string,
+        Record<string, string>,
+        string,
+        NodeMiddlewareOptions?,
+      ][] = [
+        [
+          "a host and port",
+          { host: "localhost:3000" },
+          "http://localhost:3000/public",
+        ],
+        [
+          "a port with leading zeros",
+          { host: "localhost:00080" },
+          "http://localhost/public",
+        ],
+        ["an IPv6 literal", { host: "[::1]:3000" }, "http://[::1]:3000/public"],
+        [
+          "a mixed case host",
+          { host: "LOCALHOST:80" },
+          "http://localhost/public",
+        ],
+        [
+          "a forwarded protocol and host",
+          {
+            "x-forwarded-proto": "HTTPS",
+            "x-forwarded-host": "example.com:8443",
+          },
+          "https://example.com:8443/public",
+          { trustProxy: true },
+        ],
+        [
+          "a padded forwarded host list",
+          { "x-forwarded-host": "example.com , other.example" },
+          "http://example.com/public",
+          { trustProxy: true },
+        ],
+        [
+          "a configured origin with an invalid Host",
+          { host: "localhost/admin?" },
+          "http://app.example/public",
+          { origin: "http://app.example" },
+        ],
+      ];
+
+      for (const [name, headers, expected, options] of accepted) {
+        it(`should derive the origin from ${name}`, async () => {
+          let url = "";
+          const server = await serve(async (request) => {
+            url = request.url;
+            return new Response(null, { status: 204 });
+          }, options);
+
+          try {
+            assert.equal(await send(server.port, headers), 204);
+            assert.equal(url, expected);
+          } finally {
+            await server.close();
+          }
+        });
+      }
+    });
 
     it("should pass createPlatform the request handed to fetch and fetch its result", async () => {
       let platformRequest: Request | undefined;

@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 
 import { IncomingMessage, ServerResponse } from "http";
+import { isIPv6 } from "net";
 import type { TLSSocket } from "tls";
 
 import type { Fetch, Platform } from "../runtime";
@@ -26,7 +27,8 @@ export interface NodeMiddlewareOptions {
    * The protocol is `X-Forwarded-Proto` (if `trustProxy` is set),
    * else `https` for a TLS socket, else `req.protocol`, else `http`.
    * The hostname is `X-Forwarded-Host` (if `trustProxy` is set)
-   * or the `Host` header.
+   * or the `Host` header. A request whose protocol or host is not a valid
+   * `http(s)` scheme and `host[:port]` is answered with a 400.
    */
   origin?: string;
   /**
@@ -45,7 +47,11 @@ export interface NodeMiddlewareOptions {
   createPlatform?(platform: NodePlatformInfo, request: Request): Platform;
 }
 
-export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
+/** Returns `null` when the protocol or host headers are not a valid origin. */
+export function getOrigin(
+  req: IncomingMessage,
+  trustProxy?: boolean,
+): string | null {
   const protocol =
     (trustProxy && getForwardedHeader(req, "proto")) ||
     ((req.socket as TLSSocket).encrypted && "https") ||
@@ -62,14 +68,20 @@ export function getOrigin(req: IncomingMessage, trustProxy?: boolean): string {
         `Could not automatically determine the origin host, using 'localhost'. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`,
       );
     } else {
-      throw new Error(
-        `Could not automatically determine the origin host. Use the 'origin' option or the 'ORIGIN' environment variable to set the origin explicitly.`,
-      );
+      return null;
     }
   }
 
-  return `${protocol}://${host}`;
+  const origin = `${protocol}://${host}`;
+  const match = originPattern.exec(origin);
+  return match && (!match[1] || isIPv6(match[1])) ? origin : null;
 }
+
+// `http(s)://host[:port]` with an RFC 3986 host: a bracketed IPv6 literal
+// (captured) or reg-name characters. Checked on the final values because
+// Express's `req.protocol` can echo the header.
+const originPattern =
+  /^https?:\/\/(?:\[([0-9a-f:.]+)\]|[a-z0-9\-._~!$&'()*+,;=]+)(?::0*(?:\d{1,4}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d\d|655[0-2]\d|6553[0-5])?)?$/i;
 
 export function copyResponseHeaders(
   response: ServerResponse,
@@ -141,6 +153,13 @@ export function createMiddleware(
       // The request target is read as a path, so one like `//evil.example/` or
       // `http://evil.example/` cannot change the host.
       const base = origin || getOrigin(req, trustProxy);
+      if (!base) {
+        res
+          .writeHead(400, { "content-length": "0", connection: "close" })
+          .end();
+        return;
+      }
+
       const url = new URL(
         req.url![0] === "/" ? base + req.url : `${base}/${req.url}`,
       );
@@ -314,9 +333,9 @@ function getForwardedHeader(req: IncomingMessage, name: string) {
   if (value) {
     if (typeof value === "string") {
       const index = value.indexOf(",");
-      return index < 0 ? value : value.slice(0, index);
+      return (index < 0 ? value : value.slice(0, index)).trim();
     }
-    return value[0];
+    return value[0].trim();
   }
 }
 
