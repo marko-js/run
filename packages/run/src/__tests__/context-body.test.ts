@@ -184,3 +184,127 @@ describe("form field parsing", () => {
     }).timeout(60_000);
   }
 });
+
+function chunkedContext(
+  chunks: Uint8Array[],
+  options: Parameters<typeof normalizeOptions>[1],
+  contentType: string,
+) {
+  const route: RouteMatch = {
+    handler: async () => new Response(),
+    path: "/notes",
+    params: {},
+    options: normalizeOptions("POST", options),
+    meta: {},
+  };
+  const request = new Request("http://test/notes", {
+    method: "POST",
+    headers: { "content-type": contentType },
+    body: new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk);
+        controller.close();
+      },
+    }),
+    // @ts-expect-error: Node requires this for streams
+    duplex: "half",
+  });
+  return createContext(route, request, {});
+}
+
+const errorStatus = (error: any) => error[Symbol.for("@marko/run.errorStatus")];
+
+describe("body reading", () => {
+  const json = { json: (value: unknown) => value } as any;
+  const bytes = new TextEncoder().encode('{"title":"héllo €"}');
+  const euro = bytes.indexOf(0xe2);
+
+  it("should decode a character split across chunks", async () => {
+    const body = await chunkedContext(
+      [bytes.subarray(0, euro + 1), bytes.subarray(euro + 1)],
+      json,
+      "application/json",
+    ).body;
+    assert.deepEqual(body, { title: "héllo €" });
+  });
+
+  it("should decode a urlencoded body read in many chunks", async () => {
+    const encoded = new TextEncoder().encode("a=1&b=%C3%A9&c=é");
+    const chunks = [...encoded].map((byte) => Uint8Array.of(byte));
+    const body = await chunkedContext(
+      chunks,
+      identity,
+      "application/x-www-form-urlencoded",
+    ).body;
+    assert.deepEqual({ ...(body as object) }, { a: "1", b: "é", c: "é" });
+  });
+
+  it("should answer 413 once the chunks pass the limit", async () => {
+    await assert.rejects(
+      () =>
+        chunkedContext(
+          [bytes.subarray(0, 8), bytes.subarray(8)],
+          { json: { maxBytes: 10, validator: json.json } } as any,
+          "application/json",
+        ).body!,
+      (error) => errorStatus(error) === 413,
+    );
+  });
+
+  it("should answer 400 for malformed UTF-8", async () => {
+    await assert.rejects(
+      () =>
+        chunkedContext(
+          [Uint8Array.of(0x7b, 0xff, 0x7d)],
+          json,
+          "application/json",
+        ).body!,
+      (error) => errorStatus(error) === 400,
+    );
+  });
+
+  it("should stop reading the body once it is rejected", async () => {
+    for (const [options, chunk, status] of [
+      [json, Uint8Array.of(0xff), 400],
+      [{ json: { maxBytes: 4, validator: json.json } }, bytes, 413],
+    ] as const) {
+      let cancelled = false;
+      const request = new Request("http://test/notes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // Never closes, so only a cancel ends the read.
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(chunk);
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+        // @ts-expect-error: Node requires this for streams
+        duplex: "half",
+      });
+      const route: RouteMatch = {
+        handler: async () => new Response(),
+        path: "/notes",
+        params: {},
+        options: normalizeOptions("POST", options as any),
+        meta: {},
+      };
+      await assert.rejects(
+        () => createContext(route, request, {}).body!,
+        (error) => errorStatus(error) === status,
+      );
+      assert.equal(cancelled, true);
+    }
+  });
+
+  it("should answer 400 for a character cut off at the end", async () => {
+    await assert.rejects(
+      () =>
+        chunkedContext([bytes.subarray(0, euro + 1)], json, "application/json")
+          .body!,
+      (error) => errorStatus(error) === 400,
+    );
+  });
+});

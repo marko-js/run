@@ -650,51 +650,60 @@ function parseUrlEncoded(body: string) {
 
 // Failures here are the client's fault, so they throw status-stamped errors
 // (see `kErrorStatus`) instead of surfacing as server errors.
-// Fatal decode, so malformed UTF-8 is a client error rather than U+FFFD noise.
-const bodyDecoder = new TextDecoder("utf-8", { fatal: true });
-
 async function readBodyWithLimit(request: Request, maxBytes: number) {
-  let bytes: ArrayBuffer | Uint8Array;
+  // One per request: a streaming decoder holds a partial character between reads.
+  const decoder = new TextDecoder("utf-8", { fatal: true });
 
   if (maxBytes < 0) {
-    bytes = await request.arrayBuffer();
-  } else {
-    const contentLength = request.headers.get("content-length");
-
-    if (contentLength !== null && Number(contentLength) > maxBytes) {
-      throw clientError("Request body too large", 413);
-    }
-
-    if (!request.body) {
-      throw clientError("Missing request body", 400);
-    }
-
-    const reader = request.body.getReader();
-    const buffer = new Uint8Array(maxBytes);
-    let receivedBytes = 0;
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        if (receivedBytes + value.byteLength > maxBytes) {
-          await reader.cancel();
-          throw clientError("Request body too large", 413);
-        }
-
-        buffer.set(value, receivedBytes);
-        receivedBytes += value.byteLength;
-      }
-    } finally {
-      reader.releaseLock();
-    }
-
-    bytes = buffer.subarray(0, receivedBytes);
+    return decodeBody(decoder, await request.arrayBuffer());
   }
 
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength !== null && Number(contentLength) > maxBytes) {
+    throw clientError("Request body too large", 413);
+  }
+
+  if (!request.body) {
+    throw clientError("Missing request body", 400);
+  }
+
+  const reader = request.body.getReader();
+  let text = "";
+  let receivedBytes = 0;
+
   try {
-    return bodyDecoder.decode(bytes);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      receivedBytes += value.byteLength;
+      if (receivedBytes > maxBytes) {
+        throw clientError("Request body too large", 413);
+      }
+
+      text += decodeBody(decoder, value, true);
+    }
+  } catch (error) {
+    // The rest of the upload would otherwise hold the connection open.
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Flushes, rejecting a character cut off at the end.
+  return text + decodeBody(decoder);
+}
+
+// Fatal decode, so malformed UTF-8 is a client error rather than U+FFFD noise.
+function decodeBody(
+  decoder: TextDecoder,
+  bytes?: AllowSharedBufferSource,
+  stream = false,
+) {
+  try {
+    return decoder.decode(bytes, { stream });
   } catch (error) {
     throw clientError("Invalid request body encoding", 400, error);
   }
