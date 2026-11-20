@@ -186,6 +186,9 @@ export function createContext(
       }
 
       if (context.method === "HEAD") {
+        // HEAD skips the render, so nothing awaits the promises handed to it.
+        handleUnrendered(context.data);
+        handleUnrendered(input);
         return new Response(null, init);
       }
 
@@ -618,6 +621,16 @@ function toResponseBody(
     },
     { highWaterMark: 0 },
   );
+}
+
+function handleUnrendered(values: unknown) {
+  if (values && typeof values === "object") {
+    for (const value of Object.values(values)) {
+      if (typeof (value as PromiseLike<unknown>)?.then === "function") {
+        (value as PromiseLike<unknown>).then(undefined, () => {});
+      }
+    }
+  }
 }
 
 function searchParamsToObject(params: Iterable<[string, any]>) {
