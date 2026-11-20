@@ -85,9 +85,10 @@ export function href_keys(
   return href_values(strings, options, ...keys.map((k) => options!.params[k]));
 }
 
-// Rejects values that would turn the segment into `//`, `.` or `..`.
+// Rejects a missing param, and values that would turn the segment into `//`,
+// `.` or `..`.
 function encodeParam(param: string | number) {
-  if (param === "" || param === "." || param === "..") {
+  if (param == null || param === "" || param === "." || param === "..") {
     throw new TypeError(`Invalid param "${param}"`);
   }
   return encode(param);
