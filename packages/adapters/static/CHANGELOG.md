@@ -1,5 +1,12 @@
 # @marko/run-adapter-static
 
+## 2.0.13
+
+### Patch Changes
+
+- 6c9b255: Write redirect pages as same-origin paths or http(s) URLs only, and crawl a path with repeated slashes as the path a static host serves for it.
+- ec35aab: Stop writing pages for the literal paths of unnamed `$` and `$$` routes, such as `products/$.html`; those routes are still built for the paths that link to them.
+
 ## 2.0.12
 
 ### Patch Changes

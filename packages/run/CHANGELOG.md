@@ -1,5 +1,17 @@
 # @marko/run
 
+## 0.11.19
+
+### Patch Changes
+
+- 8085d71: Parse repeated form and query fields in linear time, and keep field names such as `__proto__` and `toString` as plain own properties.
+- 28ca243: `Run.href` now throws when a param, or a catch-all item, is `undefined` or `null`, instead of writing it into the URL as text.
+- 82d0bdf: `Run.href` now throws when a param, or a catch-all item, is empty, `.` or `..`, instead of building a URL that points to a different path.
+- cfba43b: Read JSON and urlencoded request bodies without allocating their full size limit up front, so memory use follows the size of the body that was sent.
+- a235b3b: Type a `+layout`'s input from a class API template's `Component`, so the Marko language tools no longer need to export `"~api"` from route templates.
+- 3ed6f75: Answer requests whose `Host`, `X-Forwarded-Host` or `X-Forwarded-Proto` is missing or not a valid `http(s)` scheme and `host[:port]` with a 400, instead of joining the header text onto the request URL. `getOrigin` now returns `null` for such requests.
+- 59d0931: Send `Vary: Accept` with 404 and 500 responses that pick between the HTML error page and an empty body by `Accept`, so caches keep the two apart. The Node adapter now adds a response's `Vary` to one set by earlier middleware instead of replacing it.
+
 ## 0.11.18
 
 ### Patch Changes
