@@ -180,14 +180,15 @@ export async function invoke(route, request, platform, url) {
 		}
 
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, { status: 404 });
+      return context.render(page404, {}, { status: 404, headers: { vary: 'accept' } });
     }	
     return new Response(null, {
       status: 404,
+      headers: { vary: 'accept' },
     });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return context.render(page500, { error }, { status: 500 });
+			return context.render(page500, { error }, { status: 500, headers: { vary: 'accept' } });
 		}
 		throw error;
 	}
@@ -204,7 +205,8 @@ export async function fetch(request, platform) {
       throw error;
     }
     return new Response(null, {
-      status: 500
+      status: 500,
+      headers: { vary: 'accept' }
     });
   }
 }
