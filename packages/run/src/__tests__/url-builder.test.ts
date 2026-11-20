@@ -303,6 +303,19 @@ describe("rejected path segments", () => {
     );
   });
 
+  it("rejects a missing param", () => {
+    for (const missing of [undefined, null] as any[]) {
+      assert.throws(() => href_path`/a/${missing}/b`, invalid);
+      assert.throws(() => href_path`/docs/${missing}`, invalid);
+      assert.throws(() => href_path`/tags/${["a", missing]}`, invalid);
+      assert.throws(
+        () => href("/$a" as any, { params: { a: missing } } as any),
+        invalid,
+      );
+    }
+    assert.equal(href_path`/a/${0}`, "/a/0");
+  });
+
   it("rejects dot segments", () => {
     assert.throws(() => href_path`/admin/${".."}/x`, invalid);
     assert.throws(() => href_path`/admin/${"."}`, invalid);
