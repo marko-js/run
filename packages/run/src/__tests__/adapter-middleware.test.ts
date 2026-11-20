@@ -113,6 +113,27 @@ describe("Adapter Middleware", () => {
 
       assert.deepEqual(actual, expected);
     });
+
+    it("should add to an existing vary header", () => {
+      const res = new http.ServerResponse({ method: "GET" } as any);
+      res.setHeader("vary", "Cookie, Accept");
+
+      copyResponseHeaders(
+        res,
+        new Headers({ vary: "accept, accept-language" }),
+      );
+
+      assert.deepEqual(res.getHeader("vary"), [
+        "Cookie, Accept",
+        "accept, accept-language",
+      ]);
+    });
+
+    it("should set vary when none exists", () => {
+      const res = new http.ServerResponse({ method: "GET" } as any);
+      copyResponseHeaders(res, new Headers({ vary: "accept" }));
+      assert.equal(res.getHeader("vary"), "accept");
+    });
   });
 
   describe("getBodyReader", () => {

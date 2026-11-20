@@ -290,16 +290,17 @@ function match_internal(method, pathname) {
   if (hasNotFoundPage) {
     writer.write(`
     if (context.request.headers.get('Accept')?.includes('text/html')) {
-      return context.render(page404, {}, { status: 404 });
+      return context.render(page404, {}, { status: 404, headers: { vary: 'accept' } });
     }`);
   }
 
   writer.indent--;
 
-  if (routes.list.length) {
+  // With a 404 page the response depends on `Accept`, so caches must key on it.
+  if (routes.list.length || hasNotFoundPage) {
     writer.writeLines(`
     return new Response(null, {
-      status: 404,
+      status: 404,${hasNotFoundPage ? `\n      headers: { vary: 'accept' },` : ""}
     });`);
   }
 
@@ -309,7 +310,9 @@ function match_internal(method, pathname) {
       .writeBlockStart(
         `if (context.request.headers.get('Accept')?.includes('text/html')) {`,
       )
-      .writeLines(`return context.render(page500, { error }, { status: 500 });`)
+      .writeLines(
+        `return context.render(page500, { error }, { status: 500, headers: { vary: 'accept' } });`,
+      )
       .writeBlockEnd("}")
       .writeLines("throw error;")
       .writeBlockEnd("}");
@@ -317,7 +320,7 @@ function match_internal(method, pathname) {
 
   writer.writeBlockEnd("}");
 
-  renderFetch(writer);
+  renderFetch(writer, hasErrorPage);
 
   return writer.end();
 }
@@ -760,7 +763,7 @@ function writeRouteEntryHandler(
   writer.writeBlockEnd("}");
 }
 
-function renderFetch(writer: Writer) {
+function renderFetch(writer: Writer, hasErrorPage: boolean) {
   writer.write(`
 export async function fetch(request, platform) {
   try {
@@ -773,7 +776,7 @@ export async function fetch(request, platform) {
       throw error;
     }
     return new Response(null, {
-      status: 500
+      status: 500${hasErrorPage ? `,\n      headers: { vary: 'accept' }` : ""}
     });
   }
 }`);

@@ -88,7 +88,10 @@ export function copyResponseHeaders(
   headers: Headers,
 ) {
   for (const [key, value] of headers) {
-    if (key !== "set-cookie") {
+    // Each `Vary` token is a requirement, so one set by earlier middleware is kept.
+    if (key === "vary") {
+      response.appendHeader(key, value);
+    } else if (key !== "set-cookie") {
       response.setHeader(key, value);
     }
   }

@@ -57,7 +57,7 @@ export async function invoke(route, request, platform, url) {
     });
 	} catch (error) {
 		if (context.request.headers.get('Accept')?.includes('text/html')) {
-			return context.render(page500, { error }, { status: 500 });
+			return context.render(page500, { error }, { status: 500, headers: { vary: 'accept' } });
 		}
 		throw error;
 	}
@@ -74,7 +74,8 @@ export async function fetch(request, platform) {
       throw error;
     }
     return new Response(null, {
-      status: 500
+      status: 500,
+      headers: { vary: 'accept' }
     });
   }
 }
