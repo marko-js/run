@@ -187,8 +187,8 @@ export function createContext(
 
       if (context.method === "HEAD") {
         // HEAD skips the render, so nothing awaits the promises handed to it.
-        handleUnrendered(context.data);
-        handleUnrendered(input);
+        catchUnhandledRejections(context.data);
+        catchUnhandledRejections(input);
         return new Response(null, init);
       }
 
@@ -623,7 +623,7 @@ function toResponseBody(
   );
 }
 
-function handleUnrendered(values: unknown) {
+function catchUnhandledRejections(values: unknown) {
   if (values && typeof values === "object") {
     for (const value of Object.values(values)) {
       if (typeof (value as PromiseLike<unknown>)?.then === "function") {
