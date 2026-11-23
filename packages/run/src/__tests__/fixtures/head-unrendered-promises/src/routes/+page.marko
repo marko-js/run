@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>@marko/run Test Fixture</title>
+  </head>
+  <body>
+    <div#app>
+      <await($global.data.reviews)>
+        <@then|reviews|>${reviews}</@then>
+        <@catch>no reviews</@catch>
+      </await>
+    </div>
+  </body>
+</html>
