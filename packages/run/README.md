@@ -608,6 +608,8 @@ When a route has both a page and a `POST` handler, the handler calling `next()` 
 
 The path is typed against your application's routes, `params` is required exactly when the path has dynamic segments (catch-all `$$` params also accept arrays), and all values are URI-encoded. A param that is empty, `.` or `..` (or a catch-all item that is) throws, because it would change which path the URL points to; only the last param, when it ends the path, may be empty (`""`, `[]` or `[""]`). In client builds, the Vite plugin rewrites statically analyzable `Run.href(...)` calls at compile time, so most calls cost nothing at runtime.
 
+A `search` value that is `undefined` is omitted, and an array repeats the key (`{ tag: ["a", "b"] }` becomes `?tag=a&tag=b`), which is how `context.search` reads repeated keys back. An empty array is omitted.
+
 ## Vite Plugin
 
 This package’s Vite plugin discovers your route files, generates the routing code, and registers the `@marko/vite` plugin to compile your `.marko` files.

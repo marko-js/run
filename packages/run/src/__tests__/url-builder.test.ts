@@ -387,6 +387,60 @@ describe("nullish search values", () => {
   });
 });
 
+describe("array search values", () => {
+  it("repeats the key for each item", () => {
+    assert.equal(
+      href("/about", { search: { tag: ["a", "b"], q: "hi" } } as any),
+      "/about?tag=a&tag=b&q=hi",
+    );
+  });
+
+  it("keeps a single item as a plain value", () => {
+    assert.equal(
+      href("/about", { search: { tag: ["a"] } } as any),
+      "/about?tag=a",
+    );
+  });
+
+  it("omits an empty array and drops the query when nothing remains", () => {
+    assert.equal(href("/about", { search: { tag: [] } } as any), "/about");
+    assert.equal(
+      href("/about", { search: { tag: [], q: "hi" } } as any),
+      "/about?q=hi",
+    );
+  });
+
+  it("skips undefined items", () => {
+    assert.equal(
+      href("/about", { search: { tag: ["a", undefined, "b"] } } as any),
+      "/about?tag=a&tag=b",
+    );
+  });
+
+  it("keeps null items as a value", () => {
+    assert.equal(
+      href("/about", { search: { tag: ["a", null, "b"] } }),
+      "/about?tag=a&tag=null&tag=b",
+    );
+  });
+
+  it("encodes each item", () => {
+    assert.equal(
+      href("/about", { search: { tag: ["x y", 1] } } as any),
+      "/about?tag=x%20y&tag=1",
+    );
+  });
+
+  it("applies through the rewritten helper tiers", () => {
+    const opts = { params: { id: 1 }, search: { tag: ["a", "b"] } };
+    assert.equal(href_keys`${opts}/users/${"id"}`, "/users/1?tag=a&tag=b");
+    assert.equal(
+      href_values`${{ search: { tag: ["a", "b"] } }}/users/${2}`,
+      "/users/2?tag=a&tag=b",
+    );
+  });
+});
+
 describe("search value encoding", () => {
   it("percent-encodes keys and values", () => {
     assert.equal(

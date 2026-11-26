@@ -1229,9 +1229,14 @@ export type HrefOptions<
   : HrefBaseOptions<Path>;
 interface HrefBaseOptions<Path extends string> {
   search?: {
-    // `undefined` omits the entry; `null` serializes as a value.
+    // `undefined` omits the entry; `null` serializes as a value, also within
+    // an array. An array repeats the key, and an empty array omits it.
     [K in keyof Valid<GetRawSearchValidator<Path>>]:
-      string | number | null | undefined;
+      | string
+      | number
+      | null
+      | undefined
+      | (string | number | null | undefined)[];
   };
   hash?: string | number;
 }
