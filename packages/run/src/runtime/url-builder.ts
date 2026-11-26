@@ -99,9 +99,12 @@ function joinHref(path: string, { search, hash }: HrefOptions<any>) {
   // `for...in` is intentional: including enumerable inherited keys is fine.
   for (const key in search) {
     const value = search[key as keyof typeof search];
-    if (value !== void 0) {
-      path += `${sep}${encode(key)}=${encode(value)}`;
-      sep = "&";
+    // An array repeats the key, as the search parser reads it back.
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== void 0) {
+        path += `${sep}${encode(key)}=${encode(item)}`;
+        sep = "&";
+      }
     }
   }
   return hash || hash === 0 ? `${path}#${encode(hash)}` : path;

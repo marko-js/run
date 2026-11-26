@@ -4,6 +4,7 @@ export const GET = Run.GET(
   {
     search: v.object({
       q: v.optional(v.string()),
+      tag: v.optional(v.array(v.string())),
     }),
   },
   async (ctx) => {
