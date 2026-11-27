@@ -571,7 +571,10 @@ export default function markoRun(opts: Options = {}): Plugin[] {
           devSourcemap?.css === undefined
         ) {
           pluginConfig.dev ??= {};
-          pluginConfig.dev.sourcemap ??= { css: true };
+          pluginConfig.dev.sourcemap ??= {};
+          if (typeof pluginConfig.dev.sourcemap !== "boolean") {
+            pluginConfig.dev.sourcemap.css ??= true;
+          }
         }
 
         pluginConfig.build ??= {};

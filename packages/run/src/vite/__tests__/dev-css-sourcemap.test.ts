@@ -2,6 +2,9 @@ import assert from "assert";
 import type { ConfigEnv, UserConfig } from "vite";
 
 import markoRun from "../plugin";
+import type { Adapter } from "../types";
+
+type DevSourcemap = NonNullable<UserConfig["dev"]>["sourcemap"];
 
 describe("dev css sourcemaps", () => {
   for (const viteVersion of ["8.4.0", "9.0.0"]) {
@@ -28,10 +31,33 @@ describe("dev css sourcemaps", () => {
       assert.equal(config.dev?.sourcemap, undefined);
     });
   }
+
+  it("should add css to a dev.sourcemap object from the adapter", async () => {
+    const config = await runConfigHook("8.4.0", {}, adapterWith({ js: false }));
+
+    assert.deepEqual(config.dev?.sourcemap, { js: false, css: true });
+  });
+
+  it("should keep a boolean dev.sourcemap from the adapter", async () => {
+    const config = await runConfigHook("8.4.0", {}, adapterWith(false));
+
+    assert.equal(config.dev?.sourcemap, false);
+  });
 });
 
-async function runConfigHook(viteVersion: string, userConfig: UserConfig = {}) {
-  const plugin = markoRun({ adapter: null }).find(
+function adapterWith(sourcemap: DevSourcemap): Adapter {
+  return {
+    name: "test-adapter",
+    viteConfig: () => ({ dev: { sourcemap } }),
+  };
+}
+
+async function runConfigHook(
+  viteVersion: string,
+  userConfig: UserConfig = {},
+  adapter: Adapter | null = null,
+) {
+  const plugin = markoRun({ adapter }).find(
     ({ name }) => name === "marko-run-vite:pre",
   )!;
   const config = plugin.config as (
