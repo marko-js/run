@@ -562,8 +562,17 @@ export default function markoRun(opts: Options = {}): Plugin[] {
         pluginConfig.ssr ??= {};
         pluginConfig.ssr.noExternal ??= /@marko\/run($|\/)/;
 
-        pluginConfig.css ??= {};
-        pluginConfig.css.devSourcemap ??= true;
+        const devSourcemap = config.dev?.sourcemap;
+        if (!readsDevCssSourcemap(this.meta.viteVersion)) {
+          pluginConfig.css ??= {};
+          pluginConfig.css.devSourcemap ??= true;
+        } else if (
+          typeof devSourcemap !== "boolean" &&
+          devSourcemap?.css === undefined
+        ) {
+          pluginConfig.dev ??= {};
+          pluginConfig.dev.sourcemap ??= { css: true };
+        }
 
         pluginConfig.build ??= {};
         pluginConfig.build.outDir ??= outDir;
@@ -1095,6 +1104,12 @@ function mergeOutputOptions(
     ...defaults,
     ...existing,
   };
+}
+
+/** Vite 8.4 replaces `css.devSourcemap` with `dev.sourcemap.css`. */
+function readsDevCssSourcemap(viteVersion: string) {
+  const [major, minor] = viteVersion.split(".").map(Number);
+  return major > 8 || (major === 8 && minor >= 4);
 }
 
 async function globFileExists(root: string, pattern: string) {
